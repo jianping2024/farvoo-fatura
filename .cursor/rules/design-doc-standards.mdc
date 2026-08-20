@@ -1,0 +1,32 @@
+---
+description: Design docs and schema must be precise, synced with DDL, no vague field writing
+alwaysApply: true
+---
+
+# Design documentation standards (farvoo-fatura)
+
+写作设计文档、SCHEMA、迁移 SQL、或口头解释表结构时必须遵守。完整说明见 `docs/design-doc-standards.zh.md`。
+
+## Hard gates
+
+1. **一列一行。** 禁止 `salt / wrap_meta`、`created_at / updated_at` 这种把多列挤进表格同一「列名」格（可在说明里写「与 X 同时维护」，列名必须拆开）。
+2. **文档 ↔ DDL 一一对应。** `docs/fiscal-sqlite-schema.zh.md`（或当前权威设计文）与 `migrations/*.sql` 列名、可空、默认值不一致 = 缺陷，先改齐再往下写。
+3. **P0 必须拍板。** 禁止「可以 A 也可以 B」而不标明 **P0 定法**；对比方案放到「备选/以后」小节。
+4. **状态头必写。** 设计文开头标明：`草稿` / `定稿` / `已废弃`，以及权威文件路径。
+5. **解释须引用定稿。** 回答「某字段存什么」时，先打开权威文档/DDL 再答；不得凭记忆改口径。
+6. **术语单一。** 同一概念只用一名（如 wrap_meta，不轮换叫「封装信息/meta/包装字段」除非加别名表）。
+
+## Schema table template
+
+```markdown
+| 列 | 类型 | 必填 | 说明 |
+|----|------|------|------|
+| salt | TEXT | 否 | … |
+| wrap_meta | TEXT | 否 | … |
+```
+
+## Forbidden
+
+- 用「/」合并两个真实列名当作一个字段
+- 文档写了列但 SQL 没有（或反过来）仍声称「已设计完」
+- 同一会话前后对同一字段给出互相矛盾的定义且不改正文

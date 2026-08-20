@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{printAgent} — Printers</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #0f1419; color: #e8e6e3; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .card { width: 100%; max-width: 520px; background: #1a222c; border: 1px solid #2d3a4a; border-radius: 16px; padding: 28px 24px; }
+    h1 { font-size: 1.2rem; margin: 0 0 6px; color: #d4a853; }
+    .sub { font-size: 13px; color: #9aa5b1; margin-bottom: 20px; line-height: 1.5; }
+    label { display: block; font-size: 12px; color: #9aa5b1; margin-bottom: 6px; }
+    select, input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #2d3a4a; background: #0f1419; color: #e8e6e3; font-size: 14px; margin-bottom: 14px; }
+    .row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .row label { flex: 1; display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid #2d3a4a; border-radius: 8px; cursor: pointer; font-size: 14px; color: #e8e6e3; }
+    .row input { width: auto; margin: 0; }
+    button { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #d4a853; color: #0f1419; font-size: 15px; font-weight: 600; cursor: pointer; }
+    button.secondary { background: transparent; border: 1px solid #2d3a4a; color: #9aa5b1; margin-top: 8px; }
+    .err { color: #f87171; font-size: 13px; min-height: 1.2em; margin-top: 8px; }
+    .ok { display: none; text-align: center; }
+    .ok h2 { color: #4ade80; font-size: 1.1rem; }
+    .hint { font-size: 11px; color: #9aa5b1; margin-top: -8px; margin-bottom: 14px; line-height: 1.45; }
+    .scan-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; padding: 10px 12px; background: #0f1419; border: 1px solid #2d3a4a; border-radius: 8px; }
+    .scan-status { font-size: 13px; color: #e8e6e3; margin: 0; line-height: 1.45; flex: 1; min-width: 200px; }
+    .scan-refresh { width: auto !important; margin: 0 !important; padding: 8px 14px !important; font-size: 13px !important; }
+    .hidden { display: none; }
+    .stations { border-top: 1px solid #2d3a4a; margin-top: 8px; padding-top: 16px; }
+    .section-title { font-size: 13px; color: #d4a853; margin: 0 0 8px; font-weight: 600; }
+    .station-row { margin-bottom: 12px; }
+    .station-row label { margin-bottom: 4px; }
+    .station-name { font-size: 14px; color: #e8e6e3; }
+    .station-sub { font-size: 11px; color: #9aa5b1; margin-bottom: 6px; }
+    .warn { font-size: 12px; color: #fbbf24; margin-bottom: 12px; line-height: 1.45; }
+    .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+    .btn-row button { flex: 1; margin-top: 0; }
+    button.yes { background: #4ade80; color: #0f1419; }
+    button.no { background: transparent; border: 1px solid #f87171; color: #f87171; }
+    .troubleshoot { font-size: 13px; color: #9aa5b1; line-height: 1.55; padding: 12px; background: #0f1419; border-radius: 8px; border: 1px solid #2d3a4a; margin-top: 12px; }
+    .troubleshoot ol { margin: 8px 0 0; padding-left: 20px; }
+    .confirm-q { font-size: 14px; color: #e8e6e3; margin: 12px 0 4px; font-weight: 600; }
+    .ok-msg { color: #4ade80; font-size: 13px; min-height: 1.2em; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="formWrap">
+      <h1 id="pageTitle">…</h1>
+      <p class="sub" id="pageSub">Map each print station to a printer.</p>
+      <p class="hint" id="printerIntro">…</p>
+      <div class="scan-bar">
+        <p class="scan-status" id="scanHint">…</p>
+        <button type="button" id="refreshBtn" class="secondary scan-refresh">…</button>
+      </div>
+      <div class="stations" id="stationsWrap">
+        <p class="section-title" id="stationsTitle">…</p>
+        <p class="hint" id="stationsHint">Loading stations from {brand}…</p>
+        <p class="warn hidden" id="stationsWarn"></p>
+        <div id="stations"></div>
+      </div>
+      <button type="button" id="saveBtn">Save and start printing</button>
+      <button type="button" id="takeoverBtn" class="hidden">Take over & save</button>
+      <p class="err" id="err"></p>
+    </div>
+    <div id="ok" class="ok" style="display:none">
+      <h2 id="okTitle">已保存</h2>
+      <p class="sub" id="okSub" style="margin-bottom:14px">请试打并确认纸上出现「打印测试」后再关闭。</p>
+      <label for="testStation" id="testStationLabel">试打档口</label>
+      <select id="testStation"></select>
+      <label for="testPrintLocale" id="testPrintLocaleLabel">试打语言</label>
+      <select id="testPrintLocale">
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+        <option value="pt">Português</option>
+      </select>
+      <button type="button" id="testPrintBtn">打印测试条</button>
+      <p class="err" id="testErr"></p>
+      <p class="ok-msg" id="testSent"></p>
+      <div id="testConfirmBlock" class="hidden">
+        <p class="confirm-q" id="testConfirmQ">纸上是否已出现「打印测试」？</p>
+        <div class="btn-row">
+          <button type="button" id="paperYes" class="yes">是，已出纸</button>
+          <button type="button" id="paperNo" class="no">否，没有出纸</button>
+        </div>
+        <div id="testTroubleshoot" class="troubleshoot hidden">
+          <strong style="color:#fbbf24" id="tsTitle">排障建议</strong>
+          <ol>
+            <li id="ts1">USB 线、驱动、Windows 打印机列表是否正常。</li>
+            <li id="ts2">队列名是否与实体机一致（勿选 PDF/旧队列）。</li>
+            <li id="ts3">按打印机 FEED 键；检查队列是否暂停/脱机。</li>
+          </ol>
+        </div>
+      </div>
+      <p class="ok-msg hidden" id="testDone">已确认出纸。</p>
+      <button type="button" id="finishBtn" class="secondary" style="margin-top:16px">完成 — 关闭此页</button>
+      <p id="finishHint" style="color:#9aa5b1;font-size:12px;margin-top:10px">以后修改映射：托盘 → 打印机设置，或 MesaPrintAgent.exe configure</p>
+    </div>
+  </div>
+  <script src="/wizard-ui-shared.js"></script>
+  <script>
+    (function () {
+      var err = document.getElementById('err');
+      var hint = document.getElementById('scanHint');
+      var stationsHint = document.getElementById('stationsHint');
+      var stationsWarn = document.getElementById('stationsWarn');
+      var stationsEl = document.getElementById('stations');
+      var cache = { tcp: [], winspool: [] };
+      var printerLists = { tcp: [], winspool: [] };
+      var stations = [];
+      var saved = { station_printers: {} };
+      var lastSavedMaps = {};
+      var testConfirmed = false;
+      var savedMappingEmpty = false;
+
+      function setTestBlockVisible(show) {
+        MesaWizardUI.setTestBlockVisible(show);
+      }
+      var ui = {};
+      var printerScanInFlight = false;
+      var pageLoadGen = 0;
+      var printerScanGen = 0;
+      var draftMappings = {};
+      var uiBusy = false;
+
+      function t(key) { return (ui && ui[key]) ? ui[key] : key; }
+      function fmt(key, value) { return MesaWizardUI.fmt(ui, key, value); }
+      function fmtCount(key, value) { return t(key).replace('%d', String(value)); }
+      function testPhrase() { return ui.test_print_phrase || '打印测试'; }
+      function queryLocale() {
+        var lang = new URLSearchParams(location.search).get('lang');
+        return (lang === 'zh' || lang === 'en' || lang === 'pt') ? lang : '';
+      }
+
+      /** Static labels only — never rebuild station rows or printer dropdowns. */
+      function applyI18nLabels() {
+        document.getElementById('pageTitle').textContent = t('setup_page_title');
+        document.getElementById('pageSub').textContent = t('configure_page_sub');
+        document.getElementById('printerIntro').textContent = t('printer_intro');
+        document.getElementById('refreshBtn').textContent = t('scan_again');
+        document.getElementById('stationsTitle').textContent = t('stations_title');
+        document.getElementById('saveBtn').textContent = t('setup_save_btn');
+        var takeoverBtnLabel = document.getElementById('takeoverBtn');
+        if (takeoverBtnLabel) takeoverBtnLabel.textContent = t('save_takeover_btn');
+        document.getElementById('okTitle').textContent = t('setup_saved_title');
+        document.getElementById('okSub').textContent = t('test_section_hint').replace('%s', testPhrase());
+        document.getElementById('testStationLabel').textContent = t('test_station_label');
+        document.getElementById('testPrintLocaleLabel').textContent = t('test_print_locale_label');
+        document.getElementById('testPrintBtn').textContent = t('test_print_btn');
+        document.getElementById('testConfirmQ').textContent = t('test_confirm_q').replace('%s', testPhrase());
+        document.getElementById('paperYes').textContent = t('test_yes');
+        document.getElementById('paperNo').textContent = t('test_no');
+        document.getElementById('tsTitle').textContent = t('test_troubleshoot_title');
+        document.getElementById('ts1').textContent = t('ts_usb');
+        document.getElementById('ts2').textContent = t('ts_queue');
+        document.getElementById('ts3').textContent = t('ts_feed') + ' ' + t('ts_spool');
+        document.getElementById('testDone').textContent = t('test_done');
+        document.getElementById('finishBtn').textContent = t('done_btn');
+        document.getElementById('finishHint').textContent = t('setup_finish_hint');
+        document.title = t('setup_page_title');
+        updateScanHint();
+      }
+
+      function scanSummaryText() {
+        var lan = (cache.tcp || []).length;
+        var usb = (cache.winspool || []).length;
+        if (lan === 0 && usb === 0) {
+          return t('scan_none');
+        }
+        var parts = [];
+        if (lan) parts.push(fmtCount('scan_lan_count', lan));
+        if (usb) parts.push(fmtCount('scan_usb_count', usb));
+        return fmt('scan_found', parts.join(' · '));
+      }
+
+      function updateScanHint() {
+        if (printerScanInFlight) {
+          hint.textContent = t('scan_scanning');
+        } else {
+          hint.textContent = scanSummaryText();
+        }
+        updateActionButtons();
+      }
+
+      function updateActionButtons() {
+        var scanBusy = printerScanInFlight;
+        document.getElementById('refreshBtn').disabled = scanBusy;
+        document.getElementById('saveBtn').disabled = uiBusy || scanBusy;
+        document.getElementById('testPrintBtn').disabled = uiBusy || scanBusy;
+        document.getElementById('finishBtn').disabled = uiBusy;
+      }
+
+      function fetchPrintersJSON(forceRefresh) {
+        var url = '/api/printers' + (forceRefresh ? '?refresh=1' : '');
+        return fetch(url).then(function (r) {
+          return r.json().then(function (j) {
+            if (!r.ok) throw new Error((j && j.error) || 'printers');
+            return j;
+          });
+        });
+      }
+
+      function applyPrintersIfCurrent(j, scanGen, pageGen) {
+        if (scanGen !== printerScanGen) return false;
+        if (pageGen != null && pageGen !== pageLoadGen) return false;
+        cache.tcp = j.tcp || [];
+        cache.winspool = j.winspool || [];
+        return true;
+      }
+
+      function seedDraftFromSaved() {
+        draftMappings = {};
+        Object.keys(saved.station_printers || {}).forEach(function (sid) {
+          var addr = saved.station_printers[sid];
+          if (sid && addr) draftMappings[sid] = addr;
+        });
+      }
+
+      function stationMappedValue(sid) {
+        if (Object.prototype.hasOwnProperty.call(draftMappings, sid)) {
+          return draftMappings[sid] || '';
+        }
+        return (saved.station_printers && saved.station_printers[sid]) || '';
+      }
+
+      stationsEl.addEventListener('change', function (e) {
+        var sel = e.target;
+        if (!sel || !sel.classList || !sel.classList.contains('station-printer')) return;
+        var row = sel.closest('.station-row');
+        if (row && row.dataset.stationId) draftMappings[row.dataset.stationId] = sel.value;
+      });
+
+      function optionExists(selectEl, value) {
+        if (!value) return false;
+        for (var i = 0; i < selectEl.options.length; i++) {
+          if (selectEl.options[i].value === value) return true;
+        }
+        return false;
+      }
+
+      function stationLabel(s) {
+        return s.name_en || s.name_pt || s.name_zh || s.id;
+      }
+
+      function printerDisplayName(p) {
+        var addr = (p && p.addr) || '';
+        if (addr.indexOf('tcp:') === 0) return fmt('printer_lan_label', addr.slice(4));
+        if (addr.indexOf('winspool:') === 0) return addr.slice(9);
+        return (p && p.label) || addr;
+      }
+
+      function savedPrinterAddrs() {
+        var maps = saved.station_printers || {};
+        var seen = {};
+        var out = [];
+        Object.keys(maps).forEach(function (sid) {
+          var addr = String(maps[sid] || '').trim();
+          if (!addr || seen[addr]) return;
+          seen[addr] = true;
+          out.push(addr);
+        });
+        return out;
+      }
+
+      function mergePrinterGroup(scanned, savedAddrs, prefix) {
+        var byAddr = {};
+        (scanned || []).forEach(function (p) {
+          var a = String(p && p.addr || '').trim();
+          if (a) byAddr[a] = p;
+        });
+        var addedFromSaved = 0;
+        var skippedDup = 0;
+        savedAddrs.forEach(function (addr) {
+          if (prefix != null && addr.indexOf(prefix) !== 0) return;
+          if (byAddr[addr]) {
+            skippedDup++;
+            return;
+          }
+          byAddr[addr] = { addr: addr };
+          addedFromSaved++;
+        });
+        return {
+          list: Object.keys(byAddr).map(function (k) { return byAddr[k]; }),
+          addedFromSaved: addedFromSaved,
+          skippedDup: skippedDup
+        };
+      }
+
+      function rebuildPrinterLists() {
+        var saved = savedPrinterAddrs();
+        var tcpSaved = [];
+        var winSaved = [];
+        var otherSaved = [];
+        saved.forEach(function (addr) {
+          if (addr.indexOf('tcp:') === 0) tcpSaved.push(addr);
+          else if (addr.indexOf('winspool:') === 0) winSaved.push(addr);
+          else otherSaved.push(addr);
+        });
+        var tcpM = mergePrinterGroup(cache.tcp, tcpSaved, 'tcp:');
+        var winM = mergePrinterGroup(cache.winspool, winSaved, 'winspool:');
+        if (otherSaved.length) winM = mergePrinterGroup(winM.list, otherSaved, null);
+        printerLists.tcp = tcpM.list;
+        printerLists.winspool = winM.list;
+      }
+
+      function fillStationSelect(selectEl, selected) {
+        selectEl.innerHTML = '';
+        var def = document.createElement('option');
+        def.value = '';
+        def.textContent = t('printer_not_mapped');
+        selectEl.appendChild(def);
+
+        function addGroup(label, list, emptyText) {
+          var g = document.createElement('optgroup');
+          g.label = label;
+          if (!list.length) {
+            var empty = document.createElement('option');
+            empty.value = '';
+            empty.disabled = true;
+            empty.textContent = emptyText;
+            g.appendChild(empty);
+          } else {
+            list.forEach(function (p) {
+              var o = document.createElement('option');
+              o.value = p.addr;
+              o.textContent = printerDisplayName(p);
+              o.title = p.addr;
+              if (selected && selected === p.addr) o.selected = true;
+              g.appendChild(o);
+            });
+          }
+          selectEl.appendChild(g);
+        }
+
+        addGroup(t('printer_group_lan'), printerLists.tcp || [], t('printer_none_lan'));
+        addGroup(t('printer_group_windows'), printerLists.winspool || [], t('printer_none_windows'));
+
+        if (selected && !optionExists(selectEl, selected)) {
+          var orphan = document.createElement('option');
+          orphan.value = selected;
+          orphan.textContent = printerDisplayName({ addr: selected });
+          orphan.title = t('printer_saved_missing') + ' — ' + selected;
+          orphan.selected = true;
+          var anchor = selectEl.querySelector('optgroup');
+          if (anchor) selectEl.insertBefore(orphan, anchor);
+          else selectEl.appendChild(orphan);
+        }
+      }
+      function renderStations() {
+        rebuildPrinterLists();
+        stationsEl.innerHTML = '';
+        if (!stations.length) {
+          stationsHint.textContent = t('stations_empty');
+          return;
+        }
+        stationsHint.textContent = t('stations_map_hint');
+        stations.forEach(function (s) {
+          var row = document.createElement('div');
+          row.className = 'station-row';
+          row.dataset.stationId = s.id;
+          var sub = document.createElement('div');
+          sub.className = 'station-sub';
+          sub.textContent = s.name_pt && s.name_en !== s.name_pt ? s.name_pt : '';
+          var lab = document.createElement('label');
+          lab.className = 'station-name';
+          lab.textContent = stationLabel(s);
+          var stationSel = document.createElement('select');
+          stationSel.className = 'station-printer';
+          fillStationSelect(stationSel, stationMappedValue(s.id));
+          row.appendChild(lab);
+          if (sub.textContent) row.appendChild(sub);
+          row.appendChild(stationSel);
+          stationsEl.appendChild(row);
+        });
+      }
+      function refreshStationSelects() {
+        rebuildPrinterLists();
+        document.querySelectorAll('.station-row .station-printer').forEach(function (el) {
+          fillStationSelect(el, el.value);
+        });
+      }
+      function loadList() {
+        var scanGen = ++printerScanGen;
+        var pageGen = pageLoadGen;
+        err.textContent = '';
+        printerScanInFlight = true;
+        updateScanHint();
+        return fetchPrintersJSON(true).then(function (j) {
+          if (!applyPrintersIfCurrent(j, scanGen, pageGen)) return j;
+          printerScanInFlight = false;
+          updateScanHint();
+          refreshStationSelects();
+          return j;
+        }).catch(function () {
+          if (scanGen !== printerScanGen) return;
+          printerScanInFlight = false;
+          updateScanHint();
+          err.textContent = t('scan_load_failed');
+          hint.textContent = '';
+          throw new Error('printers');
+        });
+      }
+
+      function fetchStationsResponse() {
+        return fetch('/api/print-stations').then(function (r) {
+          return r.text().then(function (txt) {
+            var j = {};
+            try {
+              j = txt ? JSON.parse(txt) : {};
+            } catch (e) {
+              j = { error: txt || r.statusText };
+            }
+            return { ok: r.ok, j: j };
+          });
+        });
+      }
+
+      function applyStationsResponse(res) {
+        if (!res.ok) {
+          stationsWarn.classList.remove('hidden');
+          stationsWarn.textContent = (res.j && res.j.error) ? res.j.error : t('stations_load_failed');
+          stations = [];
+          return;
+        }
+        stations = res.j.stations || [];
+        stationsWarn.classList.add('hidden');
+      }
+
+      function bootstrapPrinterSection(pageGen) {
+        var scanGen = ++printerScanGen;
+        printerScanInFlight = true;
+        updateScanHint();
+        return Promise.allSettled([
+          fetchPrintersJSON(false),
+          fetchStationsResponse()
+        ]).then(function (settled) {
+          if (pageGen !== pageLoadGen) return;
+          if (settled[0].status === 'fulfilled') {
+            if (!applyPrintersIfCurrent(settled[0].value, scanGen, pageGen)) {
+              printerScanInFlight = false;
+              updateScanHint();
+              return;
+            }
+          } else {
+            err.textContent = t('scan_load_failed');
+            hint.textContent = '';
+          }
+          if (settled[1].status === 'fulfilled') {
+            applyStationsResponse(settled[1].value);
+          } else {
+            stations = [];
+            stationsWarn.classList.remove('hidden');
+            stationsWarn.textContent = t('stations_reach_failed');
+          }
+          printerScanInFlight = false;
+          updateScanHint();
+          renderStations();
+        });
+      }
+
+      function loadSaved() {
+        var gen = ++pageLoadGen;
+        fetch('/api/setup-state')
+          .then(function (r) {
+            return r.json().then(function (j) {
+              if (!r.ok) throw new Error((j && j.error) || 'state');
+              return j;
+            });
+          })
+          .then(function (j) {
+            if (gen !== pageLoadGen) return;
+            saved.station_printers = j.station_printers || {};
+            seedDraftFromSaved();
+            ui = j.ui || {};
+            var loc = queryLocale();
+            if (!loc || loc === j.ui_locale) return;
+            return fetch('/api/ui-locale', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ui_locale: loc })
+            }).then(function (r) { return r.json(); }).then(function (savedPrefs) {
+              if (gen !== pageLoadGen) return;
+              ui = savedPrefs.ui || ui;
+            });
+          })
+          .catch(function () {
+            if (gen !== pageLoadGen) return;
+            err.textContent = t('state_load_failed');
+          })
+          .finally(function () {
+            if (gen !== pageLoadGen) return;
+            applyI18nLabels();
+            bootstrapPrinterSection(gen);
+          });
+      }
+      document.getElementById('refreshBtn').addEventListener('click', loadList);
+      function fillTestStationSelect(maps) {
+        var sel = document.getElementById('testStation');
+        sel.innerHTML = '';
+        var ids = Object.keys(maps || {});
+        if (!ids.length) return;
+        ids.forEach(function (sid) {
+          var o = document.createElement('option');
+          o.value = sid;
+          var label = sid;
+          stations.forEach(function (s) { if (s.id === sid) label = stationLabel(s); });
+          o.textContent = label;
+          sel.appendChild(o);
+        });
+      }
+
+      document.getElementById('saveBtn').addEventListener('click', function () {
+        if (uiBusy || printerScanInFlight) return;
+        err.textContent = '';
+        var takeoverBtn = document.getElementById('takeoverBtn');
+        MesaWizardUI.setTakeoverVisible(takeoverBtn, false);
+        if (!window.MesaWizardUI) {
+          err.textContent = t('save_failed') + ' (wizard-ui-shared.js)';
+          return;
+        }
+        var station_printers = MesaWizardUI.collectFromRows(document, { draft: draftMappings });
+        uiBusy = true;
+        updateActionButtons();
+        function applySaveOk(res) {
+          saved.station_printers = res.j.station_printers || station_printers;
+          seedDraftFromSaved();
+          lastSavedMaps = station_printers;
+          savedMappingEmpty = MesaWizardUI.isMappingCleared(station_printers);
+          testConfirmed = false;
+          document.getElementById('formWrap').classList.add('hidden');
+          document.getElementById('ok').style.display = 'block';
+          MesaWizardUI.setTakeoverVisible(takeoverBtn, false);
+          if (savedMappingEmpty) {
+            document.getElementById('okSub').textContent = MesaWizardUI.saveOkMessage(ui, station_printers);
+            setTestBlockVisible(false);
+          } else {
+            document.getElementById('okSub').textContent = t('test_section_hint').replace('%s', testPhrase());
+            setTestBlockVisible(true);
+            fillTestStationSelect(lastSavedMaps);
+          }
+        }
+        MesaWizardUI.postSetup(station_printers)
+          .then(function (res) {
+            if (!res.ok) {
+              err.textContent = MesaWizardUI.formatSaveError(ui, res.j, res.status);
+              if (MesaWizardUI.isStationMappingConflict(res) && takeoverBtn) {
+                MesaWizardUI.setTakeoverVisible(takeoverBtn, true);
+                takeoverBtn.onclick = function () {
+                  takeoverBtn.disabled = true;
+                  err.textContent = '';
+                  MesaWizardUI.postSetup(station_printers, { forceTakeover: true })
+                    .then(function (takeRes) {
+                      if (!takeRes.ok) {
+                        err.textContent = MesaWizardUI.formatSaveError(ui, takeRes.j, takeRes.status);
+                        return;
+                      }
+                      applySaveOk(takeRes);
+                    })
+                    .catch(function () { err.textContent = t('pair_service_unreachable'); })
+                    .finally(function () { takeoverBtn.disabled = false; });
+                };
+              }
+              return;
+            }
+            applySaveOk(res);
+          }).catch(function () { err.textContent = t('pair_service_unreachable'); })
+          .finally(function () {
+            uiBusy = false;
+            updateActionButtons();
+          });
+      });
+
+      document.getElementById('testPrintBtn').addEventListener('click', function () {
+        if (uiBusy || printerScanInFlight) return;
+        var testErr = document.getElementById('testErr');
+        var testSent = document.getElementById('testSent');
+        testErr.textContent = '';
+        testSent.textContent = '';
+        document.getElementById('testConfirmBlock').classList.add('hidden');
+        document.getElementById('testTroubleshoot').classList.add('hidden');
+        var sid = document.getElementById('testStation').value;
+        var printer = lastSavedMaps[sid] || stationMappedValue(sid) || '';
+        uiBusy = true;
+        updateActionButtons();
+        fetch('/api/test-print', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            station_id: sid,
+            printer: printer,
+            locale: document.getElementById('testPrintLocale').value || 'pt'
+          })
+        }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) { testErr.textContent = res.j.error || t('test_failed'); return; }
+            testSent.textContent = t('test_sent');
+            document.getElementById('testConfirmBlock').classList.remove('hidden');
+          }).catch(function () { testErr.textContent = t('pair_service_unreachable'); })
+          .finally(function () {
+            uiBusy = false;
+            updateActionButtons();
+          });
+      });
+
+      document.getElementById('paperYes').addEventListener('click', function () {
+        testConfirmed = true;
+        document.getElementById('testTroubleshoot').classList.add('hidden');
+        document.getElementById('testDone').classList.remove('hidden');
+      });
+      document.getElementById('paperNo').addEventListener('click', function () {
+        testConfirmed = false;
+        document.getElementById('testTroubleshoot').classList.remove('hidden');
+      });
+      document.getElementById('finishBtn').addEventListener('click', function () {
+        if (!savedMappingEmpty && !testConfirmed && !confirm(t('close_unconfirmed'))) return;
+        fetch('/api/setup-done', { method: 'POST' }).finally(function () { window.close(); });
+      });
+
+      loadSaved();
+    })();
+  </script>
+</body>
+</html>

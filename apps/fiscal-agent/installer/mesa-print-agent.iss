@@ -1,0 +1,76 @@
+; Mesa Print Agent — Inno Setup (x64). From apps/print-agent:
+;   ISCC /DMyAppVersion=0.1.0 installer\mesa-print-agent.iss
+;
+; Upgrade story (sole path): elevated Setup → PrepareToInstall taskkill of
+; MesaPrintAgent.exe (no AppMutex, no CloseApplications yes/no) → overwrite
+; Program Files → optional launch. Tray single-instance mutex stays in Go only.
+
+#ifndef MyAppVersion
+  #define MyAppVersion "0.1.0"
+#endif
+
+#define MyAppName "Mesa Print Agent"
+#define MyAppExe "MesaPrintAgent.exe"
+#define MyAppPublisher "Mesa"
+#define MyAppURL "https://github.com/jianping2024/restaurant-ordering"
+
+[Setup]
+; AppId={{GUID}} → Uninstall registry subkey "{GUID}}_is1" (extra "}"). Tray find derives
+; keys from mesaPrintAgentInnoGUID in tray_uninstall_common.go — keep GUID in lockstep.
+AppId={{A3B8F2E1-9C4D-4A2B-8E1F-0D5C6B7A8E9F}}
+AppName={#MyAppName}
+AppVersion={#MyAppVersion}
+; Stable DisplayName stem (no " version X") so tray prefix match stays one product name.
+AppVerName={#MyAppName}
+UninstallDisplayName={#MyAppName}
+AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppURL}
+DefaultDirName={autopf}\{#MyAppName}
+DefaultGroupName={#MyAppName}
+DisableProgramGroupPage=yes
+; Admin: match Program Files + HKLM uninstall so Setup detects prior install (overwrite, not "new").
+PrivilegesRequired=admin
+UsePreviousAppDir=yes
+; No AppMutex (that blocks with "please close then OK/Cancel"). No CloseApplications
+; (that asks yes/no to close). PrepareToInstall kills the tray quietly before file copy.
+CloseApplications=no
+RestartApplications=no
+OutputDir=..\dist
+OutputBaseFilename=MesaPrintAgent-Setup-amd64
+Compression=lzma2
+SolidCompression=yes
+WizardStyle=modern
+InfoBeforeFile=wizard-before.txt
+InfoAfterFile=wizard-after.txt
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Tasks]
+Name: "desktopicon"; Description: "Create a Mesa Print Agent shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: unchecked
+Name: "autostart"; Description: "Start Mesa Print Agent when you sign in to Windows"; GroupDescription: "Sign-in startup:"; Flags: unchecked
+
+[Files]
+Source: "..\dist\amd64\{#MyAppExe}"; DestDir: "{app}"; Flags: ignoreversion restartreplace
+Source: "..\dist\amd64\VERSION.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "WINDOWS-README.txt"; DestDir: "{app}"; Flags: ignoreversion
+
+[Icons]
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
+Name: "{group}\Printer settings"; Filename: "{app}\{#MyAppExe}"; Parameters: "configure"
+Name: "{group}\Read me"; Filename: "{app}\WINDOWS-README.txt"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon
+Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: autostart
+
+[Run]
+Filename: "{app}\{#MyAppExe}"; Description: "Launch Mesa Print Agent now"; Flags: nowait postinstall skipifsilent
+
+[Code]
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+begin
+  { Quiet stop so Program Files exe can be replaced; ignore non-zero if not running. }
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM {#MyAppExe} /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Result := '';
+end;

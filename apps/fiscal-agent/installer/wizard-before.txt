@@ -1,0 +1,26 @@
+Before you install
+==================
+
+Administrator / upgrade
+  This Setup asks for administrator permission so it installs under Program Files
+  and can update an existing Mesa Print Agent (same folder / Add or Remove Programs entry).
+  If the agent is already running, Setup stops MesaPrintAgent.exe automatically before
+  replacing files (no separate "please exit" / yes-no close step). Continue with Next.
+
+SmartScreen (unsigned build)
+  Windows may show "Unknown publisher". Click More info, then Run anyway.
+  Or: right-click the installer → Properties → check Unblock → OK.
+
+USB printers (UNYKA UK56009, etc.)
+  Install the vendor driver first so the printer appears in Windows Settings → Printers.
+  Driver info: https://unykach.com/
+
+Portable zip vs this Setup
+  This installer offers optional desktop and sign-in shortcuts on the tasks step,
+  plus clean uninstall. Portable zip has no wizard — use Setup for daily POS PCs.
+
+Configuration flow
+  This installer only installs and starts the local tray agent.
+  Pairing and printer mapping are done from Mesa Dashboard → Print assistant
+  (pairing page + printer settings page in the browser; scan printers manually).
+  A test print is recommended but not required to close the page.

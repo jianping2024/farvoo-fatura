@@ -1,0 +1,28 @@
+{
+  "api_base": "http://host.docker.internal:3000",
+  "agentjwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXAiOiJwcmludF9hZ2VudCIsInJlc3RhdXJhbnRfaWQiOiIxOWFkMzBjOS02YzEwLTQ4NDUtOGM4OS01ODNmMzg5ODI3NGQiLCJkZXZpY2VfaWQiOiIyYmRhYmJiZC00OWI0LTRhY2EtODY0OC1jNWYwNjNjODc0MzEiLCJpYXQiOjE3Nzg4MzgxMzQsImV4cCI6MTc4NjYxNDEzNH0.EumRkLuQKlbtJLWf4aIMVc3v0UFwmF8wIDww7BBKUO8",
+  "device_id": "2bdabbbd-49b4-4aca-8648-c5f063c87431",
+  "default_printer": "printer-receipt:9100",
+  "station_printers": {
+    "733dde6c-4e08-4157-83cb-e75cea6bff4e": "printer-kitchen:9100",
+    "9afa3554-ca41-412b-acde-064cef735cd9": "printer-bar:9100"
+  },
+  "schedule": {
+    "timezone": "Europe/Lisbon",
+    "weekday": {
+      "windows": [
+        { "start": "12:00", "end": "15:00" },
+        { "start": "19:30", "end": "23:00" }
+      ]
+    }
+  },
+  "poll": {
+    "idle_interval_sec": 20,
+    "busy_interval_sec": 5,
+    "after_print_interval_sec": 5,
+    "warm_interval_sec": 5,
+    "warm_after_activity_sec": 1800,
+    "closed_check_sec": 60,
+    "error_interval_sec": 5
+  }
+}

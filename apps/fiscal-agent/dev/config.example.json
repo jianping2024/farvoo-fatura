@@ -1,0 +1,28 @@
+{
+  "api_base": "http://127.0.0.1:3000",
+  "agentjwt": "paste-from-claim-or-existing-config",
+  "device_id": "paste-device-uuid",
+  "default_printer": "127.0.0.1:19100",
+  "station_printers": {
+    "REPLACE_KITCHEN_STATION_UUID": "127.0.0.1:19101",
+    "REPLACE_BAR_STATION_UUID": "127.0.0.1:19102"
+  },
+  "schedule": {
+    "timezone": "Europe/Lisbon",
+    "weekday": {
+      "windows": [
+        { "start": "12:00", "end": "15:00" },
+        { "start": "19:30", "end": "23:00" }
+      ]
+    }
+  },
+  "poll": {
+    "idle_interval_sec": 20,
+    "busy_interval_sec": 5,
+    "after_print_interval_sec": 5,
+    "warm_interval_sec": 5,
+    "warm_after_activity_sec": 1800,
+    "closed_check_sec": 60,
+    "error_interval_sec": 5
+  }
+}

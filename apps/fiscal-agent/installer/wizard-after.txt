@@ -1,0 +1,16 @@
+Next steps
+==========
+
+1. Keep "Launch Mesa Print Agent now" checked — the agent runs in the system tray (^ near the clock).
+2. Return to Mesa Dashboard → Print assistant.
+3. Click "Generate pairing code", then "Open settings on this PC".
+4. In the browser:
+   - If not paired yet: open the pairing page (link on the settings page) and enter your code.
+   - On the printer settings page: click "Scan printers", map each print station, then Save.
+   - Optional: run a test print; you can close when done.
+
+Later: tray icon → Printer settings…, or Start menu → Printer settings.
+
+No black console window is required during service.
+
+Note: From agent start, pairing and printer settings share http://127.0.0.1:17892 (/pair and /configure). Dashboard "Open settings on this PC" uses the same port.

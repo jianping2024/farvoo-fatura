@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{printAgent} — Printer mapping</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #0f1419; color: #e8e6e3; margin: 0; min-height: 100vh; padding: 24px; }
+    .wrap { max-width: 560px; margin: 0 auto; }
+    h1 { font-size: 1.3rem; margin: 0 0 6px; color: #d4a853; }
+    .sub { font-size: 13px; color: #9aa5b1; margin-bottom: 20px; line-height: 1.5; }
+    .card { background: #1a222c; border: 1px solid #2d3a4a; border-radius: 16px; padding: 22px 20px; margin-bottom: 16px; }
+    .status { font-size: 13px; color: #e8e6e3; line-height: 1.55; padding: 10px 12px; background: #0f1419; border-radius: 8px; margin-bottom: 16px; border: 1px solid #2d3a4a; }
+    .status strong { color: #e8e6e3; }
+    button { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #d4a853; color: #0f1419; font-size: 15px; font-weight: 600; cursor: pointer; }
+    button.secondary { background: transparent; border: 1px solid #2d3a4a; color: #9aa5b1; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .err { color: #f87171; font-size: 13px; min-height: 1.2em; margin-top: 8px; }
+    .ok-msg { color: #4ade80; font-size: 13px; min-height: 1.2em; margin-top: 8px; }
+    .hint { font-size: 12px; color: #9aa5b1; margin-bottom: 14px; line-height: 1.45; }
+    .scan-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; padding: 10px 12px; background: #0f1419; border: 1px solid #2d3a4a; border-radius: 8px; }
+    .scan-status { font-size: 13px; color: #e8e6e3; margin: 0; flex: 1; min-width: 200px; line-height: 1.45; }
+    .scan-refresh { width: auto !important; padding: 8px 14px !important; font-size: 13px !important; }
+    .warn { font-size: 12px; color: #fbbf24; margin-bottom: 12px; line-height: 1.45; }
+    .hidden { display: none; }
+    .stations { border-top: 1px solid #2d3a4a; margin-top: 8px; padding-top: 14px; }
+    .station-row { margin-bottom: 12px; }
+    .station-name { font-size: 14px; color: #e8e6e3; margin-bottom: 4px; }
+    .station-sub { font-size: 11px; color: #9aa5b1; margin-bottom: 6px; }
+    .section-title { font-size: 13px; color: #d4a853; margin: 0 0 8px; font-weight: 600; }
+    select { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #2d3a4a; background: #0f1419; color: #e8e6e3; font-size: 14px; margin-bottom: 10px; }
+    .test-row { margin-top: 16px; padding-top: 14px; border-top: 1px solid #2d3a4a; }
+    .test-row label { display: block; font-size: 12px; color: #9aa5b1; margin-bottom: 6px; }
+    .footer { text-align: center; margin-top: 8px; }
+    a.pair-link { color: #d4a853; }
+    .debug-panel { margin-top: 20px; border: 1px dashed #3d4f63; border-radius: 10px; padding: 12px 14px; background: #0a0e12; font-size: 11px; color: #8b9aab; }
+    .debug-panel.open { border-color: #d4a853; }
+    .debug-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .debug-head button { width: auto; padding: 6px 10px; font-size: 11px; font-weight: 500; }
+    .debug-pre { margin: 0; white-space: pre-wrap; word-break: break-all; max-height: 280px; overflow: auto; font-family: ui-monospace, monospace; font-size: 10px; line-height: 1.45; color: #b8c5d3; }
+    .debug-err { color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 id="pageTitle">{printAgent} — Settings</h1>
+    <p class="sub" id="pageSub">…</p>
+
+    <div class="status" id="status">…</div>
+    <button type="button" id="stateRetryBtn" class="secondary hidden" style="margin-bottom:16px">…</button>
+
+    <div class="card hidden" id="gateCard">
+      <p class="hint" id="gateBody">…</p>
+      <a class="pair-link" id="gatePairLink" href="/pair">…</a>
+    </div>
+
+    <div class="card hidden" id="rePairCard">
+      <p class="section-title" id="rePairTitle">…</p>
+      <p class="hint" id="rePairHint">…</p>
+      <a class="pair-link" id="rePairLink" href="/pair">…</a>
+    </div>
+
+    <div class="card hidden" id="mainCard">
+      <div class="scan-bar">
+        <p class="scan-status" id="scanHint">…</p>
+        <button type="button" id="scanBtn" class="secondary scan-refresh">…</button>
+      </div>
+      <p class="hint" id="stationsTitle">…</p>
+      <p class="hint" id="stationsHint">…</p>
+      <p class="warn hidden" id="stationsWarn"></p>
+      <button type="button" id="stationsRetryBtn" class="secondary scan-refresh hidden" style="margin-bottom:12px">…</button>
+      <div class="stations" id="stationsRoot"></div>
+      <button type="button" id="saveBtn">…</button>
+      <button type="button" id="takeoverBtn" class="hidden">…</button>
+      <p class="err" id="saveErr"></p>
+      <p class="ok-msg" id="saveOk"></p>
+      <div class="test-row">
+        <p class="section-title" id="testOptionalTitle">…</p>
+        <label for="testStation" id="testStationLabel">…</label>
+        <select id="testStation"></select>
+        <label for="testPrintLocale" id="testPrintLocaleLabel">…</label>
+        <select id="testPrintLocale">
+          <option value="zh">中文</option>
+          <option value="en">English</option>
+          <option value="pt">Português</option>
+        </select>
+        <button type="button" id="testPrintBtn" class="secondary">…</button>
+        <p class="err" id="testErr"></p>
+        <p class="ok-msg" id="testSent"></p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <button type="button" id="doneBtn" class="secondary">…</button>
+    </div>
+
+    <div class="debug-panel" id="debugPanel">
+      <div class="debug-head">
+        <strong style="color:#d4a853">诊断</strong>
+        <span id="debugSummary">—</span>
+        <button type="button" id="debugToggle" class="secondary">展开详情</button>
+        <button type="button" id="debugCopy" class="secondary">复制</button>
+      </div>
+      <pre class="debug-pre hidden" id="debugPre"></pre>
+    </div>
+  </div>
+  <script src="/wizard-ui-shared.js"></script>
+  <script>
+    (function () {
+      var state = { paired: false, station_printers: {}, api_base: '' };
+      var ui = {};
+      var stations = [];
+      var stationNamesById = {};
+      var cache = { tcp: [], winspool: [] };
+      var printerLists = { tcp: [], winspool: [] };
+      var listMergeStats = {
+        savedUnique: 0, mergedLan: 0, mergedWin: 0,
+        savedAddedLan: 0, savedAddedWin: 0, dedupeLan: 0, dedupeWin: 0
+      };
+      var draftMappings = {};
+      var scanning = false;
+      var pageGen = 0;
+      var scanSeq = 0;
+      var scanFlight = null;
+      var debugLines = [];
+      var debugOpen = false;
+      var debugForce = false;
+      try { debugForce = new URLSearchParams(window.location.search).get('debug') === '1'; } catch (e) { debugForce = false; }
+
+      function errBrief(err) {
+        if (!err) return 'unknown';
+        var msg = String(err.message || err);
+        if (err.stack) {
+          var frame = String(err.stack).split('\n')[1] || '';
+          if (frame) msg += ' |' + frame.trim();
+        }
+        return msg;
+      }
+
+      function dbg(msg) {
+        var line = new Date().toISOString().slice(11, 23) + ' ' + msg;
+        debugLines.push(line);
+        if (debugLines.length > 80) debugLines.shift();
+        try {
+          renderDebug();
+        } catch (e) {
+          debugLines.push(new Date().toISOString().slice(11, 23) + ' renderDebug FAILED: ' + errBrief(e));
+          if (debugLines.length > 80) debugLines.shift();
+          var pre = document.getElementById('debugPre');
+          if (pre) pre.textContent = debugLines.join('\n');
+        }
+      }
+
+      function normalizeCloudStations(raw) {
+        if (Array.isArray(raw)) return raw;
+        if (raw == null) return [];
+        dbg('WARN print-stations payload not array type=' + typeof raw);
+        return [];
+      }
+
+      function dbgResponse(label, url, r, txt) {
+        var ct = (r.headers && r.headers.get) ? (r.headers.get('content-type') || '') : '';
+        var jsonOk = false;
+        try { if (txt) JSON.parse(txt); jsonOk = !!txt; } catch (e) { jsonOk = false; }
+        var preview = txt || '';
+        if (preview.length > 360) preview = preview.slice(0, 360) + '…(' + txt.length + 'B)';
+        preview = preview.replace(/\s+/g, ' ').trim();
+        dbg(label + ' ' + r.status + ' ' + url + ' ct=' + ct + ' json=' + jsonOk + (preview ? ' body=' + preview : ''));
+        if (!r.ok || !jsonOk) openDebug(true);
+      }
+
+      function dbgError(label, url, err) {
+        dbg(label + ' ERR ' + url + ' ' + String(err && err.message || err));
+        openDebug(true);
+      }
+
+      function openDebug(force) {
+        if (force) {
+          debugOpen = true;
+          document.getElementById('debugPanel').classList.add('open');
+          document.getElementById('debugPre').classList.remove('hidden');
+          document.getElementById('debugToggle').textContent = '收起详情';
+        }
+      }
+
+      function renderDebug() {
+        var paired = !!state.paired;
+        var list = Array.isArray(stations) ? stations : [];
+        var nCloud = list.length;
+        var nRender = stationsForRender().length;
+        var api = state.api_base || '(none)';
+        var summary = document.getElementById('debugSummary');
+        var pre = document.getElementById('debugPre');
+        if (!summary || !pre) return;
+        summary.innerHTML =
+          'paired=' + paired +
+          ' scanning=' + scanning +
+          ' api=' + escapeHtml(String(api).slice(0, 48)) +
+          ' cloud_stations=' + nCloud +
+          ' render_rows=' + nRender +
+          ' maps=' + Object.keys(state.station_printers || {}).length +
+          ' saved_printers=' + listMergeStats.savedUnique +
+          ' scan_lan=' + (cache.tcp || []).length +
+          ' scan_usb=' + (cache.winspool || []).length +
+          ' pick_lan=' + listMergeStats.mergedLan +
+          ' pick_usb=' + listMergeStats.mergedWin;
+        pre.textContent = debugLines.join('\n');
+        if (debugForce) openDebug(true);
+      }
+
+      function fetchTextLogged(label, url, opts) {
+        dbg('→ ' + label + ' ' + url);
+        return fetch(url, opts || {}).then(function (r) {
+          return r.text().then(function (txt) {
+            dbgResponse(label, url, r, txt);
+            return { r: r, txt: txt };
+          });
+        }).catch(function (err) {
+          dbgError(label, url, err);
+          throw err;
+        });
+      }
+
+      function t(key) { return (ui && ui[key]) ? ui[key] : key; }
+      function fmt(key, val) { return MesaWizardUI.fmt(ui, key, val); }
+      function fmtCount(key, n) { return t(key).replace('%d', String(n)); }
+
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function applyLabels() {
+        document.getElementById('pageTitle').textContent = t('configure_page_title');
+        document.getElementById('pageSub').textContent = t('configure_page_sub');
+        document.getElementById('gateBody').textContent = t('configure_gate_body');
+        document.getElementById('gatePairLink').textContent = t('configure_gate_pair_btn');
+        document.getElementById('rePairTitle').textContent = t('section_pair');
+        document.getElementById('rePairHint').textContent = t('pair_hint');
+        document.getElementById('rePairLink').textContent = t('pair_btn');
+        document.getElementById('scanBtn').textContent = t('scan_again');
+        document.getElementById('stationsTitle').textContent = t('stations_title');
+        document.getElementById('saveBtn').textContent = t('save_printers_btn');
+        var takeoverBtnLabel = document.getElementById('takeoverBtn');
+        if (takeoverBtnLabel) takeoverBtnLabel.textContent = t('save_takeover_btn');
+        document.getElementById('stationsRetryBtn').textContent = t('stations_retry');
+        document.getElementById('stateRetryBtn').textContent = t('state_retry');
+        document.getElementById('testOptionalTitle').textContent = t('configure_test_optional');
+        document.getElementById('testStationLabel').textContent = t('test_station_label');
+        document.getElementById('testPrintLocaleLabel').textContent = t('test_print_locale_label');
+        document.getElementById('testPrintBtn').textContent = t('test_print_btn');
+        document.getElementById('doneBtn').textContent = t('done_btn');
+        document.title = t('configure_page_title');
+        updateScanHint();
+      }
+
+      function seedDraft() {
+        draftMappings = {};
+        Object.keys(state.station_printers || {}).forEach(function (sid) {
+          var addr = state.station_printers[sid];
+          if (sid && addr) draftMappings[sid] = addr;
+        });
+      }
+
+      /** Non-empty station_printers from local config.json (via /api/configure-state). */
+      function hasSavedStationMappings() {
+        var maps = state.station_printers || {};
+        return Object.keys(maps).some(function (sid) {
+          return sid && String(maps[sid] || '').trim() !== '';
+        });
+      }
+
+      function mappedValue(sid) {
+        if (Object.prototype.hasOwnProperty.call(draftMappings, sid)) {
+          return draftMappings[sid] || '';
+        }
+        return (state.station_printers && state.station_printers[sid]) || '';
+      }
+
+      function stationsForRender() {
+        var out = [];
+        var seen = {};
+        var list = Array.isArray(stations) ? stations : [];
+        list.forEach(function (s) {
+          var key = String(s && s.id || '').trim();
+          if (!key || seen[key]) return;
+          seen[key] = true;
+          out.push(s);
+        });
+        Object.keys(state.station_printers || {}).forEach(function (sid) {
+          var key = String(sid || '').trim();
+          if (!key || seen[key]) return;
+          seen[key] = true;
+          out.push({ id: key });
+        });
+        return out;
+      }
+
+      function scanSummaryText() {
+        var lan = (cache.tcp || []).length;
+        var usb = (cache.winspool || []).length;
+        if (lan === 0 && usb === 0) return t('scan_none');
+        var parts = [];
+        if (lan) parts.push(fmtCount('scan_lan_count', lan));
+        if (usb) parts.push(fmtCount('scan_usb_count', usb));
+        return fmt('scan_found', parts.join(' · '));
+      }
+
+      function updateScanHint() {
+        var el = document.getElementById('scanHint');
+        if (scanning) {
+          el.textContent = t('scan_scanning');
+        } else if (!cache.tcp.length && !cache.winspool.length) {
+          el.textContent = t('configure_scan_prompt');
+        } else {
+          el.textContent = scanSummaryText();
+        }
+        document.getElementById('scanBtn').disabled = scanning;
+        document.getElementById('saveBtn').disabled = scanning;
+        document.getElementById('testPrintBtn').disabled = scanning;
+      }
+
+      function buildPairHref(pairPath) {
+        var qs = window.location.search.replace(/^\?/, '');
+        if (qs) return pairPath + '?' + qs;
+        if (state.api_base) return pairPath + '?api=' + encodeURIComponent(state.api_base);
+        return pairPath;
+      }
+
+      function renderStatus() {
+        var el = document.getElementById('status');
+        if (!state.paired) {
+          el.innerHTML = t('status_not_paired');
+          document.getElementById('gateCard').classList.remove('hidden');
+          document.getElementById('rePairCard').classList.add('hidden');
+          document.getElementById('mainCard').classList.add('hidden');
+          return;
+        }
+        var tpl = t('status_paired');
+        el.innerHTML = tpl
+          .replace('%s', escapeHtml(state.api_base || '{brand}'))
+          .replace('%d', String(state.station_count || 0));
+        document.getElementById('gateCard').classList.add('hidden');
+        document.getElementById('rePairCard').classList.remove('hidden');
+        document.getElementById('mainCard').classList.remove('hidden');
+      }
+
+      function stationLabel(s) {
+        var known = stationNamesById[s.id];
+        if (known) {
+          return known.name_en || known.name_pt || known.name_zh || known.id;
+        }
+        return s.name_en || s.name_pt || s.name_zh || s.id;
+      }
+
+      function printerDisplayName(p) {
+        var addr = (p && p.addr) || '';
+        if (addr.indexOf('tcp:') === 0) return fmt('printer_lan_label', addr.slice(4));
+        if (addr.indexOf('winspool:') === 0) return addr.slice(9);
+        return (p && p.label) || addr;
+      }
+
+      /** Unique printer addrs from disk config (state.station_printers), not draft. */
+      function savedPrinterAddrs() {
+        var maps = state.station_printers || {};
+        var seen = {};
+        var out = [];
+        Object.keys(maps).forEach(function (sid) {
+          var addr = String(maps[sid] || '').trim();
+          if (!addr || seen[addr]) return;
+          seen[addr] = true;
+          out.push(addr);
+        });
+        return out;
+      }
+
+      function mergePrinterGroup(scanned, savedAddrs, prefix) {
+        var byAddr = {};
+        (scanned || []).forEach(function (p) {
+          var a = String(p && p.addr || '').trim();
+          if (a) byAddr[a] = p;
+        });
+        var addedFromSaved = 0;
+        var skippedDup = 0;
+        savedAddrs.forEach(function (addr) {
+          if (prefix != null && addr.indexOf(prefix) !== 0) return;
+          if (byAddr[addr]) {
+            skippedDup++;
+            return;
+          }
+          byAddr[addr] = { addr: addr };
+          addedFromSaved++;
+        });
+        return {
+          list: Object.keys(byAddr).map(function (k) { return byAddr[k]; }),
+          addedFromSaved: addedFromSaved,
+          skippedDup: skippedDup
+        };
+      }
+
+      function rebuildPrinterLists(reason) {
+        var saved = savedPrinterAddrs();
+        var tcpSaved = [];
+        var winSaved = [];
+        var otherSaved = [];
+        saved.forEach(function (addr) {
+          if (addr.indexOf('tcp:') === 0) tcpSaved.push(addr);
+          else if (addr.indexOf('winspool:') === 0) winSaved.push(addr);
+          else otherSaved.push(addr);
+        });
+        var tcpM = mergePrinterGroup(cache.tcp, tcpSaved, 'tcp:');
+        var winM = mergePrinterGroup(cache.winspool, winSaved, 'winspool:');
+        if (otherSaved.length) winM = mergePrinterGroup(winM.list, otherSaved, null);
+        printerLists.tcp = tcpM.list;
+        printerLists.winspool = winM.list;
+        listMergeStats = {
+          savedUnique: saved.length,
+          mergedLan: tcpM.list.length,
+          mergedWin: winM.list.length,
+          savedAddedLan: tcpM.addedFromSaved,
+          savedAddedWin: winM.addedFromSaved,
+          dedupeLan: tcpM.skippedDup,
+          dedupeWin: winM.skippedDup
+        };
+        dbg(
+          'phase printer_lists reason=' + reason +
+          ' saved_unique=' + saved.length +
+          ' scan_lan=' + (cache.tcp || []).length +
+          ' scan_win=' + (cache.winspool || []).length +
+          ' pick_lan=' + tcpM.list.length +
+          ' pick_win=' + winM.list.length +
+          ' saved_added_lan=' + tcpM.addedFromSaved +
+          ' saved_added_win=' + winM.addedFromSaved +
+          ' dedupe_skip_lan=' + tcpM.skippedDup +
+          ' dedupe_skip_win=' + winM.skippedDup +
+          (otherSaved.length ? ' saved_other=' + otherSaved.length : '')
+        );
+      }
+
+      function fillSelect(selectEl, selected) {
+        selectEl.innerHTML = '';
+        var def = document.createElement('option');
+        def.value = '';
+        def.textContent = t('printer_not_mapped');
+        selectEl.appendChild(def);
+
+        function addGroup(label, list, emptyText) {
+          var g = document.createElement('optgroup');
+          g.label = label;
+          if (!list.length) {
+            var empty = document.createElement('option');
+            empty.value = '';
+            empty.disabled = true;
+            empty.textContent = emptyText;
+            g.appendChild(empty);
+          } else {
+            list.forEach(function (p) {
+              var o = document.createElement('option');
+              o.value = p.addr;
+              o.textContent = printerDisplayName(p);
+              if (selected && selected === p.addr) o.selected = true;
+              g.appendChild(o);
+            });
+          }
+          selectEl.appendChild(g);
+        }
+
+        addGroup(t('printer_group_lan'), printerLists.tcp || [], t('printer_none_lan'));
+        addGroup(t('printer_group_windows'), printerLists.winspool || [], t('printer_none_windows'));
+
+        if (selected) {
+          var found = false;
+          for (var i = 0; i < selectEl.options.length; i++) {
+            if (selectEl.options[i].value === selected) found = true;
+          }
+          if (!found) {
+            dbg('WARN fillSelect orphan fallback addr=' + selected);
+            var orphan = document.createElement('option');
+            orphan.value = selected;
+            orphan.textContent = printerDisplayName({ addr: selected });
+            orphan.title = t('printer_saved_missing');
+            orphan.selected = true;
+            var anchor = selectEl.querySelector('optgroup');
+            if (anchor) selectEl.insertBefore(orphan, anchor);
+            else selectEl.appendChild(orphan);
+          }
+        }
+      }
+
+      function renderStations() {
+        var root = document.getElementById('stationsRoot');
+        if (!root) throw new Error('DOM #stationsRoot missing');
+        var visible = stationsForRender();
+        root.innerHTML = '';
+        if (!visible.length) {
+          document.getElementById('stationsHint').textContent = t('stations_empty');
+          refreshTestSelect();
+          return;
+        }
+        document.getElementById('stationsHint').textContent = stations.length
+          ? t('stations_map_hint')
+          : t('stations_saved_only');
+        visible.forEach(function (s) {
+          var row = document.createElement('div');
+          row.className = 'station-row';
+          row.dataset.stationId = s.id;
+          var lab = document.createElement('div');
+          lab.className = 'station-name';
+          lab.textContent = stationLabel(s);
+          var sub = document.createElement('div');
+          sub.className = 'station-sub';
+          if (s.name_en) sub.textContent = s.name_en;
+          var sel = document.createElement('select');
+          sel.className = 'station-printer';
+          fillSelect(sel, mappedValue(s.id));
+          row.appendChild(lab);
+          if (sub.textContent) row.appendChild(sub);
+          row.appendChild(sel);
+          root.appendChild(row);
+        });
+        refreshTestSelect();
+      }
+
+      function safeRenderStations() {
+        dbg('phase stations_render start');
+        try {
+          rebuildPrinterLists('render_stations');
+          renderStations();
+          dbg('phase stations_render ok rows=' + stationsForRender().length);
+          return true;
+        } catch (e) {
+          dbg('phase stations_render FAILED: ' + errBrief(e));
+          var warn = document.getElementById('stationsWarn');
+          if (warn) {
+            warn.classList.remove('hidden');
+            warn.textContent = t('render_stations_failed');
+          }
+          var retryBtn = document.getElementById('stationsRetryBtn');
+          if (retryBtn) retryBtn.classList.remove('hidden');
+          return false;
+        }
+      }
+
+      function collectMappings() {
+        return MesaWizardUI.collectFromRows(document, { draft: draftMappings });
+      }
+
+      function refreshTestSelect() {
+        var sel = document.getElementById('testStation');
+        sel.innerHTML = '';
+        var visible = stationsForRender();
+        if (!visible.length) {
+          var empty = document.createElement('option');
+          empty.value = '';
+          empty.textContent = t('stations_empty');
+          sel.appendChild(empty);
+          sel.disabled = true;
+          return;
+        }
+        sel.disabled = false;
+        visible.forEach(function (s) {
+          var o = document.createElement('option');
+          o.value = s.id;
+          o.textContent = stationLabel(s);
+          sel.appendChild(o);
+        });
+      }
+
+      function parseStateResponse(r, txt) {
+        var j = {};
+        try { j = txt ? JSON.parse(txt) : {}; } catch (e) {
+          dbg('state JSON.parse failed: ' + String(e.message || e));
+          throw new Error('parse');
+        }
+        if (!r.ok) throw new Error((j && j.error) || 'state');
+        return j;
+      }
+
+      function fetchConfigureStateOnce() {
+        return fetchTextLogged('configure-state', '/api/configure-state').then(function (res) {
+          return parseStateResponse(res.r, res.txt);
+        });
+      }
+
+      function fetchConfigureState() {
+        return fetchConfigureStateOnce().catch(function (err) {
+          dbg('configure-state failed, try setup-state');
+          return fetchTextLogged('setup-state', '/api/setup-state').then(function (res) {
+            return parseStateResponse(res.r, res.txt);
+          });
+        });
+      }
+
+      function fetchConfigureStateWithRetry(attempt) {
+        return fetchConfigureState().catch(function (err) {
+          dbg('state retry ' + (attempt + 1) + '/4');
+          if (attempt >= 4) throw err;
+          return new Promise(function (resolve) {
+            window.setTimeout(resolve, 350 * (attempt + 1));
+          }).then(function () {
+            return fetchConfigureStateWithRetry(attempt + 1);
+          });
+        });
+      }
+
+      function showStateRetry(show) {
+        var btn = document.getElementById('stateRetryBtn');
+        if (!btn) return;
+        if (show) btn.classList.remove('hidden');
+        else btn.classList.add('hidden');
+      }
+
+      function fetchStations() {
+        return fetchTextLogged('print-stations', '/api/print-stations').then(function (res) {
+          var j = {};
+          try { j = res.txt ? JSON.parse(res.txt) : {}; } catch (e) { j = { error: res.txt, parse: String(e.message || e) }; }
+          return { ok: res.r.ok, j: j };
+        });
+      }
+
+      function applyStations(res) {
+        var retryBtn = document.getElementById('stationsRetryBtn');
+        var warn = document.getElementById('stationsWarn');
+        if (!res.ok) {
+          stations = [];
+          stationNamesById = {};
+          if (warn) {
+            warn.classList.remove('hidden');
+            warn.textContent = (res.j && res.j.error) || t('stations_load_failed');
+          }
+          if (retryBtn) retryBtn.classList.remove('hidden');
+          dbg('phase stations_apply http_fail');
+          return;
+        }
+        stations = normalizeCloudStations(res.j && res.j.stations);
+        stationNamesById = {};
+        stations.forEach(function (s) {
+          if (s && s.id) stationNamesById[s.id] = s;
+        });
+        dbg('phase stations_apply ok count=' + stations.length);
+        if (warn) warn.classList.add('hidden');
+        if (retryBtn) retryBtn.classList.add('hidden');
+      }
+
+      function runScan(reason, bindPageGen) {
+        if (scanFlight) {
+          dbg('phase printers_scan coalesce reason=' + reason + ' pageGen=' + bindPageGen);
+          return scanFlight;
+        }
+        var seq = ++scanSeq;
+        var label = reason || 'manual';
+        dbg('phase printers_scan start seq=' + seq + ' reason=' + label + ' pageGen=' + bindPageGen);
+        scanning = true;
+        updateScanHint();
+
+        scanFlight = fetchTextLogged('printers', '/api/printers?refresh=1')
+          .then(function (res) {
+            var j = {};
+            try { j = res.txt ? JSON.parse(res.txt) : {}; } catch (e) { throw new Error('parse'); }
+            if (!res.r.ok) throw new Error((j && j.error) || 'scan');
+            return j;
+          })
+          .then(function (j) {
+            if (seq !== scanSeq) {
+              dbg('phase printers_scan drop stale seq=' + seq + ' current=' + scanSeq);
+              return;
+            }
+            if (bindPageGen != null && bindPageGen !== pageGen) {
+              dbg('phase printers_scan drop stale pageGen=' + bindPageGen + ' current=' + pageGen);
+              return;
+            }
+            cache.tcp = j.tcp || [];
+            cache.winspool = j.winspool || [];
+            dbg('phase printers_scan ok seq=' + seq + ' lan=' + cache.tcp.length + ' usb=' + cache.winspool.length);
+            rebuildPrinterLists('scan');
+            document.querySelectorAll('.station-printer').forEach(function (sel) {
+              fillSelect(sel, sel.value);
+            });
+          })
+          .catch(function (err) {
+            if (seq !== scanSeq) return;
+            if (bindPageGen != null && bindPageGen !== pageGen) return;
+            dbg('phase printers_scan FAILED seq=' + seq + ': ' + errBrief(err));
+            var hint = document.getElementById('scanHint');
+            if (hint) hint.textContent = t('scan_load_failed');
+          })
+          .finally(function () {
+            if (seq !== scanSeq) {
+              dbg('phase printers_scan end stale seq=' + seq);
+              return;
+            }
+            scanning = false;
+            scanFlight = null;
+            updateScanHint();
+            dbg('phase printers_scan end seq=' + seq);
+          });
+        return scanFlight;
+      }
+
+      function loadStations(gen) {
+        return fetchStations().then(function (res) {
+          if (gen !== pageGen) return;
+          applyStations(res);
+          safeRenderStations();
+        }).catch(function (err) {
+          if (gen !== pageGen) return;
+          dbg('print-stations FAILED: ' + String(err && err.message || err));
+          stations = [];
+          stationNamesById = {};
+          document.getElementById('stationsWarn').classList.remove('hidden');
+          document.getElementById('stationsWarn').textContent = t('stations_reach_failed');
+          document.getElementById('stationsRetryBtn').classList.remove('hidden');
+          safeRenderStations();
+        });
+      }
+
+      function failStateLoad(gen, phase, err) {
+        if (gen !== pageGen) return;
+        dbg('loadPage FAILED phase=' + phase + ': ' + errBrief(err));
+        document.getElementById('gateCard').classList.add('hidden');
+        document.getElementById('rePairCard').classList.add('hidden');
+        document.getElementById('mainCard').classList.add('hidden');
+        document.getElementById('status').textContent = t('state_load_failed');
+        showStateRetry(true);
+        openDebug(true);
+      }
+
+      function loadPage() {
+        var gen = ++pageGen;
+        scanSeq++;
+        scanFlight = null;
+        scanning = false;
+        showStateRetry(false);
+        document.getElementById('status').textContent = t('status_loading');
+        dbg('phase loadPage start gen=' + gen + ' scanSeq=' + scanSeq);
+        fetchConfigureStateWithRetry(0)
+          .then(function (j) {
+            if (gen !== pageGen) return;
+            dbg('phase configure_state ok paired=' + !!j.paired);
+            state = j;
+            ui = j.ui || {};
+            seedDraft();
+            var pairPath = j.pair_path || '/pair';
+            var pairHref = buildPairHref(pairPath);
+            document.getElementById('gatePairLink').href = pairHref;
+            document.getElementById('rePairLink').href = pairHref;
+            applyLabels();
+            renderStatus();
+            if (!state.paired) {
+              var sp = new URLSearchParams(window.location.search);
+              if (sp.get('code')) {
+                window.location.replace(buildPairHref(pairPath));
+                return;
+              }
+              dbg('phase loadPage done unpaired');
+              return;
+            }
+            return loadStations(gen).then(function () {
+              if (gen !== pageGen) return;
+              if (hasSavedStationMappings()) {
+                dbg('phase loadPage skip auto scan local_maps=' +
+                  Object.keys(state.station_printers || {}).length);
+                updateScanHint();
+                return;
+              }
+              dbg('phase loadPage no local maps, auto scan');
+              return runScan('auto', gen);
+            }).then(function () {
+              if (gen !== pageGen) return;
+              dbg('phase loadPage done paired');
+            });
+          })
+          .catch(function (err) {
+            failStateLoad(gen, 'configure_state', err);
+          });
+      }
+
+      document.getElementById('stateRetryBtn').addEventListener('click', loadPage);
+
+      document.getElementById('stationsRoot').addEventListener('change', function (e) {
+        if (!e.target || !e.target.classList.contains('station-printer')) return;
+        var row = e.target.closest('.station-row');
+        if (row && row.dataset.stationId) {
+          draftMappings[row.dataset.stationId] = e.target.value;
+          refreshTestSelect();
+        }
+      });
+
+      document.getElementById('scanBtn').addEventListener('click', function () {
+        runScan('manual', pageGen);
+      });
+      document.getElementById('stationsRetryBtn').addEventListener('click', function () {
+        loadStations(pageGen);
+      });
+
+      document.getElementById('saveBtn').addEventListener('click', function () {
+        var err = document.getElementById('saveErr');
+        var ok = document.getElementById('saveOk');
+        var takeoverBtn = document.getElementById('takeoverBtn');
+        err.textContent = '';
+        ok.textContent = '';
+        MesaWizardUI.setTakeoverVisible(takeoverBtn, false);
+        if (!window.MesaWizardUI) {
+          err.textContent = t('save_failed') + ' (wizard-ui-shared.js)';
+          return;
+        }
+        var maps = collectMappings();
+        document.getElementById('saveBtn').disabled = true;
+        function applySaveOk(res) {
+          state.station_printers = res.j.station_printers || maps;
+          state.station_count = Object.keys(state.station_printers || {}).length;
+          seedDraft();
+          ok.textContent = MesaWizardUI.saveOkMessage(ui, maps);
+          renderStatus();
+          refreshTestSelect();
+          MesaWizardUI.setTakeoverVisible(takeoverBtn, false);
+        }
+        MesaWizardUI.postSetup(maps)
+          .then(function (res) {
+            if (!res.ok) {
+              err.textContent = MesaWizardUI.formatSaveError(ui, res.j, res.status);
+              if (MesaWizardUI.isStationMappingConflict(res) && takeoverBtn) {
+                MesaWizardUI.setTakeoverVisible(takeoverBtn, true);
+                takeoverBtn.onclick = function () {
+                  takeoverBtn.disabled = true;
+                  err.textContent = '';
+                  ok.textContent = '';
+                  MesaWizardUI.postSetup(maps, { forceTakeover: true })
+                    .then(function (takeRes) {
+                      if (!takeRes.ok) {
+                        err.textContent = MesaWizardUI.formatSaveError(ui, takeRes.j, takeRes.status);
+                        return;
+                      }
+                      applySaveOk(takeRes);
+                    })
+                    .catch(function () { err.textContent = t('pair_service_unreachable'); })
+                    .finally(function () { takeoverBtn.disabled = false; });
+                };
+              }
+              return;
+            }
+            applySaveOk(res);
+          })
+          .catch(function () { err.textContent = t('pair_service_unreachable'); })
+          .finally(function () {
+            document.getElementById('saveBtn').disabled = scanning;
+          });
+      });
+
+      document.getElementById('testPrintBtn').addEventListener('click', function () {
+        var testErr = document.getElementById('testErr');
+        var testSent = document.getElementById('testSent');
+        testErr.textContent = '';
+        testSent.textContent = '';
+        var sid = document.getElementById('testStation').value;
+        if (!sid) {
+          testErr.textContent = t('stations_empty');
+          return;
+        }
+        var maps = collectMappings();
+        var printer = maps[sid] || mappedValue(sid) || '';
+        if (!printer) {
+          testErr.textContent = t('save_need_mapping');
+          return;
+        }
+        var slipLocale = document.getElementById('testPrintLocale').value || 'pt';
+        fetch('/api/test-print', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ station_id: sid, printer: printer, locale: slipLocale })
+        })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) {
+              testErr.textContent = res.j.error || t('test_failed');
+              return;
+            }
+            testSent.textContent = t('test_sent');
+          })
+          .catch(function () { testErr.textContent = t('pair_service_unreachable'); });
+      });
+
+      document.getElementById('doneBtn').addEventListener('click', function () {
+        fetch('/api/configure-done', { method: 'POST' }).finally(function () { window.close(); });
+      });
+
+      document.getElementById('debugToggle').addEventListener('click', function () {
+        debugOpen = !debugOpen;
+        document.getElementById('debugPre').classList.toggle('hidden', !debugOpen);
+        document.getElementById('debugPanel').classList.toggle('open', debugOpen);
+        document.getElementById('debugToggle').textContent = debugOpen ? '收起详情' : '展开详情';
+      });
+      document.getElementById('debugCopy').addEventListener('click', function () {
+        var text = 'url=' + window.location.href + '\n' + debugLines.join('\n');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).catch(function () {});
+        }
+      });
+
+      dbg('page load ' + window.location.href);
+      fetchTextLogged('health', '/api/health').then(function (res) {
+        try {
+          var h = JSON.parse(res.txt || '{}');
+          dbg('agent version=' + (h.version || '?'));
+        } catch (e) { /* ignore */ }
+      }).catch(function () {});
+
+      loadPage();
+    })();
+  </script>
+</body>
+</html>

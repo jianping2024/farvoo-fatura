@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{printAgent} — Pairing</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #0f1419;
+      color: #e8e6e3;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: #1a222c;
+      border: 1px solid #2d3a4a;
+      border-radius: 16px;
+      padding: 28px 24px;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 6px; color: #d4a853; }
+    .sub { font-size: 13px; color: #9aa5b1; margin: 0 0 20px; line-height: 1.5; }
+    label { display: block; font-size: 12px; color: #9aa5b1; margin-bottom: 6px; }
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #2d3a4a;
+      background: #0f1419;
+      color: #e8e6e3;
+      font-size: 15px;
+      margin-bottom: 16px;
+    }
+    input.code { font-size: 28px; letter-spacing: 0.35em; text-align: center; font-family: ui-monospace, monospace; }
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: #d4a853;
+      color: #0f1419;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .err { color: #f87171; font-size: 13px; margin-top: 12px; min-height: 1.2em; }
+    .steps { font-size: 12px; color: #9aa5b1; margin-bottom: 20px; padding-left: 1.2em; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="formWrap" class="form-wrap">
+      <h1 id="pageTitle">Pair {printAgent}</h1>
+      <p class="sub" id="pageSub">Generate a 6-digit code in {brand} → Settings → Print assistant, then connect here. No command line.</p>
+      <ol class="steps">
+        <li id="step1">Sign in to {brand} → Settings → Print assistant → Generate code</li>
+        <li id="step2">Enter your {brand} URL below (check if pre-filled)</li>
+        <li id="step3">Enter the 6-digit code and connect</li>
+      </ol>
+      <form id="pairForm">
+        <label for="api" id="apiLabel">{brand} URL</label>
+        <input id="api" name="api" type="url" required placeholder="https://your-app.vercel.app" autocomplete="url" />
+        <label for="code" id="codeLabel">Pairing code (6 digits)</label>
+        <input id="code" name="code" class="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" minlength="6" required placeholder="000000" autocomplete="one-time-code" />
+        <button type="submit" id="submitBtn">Connect and save</button>
+        <p class="err" id="err"></p>
+      </form>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var apiEl = document.getElementById('api');
+      var codeEl = document.getElementById('code');
+      var ui = {};
+      function t(key) { return (ui && ui[key]) ? ui[key] : key; }
+      function queryLocale() {
+        var lang = params.get('lang');
+        return (lang === 'zh' || lang === 'en' || lang === 'pt') ? lang : '';
+      }
+      function configurePath() {
+        var lang = queryLocale();
+        return lang ? ('/configure?lang=' + encodeURIComponent(lang)) : '/configure';
+      }
+      function applyI18n() {
+        document.getElementById('pageTitle').textContent = t('pair_page_title');
+        document.getElementById('pageSub').textContent = t('pair_page_sub');
+        document.getElementById('step1').textContent = t('pair_step_1');
+        document.getElementById('step2').textContent = t('pair_step_2');
+        document.getElementById('step3').textContent = t('pair_step_3');
+        document.getElementById('apiLabel').textContent = t('mesa_url_label');
+        document.getElementById('codeLabel').textContent = t('pair_code_label');
+        document.getElementById('submitBtn').textContent = t('pair_connect_btn');
+        document.title = t('pair_page_title');
+      }
+      function loadI18n() {
+        fetch('/api/setup-state').then(function (r) { return r.json(); }).then(function (j) {
+          ui = j.ui || {};
+          var loc = queryLocale();
+          if (!loc) { applyI18n(); return; }
+          fetch('/api/ui-locale', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ui_locale: loc })
+          }).then(function (r) { return r.json(); }).then(function (saved) {
+            ui = saved.ui || ui;
+            applyI18n();
+          }).catch(applyI18n);
+        }).catch(function () {});
+      }
+      if (params.get('api')) apiEl.value = params.get('api');
+      if (params.get('code')) codeEl.value = params.get('code').replace(/\D/g, '').slice(0, 6);
+      document.getElementById('pairForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var err = document.getElementById('err');
+        var btn = document.getElementById('submitBtn');
+        err.textContent = '';
+        btn.disabled = true;
+        fetch('/api/pair', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_base: apiEl.value.trim(), code: codeEl.value.trim() })
+        })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) {
+              err.textContent = res.j.error || t('pair_failed');
+              btn.disabled = false;
+              return;
+            }
+            // Sole success exit: never paint #err after ok; open printer mapping next.
+            location.replace(configurePath());
+          })
+          .catch(function () {
+            err.textContent = t('pair_service_unreachable');
+            btn.disabled = false;
+          });
+      });
+      loadI18n();
+    })();
+  </script>
+</body>
+</html>

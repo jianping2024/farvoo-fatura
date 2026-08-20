@@ -1,0 +1,67 @@
+# Isolated dev stack: fake RAW/JetDirect printers (TCP 9100) for print-agent testing.
+# Does not start Mesa, Supabase, or Next.js — run those on the host separately.
+#
+#   docker compose -f apps/print-agent/dev/docker-compose.yml up
+#
+name: mesa-print-dev
+
+services:
+  printer-receipt:
+    build:
+      context: ./fake-printer
+    environment:
+      PRINTER_NAME: receipt
+      PRINTER_PORT: "9100"
+    ports:
+      - "19100:9100"
+    networks:
+      - print-dev
+
+  printer-kitchen:
+    build:
+      context: ./fake-printer
+    environment:
+      PRINTER_NAME: kitchen
+      PRINTER_PORT: "9100"
+    ports:
+      - "19101:9100"
+    networks:
+      - print-dev
+
+  printer-bar:
+    build:
+      context: ./fake-printer
+    environment:
+      PRINTER_NAME: bar
+      PRINTER_PORT: "9100"
+    ports:
+      - "19102:9100"
+    networks:
+      - print-dev
+
+  # Optional: run agent without installing Go on the host (profile "agent").
+  # Printers are reached by Docker service name on print-dev network.
+  print-agent:
+    profiles: ["agent"]
+    build:
+      context: ..
+      dockerfile: dev/Dockerfile.agent
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      MESA_API: http://host.docker.internal:3000
+    volumes:
+      - print-agent-data:/data
+    networks:
+      - print-dev
+    depends_on:
+      - printer-receipt
+      - printer-kitchen
+      - printer-bar
+
+volumes:
+  print-agent-data:
+
+networks:
+  print-dev:
+    name: mesa-print-dev

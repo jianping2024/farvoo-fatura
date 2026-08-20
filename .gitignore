@@ -1,0 +1,15 @@
+.DS_Store
+**/.DS_Store
+*.exe
+*.exe~
+*.test
+*.out
+dist/
+**/dist/
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local AT/SAF-T reference materials (keep on disk, do not publish)
+document/

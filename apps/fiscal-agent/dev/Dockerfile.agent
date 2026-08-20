@@ -1,0 +1,12 @@
+# Build print-agent for dev only (not production Windows image).
+FROM golang:1.22-alpine AS build
+WORKDIR /src
+COPY go.mod ./
+COPY *.go ./
+RUN go build -o /farvoo-fiscal-agent .
+
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates tzdata
+COPY --from=build /farvoo-fiscal-agent /usr/local/bin/farvoo-fiscal-agent
+WORKDIR /data
+ENTRYPOINT ["farvoo-fiscal-agent"]
