@@ -619,11 +619,12 @@ MVP 不进 SAF-T `DocumentTotals/Payment`。
 
 ---
 
-## 10. 后续实现顺序建议
+## 10. 后续实现顺序
 
-1. 落地 `001_init.sql` + goose/嵌入迁移  
-2. 种子：`CONSUMIDOR_FINAL`、空 series 行（待 AT 注册）  
-3. store repo：series 锁 + invoice insert  
-4. 再接 compliance Hash / service 签发  
+工程里程碑与**每步交付物**以 [`docs/fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) 为准（本文 §10 仅保留历史提示）。
+
+已完成：迁移嵌入、seed（M0 开发用）、series 锁 + invoice insert、compliance Hash、service 签发（**M0**）。
+
+下一刀：**M1** 身份 / AT 系列 / 激活开票。
 
 **变更流程**：改表先改本文 + SQL，再写代码；已签发票列不改语义，只允许加可空列或新表。

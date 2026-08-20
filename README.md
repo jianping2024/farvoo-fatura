@@ -27,9 +27,15 @@ apps/fiscal-agent/        Go Agent（打印能力 + Fiscal）
 - 配置：`~/.config/farvoo-fiscal-agent/config.json`
 - Mutex：`Global\FarvooFiscalAgent-SingleInstance-v1`
 
+## 开发计划
+
+里程碑与每步交付物（权威）：[`docs/fiscal-dev-plan.zh.md`](docs/fiscal-dev-plan.zh.md)
+
+当前：**M0 已完成**；下一刀 **M1**（身份 / AT 系列 / 激活开票）。
+
 ## 当前阶段
 
-P0 场景：**开 FT → SQLite 签发同事务 → `local_print_jobs` 出纸**。
+P0 场景：**开 FT → SQLite 签发同事务 → `local_print_jobs` 出纸**（M0）。
 
 ```bash
 # 本机 Fiscal Core（mesa-local 门禁的本仓等价）
