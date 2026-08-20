@@ -623,8 +623,8 @@ MVP 不进 SAF-T `DocumentTotals/Payment`。
 
 工程里程碑与**每步交付物**以 [`docs/fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) 为准（本文 §10 仅保留历史提示）。
 
-已完成：迁移嵌入、seed（M0 开发用）、series 锁 + invoice insert、compliance Hash、service 签发（**M0**）。
+已完成：迁移嵌入、seed（M0 开发用）、series 锁 + invoice insert、compliance Hash、service 签发（**M0**）；身份 / AT mock 系列 / 激活（**M1**）。
 
-下一刀：**M1** 身份 / AT 系列 / 激活开票。
+下一刀：**M2** 并入主 Agent + 真机税务打印。
 
 **变更流程**：改表先改本文 + SQL，再写代码；已签发票列不改语义，只允许加可空列或新表。

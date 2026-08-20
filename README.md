@@ -31,23 +31,24 @@ apps/fiscal-agent/        Go Agent（打印能力 + Fiscal）
 
 里程碑与每步交付物（权威）：[`docs/fiscal-dev-plan.zh.md`](docs/fiscal-dev-plan.zh.md)
 
-当前：**M0 已完成**；下一刀 **M1**（身份 / AT 系列 / 激活开票）。
+当前：**M0 + M1 已完成**；下一刀 **M2**（并入主 Agent + 真机税务打印）。
 
 ## 当前阶段
 
-P0 场景：**开 FT → SQLite 签发同事务 → `local_print_jobs` 出纸**（M0）。
+**M1**：纳税人 / AT 凭证 / mock 系列注册 / 激活开票 → 再开 FT。
 
 ```bash
-# 本机 Fiscal Core（mesa-local 门禁的本仓等价）
-cd apps/fiscal-agent && go run ./cmd/fiscal-local
-# API / 回归
-node scripts/fiscal-local-uat.mjs stack-health
-node scripts/fiscal-local-regression.mjs
+cd apps/fiscal-agent
+FISCAL_ALLOW_LOCAL_PROVISION=1 FISCAL_AT_ENV=mock go run ./cmd/fiscal-local
+# 回归
+node scripts/fiscal-m1-regression.mjs          # M1 全路径（无 Seed）
+FISCAL_SEED=1 node scripts/fiscal-local-regression.mjs  # M0 兼容（脚本内已设 SEED）
 ```
 
-- Local API：`POST /local/v1/fiscal-documents`（唯一签发入口）
-- Admin UI：`http://127.0.0.1:17880/`
-- DB 断言：SQLite（本仓无 Supabase；对应 mesa 的 supabase-local）
+- Setup API：`/local/v1/setup/*`（见 `docs/fiscal-m1-identity-series.zh.md`）
+- 签发：`POST /local/v1/fiscal-documents`（唯一）
+- Admin：`http://127.0.0.1:17880/`
+- DB 断言：SQLite（`assert-db`；本仓无 Supabase）
 
 ## 继承经验（必读）
 
