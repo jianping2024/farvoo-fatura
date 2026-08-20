@@ -31,23 +31,26 @@ apps/fiscal-agent/        Go Agent（打印能力 + Fiscal）
 
 里程碑与每步交付物（权威）：[`docs/fiscal-dev-plan.zh.md`](docs/fiscal-dev-plan.zh.md)
 
-当前：**M0 + M1 已完成**；下一刀 **M2**（并入主 Agent + 真机税务打印）。
+当前：**M0 + M1 + M2 已完成**；下一刀 **M3**（NC 冲销）。
 
 ## 当前阶段
 
-**M1**：纳税人 / AT 凭证 / mock 系列注册 / 激活开票 → 再开 FT。
+**M2**：Fiscal Core 嵌入主 Agent（`-fiscal-standalone` / 托盘）；税务小票经 `ResolveFiscalPrinterTCP` → `TCPSink`（可配 `FISCAL_PRINTER_TCP` / `fiscal_receipt_printer`）。
 
 ```bash
 cd apps/fiscal-agent
-FISCAL_ALLOW_LOCAL_PROVISION=1 FISCAL_AT_ENV=mock go run ./cmd/fiscal-local
-# 回归
-node scripts/fiscal-m1-regression.mjs          # M1 全路径（无 Seed）
-FISCAL_SEED=1 node scripts/fiscal-local-regression.mjs  # M0 兼容（脚本内已设 SEED）
+# 主进程内嵌 Fiscal（Mac UAT）
+FISCAL_ALLOW_LOCAL_PROVISION=1 FISCAL_AT_ENV=mock go run . -fiscal-standalone
+# 回归（SQLite 断言；本仓无 Supabase / npm run dev）
+node scripts/fiscal-m1-regression.mjs
+node scripts/fiscal-m2-print-smoke.mjs          # Agent + fake TCP :9100
+FISCAL_SEED=1 node scripts/fiscal-local-regression.mjs  # M0 兼容
 ```
 
 - Setup API：`/local/v1/setup/*`（见 `docs/fiscal-m1-identity-series.zh.md`）
 - 签发：`POST /local/v1/fiscal-documents`（唯一）
-- Admin：`http://127.0.0.1:17880/`
+- Admin：`http://127.0.0.1:17880/`（`FISCAL_BIND`）
+- 配置边界：`docs/fiscal-config-boundary.zh.md`
 - DB 断言：SQLite（`assert-db`；本仓无 Supabase）
 
 ## 继承经验（必读）

@@ -15,6 +15,8 @@ func runNotificationLoop(ctx context.Context, sess *agentSession, status *agentS
 		return
 	}
 
+	ensureFiscalStarted(ctx, sess)
+
 	mode := cfg.resolveNotificationMode()
 	if mode == NotificationModeRealtime && !cfg.hasRealtimeSession() {
 		log.Println("Realtime requested but session credentials missing; using polling")

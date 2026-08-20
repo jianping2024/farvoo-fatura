@@ -6,10 +6,10 @@ func TestBrandConstants(t *testing.T) {
 	if productName != "FARVOO" {
 		t.Fatalf("productName = %q", productName)
 	}
-	if printAgentName != "FARVOO Print Agent" {
+	if printAgentName != "FARVOO Fiscal Agent" {
 		t.Fatalf("printAgentName = %q", printAgentName)
 	}
-	if printTrayTitleEN != "FARVOO Print" {
+	if printTrayTitleEN != "FARVOO Fiscal" {
 		t.Fatalf("printTrayTitleEN = %q", printTrayTitleEN)
 	}
 }

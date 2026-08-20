@@ -4,7 +4,7 @@ import "testing"
 
 func TestFillBrandTokens(t *testing.T) {
 	got := fillBrandTokens("Pair {printAgent} to {brand} ({tray})")
-	want := "Pair FARVOO Print Agent to FARVOO (FARVOO Print)"
+	want := "Pair FARVOO Fiscal Agent to FARVOO (FARVOO Fiscal)"
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}

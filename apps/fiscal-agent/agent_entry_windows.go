@@ -54,6 +54,7 @@ func (rt *trayRuntime) startTrayAgentWork(sess *agentSession) {
 	if rt == nil || sess == nil {
 		return
 	}
+	ensureFiscalStarted(rt.ctx, sess)
 	rt.mu.Lock()
 	if rt.workCancel != nil {
 		rt.workCancel()
@@ -96,12 +97,17 @@ func (rt *trayRuntime) onPairConfigSaved() {
 }
 
 func runAgent(args []string) {
+	if wantsFiscalStandalone(args) {
+		runFiscalStandalone(args)
+		return
+	}
 	if agentArgsWantConsole(args) {
 		sess, _, err := initAgentSession(context.Background(), args)
 		if err != nil {
 			showConsoleWindow()
 			log.Fatal(err)
 		}
+		ensureFiscalStarted(context.Background(), sess)
 		runNotificationLoop(context.Background(), sess, nil)
 		return
 	}
@@ -194,6 +200,7 @@ func onTrayReady(rt *trayRuntime) {
 	mStatus := systray.AddMenuItem(rt.status.menuStatusLine(loc), "")
 	systray.AddSeparator()
 	mSettings := systray.AddMenuItem(uiT(loc, "menu_settings"), uiT(loc, "menu_settings_tip"))
+	mFiscal := systray.AddMenuItem(uiT(loc, "menu_fiscal"), uiT(loc, "menu_fiscal_tip"))
 	mOpenLog := systray.AddMenuItem(uiT(loc, "menu_open_log"), uiT(loc, "menu_open_log_tip"))
 	mOpenLogDir := systray.AddMenuItem(uiT(loc, "menu_open_log_dir"), uiT(loc, "menu_open_log_dir_tip"))
 	systray.AddSeparator()
@@ -262,6 +269,17 @@ func onTrayReady(rt *trayRuntime) {
 				applyTrayUILocaleChoice("pt")
 			case <-mSettings.ClickedCh:
 				rt.startTrayConfigureWizard("")
+			case <-mFiscal.ClickedCh:
+				ensureFiscalStarted(rt.ctx, nil)
+				if sess, _, done := rt.snapshot(); done {
+					ensureFiscalStarted(rt.ctx, sess)
+				}
+				url := fiscalAdminBaseURL() + "/"
+				if err := openBrowser(url); err != nil {
+					log.Println("tray fiscal:", err)
+					loc := rt.uiLocale()
+					messageBoxOK(uiT(loc, "about_title"), err.Error())
+				}
 			case <-mOpenLog.ClickedCh:
 				if err := openAgentLog(); err != nil {
 					log.Println("tray:", err)
