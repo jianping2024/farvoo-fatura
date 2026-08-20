@@ -21,6 +21,31 @@ var (
 	embeddedFiscalURL string
 )
 
+// applyFiscalRuntimeFromConfig installs process env used by fiscal packages.
+// ONLY agent-side applicator; env already set wins (regression scripts / ops override).
+func applyFiscalRuntimeFromConfig(cfg *config) {
+	if strings.TrimSpace(os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION")) == "" {
+		allow := true
+		if cfg != nil && cfg.FiscalAllowLocalProvision != nil {
+			allow = *cfg.FiscalAllowLocalProvision
+		}
+		if allow {
+			_ = os.Setenv("FISCAL_ALLOW_LOCAL_PROVISION", "1")
+		} else {
+			_ = os.Setenv("FISCAL_ALLOW_LOCAL_PROVISION", "0")
+		}
+	}
+	if strings.TrimSpace(os.Getenv("FISCAL_AT_ENV")) == "" {
+		at := "mock"
+		if cfg != nil {
+			if v := strings.TrimSpace(cfg.FiscalATEnv); v != "" {
+				at = v
+			}
+		}
+		_ = os.Setenv("FISCAL_AT_ENV", at)
+	}
+}
+
 // startEmbeddedFiscal starts Fiscal Core inside the Agent process — ONLY agent embed entry.
 func startEmbeddedFiscal(cfg *config) error {
 	embeddedFiscalMu.Lock()
@@ -28,6 +53,8 @@ func startEmbeddedFiscal(cfg *config) error {
 	if embeddedFiscal != nil {
 		return nil
 	}
+
+	applyFiscalRuntimeFromConfig(cfg)
 
 	dataRoot := agentDataDir()
 	if dataRoot == "" {

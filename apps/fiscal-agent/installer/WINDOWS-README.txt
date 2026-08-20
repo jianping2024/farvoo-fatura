@@ -21,6 +21,8 @@ First-time setup (no command line)
 5. On the POS PC tray → Printer settings: open /pair if needed, paste the code; then Scan printers,
    map each print station, Save. Test print is optional. (Tray serves http://127.0.0.1:17892 from start.)
 6. Fiscal setup / issue FT: tray → 开票 / Fiscal…, or http://127.0.0.1:17880/
+   Local activate (paste product PEM) is on by default — no system env vars required.
+   Optional in config.json: "fiscal_allow_local_provision": true, "fiscal_at_env": "mock"
 7. The agent stays in the Windows system tray (near the clock, click ^ if hidden).
    Icon color: green = OK, yellow = outside hours or setup, red = error.
    Right-click: printer settings, fiscal, open log folder, exit.

@@ -49,7 +49,7 @@ input,textarea{width:100%;padding:.4rem;box-sizing:border-box;margin:0 0 .4rem;b
 </div>
 <div class="box">
 <h2>4. 激活开票</h2>
-<p>需 FISCAL_ALLOW_LOCAL_PROVISION=1；粘贴产品 RSA PEM。</p>
+<p>可粘贴产品 RSA PEM 激活（默认已开本地供给；也可在 config.json 设 fiscal_allow_local_provision）。</p>
 <textarea id="pem" rows="4" placeholder="-----BEGIN … PRIVATE KEY-----"></textarea>
 <button id="btnAct">激活</button>
 </div>

@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.85
+
+**本机激活默认开：不用再设系统环境变量**
+
+- Agent 启动时默认 `fiscal_allow_local_provision` / AT mock；可用 `config.json` 改，env 仍可覆盖。
+- 装完托盘即可走 Admin 激活开票流程。
+
 ## 0.3.84
 
 **产品身份收口：Farvoo Fiscal Agent 打包 / 安装 / 发布**
