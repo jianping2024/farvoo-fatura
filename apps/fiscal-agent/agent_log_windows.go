@@ -17,13 +17,13 @@ const (
 
 func agentDataDir() string {
 	if base := os.Getenv("LOCALAPPDATA"); base != "" {
-		return filepath.Join(base, "Mesa Print Agent")
+		return filepath.Join(base, "Farvoo Fiscal Agent")
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return filepath.Join(os.TempDir(), "MesaPrintAgent")
+		return filepath.Join(os.TempDir(), "FarvooFiscalAgent")
 	}
-	return filepath.Join(home, "AppData", "Local", "Mesa Print Agent")
+	return filepath.Join(home, "AppData", "Local", "Farvoo Fiscal Agent")
 }
 
 func initWindowsAgentLog() {

@@ -7,13 +7,13 @@ func TestIsMainAgentInvocation(t *testing.T) {
 		args []string
 		want bool
 	}{
-		{[]string{"MesaPrintAgent.exe"}, true},
-		{[]string{"MesaPrintAgent.exe", "-console"}, true},
-		{[]string{"MesaPrintAgent.exe", "run"}, true},
-		{[]string{"MesaPrintAgent.exe", "configure"}, false},
-		{[]string{"MesaPrintAgent.exe", "pair"}, false},
-		{[]string{"MesaPrintAgent.exe", "discover"}, false},
-		{[]string{"MesaPrintAgent.exe", "version"}, false},
+		{[]string{"FarvooFiscalAgent.exe"}, true},
+		{[]string{"FarvooFiscalAgent.exe", "-console"}, true},
+		{[]string{"FarvooFiscalAgent.exe", "run"}, true},
+		{[]string{"FarvooFiscalAgent.exe", "configure"}, false},
+		{[]string{"FarvooFiscalAgent.exe", "pair"}, false},
+		{[]string{"FarvooFiscalAgent.exe", "discover"}, false},
+		{[]string{"FarvooFiscalAgent.exe", "version"}, false},
 	}
 	for _, tc := range cases {
 		if got := isMainAgentInvocation(tc.args); got != tc.want {

@@ -2,7 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
-Layout truth: [`docs/technical/print-agent-station-slip-han-canvas.zh.md`](../../docs/technical/print-agent-station-slip-han-canvas.zh.md)
+## 0.3.84
+
+**产品身份收口：Farvoo Fiscal Agent 打包 / 安装 / 发布**
+
+- 产物与 Inno：`FarvooFiscalAgent.exe`、`FarvooFiscalAgent-Setup-amd64.exe`、`installer/farvoo-fiscal-agent.iss`（AppId GUID 不变）。
+- 升级：`PrepareToInstall` taskkill 新 exe + 迁移窗口 `MesaPrintAgent.exe`；无 AppMutex。
+- Windows 数据目录：`%LOCALAPPDATA%\Farvoo Fiscal Agent\`；配置仍在 `.config/farvoo-fiscal-agent`。
+- 本仓 CI：tag `fiscal-agent-v*` → `.github/workflows/fiscal-agent-release.yml`。
 
 ## 0.3.83
 

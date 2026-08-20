@@ -13,7 +13,7 @@ func agentDataDir() string {
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return filepath.Join(os.TempDir(), "MesaPrintAgent")
+		return filepath.Join(os.TempDir(), "FarvooFiscalAgent")
 	}
 	return filepath.Join(home, ".local", "state", "farvoo-fiscal-agent")
 }

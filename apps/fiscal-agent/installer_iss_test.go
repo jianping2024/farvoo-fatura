@@ -7,10 +7,10 @@ import (
 	"testing"
 )
 
-// Sole upgrade story in mesa-print-agent.iss — fail if AppMutex / CloseApplications
+// Sole upgrade story in farvoo-fiscal-agent.iss — fail if AppMutex / CloseApplications
 // yes-no / lowest privilege reappears beside admin + PrepareToInstall taskkill.
 func TestInnoSetupUpgradeStory(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("installer", "mesa-print-agent.iss"))
+	raw, err := os.ReadFile(filepath.Join("installer", "farvoo-fiscal-agent.iss"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,12 +21,17 @@ func TestInnoSetupUpgradeStory(t *testing.T) {
 		"UsePreviousAppDir=yes",
 		"CloseApplications=no",
 		"Flags: ignoreversion restartreplace",
-		"AppId={{" + mesaPrintAgentInnoGUID + "}}",
+		"AppId={{" + fiscalAgentInnoGUID + "}}",
 		"AppVerName={#MyAppName}",
 		"UninstallDisplayName={#MyAppName}",
+		`#define MyAppName "Farvoo Fiscal Agent"`,
+		`#define MyAppExe "FarvooFiscalAgent.exe"`,
+		"OutputBaseFilename=FarvooFiscalAgent-Setup-amd64",
 		"function PrepareToInstall(",
 		"taskkill.exe",
 		"/F /IM {#MyAppExe} /T",
+		"/F /IM {#MyLegacyExe} /T",
+		`#define MyLegacyExe "MesaPrintAgent.exe"`,
 	}
 	for _, s := range mustContain {
 		if !strings.Contains(iss, s) {
@@ -48,11 +53,20 @@ func TestInnoSetupUpgradeStory(t *testing.T) {
 	if strings.Count(iss, "function PrepareToInstall(") != 1 {
 		t.Fatal("expected exactly one PrepareToInstall — sole quiet-close path")
 	}
+	if strings.Count(iss, "taskkill.exe") != 2 {
+		t.Fatal("expected exactly two taskkill calls (current + legacy Mesa exe)")
+	}
 }
 
 func TestAgentMutexNameStable(t *testing.T) {
 	const want = `Global\FarvooFiscalAgent-SingleInstance-v1`
 	if agentMutexName != want {
 		t.Fatalf("agentMutexName is tray single-instance only; changed to %q", agentMutexName)
+	}
+}
+
+func TestFiscalAgentDisplayNamePrefixSole(t *testing.T) {
+	if fiscalAgentDisplayNamePrefix != "Farvoo Fiscal Agent" {
+		t.Fatalf("display prefix = %q", fiscalAgentDisplayNamePrefix)
 	}
 }

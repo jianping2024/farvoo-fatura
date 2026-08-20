@@ -3,9 +3,11 @@ Before you install
 
 Administrator / upgrade
   This Setup asks for administrator permission so it installs under Program Files
-  and can update an existing Mesa Print Agent (same folder / Add or Remove Programs entry).
-  If the agent is already running, Setup stops MesaPrintAgent.exe automatically before
-  replacing files (no separate "please exit" / yes-no close step). Continue with Next.
+  and can update an existing Farvoo Fiscal Agent (same Add or Remove Programs entry;
+  also upgrades a prior Mesa Print Agent install that shared this AppId).
+  If the agent is already running, Setup stops FarvooFiscalAgent.exe (and legacy
+  MesaPrintAgent.exe) automatically before replacing files (no separate "please exit"
+  / yes-no close step). Continue with Next.
 
 SmartScreen (unsigned build)
   Windows may show "Unknown publisher". Click More info, then Run anyway.
@@ -20,7 +22,8 @@ Portable zip vs this Setup
   plus clean uninstall. Portable zip has no wizard — use Setup for daily POS PCs.
 
 Configuration flow
-  This installer only installs and starts the local tray agent.
-  Pairing and printer mapping are done from Mesa Dashboard → Print assistant
+  This installer only installs and starts the local tray agent (print + fiscal).
+  Pairing and printer mapping are done from Farvoo Dashboard → Print assistant
   (pairing page + printer settings page in the browser; scan printers manually).
-  A test print is recommended but not required to close the page.
+  Fiscal setup (taxpayer / series / activate) is at http://127.0.0.1:17880/ when the
+  agent is running. A test print is recommended but not required to close the page.

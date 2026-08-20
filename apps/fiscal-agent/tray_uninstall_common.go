@@ -6,34 +6,42 @@ import (
 	"strings"
 )
 
-// mesaPrintAgentInnoGUID is the sole GUID body for installer AppId={{…}} in
-// installer/mesa-print-agent.iss. Uninstall registry subkeys are derived only here.
-const mesaPrintAgentInnoGUID = "A3B8F2E1-9C4D-4A2B-8E1F-0D5C6B7A8E9F"
+// fiscalAgentInnoGUID is the sole GUID body for installer AppId={{…}} in
+// installer/farvoo-fiscal-agent.iss. Uninstall registry subkeys are derived only here.
+const fiscalAgentInnoGUID = "A3B8F2E1-9C4D-4A2B-8E1F-0D5C6B7A8E9F"
 
-// mesaPrintAgentDisplayNamePrefix is the sole product DisplayName stem (Inno may
+// fiscalAgentDisplayNamePrefix is the sole product DisplayName stem (Inno may
 // append " version X.Y.Z" via AppVerName).
-const mesaPrintAgentDisplayNamePrefix = "Mesa Print Agent"
+const fiscalAgentDisplayNamePrefix = "Farvoo Fiscal Agent"
 
-// mesaPrintAgentUninstallRegistryKeyNames returns Uninstall subkey names to try.
+// legacyMesaPrintAgentDisplayNamePrefix is accepted only for uninstall lookup
+// during the Mesa → Farvoo rename migration window.
+const legacyMesaPrintAgentDisplayNamePrefix = "Mesa Print Agent"
+
+// fiscalAgentUninstallRegistryKeyNames returns Uninstall subkey names to try.
 // Inno AppId={{GUID}} lands as "{GUID}}_is1" (extra closing brace; verified on
 // 0.3.61 Setup). Also try "{GUID}_is1" for tolerance — both derived from one GUID.
-func mesaPrintAgentUninstallRegistryKeyNames() []string {
+func fiscalAgentUninstallRegistryKeyNames() []string {
 	return []string{
-		"{" + mesaPrintAgentInnoGUID + "}}_is1",
-		"{" + mesaPrintAgentInnoGUID + "}_is1",
+		"{" + fiscalAgentInnoGUID + "}}_is1",
+		"{" + fiscalAgentInnoGUID + "}_is1",
 	}
 }
 
-func mesaPrintAgentUninstallDisplayNameMatch(display string) bool {
+func displayNameMatchesPrefix(display, prefix string) bool {
 	d := strings.TrimSpace(display)
-	if d == "" {
+	if d == "" || strings.TrimSpace(prefix) == "" {
 		return false
 	}
-	prefix := mesaPrintAgentDisplayNamePrefix
 	if strings.EqualFold(d, prefix) {
 		return true
 	}
 	return strings.HasPrefix(strings.ToLower(d), strings.ToLower(prefix)+" ")
+}
+
+func fiscalAgentUninstallDisplayNameMatch(display string) bool {
+	return displayNameMatchesPrefix(display, fiscalAgentDisplayNamePrefix) ||
+		displayNameMatchesPrefix(display, legacyMesaPrintAgentDisplayNamePrefix)
 }
 
 // parseWindowsCommandLine splits an UninstallString / QuietUninstallString into

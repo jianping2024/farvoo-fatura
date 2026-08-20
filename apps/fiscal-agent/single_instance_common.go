@@ -4,7 +4,7 @@ import "os"
 
 // agentMutexName is the sole Windows single-instance mutex for the tray agent process.
 // Setup must not use Inno AppMutex on this name (that blocks install with OK/Cancel);
-// quiet upgrade close is PrepareToInstall taskkill in installer/mesa-print-agent.iss.
+// quiet upgrade close is PrepareToInstall taskkill in installer/farvoo-fiscal-agent.iss.
 const agentMutexName = `Global\FarvooFiscalAgent-SingleInstance-v1`
 
 // isMainAgentInvocation is true for the long-running tray/console agent, not helper CLIs.
@@ -19,7 +19,7 @@ func isMainAgentInvocation(args []string) bool {
 	case "run":
 		return true
 	default:
-		// MesaPrintAgent, MesaPrintAgent -console, MesaPrintAgent -api … -code …
+		// FarvooFiscalAgent, FarvooFiscalAgent -console, FarvooFiscalAgent -api … -code …
 		return true
 	}
 }

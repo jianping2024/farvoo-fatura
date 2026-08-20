@@ -1,5 +1,10 @@
-# Build Mesa Print Agent Windows release artifacts (run on Windows with Go + Inno Setup 6).
-# Usage: .\scripts\build-release.ps1 [-Version 0.1.0] [-Amd64Only]
+# Build Farvoo Fiscal Agent Windows release artifacts (run on Windows with Go + Inno Setup 6).
+# Usage: .\scripts\build-release.ps1 [-Version 0.3.84] [-Amd64Only]
+#
+# Artifacts in dist/:
+#   FarvooFiscalAgent-windows-amd64.zip
+#   FarvooFiscalAgent-Setup-amd64.exe   (requires -Amd64Only; arm64 installer not configured)
+#   SHA256SUMS
 
 param(
   [string]$Version = "",
@@ -30,7 +35,7 @@ foreach ($a in $archs) {
   New-Item -ItemType Directory -Force -Path $outDir | Out-Null
   $env:GOOS = "windows"
   $env:GOARCH = $a.GoArch
-  $exe = Join-Path $outDir "MesaPrintAgent.exe"
+  $exe = Join-Path $outDir "FarvooFiscalAgent.exe"
   Push-Location $Root
   try {
     go build -ldflags "-s -w -H windowsgui -X main.Version=$Version" -o $exe .
@@ -41,7 +46,7 @@ foreach ($a in $archs) {
   }
 
   Copy-Item (Join-Path $Root "installer\WINDOWS-README.txt") $outDir -Force
-  $zipName = "MesaPrintAgent-windows-$($a.Name).zip"
+  $zipName = "FarvooFiscalAgent-windows-$($a.Name).zip"
   $zipPath = Join-Path $Dist $zipName
   if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
   Compress-Archive -Path (Join-Path $outDir "*") -DestinationPath $zipPath -Force

@@ -15,7 +15,7 @@ import (
 func uninstallAgentWithUserData(rt *trayRuntime) {
 	loc := loadTrayUILocale()
 	removed := removeAgentUserDataDirs()
-	unins := findMesaPrintAgentUninstallCommand()
+	unins := findFiscalAgentUninstallCommand()
 	if unins == "" {
 		log.Println("tray: uninstall — no Setup uninstaller found (portable?)")
 		messageBoxOK(uiT(loc, "about_title"), uiT(loc, "uninstall_portable_hint"))
@@ -50,8 +50,8 @@ func removeAgentUserDataDirs() bool {
 	return ok
 }
 
-func findMesaPrintAgentUninstallCommand() string {
-	for _, keyName := range mesaPrintAgentUninstallRegistryKeyNames() {
+func findFiscalAgentUninstallCommand() string {
+	for _, keyName := range fiscalAgentUninstallRegistryKeyNames() {
 		for _, root := range []registry.Key{registry.LOCAL_MACHINE, registry.CURRENT_USER} {
 			for _, base := range []string{
 				`SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\`,
@@ -111,7 +111,7 @@ func findUninstallByDisplayName() string {
 				}
 				display, _, _ := sk.GetStringValue("DisplayName")
 				_ = sk.Close()
-				if mesaPrintAgentUninstallDisplayNameMatch(display) {
+				if fiscalAgentUninstallDisplayNameMatch(display) {
 					if cmd := readUninstallString(root, path); cmd != "" {
 						return cmd
 					}

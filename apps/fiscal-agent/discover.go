@@ -190,6 +190,6 @@ func runDiscover(args []string) {
 	fmt.Println(`    "<print_station_uuid>": "tcp:192.168.1.51:9100",`)
 	fmt.Println(`    "<print_station_uuid>": "winspool:Bar Printer"`)
 	fmt.Println(`  }`)
-	fmt.Println("Or run MesaPrintAgent setup for a guided page.")
+	fmt.Println("Or run FarvooFiscalAgent setup for a guided page.")
 	fmt.Println("Station UUIDs: dashboard → 出品档口")
 }

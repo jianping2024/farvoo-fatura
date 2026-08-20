@@ -24,8 +24,21 @@ apps/fiscal-agent/        Go Agent（打印能力 + Fiscal）
 ## 本机身份
 
 - Go module：`farvoo-fiscal-agent`
-- 配置：`~/.config/farvoo-fiscal-agent/config.json`
+- Windows 产物：`FarvooFiscalAgent.exe` / `FarvooFiscalAgent-Setup-amd64.exe`
+- 配置：`~/.config/farvoo-fiscal-agent/config.json`（Windows 同路径）
+- 数据目录：`%LOCALAPPDATA%\Farvoo Fiscal Agent\`（含 `fiscal.db`；**不是** Program Files）
 - Mutex：`Global\FarvooFiscalAgent-SingleInstance-v1`
+
+## Windows 发布
+
+见 [`apps/fiscal-agent/README.md`](apps/fiscal-agent/README.md) **Windows release**。摘要：
+
+```bash
+git tag fiscal-agent-v0.3.84   # 须与 apps/fiscal-agent/VERSION 一致
+git push origin fiscal-agent-v0.3.84
+```
+
+制品源：本仓 GitHub Releases（`jianping2024/farvoo-fatura`）。Dashboard 下载 env 改指本仓属另仓跟进。
 
 ## 开发计划
 

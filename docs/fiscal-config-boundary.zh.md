@@ -34,6 +34,16 @@
 
 二者同进程；Fiscal **不**占用配对端口。
 
+## 安装目录 vs 数据
+
+| 路径 | 内容 |
+|------|------|
+| `C:\Program Files\Farvoo Fiscal Agent\` | Setup 覆盖的 exe / VERSION.txt；**升级可整夹替换** |
+| `%USERPROFILE%\.config\farvoo-fiscal-agent\config.json` | 配对 / 打印机映射 |
+| `%LOCALAPPDATA%\Farvoo Fiscal Agent\`（默认） | `fiscal.db`、日志等；**升级 Setup 不删** |
+
+不要把 SQLite 或密钥放进 Program Files。
+
 ## 禁止
 
 - 把 NIF / 系列验证码 / Hash 写入 `config.json`  

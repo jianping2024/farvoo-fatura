@@ -1,0 +1,91 @@
+# Publish Farvoo Fiscal Agent Windows artifacts on tag push.
+# Tag format: fiscal-agent-v0.3.84 (must match apps/fiscal-agent/VERSION when building from that commit).
+
+name: fiscal-agent-release
+
+on:
+  push:
+    tags:
+      - "fiscal-agent-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/fiscal-agent
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/fiscal-agent/go.mod
+
+      - name: Install Inno Setup 6
+        run: choco install innosetup -y --no-progress
+
+      - name: Read VERSION
+        id: ver
+        shell: pwsh
+        run: |
+          $v = (Get-Content VERSION -Raw).Trim()
+          echo "version=$v" >> $env:GITHUB_OUTPUT
+          $tag = "${{ github.ref_name }}"
+          if ($tag -ne "fiscal-agent-v$v") {
+            Write-Error "Tag $tag does not match VERSION file $v (expected fiscal-agent-v$v)"
+          }
+
+      - name: Build release (amd64 Setup + zip)
+        shell: pwsh
+        run: .\scripts\build-release.ps1 -Amd64Only -Version "${{ steps.ver.outputs.version }}"
+
+      - name: Compose release notes
+        id: notes
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          $body = @"
+          ## Farvoo Fiscal Agent $v
+
+          ### Install
+          - **Setup (recommended):** ``FarvooFiscalAgent-Setup-amd64.exe`` (admin; optional desktop / sign-in startup)
+          - **Portable:** ``FarvooFiscalAgent-windows-amd64.zip``
+
+          Config: ``%USERPROFILE%\.config\farvoo-fiscal-agent\config.json``
+          Fiscal DB: ``%LOCALAPPDATA%\Farvoo Fiscal Agent\fiscal.db`` (not under Program Files)
+
+          Verify: ``SHA256SUMS``
+          "@
+          $notesPath = Join-Path (Get-Location) "dist\release-body.md"
+          New-Item -ItemType Directory -Force -Path (Split-Path $notesPath) | Out-Null
+          if (Test-Path RELEASE_NOTES.md) {
+            $raw = Get-Content RELEASE_NOTES.md -Raw
+            $marker = "## $v"
+            $idx = $raw.IndexOf($marker)
+            if ($idx -ge 0) {
+              $rest = $raw.Substring($idx)
+              $next = $rest.IndexOf("`n## ", 4)
+              if ($next -gt 0) { $rest = $rest.Substring(0, $next) }
+              $body = $rest.Trim() + "`n`n" + $body
+            }
+          }
+          Set-Content -Path $notesPath -Value $body -Encoding utf8
+          echo "path=apps/fiscal-agent/dist/release-body.md" >> $env:GITHUB_OUTPUT
+
+      - name: Upload GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Farvoo Fiscal Agent ${{ steps.ver.outputs.version }}
+          body_path: apps/fiscal-agent/dist/release-body.md
+          files: |
+            apps/fiscal-agent/dist/FarvooFiscalAgent-Setup-amd64.exe
+            apps/fiscal-agent/dist/FarvooFiscalAgent-windows-amd64.zip
+            apps/fiscal-agent/dist/SHA256SUMS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

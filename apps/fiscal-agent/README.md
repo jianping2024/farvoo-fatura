@@ -1,6 +1,6 @@
-# Mesa print agent
+# Farvoo Fiscal Agent
 
-Pulls `print_jobs` from Mesa and prints via **LAN TCP :9100** or **Windows USB** (WinSpool RAW, UNYKA UK56009). ESC/POS.
+Local **print + fiscal** agent for Farvoo: pulls `print_jobs` and prints via **LAN TCP :9100** or **Windows USB** (WinSpool RAW, UNYKA UK56009), and embeds Fiscal Core for AT invoices. ESC/POS.
 
 ## Job payload — table fields
 
@@ -35,10 +35,11 @@ Use the printed addresses in `config.json` (see below). Map each **print station
 
 **Windows (release installer / zip)** — normal use:
 
-1. Install from Dashboard download. On **Select Additional Tasks**: optional **desktop shortcut** and **sign-in startup** (both off by default; portable zip has neither).
-2. **Double-click `MesaPrintAgent`** (or let it start at logon). The agent runs in the **system tray** (taskbar **^** → **Mesa Print**). **No black console window** — you do **not** need to keep a command prompt open while printing.
-3. **First pairing:** generate a 6-digit code in Mesa **打印助手**, then **Open settings on this PC** (or tray → **Printer settings…**). Tray serves **`/pair` and `/configure` on port 17892 from startup** (including before Connected). Map stations, **Save** (test print optional).
-4. **Troubleshooting only:** `MesaPrintAgent.exe -console`, or tray → **Show debug console**; log file under `%LOCALAPPDATA%\Mesa Print Agent\agent.log`. Optional advanced: `MesaPrintAgent.exe -api URL -code 123456` or `MesaPrintAgent pair` (standalone **17890** only when tray is not running).
+1. Install from Dashboard download (or GitHub Release `FarvooFiscalAgent-Setup-amd64.exe`). On **Select Additional Tasks**: optional **desktop shortcut** and **sign-in startup** (both off by default; portable zip has neither).
+2. **Double-click `FarvooFiscalAgent`** (or let it start at logon). The agent runs in the **system tray** (taskbar **^** → **FARVOO Fiscal**). **No black console window** — you do **not** need to keep a command prompt open while printing.
+3. **First pairing:** generate a 6-digit code in Farvoo **打印助手**, then **Open settings on this PC** (or tray → **Printer settings…**). Tray serves **`/pair` and `/configure` on port 17892 from startup** (including before Connected). Map stations, **Save** (test print optional).
+4. **Troubleshooting only:** `FarvooFiscalAgent.exe -console`, or tray → **Show debug console**; log file under `%LOCALAPPDATA%\Farvoo Fiscal Agent\agent.log`. Optional advanced: `FarvooFiscalAgent.exe -api URL -code 123456` or `FarvooFiscalAgent pair` (standalone **17890** only when tray is not running).
+5. **Fiscal:** tray → **开票 / Fiscal…** or `http://127.0.0.1:17880/`.
 
 Local HTTP (tray): `http://127.0.0.1:17892/configure` and **`/pair`** on the same port from tray start. CLI-only pairing: `http://127.0.0.1:17890/pair`. Legacy setup-only: `http://127.0.0.1:17891/` (`setup` subcommand).
 
@@ -124,37 +125,38 @@ Get station UUIDs from **Dashboard → 餐厅设置 → 出品档口** (`print_s
 
 ## Windows release (installers)
 
-Version is in **[VERSION](./VERSION)**. Production builds run on **GitHub Actions** (`.github/workflows/print-agent-release.yml`).
+Version is in **[VERSION](./VERSION)** (currently `0.3.84`). Production builds: **[`.github/workflows/fiscal-agent-release.yml`](../../.github/workflows/fiscal-agent-release.yml)**.
 
 ### Publish a release
 
 ```bash
-git tag print-agent-v0.1.0
-git push origin print-agent-v0.1.0
+# VERSION file must match the tag suffix
+git tag fiscal-agent-v0.3.84
+git push origin fiscal-agent-v0.3.84
 ```
 
-Assets (stable names for Dashboard `latest/download` links):
+Assets (stable names for Dashboard download links):
 
 | File | Use |
 |------|-----|
-| `MesaPrintAgent-Setup-amd64.exe` | Inno installer, x64; optional **desktop shortcut** and **sign-in startup** on the tasks step (both unchecked by default; removed on uninstall) |
-| `MesaPrintAgent-Setup-arm64.exe` | Inno installer, ARM64 Windows |
-| `MesaPrintAgent-windows-amd64.zip` | Portable zip |
-| `MesaPrintAgent-windows-arm64.zip` | Portable zip, ARM64 |
+| `FarvooFiscalAgent-Setup-amd64.exe` | Inno installer, x64; optional **desktop shortcut** and **sign-in startup** (both unchecked by default) |
+| `FarvooFiscalAgent-windows-amd64.zip` | Portable zip |
 | `SHA256SUMS` | Hashes |
+
+ARM64 Setup is not built yet (`build-release.ps1 -Amd64Only`).
 
 ### Build on Windows locally
 
 Requires [Go](https://go.dev/) and [Inno Setup 6](https://jrsoftware.org/isinfo.php):
 
 ```powershell
-cd apps/print-agent
-.\scripts\build-release.ps1
+cd apps/fiscal-agent
+.\scripts\build-release.ps1 -Amd64Only
 ```
 
-**POS first run:** install → tray icon → Dashboard **打印助手** code → **Open settings** → pair if needed → **Scan printers** → map → save (optional test). See **Run agent** above; **[installer/WINDOWS-README.txt](./installer/WINDOWS-README.txt)**.
+**POS first run:** install → tray icon → Farvoo Dashboard **打印助手** code → **Open settings** → pair → **Scan printers** → map → save. Fiscal Admin: tray **开票 / Fiscal…** or `http://127.0.0.1:17880/`. See **[installer/WINDOWS-README.txt](./installer/WINDOWS-README.txt)**.
 
-Mesa Dashboard reads `NEXT_PUBLIC_PRINT_AGENT_GITHUB_REPO` (see `.env.local.example`) for download buttons.
+Download source of truth: GitHub repo **`jianping2024/farvoo-fatura`** Releases. Farvoo Dashboard `NEXT_PUBLIC_PRINT_AGENT_GITHUB_REPO` should point here (wire in the Dashboard repo separately).
 
 ## Local Docker dev (optional, isolated)
 

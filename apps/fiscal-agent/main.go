@@ -204,7 +204,7 @@ func main() {
 			path := defaultConfigPath()
 			cfg, err := loadConfig(path)
 			if err != nil || cfg.AgentJWT == "" {
-				log.Fatal("pair with " + productName + " first (run MesaPrintAgent configure or pair)")
+				log.Fatal("pair with " + productName + " first (run FarvooFiscalAgent configure or pair)")
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 			defer cancel()
@@ -216,13 +216,13 @@ func main() {
 		case "help", "-h", "--help":
 			fmt.Printf("%s %s\n\n", printAgentName, Version)
 			fmt.Println(`Usage:
-  MesaPrintAgent              Run agent (Windows: system tray; first run opens pairing on :17892/pair)
-  MesaPrintAgent -console     Run with visible console (debug; Windows)
-  MesaPrintAgent configure     Printer/station mapping (http://127.0.0.1:17892/configure; /pair on same port)
-  MesaPrintAgent pair          Standalone pairing UI only when tray is not running (http://127.0.0.1:17890/pair)
-  MesaPrintAgent setup         Legacy printer setup wizard (first-run bootstrap; port 17891)
-  MesaPrintAgent discover      Scan LAN :9100 and list Windows printers
-  MesaPrintAgent [-api URL] [-code CODE]   Optional CLI pairing (advanced)
+  FarvooFiscalAgent              Run agent (Windows: system tray; first run opens pairing on :17892/pair)
+  FarvooFiscalAgent -console     Run with visible console (debug; Windows)
+  FarvooFiscalAgent configure     Printer/station mapping (http://127.0.0.1:17892/configure; /pair on same port)
+  FarvooFiscalAgent pair          Standalone pairing UI only when tray is not running (http://127.0.0.1:17890/pair)
+  FarvooFiscalAgent setup         Legacy printer setup wizard (first-run bootstrap; port 17891)
+  FarvooFiscalAgent discover      Scan LAN :9100 and list Windows printers
+  FarvooFiscalAgent [-api URL] [-code CODE]   Optional CLI pairing (advanced)
 
 Tray / Dashboard: http://127.0.0.1:17892/configure and /pair (up from tray start, including unpaired)
 CLI pair only: http://127.0.0.1:17890/pair

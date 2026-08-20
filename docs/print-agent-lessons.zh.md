@@ -26,7 +26,16 @@
 
 仍需要：`UsePreviousAppDir` + `Flags: ignoreversion restartreplace`。
 
-**本仓注意：** exe / Mutex / 配置目录已改为 `farvoo-fiscal-agent`；升级脚本里的进程名必须跟新 exe 一致，**不要**再 taskkill 旧的 `MesaPrintAgent.exe`（除非刻意兼容迁移）。
+**本仓定法（Farvoo Fiscal Agent）：**
+
+| 项 | 值 |
+|----|-----|
+| 显示名 / exe | `Farvoo Fiscal Agent` / `FarvooFiscalAgent.exe` |
+| Inno 脚本 | `installer/farvoo-fiscal-agent.iss` |
+| AppId GUID | 保持 `A3B8F2E1-…`（与旧 Mesa 卸载项同一键，原地升级） |
+| taskkill | 先 `FarvooFiscalAgent.exe`，再迁移窗口 `MesaPrintAgent.exe` |
+| 发布 | tag `fiscal-agent-v*` → `.github/workflows/fiscal-agent-release.yml` |
+| 下载源 | `jianping2024/farvoo-fatura` Releases（Dashboard 改链另仓） |
 
 ---
 
