@@ -13,14 +13,13 @@ const (
 	DocumentND DocumentType = "ND"
 )
 
-// DocumentStatus is the business lifecycle of a signed fiscal document.
+// DocumentStatus is the lifecycle of a signed fiscal document (no DRAFT in DB).
 type DocumentStatus string
 
 const (
-	DocumentDraft          DocumentStatus = "DRAFT"
-	DocumentSigned         DocumentStatus = "SIGNED"
+	DocumentSigned          DocumentStatus = "SIGNED"
 	DocumentCreditedPartial DocumentStatus = "CREDITED_PARTIAL"
-	DocumentCreditedFull   DocumentStatus = "CREDITED_FULL"
+	DocumentCreditedFull    DocumentStatus = "CREDITED_FULL"
 )
 
 // PrintStatus tracks physical output separately from tax status.
@@ -44,85 +43,64 @@ const (
 )
 
 // SaleSnapshot is the only business input Fiscal Core accepts for issuance.
-// POS / manual UI assemble this; Agent never reads live menu or inventory tables.
 type SaleSnapshot struct {
-	SourceSystem string
-	SourceSaleID string
-	ScopeType    string
-	ScopeID      string
-	FiscalPurpose string
-	Lines        []SaleLine
-	Customer     CustomerInput
-	Payments     []PaymentInput
-	ExternalBillID string
-	DisplayMeta  map[string]string // e.g. table display name; not in SAF-T
+	SourceSystem   string            `json:"source_system"`
+	SourceSaleID   string            `json:"source_sale_id"`
+	ScopeType      string            `json:"scope_type"`
+	ScopeID        string            `json:"scope_id"`
+	FiscalPurpose  string            `json:"fiscal_purpose"`
+	Lines          []SaleLine        `json:"lines"`
+	Customer       CustomerInput     `json:"customer"`
+	Payments       []PaymentInput    `json:"payments"`
+	ExternalBillID string            `json:"external_bill_id,omitempty"`
+	DisplayMeta    map[string]string `json:"display_meta,omitempty"`
 }
 
 // SaleLine is one sellable row at issue time.
 type SaleLine struct {
-	ProductCode     string
-	DisplayName     string
-	SaftName        string
-	Quantity        string // decimal string
-	UnitPriceGross  string
-	VATRate         string // e.g. "0.06", "0.13", "0.23"
-	ProductType     string // P, S, O
-	UnitOfMeasure   string
+	ProductCode    string `json:"product_code"`
+	DisplayName    string `json:"display_name"`
+	SaftName       string `json:"saft_name"`
+	Quantity       string `json:"quantity"`
+	UnitPriceGross string `json:"unit_price_gross"`
+	VATRate        string `json:"vat_rate"`
+	ProductType    string `json:"product_type"`
+	UnitOfMeasure  string `json:"unit_of_measure"`
 }
 
 // CustomerInput is the buyer at issue time.
 type CustomerInput struct {
-	TaxID       string
-	CompanyName string
-	Country     string
-	AddressDetail string
-	City        string
-	PostalCode  string
+	TaxID         string `json:"tax_id"`
+	CompanyName   string `json:"company_name"`
+	Country       string `json:"country"`
+	AddressDetail string `json:"address_detail"`
+	City          string `json:"city"`
+	PostalCode    string `json:"postal_code"`
 }
 
-// PaymentInput records how the sale was paid (local only; not SAF-T Payment node in MVP).
+// PaymentInput records how the sale was paid.
 type PaymentInput struct {
-	Method string
-	Amount string
+	Method string `json:"method"`
+	Amount string `json:"amount"`
 }
 
 // IssueRequest wraps a sale snapshot with idempotency keys.
 type IssueRequest struct {
-	StoreID   string
-	RequestID string
-	Snapshot  SaleSnapshot
+	StoreID    string
+	RequestID  string
+	OperatorID string
+	Snapshot   SaleSnapshot
 }
 
-// IssueResult is returned after a successful FT (or FS) issuance.
+// IssueResult is returned after a successful FT issuance.
 type IssueResult struct {
-	DocumentID    string
-	InvoiceNo     string
-	ATCUD         string
-	DocumentType  DocumentType
+	DocumentID     string
+	InvoiceNo      string
+	ATCUD          string
+	DocumentType   DocumentType
 	DocumentStatus DocumentStatus
-	PrintJobID    string
-	PrintStatus   PrintStatus
-	IssuedAt      time.Time
-}
-
-// SignedDocument is the immutable tax record after transaction commit.
-type SignedDocument struct {
-	ID              string
-	DocumentType    DocumentType
-	SeriesCode      string
-	SequenceNumber  int64
-	InvoiceNo       string
-	ATCUD           string
-	Hash            string
-	HashControl     int
-	SigningKeyVersion int
-	PreviousHash    string
-	InvoiceDate     time.Time
-	SystemEntryDate time.Time
-	GrossTotal      string
-	NetTotal        string
-	TaxPayable      string
-	QRContent       string
-	CustomerTaxID   string
-	SourceID        string // operator
+	PrintJobID     string
+	PrintStatus    PrintStatus
+	IssuedAt       time.Time
+	IdempotentHit  bool
 }

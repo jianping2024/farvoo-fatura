@@ -29,3 +29,17 @@ saft_exports, sync_outbox
 
 idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL local_print_job → COMMIT  
 打印失败不回滚税务行。
+
+**唯一写路径：** `store.IssueFT`（经 `service.IssueDocument` / `POST /local/v1/fiscal-documents`）。禁止第二套插票逻辑。
+
+## 聚合 ↔ 表（实现约束）
+
+| 聚合 / 模块 | 表 | 唯一入口 |
+|-------------|-----|----------|
+| Series | `series` | 仅 `IssueFT` 更新 `last_number`/`last_hash` |
+| Invoice（签后不可变） | `invoices` + lines/snapshot/payments | 仅 `IssueFT` INSERT |
+| Fiscal Print Job | `local_print_jobs` + `print_attempts` | 签发插入；`worker.Worker` 认领完成 |
+| 序号字符串 | — | 仅 `compliance.FormatSequence` / `FormatInvoiceNo` / `FormatATCUD` |
+| Hash 输入 | — | 仅 `compliance.BuildSignPayload` |
+| QR | — | 仅 `compliance.BuildQR` |
+| 打印快照 / ESC/POS | — | 仅 `print.BuildPayload` / `print.RenderESCPOS` |

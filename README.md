@@ -29,7 +29,19 @@ apps/fiscal-agent/        Go Agent（打印能力 + Fiscal）
 
 ## 当前阶段
 
-先做纯打发票（库表 → Fiscal Core → 本地出票 → Local API）；业务打印路径随本仓 Agent 一并维护。
+P0 场景：**开 FT → SQLite 签发同事务 → `local_print_jobs` 出纸**。
+
+```bash
+# 本机 Fiscal Core（mesa-local 门禁的本仓等价）
+cd apps/fiscal-agent && go run ./cmd/fiscal-local
+# API / 回归
+node scripts/fiscal-local-uat.mjs stack-health
+node scripts/fiscal-local-regression.mjs
+```
+
+- Local API：`POST /local/v1/fiscal-documents`（唯一签发入口）
+- Admin UI：`http://127.0.0.1:17880/`
+- DB 断言：SQLite（本仓无 Supabase；对应 mesa 的 supabase-local）
 
 ## 继承经验（必读）
 

@@ -13,3 +13,6 @@ dist/
 
 # Local AT/SAF-T reference materials (keep on disk, do not publish)
 document/
+
+# Local fiscal SQLite / UAT artifacts
+apps/fiscal-agent/data/
