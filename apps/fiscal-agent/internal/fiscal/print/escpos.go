@@ -46,11 +46,14 @@ func RenderESCPOS(p *Payload) []byte {
 	}
 	rule := func() { w(strings.Repeat("-", receiptWidth)) }
 
-	// ① merchant — centered
+	// ① merchant — LegalName only: 1×2 bold, then one blank line (address/NIF stay 1×1)
 	align(1)
 	bold(true)
+	b.Write([]byte{0x1D, 0x21, 0x01}) // GS ! — double height only
 	w(p.Merchant.LegalName)
+	b.Write([]byte{0x1D, 0x21, 0x00})
 	bold(false)
+	w("")
 	if p.Merchant.BusinessName != "" && p.Merchant.BusinessName != p.Merchant.LegalName {
 		w(p.Merchant.BusinessName)
 	}
@@ -77,9 +80,11 @@ func RenderESCPOS(p *Payload) []byte {
 		w("NIF Cliente: " + p.Customer.TaxID)
 	}
 
-	// ⑤ single-line items
+	// ⑤ items table — rule / header / rule / lines.
+	// P0: top & bottom rules hug the header (no blank lines); spacing must stay symmetric.
 	rule()
-	w(moneyRow("Qtd Preco IVA%-Desc", "Soma", receiptWidth))
+	w(moneyRow(formatItemLinesHeader(), "Soma", receiptWidth))
+	rule()
 	for _, ln := range p.Lines {
 		name := strings.TrimSpace(ln.DisplayName)
 		if name == "" {
@@ -154,21 +159,47 @@ func formatCertificationFace(controlChars, certLine string) string {
 	return chars + "-" + cert
 }
 
-// formatItemLine builds one item row: "2.00x 19.95 23%-Name……39.90"
+// Item line bands (Font A cols) — Qtd / Preco must read as separate columns (not "Qtd Preco").
+const (
+	itemQtyBandW   = 8 // "1.00x" + pad
+	itemPriceBandW = 8 // right-aligned unit price
+)
+
+// formatItemLinesHeader is the ONLY Items-table header label (Qtd / Preco / Desc).
+func formatItemLinesHeader() string {
+	return padRunesBand("Qtd", itemQtyBandW, false) + padRunesBand("Preco", itemPriceBandW, false) + "IVA%-Desc"
+}
+
+// formatItemLine builds one item row: "1.00x   19.95 23%-Name……39.90"
 func formatItemLine(qty, unitPrice, vatRate, name, lineGross string, width int) string {
 	q := strings.TrimSpace(qty)
 	if q != "" && !strings.HasSuffix(strings.ToLower(q), "x") {
 		q += "x"
 	}
-	pct := formatVATPercent(vatRate)
-	vatTag := pct + "-"
-	prefix := strings.TrimSpace(q + " " + strings.TrimSpace(unitPrice) + " " + vatTag)
+	vatTag := formatVATPercent(vatRate) + "-"
+	prefix := padRunesBand(q, itemQtyBandW, false) + padRunesBand(strings.TrimSpace(unitPrice), itemPriceBandW, true) + " " + vatTag
 	aw := utf8.RuneCountInString(strings.TrimSpace(lineGross))
 	maxName := width - utf8.RuneCountInString(prefix) - aw - 1
 	if maxName < 1 {
 		return moneyRow(truncateRunes(prefix, width-aw-1), lineGross, width)
 	}
 	return moneyRow(prefix+truncateRunes(strings.TrimSpace(name), maxName), lineGross, width)
+}
+
+func padRunesBand(s string, width int, rightAlign bool) string {
+	s = strings.TrimSpace(s)
+	n := utf8.RuneCountInString(s)
+	if width <= 0 {
+		return s
+	}
+	if n > width {
+		return truncateRunes(s, width)
+	}
+	pad := strings.Repeat(" ", width-n)
+	if rightAlign {
+		return pad + s
+	}
+	return s + pad
 }
 
 func formatViaLine(purpose string) string {

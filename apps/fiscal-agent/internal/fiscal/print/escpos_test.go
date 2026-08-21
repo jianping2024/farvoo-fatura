@@ -46,7 +46,9 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 		"21/08/2026 18:26",
 		"1a Via - Original",
 		"Cliente: Consumidor Final",
-		"Qtd Preco IVA%-Desc",
+		"Qtd",
+		"Preco",
+		"IVA%-Desc",
 		"2.00x",
 		"23%-",
 		"Liquido",
@@ -60,6 +62,16 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 		if !strings.Contains(plain, s) {
 			t.Fatalf("missing %q in:\n%s", s, plain)
 		}
+	}
+	if strings.Contains(plain, "Qtd Preco") {
+		t.Fatal("old single-space Qtd Preco header must not remain")
+	}
+	// Symmetric sandwich: rule \n header+Soma \n rule \n — no blank lines either side.
+	ruleLine := strings.Repeat("-", receiptWidth)
+	headerLine := moneyRow(formatItemLinesHeader(), "Soma", receiptWidth)
+	sandwich := ruleLine + "\n" + headerLine + "\n" + ruleLine + "\n"
+	if !strings.Contains(plain, sandwich) {
+		t.Fatalf("item header must be hugged by equal rules (no blank lines):\nwant substring:\n%s\ngot:\n%s", sandwich, plain)
 	}
 	if strings.Contains(plain, "Hash:") {
 		t.Fatalf("must not print Hash: line:\n%s", plain)
@@ -80,9 +92,26 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 		t.Fatalf("block order total=%d resumo=%d cert=%d atcud=%d\n%s", total, resumo, cert, atcud, plain)
 	}
 
-	// TOTAL emphasized
-	if !bytes.Contains(raw, []byte{0x1D, 0x21, 0x01}) {
-		t.Fatal("TOTAL must use GS ! double-height")
+	// Store name: 1×2 bold, reset to 1×1, one blank LF, then address at 1×1
+	nameEnc := escposenc.Windows1252("Farvoo Demo Lda")
+	addrEnc := escposenc.Windows1252("Rua Demo 1, 1000-001 Lisboa")
+	nameAt := bytes.Index(raw, nameEnc)
+	addrAt := bytes.Index(raw, addrEnc)
+	if nameAt < 0 || addrAt <= nameAt {
+		t.Fatal("missing store name / address order")
+	}
+	nameSeg := raw[:nameAt]
+	if !bytes.Contains(nameSeg[max(0, len(nameSeg)-16):], []byte{0x1D, 0x21, 0x01}) {
+		t.Fatal("LegalName must use GS ! 1×2")
+	}
+	mid := raw[nameAt+len(nameEnc) : addrAt]
+	wantMid := []byte{'\n', 0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00, '\n'}
+	if !bytes.Equal(mid, wantMid) {
+		t.Fatalf("after LegalName want LF + size/bold reset + blank LF, got %x", mid)
+	}
+
+	if bytes.Count(raw, []byte{0x1D, 0x21, 0x01}) < 2 {
+		t.Fatal("LegalName and TOTAL must both use GS ! double-height")
 	}
 	// QR module 6
 	if !bytes.Contains(raw, []byte{0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, 0x06}) {
@@ -131,8 +160,30 @@ func TestFormatItemLine_SingleRow(t *testing.T) {
 	if utf8.RuneCountInString(got) != receiptWidth {
 		t.Fatalf("width=%d %q", utf8.RuneCountInString(got), got)
 	}
-	if !strings.HasPrefix(got, "2.00x 19.95 23%-") {
+	if !strings.HasPrefix(strings.TrimRight(got, " "), "2.00x") {
 		t.Fatalf("prefix: %q", got)
+	}
+	// Qty band + price band must leave a visible gap (not "2.00x 19.95" single space only).
+	if strings.Contains(got, "2.00x 19.95") && !strings.Contains(got, "2.00x ") {
+		t.Fatalf("qty/price too tight: %q", got)
+	}
+	qtyEnd := itemQtyBandW
+	price := got[qtyEnd : qtyEnd+itemPriceBandW]
+	if !strings.Contains(price, "19.95") {
+		t.Fatalf("price band %q want 19.95 in %q", price, got)
+	}
+}
+
+func TestFormatItemLinesHeader_SeparatedBands(t *testing.T) {
+	h := formatItemLinesHeader()
+	if strings.Contains(h, "Qtd Preco") {
+		t.Fatalf("header still single-spaced: %q", h)
+	}
+	if !strings.HasPrefix(h, "Qtd") || !strings.Contains(h, "Preco") || !strings.Contains(h, "IVA%-Desc") {
+		t.Fatalf("header: %q", h)
+	}
+	if utf8.RuneCountInString(h) < itemQtyBandW+itemPriceBandW+len("IVA%-Desc") {
+		t.Fatalf("header too short: %q", h)
 	}
 }
 

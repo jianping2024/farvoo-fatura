@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.98
+
+**FT 明细表头 + 店名抬头**
+
+- 唯一 `formatItemLinesHeader` / `formatItemLine`：Qtd、Preco 分列宽；明细区 `rule` → 表头+Soma → `rule` → 行（上下虚线紧贴、不插空行）。
+- 店名仅 `LegalName`：加粗 + 1×2（`GS ! 0x01`），下空一行；地址/NIF 仍 1×1。
+
 ## 0.3.97
 
 **中文出品联：表头与数量同一套列画布**
