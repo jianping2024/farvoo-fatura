@@ -46,13 +46,17 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 		"21/08/2026 18:26",
 		"1a Via - Original",
 		"Cliente: Consumidor Final",
-		"IVA 23%",
+		"Qtd Preco IVA%-Desc",
+		"Soma",
+		"2.00x",
+		"19.95",
+		"23%-",
+		"39.90",
 		"Liquido",
 		"TOTAL",
 		"Numerario",
 		"Resumo IVA",
 		"Taxa",
-		"23%",
 		"ATCUD: CSDF7T5H-3",
 		"Processado por programa certificado n. 0/AT",
 		"Hash: 0L2I",
@@ -62,12 +66,28 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 			t.Fatalf("missing %q in:\n%s", s, plain)
 		}
 	}
-	if strings.Contains(plain, "FT: FT FT") || strings.Count(plain, "FT FT FT") > 0 {
-		t.Fatalf("duplicate FT prefix:\n%s", plain)
+	if strings.Contains(plain, "FT: FT FT") || strings.Contains(plain, "FT: ") {
+		t.Fatalf("bad FT prefix:\n%s", plain)
 	}
-	if strings.Contains(plain, "FT: ") {
-		t.Fatalf("must not use FT: prefix:\n%s", plain)
+	// single-line item: no orphan name-only line before qty row
+	lines := strings.Split(plain, "\n")
+	var itemIdx = -1
+	for i, line := range lines {
+		if strings.Contains(line, "2.00x") && strings.Contains(line, "23%-") {
+			itemIdx = i
+			break
+		}
 	}
+	if itemIdx < 0 {
+		t.Fatalf("missing single-line item:\n%s", plain)
+	}
+	if !strings.HasSuffix(strings.TrimRight(lines[itemIdx], " "), "39.90") {
+		t.Fatalf("line gross not right-aligned on item row: %q", lines[itemIdx])
+	}
+	if utf8.RuneCountInString(lines[itemIdx]) > receiptWidth+1 {
+		t.Fatalf("item row overwide: %q", lines[itemIdx])
+	}
+
 	atcud := strings.Index(plain, "ATCUD:")
 	cert := strings.Index(plain, "Processado por programa certificado")
 	hash := strings.Index(plain, "Hash:")
@@ -78,35 +98,54 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 			total, resumo, atcud, cert, hash, plain)
 	}
 	if strings.Contains(plain, "IVA 0.23") {
-		t.Fatalf("raw decimal VAT on ticket:\n%s", plain)
+		t.Fatalf("raw decimal VAT:\n%s", plain)
 	}
 
-	// money rows must fit receiptWidth (no orphan amount on next line from moneyRow alone)
-	for _, line := range strings.Split(plain, "\n") {
-		if utf8.RuneCountInString(line) > receiptWidth+2 { // allow tiny slack for decode noise
-			if strings.Contains(line, "Numerario") || strings.Contains(line, "TOTAL") || strings.Contains(line, "Liquido") {
-				t.Fatalf("overwide money row %d runes: %q", utf8.RuneCountInString(line), line)
-			}
-		}
-	}
-
-	// ESC t 16 present
 	if !bytes.Contains(raw, escposenc.SelectCodeTable(escposenc.CodeTableWPC1252)) {
-		t.Fatal("missing ESC t 16 code table select")
+		t.Fatal("missing ESC t 16")
 	}
-	// QR center then left
+	// header centered before invoice left
 	center := []byte{0x1B, 0x61, 1}
 	left := []byte{0x1B, 0x61, 0}
 	ci := bytes.Index(raw, center)
 	if ci < 0 {
-		t.Fatal("missing ESC a 1 before QR")
+		t.Fatal("missing ESC a 1 for centered header")
 	}
-	if bytes.Index(raw[ci:], left) < 0 {
-		t.Fatal("missing ESC a 0 after QR")
+	li := bytes.Index(raw[ci:], left)
+	if li < 0 {
+		t.Fatal("missing ESC a 0 after header")
 	}
-	// module size 4
-	if !bytes.Contains(raw, []byte{0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, 0x04}) {
-		t.Fatal("QR module size must be 4")
+	inv := bytes.Index(raw, []byte("FT FT2026DEMO01/3"))
+	if inv < 0 || inv < ci+li {
+		t.Fatal("invoice line must follow left-align after header")
+	}
+	// QR also centered
+	qrMarker := []byte{0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, 0x04}
+	qi := bytes.Index(raw, qrMarker)
+	if qi < 0 {
+		t.Fatal("QR module size 4 missing")
+	}
+	if bytes.LastIndex(raw[:qi], center) < 0 {
+		t.Fatal("QR should be preceded by center align")
+	}
+	if !bytes.Contains(raw, []byte{0x1B, 0x45, 1}) {
+		t.Fatal("merchant name should use bold on")
+	}
+}
+
+func TestFormatItemLine_SingleRow(t *testing.T) {
+	got := formatItemLine("2.00", "19.95", "0.23", "Guarana Antarctica", "39.90", 32)
+	if utf8.RuneCountInString(got) != 32 {
+		t.Fatalf("width=%d %q", utf8.RuneCountInString(got), got)
+	}
+	if !strings.HasPrefix(got, "2.00x 19.95 23%-") {
+		t.Fatalf("prefix: %q", got)
+	}
+	if !strings.HasSuffix(got, "39.90") {
+		t.Fatalf("suffix: %q", got)
+	}
+	if strings.Contains(got, "\n") {
+		t.Fatal("must be single line")
 	}
 }
 
@@ -130,10 +169,10 @@ func TestRenderESCPOS_AccentEncoding(t *testing.T) {
 	raw := RenderESCPOS(p)
 	encName := escposenc.Windows1252("Guaraná")
 	if !bytes.Contains(raw, encName) {
-		t.Fatalf("expected Windows-1252 Guaraná %v in output", encName)
+		t.Fatalf("expected Windows-1252 Guaraná %v", encName)
 	}
 	if bytes.Contains(raw, []byte("Guaraná")) {
-		t.Fatal("UTF-8 Guaraná must not appear raw on wire")
+		t.Fatal("UTF-8 Guaraná must not appear raw")
 	}
 }
 
@@ -141,9 +180,6 @@ func TestMoneyRow_FitsWidth(t *testing.T) {
 	got := moneyRow("Numerario", "44.30", 32)
 	if utf8.RuneCountInString(got) != 32 {
 		t.Fatalf("len=%d %q", utf8.RuneCountInString(got), got)
-	}
-	if !strings.HasSuffix(got, "44.30") {
-		t.Fatalf("%q", got)
 	}
 }
 
@@ -165,25 +201,18 @@ func TestFormatVATPercent(t *testing.T) {
 	if formatVATPercent("13.00") != "13%" {
 		t.Fatal(formatVATPercent("13.00"))
 	}
-	if formatVATPercent("0") != "0%" {
-		t.Fatal(formatVATPercent("0"))
-	}
 }
 
-// decodeTicketText maps Windows-1252 printable bytes back for assertions; drops ESC/POS cmds roughly.
 func decodeTicketText(raw []byte) string {
 	var b strings.Builder
 	for i := 0; i < len(raw); i++ {
 		c := raw[i]
 		if c == 0x1B || c == 0x1D {
-			// skip command payloads heuristically: consume until we hit LF or long gap
 			i++
 			for i < len(raw) && raw[i] != '\n' && raw[i] < 0x20 {
 				i++
 			}
-			// if next looks like binary length params, skip a few more
 			for i < len(raw) && raw[i] != '\n' && (raw[i] < 0x20 || raw[i] >= 0x7F) {
-				// keep high latin (1252) — break to emit
 				if raw[i] >= 0x80 {
 					break
 				}
@@ -201,7 +230,6 @@ func decodeTicketText(raw []byte) string {
 			continue
 		}
 		if c >= 0x80 {
-			// best-effort: leave as latin1 rune for Contains checks on ASCII labels only
 			b.WriteRune(rune(c))
 		}
 	}

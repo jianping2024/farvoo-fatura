@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.92
+
+**FT 票面：居中抬头 + 单行明细**
+
+- 抬头 `ESC a 1`（法定名加粗）后回左；明细表头 + 单行 `qtyx price vat%-name … soma`（废两行品名模式）。
+- 店名仍仅 `merchant.legal_name`；唯一 `RenderESCPOS`。见 `docs/fiscal-ft-receipt-layout.zh.md`。
+
 ## 0.3.91
 
 **FT 票面 P1：1252 编码、列宽 32、QR 居中缩小、脚留白**

@@ -25,14 +25,25 @@ func RenderESCPOS(p *Payload) []byte {
 	b.Write([]byte{0x1B, 0x40}) // init
 	b.Write(escposenc.SelectCodeTable(escposenc.CodeTableWPC1252))
 
+	align := func(n byte) { b.Write([]byte{0x1B, 0x61, n}) }
+	bold := func(on bool) {
+		if on {
+			b.Write([]byte{0x1B, 0x45, 1})
+		} else {
+			b.Write([]byte{0x1B, 0x45, 0})
+		}
+	}
 	w := func(s string) {
 		b.Write(escposenc.Windows1252(s))
 		b.WriteByte('\n')
 	}
 	rule := func() { w(strings.Repeat("-", receiptWidth)) }
 
-	// ① merchant
+	// ① merchant — centered (payload names only; never hardcode venue)
+	align(1)
+	bold(true)
 	w(p.Merchant.LegalName)
+	bold(false)
 	if p.Merchant.BusinessName != "" && p.Merchant.BusinessName != p.Merchant.LegalName {
 		w(p.Merchant.BusinessName)
 	}
@@ -42,6 +53,7 @@ func RenderESCPOS(p *Payload) []byte {
 	if p.Merchant.TaxRegistrationNumber != "" {
 		w("NIF: PT" + p.Merchant.TaxRegistrationNumber)
 	}
+	align(0)
 
 	// ② document identity
 	w(formatInvoiceLine(p.DocumentType, p.InvoiceNo))
@@ -58,16 +70,15 @@ func RenderESCPOS(p *Payload) []byte {
 		w("NIF Cliente: " + p.Customer.TaxID)
 	}
 
-	// ⑤ lines
+	// ⑤ single-line items
 	rule()
+	w(moneyRow("Qtd Preco IVA%-Desc", "Soma", receiptWidth))
 	for _, ln := range p.Lines {
 		name := strings.TrimSpace(ln.DisplayName)
 		if name == "" {
 			name = strings.TrimSpace(ln.Description)
 		}
-		w(truncateRunes(name, receiptWidth))
-		left := fmt.Sprintf("x%s %s IVA %s", ln.Quantity, ln.UnitPriceGross, formatVATPercent(ln.VATRate))
-		w(moneyRow(left, ln.LineGross, receiptWidth))
+		w(formatItemLine(ln.Quantity, ln.UnitPriceGross, ln.VATRate, name, ln.LineGross, receiptWidth))
 	}
 
 	// ⑦ totals + payments
@@ -96,11 +107,11 @@ func RenderESCPOS(p *Payload) []byte {
 	w("")
 	w("ATCUD: " + p.Compliance.ATCUD)
 
-	// ⑩ QR centered, smaller module
+	// ⑩ QR centered
 	if qr := strings.TrimSpace(p.Compliance.QR.Content); qr != "" {
-		b.Write([]byte{0x1B, 0x61, 1}) // align center
+		align(1)
 		writeQR(&b, qr, 4)
-		b.Write([]byte{0x1B, 0x61, 0}) // align left
+		align(0)
 		b.WriteByte('\n')
 		b.WriteByte('\n')
 	}
@@ -117,6 +128,23 @@ func RenderESCPOS(p *Payload) []byte {
 	b.Write([]byte{'\n', '\n', '\n'})
 	b.Write([]byte{0x1D, 0x56, 0x00})
 	return b.Bytes()
+}
+
+// formatItemLine builds one item row: "2.00x 19.95 23%-Name……39.90"
+func formatItemLine(qty, unitPrice, vatRate, name, lineGross string, width int) string {
+	q := strings.TrimSpace(qty)
+	if q != "" && !strings.HasSuffix(strings.ToLower(q), "x") {
+		q += "x"
+	}
+	pct := formatVATPercent(vatRate) // e.g. 23%
+	vatTag := pct + "-"
+	prefix := strings.TrimSpace(q + " " + strings.TrimSpace(unitPrice) + " " + vatTag)
+	aw := utf8.RuneCountInString(strings.TrimSpace(lineGross))
+	maxName := width - utf8.RuneCountInString(prefix) - aw - 1
+	if maxName < 1 {
+		return moneyRow(truncateRunes(prefix, width-aw-1), lineGross, width)
+	}
+	return moneyRow(prefix+truncateRunes(strings.TrimSpace(name), maxName), lineGross, width)
 }
 
 func formatInvoiceLine(docType, invoiceNo string) string {
