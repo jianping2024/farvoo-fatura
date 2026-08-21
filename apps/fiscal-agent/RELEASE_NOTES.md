@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.94
+
+**收据菜品行不加粗（列头 / 应付仍加粗）**
+
+- `writeReceiptMenuBodyLine`：列头 `bold=true`，菜品行 `bold=false`（Han 位图与拉丁 `ESC E` 一致）；避免含汉字菜名比拉丁行更黑。
+- 应付等其它票面加粗不变。
+
 ## 0.3.93
 
 **FT 脚对齐样票：认证在 QR 上、TOTAL 突出、无 Hash 行**

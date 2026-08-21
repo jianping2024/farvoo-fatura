@@ -473,18 +473,22 @@ func (w *escposWriter) rightLine(s string, bold bool) {
 	w.align(0)
 }
 
-func (w *escposWriter) writeReceiptMenuBodyLine(left, mid, right string) {
+func (w *escposWriter) writeReceiptMenuBodyLine(left, mid, right string, bold bool) {
 	if w.textMode == escposTextBitmap && (hasHan(left) || hasHan(mid) || hasHan(right)) {
 		fontPx := hanFontPxForRole(w.hanFontPx, hanFontBody)
 		w.content.Write(escposHanReceiptRow(left, mid, right, fontPx, bitmapTextStyle{
 			Align: w.alignMode,
-			Bold:  true,
+			Bold:  bold,
 		}))
 		w.lastTextBitmap = true
 		w.lf()
 		return
 	}
-	w.writeBody1x2Bold()
+	if bold {
+		w.writeBody1x2Bold()
+	} else {
+		w.writeBody1x2()
+	}
 	w.text(escposThreeColLine(left, mid, right))
 	w.lf()
 }
@@ -606,7 +610,7 @@ func (w *escposWriter) writeBody1x2() {
 	w.hanRole = hanFontBody
 }
 
-// writeBody1x2Bold — receipt menu block and amount due (Font A 1×2 bold).
+// writeBody1x2Bold — receipt column header and amount due (Font A 1×2 bold).
 func (w *escposWriter) writeBody1x2Bold() {
 	w.size(false, true)
 	w.bold(true)
@@ -879,14 +883,14 @@ func receiptLineFieldsFrom(ln jobLine) receiptLineFields {
 }
 
 func (w *escposWriter) writeReceiptMenuLines(lines []jobLine, lab ticketLabels) (sum float64, hasPrice bool) {
-	w.writeReceiptMenuBodyLine(lab.items, lab.qty, lab.originalPrice)
+	w.writeReceiptMenuBodyLine(lab.items, lab.qty, lab.originalPrice, true)
 	for _, ln := range lines {
 		fields := receiptLineFieldsFrom(ln)
 		if fields.hasPrice {
 			hasPrice = true
 			sum += fields.lineTotal
 		}
-		w.writeReceiptMenuBodyLine(fields.label, fields.qtyCol, fields.priceCol)
+		w.writeReceiptMenuBodyLine(fields.label, fields.qtyCol, fields.priceCol, false)
 	}
 	w.writeBody1x1()
 	return sum, hasPrice

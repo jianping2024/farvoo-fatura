@@ -276,7 +276,7 @@ func TestReceiptDoesNotPrintItemNote(t *testing.T) {
 	}
 }
 
-func TestReceiptMenuLinesUse1x2Bold(t *testing.T) {
+func TestReceiptMenuHeaderAndAmountDueUse1x2Bold(t *testing.T) {
 	payload, _ := json.Marshal(map[string]any{
 		"display_name":    "A-01",
 		"receipt_variant": "pre_bill",
@@ -289,16 +289,36 @@ func TestReceiptMenuLinesUse1x2Bold(t *testing.T) {
 	raw := escposFromJob(printJob{Type: "order_receipt", Payload: payload})
 	lab := printTicketLabels("en")
 	headerLine := escposThreeColLine(lab.items, lab.qty, lab.originalPrice)
+	itemLine := escposThreeColLine("001-Tea", "1", "5.00")
 	idx := bytes.Index(raw, []byte(headerLine))
 	if idx < 0 {
 		t.Fatal("missing Items header line")
 	}
-	menuBlock := raw[idx:]
-	if !bytes.Contains(menuBlock, []byte{0x1D, 0x21, 0x01}) {
-		t.Fatal("receipt menu block must use GS ! 1×2")
+	itemIdx := bytes.Index(raw, []byte(itemLine))
+	if itemIdx < 0 {
+		t.Fatal("missing item line")
 	}
-	if !bytes.Contains(menuBlock, []byte{0x1B, 0x45, 0x01}) {
-		t.Fatal("receipt menu block must use ESC E bold")
+	headerSegStart := idx - 16
+	if headerSegStart < 0 {
+		headerSegStart = 0
+	}
+	headerSeg := raw[headerSegStart:itemIdx]
+	if !bytes.Contains(headerSeg, []byte{0x1D, 0x21, 0x01}) {
+		t.Fatal("receipt column header must use GS ! 1×2")
+	}
+	if !bytes.Contains(headerSeg, []byte{0x1B, 0x45, 0x01}) {
+		t.Fatal("receipt column header must use ESC E bold")
+	}
+	itemSegStart := itemIdx - 16
+	if itemSegStart < idx {
+		itemSegStart = idx
+	}
+	itemSeg := raw[itemSegStart : itemIdx+len(itemLine)]
+	if !bytes.Contains(itemSeg, []byte{0x1D, 0x21, 0x01}) {
+		t.Fatal("receipt item line must use GS ! 1×2")
+	}
+	if !bytes.Contains(itemSeg, []byte{0x1B, 0x45, 0x00}) {
+		t.Fatal("receipt item line must clear ESC E bold")
 	}
 	amountDue := []byte("Amount Due:5.00")
 	dueIdx := bytes.Index(raw, amountDue)
