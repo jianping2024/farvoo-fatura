@@ -12,14 +12,28 @@ import (
 	"syscall"
 
 	"farvoo-fiscal-agent/internal/fiscal/bootstrap"
+	"farvoo-fiscal-agent/internal/fiscal/billsync"
 )
 
 // embeddedFiscal is the single Agent-side fiscal runtime (tray / run / fiscal-standalone).
 var (
-	embeddedFiscalMu sync.Mutex
-	embeddedFiscal   *bootstrap.Runtime
+	embeddedFiscalMu  sync.Mutex
+	embeddedFiscal    *bootstrap.Runtime
 	embeddedFiscalURL string
 )
+
+// fiscalBillSyncPuller returns a Puller bound to the embedded fiscal DB, or nil.
+func fiscalBillSyncPuller(cfg *config) *billsync.Puller {
+	embeddedFiscalMu.Lock()
+	defer embeddedFiscalMu.Unlock()
+	if embeddedFiscal == nil || embeddedFiscal.DB == nil || cfg == nil {
+		return nil
+	}
+	if strings.TrimSpace(cfg.APIBase) == "" || strings.TrimSpace(cfg.AgentJWT) == "" {
+		return nil
+	}
+	return &billsync.Puller{APIBase: cfg.APIBase, JWT: cfg.AgentJWT, DB: embeddedFiscal.DB}
+}
 
 // applyFiscalRuntimeFromConfig installs process env used by fiscal packages.
 // ONLY agent-side applicator; env already set wins (regression scripts / ops override).

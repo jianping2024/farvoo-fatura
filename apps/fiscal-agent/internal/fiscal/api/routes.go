@@ -49,6 +49,9 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("GET /local/v1/print-jobs/{printJobId}", func(w http.ResponseWriter, r *http.Request) {
 		handleGetPrintJob(w, r, deps)
 	})
+	mux.HandleFunc("GET /local/v1/bill-drafts", func(w http.ResponseWriter, r *http.Request) {
+		handleListBillDrafts(w, r, deps)
+	})
 }
 
 func handleSetupStatus(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
@@ -240,6 +243,40 @@ func handleGetPrintJob(w http.ResponseWriter, r *http.Request, deps HandlerDeps)
 		return
 	}
 	writeJSON(w, http.StatusOK, job)
+}
+
+func handleListBillDrafts(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	if deps.Fiscal == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
+		return
+	}
+	list, err := deps.Fiscal.ListBillDrafts(50)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "list_failed", err.Error())
+		return
+	}
+	type row struct {
+		ID               string `json:"id"`
+		RequestID        string `json:"request_id"`
+		SourceSaleID     string `json:"source_sale_id"`
+		Status           string `json:"status"`
+		CloudJobID       string `json:"cloud_job_id,omitempty"`
+		UpdatedAt        string `json:"updated_at"`
+		TableDisplayName string `json:"table_display_name,omitempty"`
+	}
+	out := make([]row, 0, len(list))
+	for _, d := range list {
+		var meta struct {
+			TableDisplayName string `json:"table_display_name"`
+		}
+		_ = json.Unmarshal([]byte(d.PayloadJSON), &meta)
+		out = append(out, row{
+			ID: d.ID, RequestID: d.RequestID, SourceSaleID: d.SourceSaleID,
+			Status: d.Status, CloudJobID: d.CloudJobID, UpdatedAt: d.UpdatedAt,
+			TableDisplayName: meta.TableDisplayName,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"drafts": out})
 }
 
 func writeCoded(w http.ResponseWriter, err error) {

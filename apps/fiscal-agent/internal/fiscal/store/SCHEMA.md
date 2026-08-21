@@ -1,7 +1,7 @@
 # Fiscal Agent SQLite Schema（P0）速查
 
 > **完整字段与规则**：[`docs/fiscal-sqlite-schema.zh.md`](../../../../../../docs/fiscal-sqlite-schema.zh.md)  
-> **DDL**：[`migrations/001_init.sql`](migrations/001_init.sql)
+> **DDL**：[`migrations/001_init.sql`](migrations/001_init.sql)、[`migrations/002_bill_sync_drafts.sql`](migrations/002_bill_sync_drafts.sql)
 
 ## 原则
 
@@ -23,6 +23,7 @@ series, invoices, invoice_lines, invoice_customer_snapshots,
   invoice_payments, invoice_line_references
 idempotency_keys, local_print_jobs, print_attempts, audit_log
 saft_exports, sync_outbox
+bill_sync_drafts
 ```
 
 ## 签发同事务
@@ -32,6 +33,8 @@ idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL
 
 **唯一写路径：** `store.IssueFT`（经 `service.IssueDocument` / `POST /local/v1/fiscal-documents`）。禁止第二套插票逻辑。
 
+**账单同步唯一写路径：** `billsync.PullAndIngest` → `IngestCloudJob` → `UpsertBillDraftOpen` + `UpsertFiscalProductByCode`。Realtime/Polling 只门铃/补偿，禁止第二套 HTTP/WS。
+
 ## 聚合 ↔ 表（实现约束）
 
 | 聚合 / 模块 | 表 | 唯一入口 |
@@ -39,6 +42,7 @@ idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL
 | Series | `series` | 仅 `IssueFT` 更新 `last_number`/`last_hash` |
 | Invoice（签后不可变） | `invoices` + lines/snapshot/payments | 仅 `IssueFT` INSERT |
 | Fiscal Print Job | `local_print_jobs` + `print_attempts` | 签发插入；`worker.Worker` 认领完成 |
+| Bill sync draft | `bill_sync_drafts` | 仅 `UpsertBillDraftOpen` / `MarkBillDraftInvoiced` |
 | 序号字符串 | — | 仅 `compliance.FormatSequence` / `FormatInvoiceNo` / `FormatATCUD` |
 | Hash 输入 | — | 仅 `compliance.BuildSignPayload` |
 | QR | — | 仅 `compliance.BuildQR` |

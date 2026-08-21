@@ -2,7 +2,7 @@
 
 > **状态：定稿**  
 > **权威：是**（库表设计；与 DDL 冲突时以 DDL 为准并回改本文）  
-> **对应实现：** `apps/fiscal-agent/internal/fiscal/store/migrations/001_init.sql`  
+> **对应实现：** `apps/fiscal-agent/internal/fiscal/store/migrations/001_init.sql` + `002_bill_sync_drafts.sql`  
 > **写作规范：** [`docs/design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 > 权威库：门店本机 Agent 唯一 SQLite。  
@@ -11,7 +11,7 @@
 
 配套：
 
-- 实现迁移：`apps/fiscal-agent/internal/fiscal/store/migrations/001_init.sql`
+- 实现迁移：`apps/fiscal-agent/internal/fiscal/store/migrations/001_init.sql`、`002_bill_sync_drafts.sql`
 - 包内摘要：`apps/fiscal-agent/internal/fiscal/store/SCHEMA.md`
 
 ---
@@ -167,6 +167,9 @@
 导出 / 同步
   saft_exports
   sync_outbox
+
+账单同步草稿（云端 bill_sync_jobs → 本地；未开票）
+  bill_sync_drafts
 ```
 
 ---
@@ -183,6 +186,7 @@ idempotency_keys ──► invoices
 invoices 1───N local_print_jobs 1───N print_attempts
 operators.id = invoices.source_id
 fiscal_products.product_code ◄── invoice_lines.product_code（历史行靠快照，不强制 FK）
+bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 ```
 
 ---
@@ -205,6 +209,7 @@ fiscal_products.product_code ◄── invoice_lines.product_code（历史行靠
 | `signing_keys.status` | `ACTIVE` `RETIRED` `COMPROMISED` |
 | `sync_outbox.status` | `PENDING` `SENT` `FAILED` |
 | `saft validation_status` | `PENDING` `VALID` `INVALID` |
+| `bill_sync_drafts.status` | `open` `invoiced` `discarded` |
 
 ---
 
@@ -580,6 +585,24 @@ MVP 不进 SAF-T `DocumentTotals/Payment`。
 | sent_at | TEXT | 否 | |
 
 云端冲突以 Agent 为准回写；失败不阻断本地开票。
+
+### 6.21 `bill_sync_drafts`（账单同步草稿）
+
+Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `IngestCloudJob` → `UpsertBillDraftOpen` 写入。不同时开票。
+
+| 列 | 类型 | 必填 | 说明 |
+|----|------|------|------|
+| id | TEXT PK | 是 | UUID |
+| request_id | TEXT | 是 | 幂等键；UNIQUE |
+| source_sale_id | TEXT | 是 | Farvoo sale id |
+| payload_json | TEXT | 是 | 完整 Snapshot JSON |
+| status | TEXT | 是 | open / invoiced / discarded |
+| cloud_job_id | TEXT | 否 | Farvoo job id |
+| last_error | TEXT | 否 | |
+| created_at | TEXT | 是 | UTC |
+| updated_at | TEXT | 是 | UTC |
+
+**唯一写路径：** `store.UpsertBillDraftOpen`（开/覆盖 open）；`MarkBillDraftInvoiced`（开票成功后）。商品：`UpsertFiscalProductByCode`（`vat_rate` 存百分数串如 `"13.00"`）。
 
 ## 7. 签发事务写序（必须）
 

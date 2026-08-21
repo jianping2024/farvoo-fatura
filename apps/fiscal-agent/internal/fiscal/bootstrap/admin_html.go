@@ -63,12 +63,18 @@ input,textarea{width:100%;padding:.4rem;box-sizing:border-box;margin:0 0 .4rem;b
 <button id="issue">开 FT</button>
 <pre id="out">ready</pre>
 </div>
+<div class="box">
+<h2>7. 账单草稿（同步）</h2>
+<button id="btnDrafts">刷新 bill-drafts</button>
+<pre id="drafts">…</pre>
+</div>
 <script>
 const y=new Date().getFullYear();
 document.getElementById('series').value='FT'+y+'DEMO01';
 document.getElementById('rid').value='req-'+Date.now();
 const out=document.getElementById('out');
 const statusEl=document.getElementById('status');
+const draftsEl=document.getElementById('drafts');
 async function j(method,path,body){
   const r=await fetch(path,{method,headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});
   const t=await r.json();
@@ -76,7 +82,9 @@ async function j(method,path,body){
   return t;
 }
 async function refresh(){ statusEl.textContent=JSON.stringify(await j('GET','/local/v1/setup/status'),null,2); }
+async function refreshDrafts(){ draftsEl.textContent=JSON.stringify(await j('GET','/local/v1/bill-drafts'),null,2); }
 document.getElementById('btnStatus').onclick=()=>refresh().catch(e=>statusEl.textContent=JSON.stringify(e,null,2));
+document.getElementById('btnDrafts').onclick=()=>refreshDrafts().catch(e=>draftsEl.textContent=JSON.stringify(e,null,2));
 document.getElementById('btnTax').onclick=async()=>{
   try{ await j('PUT','/local/v1/setup/taxpayer',{tax_registration_number:nif.value,legal_name:legal.value,address_detail:addr.value,city:city.value,postal_code:postal.value,country:'PT',timezone:'Europe/Lisbon',software_certificate_number:'0'}); await refresh(); out.textContent='taxpayer ok'; }
   catch(e){out.textContent=JSON.stringify(e,null,2)}
@@ -109,6 +117,7 @@ document.getElementById('issue').onclick=async()=>{
   catch(e){ out.textContent=JSON.stringify(e,null,2); }
 };
 refresh().catch(()=>{});
+refreshDrafts().catch(()=>{});
 </script>
 </body>
 </html>

@@ -309,3 +309,11 @@ func (s *FiscalService) GetByRequestID(storeID, requestID string) (*domain.Issue
 func (s *FiscalService) GetPrintJob(id string) (*store.PrintJobView, error) {
 	return s.db.GetPrintJob(id)
 }
+
+// ListBillDrafts returns local bill sync drafts (read model).
+func (s *FiscalService) ListBillDrafts(limit int) ([]store.BillSyncDraft, error) {
+	return s.db.ListBillDrafts(limit)
+}
+
+// DB exposes store for bill-sync puller wiring (read/ingest only via billsync package).
+func (s *FiscalService) DB() *store.DB { return s.db }

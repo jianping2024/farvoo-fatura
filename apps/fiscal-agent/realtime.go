@@ -198,8 +198,10 @@ func (r *RealtimeNotifier) buildWebSocketURL() (string, error) {
 }
 
 func (r *RealtimeNotifier) subscribe() error {
+	// Sole Realtime join: one connection, multiple tables (print_jobs + bill_sync_jobs).
+	// Do NOT open a second websocket / independent poller for bill sync.
 	msg := map[string]interface{}{
-		"topic": fmt.Sprintf("realtime:print_jobs:restaurant_id=eq.%s", r.restaurantID),
+		"topic": fmt.Sprintf("realtime:agent-jobs:restaurant_id=eq.%s", r.restaurantID),
 		"event": "phx_join",
 		"payload": map[string]interface{}{
 			"config": map[string]interface{}{
@@ -208,6 +210,12 @@ func (r *RealtimeNotifier) subscribe() error {
 						"event":  "*",
 						"schema": "public",
 						"table":  "print_jobs",
+						"filter": fmt.Sprintf("restaurant_id=eq.%s", r.restaurantID),
+					},
+					{
+						"event":  "*",
+						"schema": "public",
+						"table":  "bill_sync_jobs",
 						"filter": fmt.Sprintf("restaurant_id=eq.%s", r.restaurantID),
 					},
 				},
@@ -331,12 +339,26 @@ func (r *RealtimeNotifier) handleMessage(msg []byte) {
 		var payload struct {
 			Data struct {
 				Type   string          `json:"type"`
+				Table  string          `json:"table"`
 				Record json.RawMessage `json:"record"`
 			} `json:"data"`
 		}
 
 		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 			log.Printf("Realtime: failed to parse postgres_changes: %v", err)
+			return
+		}
+
+		table := strings.TrimSpace(payload.Data.Table)
+		switch table {
+		case "bill_sync_jobs":
+			// Doorbell only — sole ingest is PullAndIngest (same as compensation).
+			go pullBillSyncsOnce(context.Background(), r.config)
+			return
+		case "print_jobs", "":
+			// empty table: legacy payloads without table field → treat as print_jobs
+		default:
+			log.Printf("Realtime: ignore table %q", table)
 			return
 		}
 
@@ -373,6 +395,8 @@ func (r *RealtimeNotifier) compensationFetch(ctx context.Context) error {
 	if admitted > 0 {
 		logCompensationSummary("Realtime", fetched, admitted)
 	}
+	// Same compensation round: bill sync (no second notifier).
+	pullBillSyncsOnce(ctx, r.config)
 	return nil
 }
 

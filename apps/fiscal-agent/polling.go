@@ -93,5 +93,7 @@ func (p *PollingNotifier) fetch(ctx context.Context) error {
 	if admitted > 0 {
 		logCompensationSummary("Polling", fetched, admitted)
 	}
+	// Same fallback loop — bill sync rides along (no dedicated bill-sync poller).
+	pullBillSyncsOnce(ctx, p.config)
 	return nil
 }
