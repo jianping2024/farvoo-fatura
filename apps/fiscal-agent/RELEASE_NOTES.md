@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.88
+
+**Admin 反馈对齐 restaurant Toast**
+
+- 唯一组件 `FiscalUI.showToast`（`/fiscal-ui/toast.js`）；Admin 保存/开票成败右下角 toast，禁止页内再造 banner。
+- 测试锁死 Admin 不得内联第二套 `showToast`。
+
 ## 0.3.87
 
 **M2.5 草稿工作台：整桌/按人 + NIF**

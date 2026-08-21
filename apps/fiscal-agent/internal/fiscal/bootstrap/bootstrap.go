@@ -123,6 +123,7 @@ func StartCore(opts Options) (*Runtime, error) {
 // MountRoutes registers fiscal API + Admin UI on mux (ONLY HTTP mount path).
 func MountRoutes(mux *http.ServeMux, svc *service.FiscalService, storeID string) {
 	api.Mount(mux, api.HandlerDeps{Fiscal: svc, StoreID: storeID})
+	registerFiscalUIRoutes(mux)
 	mux.HandleFunc("GET /", serveAdminHTML)
 	mux.HandleFunc("GET /admin", serveAdminHTML)
 	mux.HandleFunc("GET /fiscal", serveAdminHTML)

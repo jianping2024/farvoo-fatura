@@ -1,0 +1,61 @@
+/* Styles for FiscalUI.showToast — layout matches restaurant ToastContainer (bottom-right). */
+.fiscal-toast-root {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.fiscal-toast {
+  pointer-events: auto;
+  display: inline-flex;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  min-width: 12rem;
+  max-width: calc(100vw - 2rem);
+  transition: opacity 0.3s, transform 0.3s;
+  opacity: 1;
+  background: #fff;
+}
+
+.fiscal-toast--hide {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.fiscal-toast__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.fiscal-toast__msg {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-align: center;
+}
+
+.fiscal-toast--success {
+  background: #e7f6ec;
+  border-color: #8dcf9e;
+}
+
+.fiscal-toast--error {
+  background: #fdecea;
+  border-color: #f0a8a0;
+}
+
+.fiscal-toast--info {
+  background: #fff8e6;
+  border-color: #f0d78c;
+}
