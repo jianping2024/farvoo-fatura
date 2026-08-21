@@ -89,6 +89,7 @@ type IssueRequest struct {
 	StoreID    string
 	RequestID  string
 	OperatorID string
+	StationID  string // station_printers key for ORIGINAL fiscal print
 	Snapshot   SaleSnapshot
 }
 

@@ -9,7 +9,8 @@
 //   GET  /local/v1/print-jobs/{printJobId}
 //   GET  /local/v1/bill-drafts
 //   GET  /local/v1/bill-drafts/{id}
-//   POST /local/v1/bill-drafts/{id}/issue   (mode whole_table|person + optional customer_nif)
+//   GET  /local/v1/printers                 (mapped station_printers)
+//   POST /local/v1/bill-drafts/{id}/issue   (mode + station_id + optional customer_nif)
 //   POST /local/v1/bill-drafts/{id}/discard
 //
 // Default bind: 127.0.0.1; optional STORE_LAN mode with device pairing.

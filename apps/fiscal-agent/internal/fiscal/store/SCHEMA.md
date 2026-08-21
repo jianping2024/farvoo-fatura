@@ -1,7 +1,7 @@
 # Fiscal Agent SQLite Schema（P0）速查
 
 > **完整字段与规则**：[`docs/fiscal-sqlite-schema.zh.md`](../../../../../../docs/fiscal-sqlite-schema.zh.md)  
-> **DDL**：[`migrations/001_init.sql`](migrations/001_init.sql)、[`migrations/002_bill_sync_drafts.sql`](migrations/002_bill_sync_drafts.sql)
+> **DDL**：[`migrations/001_init.sql`](migrations/001_init.sql)、[`migrations/002_bill_sync_drafts.sql`](migrations/002_bill_sync_drafts.sql)、[`migrations/003_print_job_station.sql`](migrations/003_print_job_station.sql)
 
 ## 原则
 
@@ -43,9 +43,9 @@ idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL
 |-------------|-----|----------|
 | Series | `series` | 仅 `IssueFT` 更新 `last_number`/`last_hash` |
 | Invoice（签后不可变） | `invoices` + lines/snapshot/payments | 仅 `IssueFT` INSERT |
-| Fiscal Print Job | `local_print_jobs` + `print_attempts` | 签发插入；`worker.Worker` 认领完成 |
+| Fiscal Print Job | `local_print_jobs` + `print_attempts` | 签发插入（含 `station_id`）；`worker.Worker` 认领；物理出纸仅注入 `PrintBytesFn`→`printToTarget` |
 | Bill sync draft | `bill_sync_drafts` | 写入仅 `UpsertBillDraftOpen`；开票后清仅 `DeleteBillDraftsBySale` |
 | 序号字符串 | — | 仅 `compliance.FormatSequence` / `FormatInvoiceNo` / `FormatATCUD` |
 | Hash 输入 | — | 仅 `compliance.BuildSignPayload` |
 | QR | — | 仅 `compliance.BuildQR` |
-| 打印快照 / ESC/POS | — | 仅 `print.BuildPayload` / `print.RenderESCPOS` |
+| 打印快照 / ESC/POS | — | 仅 `print.BuildPayload` / `print.RenderESCPOS`（版式）；出纸不另造 TCP/WinSpool |

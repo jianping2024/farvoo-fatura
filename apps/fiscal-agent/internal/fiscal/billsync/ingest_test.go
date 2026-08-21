@@ -106,7 +106,7 @@ func TestIngest_AlreadyInvoicedViaTaxDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
-		DraftID: draft.ID, OperatorID: "op-demo-cashier", Mode: "whole_table",
+		DraftID: draft.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "whole_table",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +159,7 @@ func TestIssueFromBillDraft_WholeTablePrintsAndDeletes(t *testing.T) {
 	}
 
 	res, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
-		DraftID: draft2.ID, OperatorID: "op-demo-cashier", Mode: "whole_table",
+		DraftID: draft2.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "whole_table",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -211,7 +211,7 @@ func TestIssueFromBillDraft_RejectNonOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
-		DraftID: d1.ID, OperatorID: "op-demo-cashier", Mode: "whole_table",
+		DraftID: d1.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "whole_table",
 	})
 	if err == nil {
 		t.Fatal("expected reject discarded draft")
@@ -270,7 +270,7 @@ func TestIssueFromBillDraft_PersonPartialThenComplete(t *testing.T) {
 		t.Fatal(err)
 	}
 	resA, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
-		DraftID: draft.ID, OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
+		DraftID: draft.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
 		CustomerNIF: "123456789", CustomerName: "Ana",
 	})
 	if err != nil {
@@ -285,7 +285,7 @@ func TestIssueFromBillDraft_PersonPartialThenComplete(t *testing.T) {
 		t.Fatalf("draft should remain open after first person: %+v", list)
 	}
 	_, err = svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
-		DraftID: draft.ID, OperatorID: "op-demo-cashier", Mode: "whole_table",
+		DraftID: draft.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "whole_table",
 	})
 	if err == nil {
 		t.Fatal("expected scope_mutex")
@@ -295,7 +295,7 @@ func TestIssueFromBillDraft_PersonPartialThenComplete(t *testing.T) {
 		t.Fatalf("want scope_mutex got %v", err)
 	}
 	resA2, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
-		DraftID: draft.ID, OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
+		DraftID: draft.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -304,7 +304,7 @@ func TestIssueFromBillDraft_PersonPartialThenComplete(t *testing.T) {
 		t.Fatalf("idempotent person: %+v vs %+v", resA2, resA)
 	}
 	resB, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
-		DraftID: draft.ID, OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeB,
+		DraftID: draft.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeB,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -332,7 +332,7 @@ func TestIssueFromBillDraft_RejectPersonOnWholeTable(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
-		DraftID: d.ID, OperatorID: "op-demo-cashier", Mode: "person", ScopeID: "11111111-1111-1111-1111-111111111111",
+		DraftID: d.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person", ScopeID: "11111111-1111-1111-1111-111111111111",
 	})
 	if err == nil {
 		t.Fatal("expected validation_failed")
@@ -361,7 +361,7 @@ func TestDiscardBillDrafts_KeepsInvoices(t *testing.T) {
 		t.Fatal(err)
 	}
 	res, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
-		DraftID: draft.ID, OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
+		DraftID: draft.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
 	})
 	if err != nil {
 		t.Fatal(err)

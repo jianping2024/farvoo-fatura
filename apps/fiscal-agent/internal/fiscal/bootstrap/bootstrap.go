@@ -25,9 +25,10 @@ type Options struct {
 	StoreID                   string
 	SigningKeyPEMPath         string
 	Seed                      bool
-	PrintSink                 worker.Sink
+	PrintSink                 worker.Sink // Memory UAT / fiscal-local; Agent uses PrintBytesFn
 	ATClient                  at.Client
-	StationPrinters           map[string]string // for ResolveFiscalPrinterTCP when PrintSink nil
+	StationPrintersFn         worker.StationPrintersFn // live config.station_printers
+	PrintBytesFn              worker.PrintBytesFn      // Agent: parsePrinterTarget+printToTarget ONLY
 }
 
 // Runtime is a started fiscal stack (HTTP optional).
@@ -105,14 +106,21 @@ func StartCore(opts Options) (*Runtime, error) {
 	mem := &worker.MemorySink{}
 	sink := opts.PrintSink
 	if sink == nil {
-		sink = worker.NewFiscalPrintSink(opts.StationPrinters, mem)
+		sink = mem
 	}
-	w := &worker.Worker{DB: db, Sink: sink}
+	w := &worker.Worker{
+		DB: db, Sink: sink,
+		StationPrintersFn: opts.StationPrintersFn,
+		PrintBytesFn:      opts.PrintBytesFn,
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	go w.Loop(ctx, 200*time.Millisecond)
 
 	mux := http.NewServeMux()
-	MountRoutes(mux, svc, opts.StoreID)
+	MountRoutes(mux, api.HandlerDeps{
+		Fiscal: svc, StoreID: opts.StoreID,
+		StationPrintersFn: opts.StationPrintersFn,
+	})
 
 	return &Runtime{
 		DB: db, Service: svc, Worker: w, Sink: mem, Mux: mux,
@@ -121,8 +129,8 @@ func StartCore(opts Options) (*Runtime, error) {
 }
 
 // MountRoutes registers fiscal API + Admin UI on mux (ONLY HTTP mount path).
-func MountRoutes(mux *http.ServeMux, svc *service.FiscalService, storeID string) {
-	api.Mount(mux, api.HandlerDeps{Fiscal: svc, StoreID: storeID})
+func MountRoutes(mux *http.ServeMux, deps api.HandlerDeps) {
+	api.Mount(mux, deps)
 	registerFiscalUIRoutes(mux)
 	mux.HandleFunc("GET /", serveAdminHTML)
 	mux.HandleFunc("GET /admin", serveAdminHTML)

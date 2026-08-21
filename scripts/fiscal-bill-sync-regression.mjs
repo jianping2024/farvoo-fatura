@@ -370,7 +370,7 @@ async function main() {
         'POST',
         `/local/v1/bill-drafts/${openDraftId}/issue`,
         '--body',
-        JSON.stringify({ operator_id: 'op-demo-cashier', mode: 'whole_table' }),
+        JSON.stringify({ station_id: "st-uat", operator_id: 'op-demo-cashier', mode: 'whole_table' }),
       ),
     );
     const drafts = JSON.parse(await uatCmd('req', 'GET', '/local/v1/bill-drafts'));
@@ -419,7 +419,7 @@ async function main() {
         'POST',
         `/local/v1/bill-drafts/${d.id}/issue`,
         '--body',
-        JSON.stringify({
+        JSON.stringify({ station_id: "st-uat",
           operator_id: 'op-demo-cashier',
           mode: 'whole_table',
           customer_nif: '123456789',
@@ -520,7 +520,7 @@ async function main() {
     const r = await fetch(`${base}/local/v1/bill-drafts/${splitDraftId}/issue`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ operator_id: 'op-demo-cashier', mode: 'whole_table' }),
+      body: JSON.stringify({ station_id: "st-uat", operator_id: 'op-demo-cashier', mode: 'whole_table' }),
     });
     const body = await r.json();
     record(
@@ -541,7 +541,7 @@ async function main() {
         'POST',
         `/local/v1/bill-drafts/${splitDraftId}/issue`,
         '--body',
-        JSON.stringify({
+        JSON.stringify({ station_id: "st-uat",
           operator_id: 'op-demo-cashier',
           mode: 'person',
           scope_id: scopeA,
@@ -575,7 +575,7 @@ async function main() {
     const r = await fetch(`${base}/local/v1/bill-drafts/${splitDraftId}/issue`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ operator_id: 'op-demo-cashier', mode: 'whole_table' }),
+      body: JSON.stringify({ station_id: "st-uat", operator_id: 'op-demo-cashier', mode: 'whole_table' }),
     });
     const body = await r.json();
     record('scope-mutex-after-person', r.status >= 400 && body.error === 'scope_mutex', JSON.stringify(body));
@@ -591,7 +591,7 @@ async function main() {
         'POST',
         `/local/v1/bill-drafts/${splitDraftId}/issue`,
         '--body',
-        JSON.stringify({ operator_id: 'op-demo-cashier', mode: 'person', scope_id: scopeA }),
+        JSON.stringify({ station_id: "st-uat", operator_id: 'op-demo-cashier', mode: 'person', scope_id: scopeA }),
       ),
     );
     const hit = again.IdempotentHit || again.idempotent_hit;
@@ -609,7 +609,7 @@ async function main() {
         'POST',
         `/local/v1/bill-drafts/${splitDraftId}/issue`,
         '--body',
-        JSON.stringify({ operator_id: 'op-demo-cashier', mode: 'person', scope_id: scopeB }),
+        JSON.stringify({ station_id: "st-uat", operator_id: 'op-demo-cashier', mode: 'person', scope_id: scopeB }),
       ),
     );
     const tax = (
@@ -681,7 +681,7 @@ async function main() {
         'POST',
         `/local/v1/bill-drafts/${d.id}/issue`,
         '--body',
-        JSON.stringify({ operator_id: 'op-demo-cashier', mode: 'person', scope_id: scopeA }),
+        JSON.stringify({ station_id: "st-uat", operator_id: 'op-demo-cashier', mode: 'person', scope_id: scopeA }),
       ),
     );
     await uatCmd('req', 'POST', `/local/v1/bill-drafts/${d.id}/discard`, '--body', '{}');

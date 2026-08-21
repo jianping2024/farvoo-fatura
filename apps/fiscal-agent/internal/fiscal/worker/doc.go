@@ -1,5 +1,5 @@
-// Package worker claims local_print_jobs and drives physical output.
-//
-// Separate from cloud JobProcessor (main package): cloud queue = business receipts;
-// fiscal worker = SQLite local_print_jobs only.
 package worker
+
+// Package worker: fiscal local_print_jobs drain.
+// Physical out on Agent = injected PrintBytesFn → main parsePrinterTarget + printToTarget (tcp|winspool).
+// Do NOT add a second TCP/WinSpool implementation here.

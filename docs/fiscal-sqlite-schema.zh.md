@@ -510,6 +510,7 @@ MVP 不进 SAF-T `DocumentTotals/Payment`。
 | print_purpose | TEXT | 是 | ORIGINAL / REPRINT |
 | job_status | TEXT | 是 | |
 | logical_role | TEXT | 是 | 默认 `fiscal_receipt_printer` |
+| station_id | TEXT | 否 | Agent `station_printers` 键；开票写入；worker 经 `printToTarget` 出纸 |
 | payload_json | TEXT | 是 | 冻结 print_payload v1 |
 | payload_hash | TEXT | 是 | |
 | attempts | INTEGER | 是 | 默认 0 |

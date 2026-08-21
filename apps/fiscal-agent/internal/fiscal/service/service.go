@@ -277,7 +277,7 @@ func (s *FiscalService) IssueDocument(ctx context.Context, req domain.IssueReque
 	}
 	rec, err := s.db.IssueFT(ctx, sig, store.IssueParams{
 		StoreID: req.StoreID, RequestID: req.RequestID, DocType: docType,
-		Snapshot: req.Snapshot, OperatorID: req.OperatorID,
+		Snapshot: req.Snapshot, OperatorID: req.OperatorID, StationID: req.StationID,
 	})
 	if err != nil {
 		return nil, err
@@ -323,6 +323,7 @@ type IssueBillDraftInput struct {
 	OperatorID   string
 	Mode         string // whole_table | person; empty → whole_table
 	ScopeID      string
+	StationID    string // required: station_printers key for ORIGINAL print
 	CustomerNIF  string
 	CustomerName string
 }
@@ -386,6 +387,10 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraf
 	}
 	if operatorID == "" {
 		return nil, fmt.Errorf("fiscal: operator_id required")
+	}
+	stationID := strings.TrimSpace(in.StationID)
+	if stationID == "" {
+		return nil, coded("validation_failed", "station_id required")
 	}
 	if mode != "whole_table" && mode != "person" {
 		return nil, coded("validation_failed", fmt.Sprintf("mode %q invalid", mode))
@@ -465,7 +470,7 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraf
 	}
 
 	res, err := s.IssueDocument(ctx, domain.IssueRequest{
-		StoreID: s.storeID, RequestID: reqID, OperatorID: operatorID, Snapshot: sale,
+		StoreID: s.storeID, RequestID: reqID, OperatorID: operatorID, StationID: stationID, Snapshot: sale,
 	}, domain.DocumentFT)
 	if err != nil {
 		return nil, err

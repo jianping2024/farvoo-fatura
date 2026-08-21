@@ -31,12 +31,13 @@ type Signer interface {
 
 // IssueParams is input already validated by service.
 type IssueParams struct {
-	StoreID   string
-	RequestID string
-	DocType   domain.DocumentType
-	Snapshot  domain.SaleSnapshot
+	StoreID    string
+	RequestID  string
+	DocType    domain.DocumentType
+	Snapshot   domain.SaleSnapshot
 	OperatorID string
-	NowUTC    time.Time // injectable for tests
+	StationID  string // Agent station_printers key for ORIGINAL print job
+	NowUTC     time.Time // injectable for tests
 }
 
 // IssueRecord is the committed fiscal document + ORIGINAL print job.
@@ -258,9 +259,9 @@ func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueR
 	}
 	_, err = tx.Exec(`INSERT INTO local_print_jobs (
 		id, invoice_id, document_type, print_purpose, job_status, logical_role,
-		payload_json, payload_hash, attempts, last_error, created_at, updated_at, printed_at, created_by
-	) VALUES (?, ?, ?, 'ORIGINAL', 'PENDING', 'fiscal_receipt_printer', ?, ?, 0, NULL, ?, ?, NULL, ?)`,
-		printJobID, docID, string(p.DocType), string(payloadJSON), payloadHashPrint, nowRFC, nowRFC, opID)
+		payload_json, payload_hash, attempts, last_error, created_at, updated_at, printed_at, created_by, station_id
+	) VALUES (?, ?, ?, 'ORIGINAL', 'PENDING', 'fiscal_receipt_printer', ?, ?, 0, NULL, ?, ?, NULL, ?, ?)`,
+		printJobID, docID, string(p.DocType), string(payloadJSON), payloadHashPrint, nowRFC, nowRFC, opID, nullStr(p.StationID))
 	if err != nil {
 		return nil, fmt.Errorf("store: insert print job: %w", err)
 	}

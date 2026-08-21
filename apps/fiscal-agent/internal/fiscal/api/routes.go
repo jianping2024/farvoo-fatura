@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"farvoo-fiscal-agent/internal/fiscal/billsync"
@@ -14,8 +15,15 @@ import (
 
 // HandlerDeps groups dependencies for HTTP handlers.
 type HandlerDeps struct {
-	Fiscal  *service.FiscalService
-	StoreID string
+	Fiscal            *service.FiscalService
+	StoreID           string
+	StationPrintersFn func() map[string]string // live Agent station_printers; may be nil
+}
+
+// PrinterStation is one mapped station for GET /local/v1/printers.
+type PrinterStation struct {
+	ID      string `json:"id"`
+	Printer string `json:"printer"`
 }
 
 // Mount registers fiscal local routes. Prefix: /local/v1
@@ -50,6 +58,9 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("GET /local/v1/print-jobs/{printJobId}", func(w http.ResponseWriter, r *http.Request) {
 		handleGetPrintJob(w, r, deps)
 	})
+	mux.HandleFunc("GET /local/v1/printers", func(w http.ResponseWriter, r *http.Request) {
+		handleListPrinters(w, r, deps)
+	})
 	mux.HandleFunc("GET /local/v1/bill-drafts", func(w http.ResponseWriter, r *http.Request) {
 		handleListBillDrafts(w, r, deps)
 	})
@@ -62,6 +73,21 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/discard", func(w http.ResponseWriter, r *http.Request) {
 		handleDiscardBillDraft(w, r, deps)
 	})
+}
+
+func handleListPrinters(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	stations := []PrinterStation{}
+	if deps.StationPrintersFn != nil {
+		for id, raw := range deps.StationPrintersFn() {
+			id = strings.TrimSpace(id)
+			raw = strings.TrimSpace(raw)
+			if id == "" || raw == "" {
+				continue
+			}
+			stations = append(stations, PrinterStation{ID: id, Printer: raw})
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"stations": stations})
 }
 
 func handleSetupStatus(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
@@ -334,6 +360,7 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		OperatorID   string `json:"operator_id"`
 		Mode         string `json:"mode"`
 		ScopeID      string `json:"scope_id"`
+		StationID    string `json:"station_id"`
 		CustomerNIF  string `json:"customer_nif"`
 		CustomerName string `json:"customer_name"`
 	}
@@ -346,7 +373,7 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 	}
 	res, err := deps.Fiscal.IssueFromBillDraft(r.Context(), service.IssueBillDraftInput{
 		DraftID: id, OperatorID: body.OperatorID, Mode: body.Mode, ScopeID: body.ScopeID,
-		CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
+		StationID: body.StationID, CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
 	})
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {

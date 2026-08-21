@@ -70,6 +70,11 @@ input,textarea{width:100%;padding:.4rem;box-sizing:border-box;margin:0 0 .4rem;b
 <div class="box">
 <h2>7. 账单草稿工作台</h2>
 <p>整桌 / 按人开 FT；每人独立 NIF（空=散客）；丢弃只删草稿不删票。</p>
+<p>税票出纸复用档口绑定（TCP/USB）。无映射请先配置打印机。</p>
+<label>打印档口 <select id="stationSel"><option value="">（加载中…）</option></select>
+<button id="btnPrinters" type="button">刷新档口</button>
+<a href="http://127.0.0.1:17892/configure" target="_blank" rel="noopener">管理档口打印机</a>
+</label>
 <button id="btnDrafts" type="button">刷新草稿</button>
 <div id="draftActions"></div>
 <pre id="drafts">…</pre>
@@ -106,6 +111,39 @@ async function withBusy(btn, labelBusy, fn){
   btn.textContent=labelBusy||'处理中…';
   try{ await fn(); }
   finally { btn.disabled=false; btn.textContent=prev; }
+}
+const STATION_LS='fiscal_admin_station_id';
+async function refreshPrinters(){
+  const sel=document.getElementById('stationSel');
+  const data=await j('GET','/local/v1/printers');
+  const stations=data.stations||[];
+  const prev=localStorage.getItem(STATION_LS)||sel.value||'';
+  sel.innerHTML='';
+  if(!stations.length){
+    const o=document.createElement('option');
+    o.value=''; o.textContent='（无档口 — 请先绑定）';
+    sel.appendChild(o);
+    return [];
+  }
+  stations.forEach(s=>{
+    const o=document.createElement('option');
+    o.value=s.id;
+    o.textContent=(s.printer||s.id)+' ['+s.id.slice(0,8)+'…]';
+    sel.appendChild(o);
+  });
+  if(prev && stations.some(s=>s.id===prev)) sel.value=prev;
+  else sel.value=stations[0].id;
+  localStorage.setItem(STATION_LS, sel.value);
+  return stations;
+}
+function requireStation(){
+  const sid=(document.getElementById('stationSel').value||'').trim();
+  if(!sid){
+    toast('请先绑定并选择打印档口（17892/configure）','error');
+    throw {error:'validation_failed', message:'station_id required'};
+  }
+  localStorage.setItem(STATION_LS, sid);
+  return sid;
 }
 async function refresh(){ statusEl.textContent=JSON.stringify(await j('GET','/local/v1/setup/status'),null,2); }
 function issuedSet(scopes){
@@ -160,11 +198,21 @@ async function refreshDrafts(){
         await withBusy(b,'开票中…',async()=>{
           try{
             const res=await j('POST','/local/v1/bill-drafts/'+encodeURIComponent(d.id)+'/issue',{
-              operator_id:'op-demo-cashier', mode:'whole_table',
+              operator_id:'op-demo-cashier', mode:'whole_table', station_id:requireStation(),
               customer_nif:nif.value.trim(), customer_name:nif.value.trim()?('Cliente '+nif.value.trim()):''
             });
             const no=res.InvoiceNo||res.invoice_no||'';
-            toast('整桌开票成功 '+no+(res.cleanup_pending?'（草稿待清理）':''),'success');
+            let msg='整桌开票成功 '+no+(res.cleanup_pending?'（草稿待清理）':'');
+            const pj=res.PrintJobID||res.print_job_id;
+            if(pj){
+              try{
+                const job=await j('GET','/local/v1/print-jobs/'+encodeURIComponent(pj));
+                if(job.job_status==='FAILED'||job.job_status==='PRINT_FAILED'){
+                  msg+=' — 已开票但未出纸: '+(job.last_error||job.job_status);
+                  toast(msg,'error');
+                } else toast(msg,'success');
+              }catch(_){ toast(msg,'success'); }
+            } else toast(msg,'success');
             out.textContent=JSON.stringify(res,null,2);
             await refreshDrafts();
           }catch(e){
@@ -198,7 +246,7 @@ async function refreshDrafts(){
             await withBusy(b,'开票中…',async()=>{
               try{
                 const res=await j('POST','/local/v1/bill-drafts/'+encodeURIComponent(d.id)+'/issue',{
-                  operator_id:'op-demo-cashier', mode:'person', scope_id:sp.scope_id,
+                  operator_id:'op-demo-cashier', mode:'person', scope_id:sp.scope_id, station_id:requireStation(),
                   customer_nif:nif.value.trim(), customer_name:nif.value.trim()?(sp.name||nif.value.trim()):''
                 });
                 const no=res.InvoiceNo||res.invoice_no||'';
@@ -224,10 +272,21 @@ document.getElementById('btnStatus').onclick=()=>withBusy(btnStatus,'刷新中�
   try{ await refresh(); toast('状态已刷新','success'); }
   catch(e){ statusEl.textContent=JSON.stringify(e,null,2); toast(errText(e),'error'); throw e; }
 });
+document.getElementById('btnPrinters').onclick=()=>withBusy(btnPrinters,'刷新中…',async()=>{
+  try{
+    const st=await refreshPrinters();
+    toast(st.length?('档口 '+st.length+' 个'):'无档口映射','success');
+  }catch(e){ toast(errText(e),'error'); throw e; }
+});
 document.getElementById('btnDrafts').onclick=()=>withBusy(btnDrafts,'刷新中…',async()=>{
   try{ await refreshDrafts(); toast('草稿已刷新','success'); }
   catch(e){ draftsEl.textContent=JSON.stringify(e,null,2); toast(errText(e),'error'); throw e; }
 });
+document.getElementById('stationSel').onchange=()=>{
+  const v=document.getElementById('stationSel').value;
+  if(v) localStorage.setItem(STATION_LS, v);
+};
+refreshPrinters().catch(()=>{});
 document.getElementById('btnTax').onclick=()=>withBusy(btnTax,'保存中…',async()=>{
   try{
     await j('PUT','/local/v1/setup/taxpayer',{tax_registration_number:nif.value,legal_name:legal.value,address_detail:addr.value,city:city.value,postal_code:postal.value,country:'PT',timezone:'Europe/Lisbon',software_certificate_number:'0'});

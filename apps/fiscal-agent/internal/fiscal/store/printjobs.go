@@ -45,6 +45,7 @@ type PrintJobView struct {
 	DocumentType string `json:"document_type"`
 	PrintPurpose string `json:"print_purpose"`
 	JobStatus    string `json:"job_status"`
+	StationID    string `json:"station_id,omitempty"`
 	Attempts     int    `json:"attempts"`
 	LastError    string `json:"last_error,omitempty"`
 	CreatedAt    string `json:"created_at"`
@@ -56,9 +57,9 @@ func (d *DB) GetPrintJob(id string) (*PrintJobView, error) {
 	var v PrintJobView
 	var lastErr, printed sql.NullString
 	err := d.SQL.QueryRow(`SELECT id, invoice_id, document_type, print_purpose, job_status, attempts,
-		last_error, created_at, printed_at FROM local_print_jobs WHERE id = ?`, id).
+		last_error, created_at, printed_at, IFNULL(station_id,'') FROM local_print_jobs WHERE id = ?`, id).
 		Scan(&v.ID, &v.InvoiceID, &v.DocumentType, &v.PrintPurpose, &v.JobStatus, &v.Attempts,
-			&lastErr, &v.CreatedAt, &printed)
+			&lastErr, &v.CreatedAt, &printed, &v.StationID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -75,39 +76,44 @@ func (d *DB) GetPrintJob(id string) (*PrintJobView, error) {
 }
 
 // ClaimNextPrintJob claims one PENDING job (FOR UPDATE style via status flip).
-func (d *DB) ClaimNextPrintJob() (jobID string, payloadJSON []byte, err error) {
+func (d *DB) ClaimNextPrintJob() (jobID, stationID string, payloadJSON []byte, err error) {
 	tx, err := d.SQL.Begin()
 	if err != nil {
-		return "", nil, err
+		return "", "", nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
 	var id string
 	var payload string
-	err = tx.QueryRow(`SELECT id, payload_json FROM local_print_jobs
-		WHERE job_status = 'PENDING' ORDER BY created_at LIMIT 1`).Scan(&id, &payload)
+	var station sql.NullString
+	err = tx.QueryRow(`SELECT id, payload_json, station_id FROM local_print_jobs
+		WHERE job_status = 'PENDING' ORDER BY created_at LIMIT 1`).Scan(&id, &payload, &station)
 	if errors.Is(err, sql.ErrNoRows) {
 		_ = tx.Commit()
-		return "", nil, ErrNotFound
+		return "", "", nil, ErrNotFound
 	}
 	if err != nil {
-		return "", nil, err
+		return "", "", nil, err
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := tx.Exec(`UPDATE local_print_jobs SET job_status = 'PROCESSING', attempts = attempts + 1, updated_at = ?
 		WHERE id = ? AND job_status = 'PENDING'`, now, id)
 	if err != nil {
-		return "", nil, err
+		return "", "", nil, err
 	}
 	n, _ := res.RowsAffected()
 	if n == 0 {
 		_ = tx.Commit()
-		return "", nil, ErrNotFound
+		return "", "", nil, ErrNotFound
 	}
 	if err := tx.Commit(); err != nil {
-		return "", nil, err
+		return "", "", nil, err
 	}
-	return id, []byte(payload), nil
+	sid := ""
+	if station.Valid {
+		sid = station.String
+	}
+	return id, sid, []byte(payload), nil
 }
 
 // CompletePrintJob marks success or failure and mirrors invoice.print_status.

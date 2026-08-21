@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.89
+
+**税票 FT 出纸复用档口 `printToTarget`（TCP/USB）**
+
+- 开票必填 `station_id`；`local_print_jobs.station_id`；worker 经注入 `PrintBytesFn`→`parsePrinterTarget`+`printToTarget`（与厨打同一出口）。
+- `GET /local/v1/printers`；Admin §7 档口下拉 + 链 `17892/configure`；去掉 fiscal 专用 TCPSink / Memory 假成功生产路径。
+
 ## 0.3.88
 
 **Admin 反馈对齐 restaurant Toast**

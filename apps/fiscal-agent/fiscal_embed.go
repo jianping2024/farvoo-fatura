@@ -95,17 +95,36 @@ func startEmbeddedFiscal(cfg *config) error {
 	}
 
 	var stations map[string]string
+	configPath := defaultConfigPath()
 	if cfg != nil {
 		stations = cfg.StationPrinters
 	}
+	stationsFn := func() map[string]string {
+		c, err := loadConfig(configPath)
+		if err != nil || c == nil {
+			if stations == nil {
+				return map[string]string{}
+			}
+			return stations
+		}
+		return c.StationPrinters
+	}
+	printBytes := func(printerRaw string, data []byte) error {
+		t, err := parsePrinterTarget(printerRaw)
+		if err != nil {
+			return err
+		}
+		return printToTarget(t, data)
+	}
 
 	opts := bootstrap.Options{
-		DBPath:          dbPath,
-		DataDir:         dataDir,
-		BindAddr:        bind,
-		StoreID:         storeID,
-		StationPrinters: stations,
-		Seed:            os.Getenv("FISCAL_SEED") == "1",
+		DBPath:            dbPath,
+		DataDir:           dataDir,
+		BindAddr:          bind,
+		StoreID:           storeID,
+		StationPrintersFn: stationsFn,
+		PrintBytesFn:      printBytes,
+		Seed:              os.Getenv("FISCAL_SEED") == "1",
 	}
 	if opts.Seed {
 		cwd, _ := os.Getwd()
