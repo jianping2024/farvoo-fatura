@@ -11,6 +11,7 @@
 |------|------|
 | [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) | 库表权威 |
 | [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md) | 草稿工作台（整桌/按人）Agent 侧定稿 |
+| [`fiscal-ft-receipt-layout.zh.md`](fiscal-ft-receipt-layout.zh.md) | FT 热敏票面版式（草稿；RenderESCPOS） |
 | 需求 v0.17（`document/`，本仓 gitignore） | 业务/合规规则 |
 | restaurant-ordering `docs/technical/farvoo-fiscal-agent-integration.zh.md` | Farvoo ↔ Agent 对接（只读） |
 | [`print-agent-lessons.zh.md`](print-agent-lessons.zh.md) | 打印/安装器踩坑 |

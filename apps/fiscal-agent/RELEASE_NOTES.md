@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.90
+
+**FT 热敏票面按零售参考重整（唯一 RenderESCPOS）**
+
+- 抬头 → 票号/日期/联次 → 客户 → 明细（税率%）→ 合计+付款 → Resumo IVA → ATCUD/QR/认证/Hash。
+- 禁止 `FT: FT FT…` 重复前缀；出纸仍 `printToTarget`。见 `docs/fiscal-ft-receipt-layout.zh.md`。
+
 ## 0.3.89
 
 **税票 FT 出纸复用档口 `printToTarget`（TCP/USB）**
