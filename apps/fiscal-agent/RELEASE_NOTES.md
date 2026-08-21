@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.86
+
+**账单同步进本地草稿（不自动开票）**
+
+- 打印 Realtime/Polling 同管道加订 `bill_sync_jobs` → `pending-bill-syncs` → 本地 `bill_sync_drafts` + 按 `item_code` upsert 商品，再 ack。
+- Admin 增加「账单草稿」列表；`vat_rate` 仅百分数串（如 `"13.00"`）；已开票再同步 ack `already_invoiced`。
+- 分账/开票工作台未含本版。
+
 ## 0.3.85
 
 **本机激活默认开：不用再设系统环境变量**

@@ -125,14 +125,14 @@ Get station UUIDs from **Dashboard → 餐厅设置 → 出品档口** (`print_s
 
 ## Windows release (installers)
 
-Version is in **[VERSION](./VERSION)** (currently `0.3.84`). Production builds: **[`.github/workflows/fiscal-agent-release.yml`](../../.github/workflows/fiscal-agent-release.yml)**.
+Version is in **[VERSION](./VERSION)** (currently `0.3.86`). Production builds: **[`.github/workflows/fiscal-agent-release.yml`](../../.github/workflows/fiscal-agent-release.yml)**.
 
 ### Publish a release
 
 ```bash
 # VERSION file must match the tag suffix
-git tag fiscal-agent-v0.3.84
-git push origin fiscal-agent-v0.3.84
+git tag fiscal-agent-v0.3.86
+git push origin fiscal-agent-v0.3.86
 ```
 
 Assets (stable names for Dashboard download links):
