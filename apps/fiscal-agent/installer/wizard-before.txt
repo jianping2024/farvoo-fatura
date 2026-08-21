@@ -1,6 +1,11 @@
 Before you install
 ==================
 
+Version
+  The Setup window title shows this build as: Farvoo Fiscal Agent + version
+  (example: "Farvoo Fiscal Agent 0.3.95"). Confirm it matches the release you
+  downloaded before continuing.
+
 Administrator / upgrade
   This Setup asks for administrator permission so it installs under Program Files
   and can update an existing Farvoo Fiscal Agent (same Add or Remove Programs entry;

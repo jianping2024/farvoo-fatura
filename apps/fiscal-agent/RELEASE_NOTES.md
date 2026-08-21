@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.95
+
+**Setup 向导显示版本号**
+
+- `AppVerName` = 产品名 + 版本（安装窗口标题可见，例如 `Farvoo Fiscal Agent 0.3.95`）。
+- `UninstallDisplayName` 仍为产品名（托盘卸载前缀匹配不变）。
+- `wizard-before` 提示对照窗口标题确认版本。
+
 ## 0.3.94
 
 **收据菜品行不加粗（列头 / 应付仍加粗）**

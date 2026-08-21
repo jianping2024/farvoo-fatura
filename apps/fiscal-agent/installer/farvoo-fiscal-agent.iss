@@ -23,8 +23,8 @@
 AppId={{A3B8F2E1-9C4D-4A2B-8E1F-0D5C6B7A8E9F}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-; Stable DisplayName stem (no " version X") so tray prefix match stays one product name.
-AppVerName={#MyAppName}
+; Wizard title shows version (AppVerName). ARP / tray uninstall keep stem-only DisplayName.
+AppVerName={#MyAppName} {#MyAppVersion}
 UninstallDisplayName={#MyAppName}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}

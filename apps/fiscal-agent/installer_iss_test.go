@@ -22,7 +22,7 @@ func TestInnoSetupUpgradeStory(t *testing.T) {
 		"CloseApplications=no",
 		"Flags: ignoreversion restartreplace",
 		"AppId={{" + fiscalAgentInnoGUID + "}}",
-		"AppVerName={#MyAppName}",
+		"AppVerName={#MyAppName} {#MyAppVersion}",
 		"UninstallDisplayName={#MyAppName}",
 		`#define MyAppName "Farvoo Fiscal Agent"`,
 		`#define MyAppExe "FarvooFiscalAgent.exe"`,
