@@ -74,6 +74,20 @@ async function main() {
 
   const dbPath = join(dataRoot, 'fiscal.db');
   const secureDir = join(dataRoot, 'fiscal-secure');
+  const configPath = join(dataRoot, 'config.json');
+  const stationId = 'st-m2';
+  writeFileSync(
+    configPath,
+    JSON.stringify(
+      {
+        station_printers: {
+          [stationId]: 'tcp:127.0.0.1:9100',
+        },
+      },
+      null,
+      2,
+    ),
+  );
 
   const fake = spawn('go', ['run', '.'], {
     cwd: join(agent, 'dev', 'fake-printer'),
@@ -97,7 +111,7 @@ async function main() {
   });
   await new Promise((r) => setTimeout(r, 1500));
 
-  const child = spawn('go', ['run', '.', '-fiscal-standalone'], {
+  const child = spawn('go', ['run', '.', '-fiscal-standalone', '-config', configPath], {
     cwd: agent,
     env: {
       ...process.env,
@@ -108,7 +122,6 @@ async function main() {
       FISCAL_STORE_ID: 'store-demo-001',
       FISCAL_AT_ENV: 'mock',
       FISCAL_ALLOW_LOCAL_PROVISION: '1',
-      FISCAL_PRINTER_TCP: '127.0.0.1:9100',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: true,
@@ -211,6 +224,7 @@ async function main() {
       JSON.stringify({
         request_id: requestId,
         operator_id: 'op-demo-cashier',
+        station_id: stationId,
         document_type: 'FT',
         snapshot: {
           source_system: 'farvoo',
@@ -301,6 +315,7 @@ async function main() {
       JSON.stringify({
         request_id: requestId2,
         operator_id: 'op-demo-cashier',
+        station_id: stationId,
         document_type: 'FT',
         snapshot: {
           source_system: 'farvoo',

@@ -170,11 +170,16 @@ func runFiscalStandalone(args []string) {
 	cfgPath := fs.String("config", "", "optional config for station_printers / restaurant_id")
 	_ = fs.Parse(args)
 
-	var cfg *config
-	path := *cfgPath
+	path := strings.TrimSpace(*cfgPath)
 	if path == "" {
 		path = defaultConfigPath()
+	} else {
+		// Sole redirect so StationPrintersFn reloads the same file (not ~/.config).
+		configPathOverride = path
+		defer func() { configPathOverride = "" }()
 	}
+
+	var cfg *config
 	if c, err := loadConfig(path); err == nil {
 		cfg = c
 	}

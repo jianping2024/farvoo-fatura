@@ -1,7 +1,7 @@
 // Package api exposes the Agent Local HTTP API.
 //
 // Routes (v0.17 + bill-sync):
-//   POST /local/v1/fiscal-documents
+//   POST /local/v1/fiscal-documents          (station_id required when Agent PrintBytesFn is live)
 //   GET  /local/v1/fiscal-documents/by-request/{requestId}
 //   POST /local/v1/fiscal-documents/{documentId}/reprints
 //   POST /local/v1/fiscal-documents/{documentId}/credit-notes

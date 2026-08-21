@@ -27,6 +27,7 @@
 | 4 | ATCUD + QR **居中**；QR module **6** | VOZ 居中大 QR |
 | 5 | 抬头居中 + 单行明细 | 既有定法，保留 |
 | 6 | **TOTAL 突出**：加粗 + 倍高（`ESC E` + `GS ! 0x01`）；Liquido/IVA/付款普通 | VOZ：`TOTAL: … Euro` 明显大于邻行 |
+| 7 | **票面宽 48 列**（与厨打 `escposWidth` 一致）；虚线/金额行铺满 80mm；**禁止**再缩到 32 | VOZ/Pingo 样票铺满；0.3.95 真机 32 列右边空白丑 |
 
 四字 = `compliance.QRHashChars`（已有）；斜杠是否出现取决于 Hash，不硬插。
 
@@ -53,6 +54,7 @@
 | 项 | 定法 |
 |----|------|
 | 渲染 | 仅 `RenderESCPOS` |
+| 票面列宽 | 仅 `receiptWidth`（=48，与厨打一致） |
 | 认证票面拼装 | 仅 `formatCertificationFace` |
 | 票号标签行 | 仅 `formatFaturaNoLine` |
 | 拉丁编码 | 仅 `escposenc.Windows1252` |
@@ -65,3 +67,4 @@
 2. 认证在 ATCUD/QR 之前；含四字 + `Processado`  
 3. QR 后至 cut 无业务 ASCII 行  
 4. `rg 'func RenderESCPOS'`=1；`Hash:` 拼接在 Render 中不存在  
+5. `receiptWidth=48`；虚线与 `moneyRow` 行宽均为 48  

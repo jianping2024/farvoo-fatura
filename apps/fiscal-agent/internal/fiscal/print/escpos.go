@@ -12,8 +12,12 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 )
 
-// Narrow thermal usable width (chars). Avoids orphan amount wrap on POS-80.
-const receiptWidth = 32
+// Receipt usable width (Font A cols) — same as kitchen escposWidth (48) so
+// dashes/money rows fill an 80mm POS roll like VOZ/Pingo samples. Do not shrink.
+const receiptWidth = 48
+
+// Resumo IVA column band widths (sum = receiptWidth).
+var ivaSummaryColWidths = []int{10, 14, 12, 12}
 
 // cutFeedDots — GS V 66 n; enough paper past knife so last line is not bisected.
 const cutFeedDots byte = 80
@@ -89,7 +93,7 @@ func RenderESCPOS(p *Payload) []byte {
 	w(moneyRow("Liquido", p.Totals.NetTotal, receiptWidth))
 	w(moneyRow("IVA", p.Totals.TaxPayable, receiptWidth))
 	bold(true)
-	b.Write([]byte{0x1D, 0x21, 0x01}) // GS ! — double height only (width stays 32 cols)
+	b.Write([]byte{0x1D, 0x21, 0x01}) // GS ! — double height only (width stays Font A cols)
 	w(moneyRow("TOTAL", p.Totals.GrossTotal, receiptWidth))
 	b.Write([]byte{0x1D, 0x21, 0x00})
 	bold(false)
@@ -100,14 +104,14 @@ func RenderESCPOS(p *Payload) []byte {
 	// ⑧ IVA summary
 	rule()
 	w("Resumo IVA")
-	w(padColumns([]string{"Taxa", "Base", "IVA", "Tot"}, []int{6, 9, 8, 9}))
+	w(padColumns([]string{"Taxa", "Base", "IVA", "Tot"}, ivaSummaryColWidths))
 	for _, row := range p.TaxSummary {
 		w(padColumns([]string{
 			formatVATPercent(row.VATRate),
 			row.TaxBase,
 			row.TaxAmount,
 			row.Gross,
-		}, []int{6, 9, 8, 9}))
+		}, ivaSummaryColWidths))
 	}
 
 	// ⑥⑦⑧ foot: cert → ATCUD → QR (centered); nothing below QR but feed+cut

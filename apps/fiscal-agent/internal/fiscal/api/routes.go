@@ -200,6 +200,7 @@ type issueBody struct {
 	StoreID    string              `json:"store_id"`
 	RequestID  string              `json:"request_id"`
 	OperatorID string              `json:"operator_id"`
+	StationID  string              `json:"station_id"`
 	DocType    string              `json:"document_type"`
 	Snapshot   domain.SaleSnapshot `json:"snapshot"`
 }
@@ -222,7 +223,8 @@ func handleIssue(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		docType = domain.DocumentFT
 	}
 	res, err := deps.Fiscal.IssueDocument(r.Context(), domain.IssueRequest{
-		StoreID: body.StoreID, RequestID: body.RequestID, OperatorID: body.OperatorID, Snapshot: body.Snapshot,
+		StoreID: body.StoreID, RequestID: body.RequestID, OperatorID: body.OperatorID,
+		StationID: body.StationID, Snapshot: body.Snapshot,
 	}, docType)
 	if errors.Is(err, store.ErrConflict) {
 		writeErr(w, http.StatusConflict, "idempotency_conflict", err.Error())

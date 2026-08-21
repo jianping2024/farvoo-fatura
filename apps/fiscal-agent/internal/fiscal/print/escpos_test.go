@@ -127,8 +127,8 @@ func TestFormatFaturaNoLine(t *testing.T) {
 }
 
 func TestFormatItemLine_SingleRow(t *testing.T) {
-	got := formatItemLine("2.00", "19.95", "0.23", "Guarana Antarctica", "39.90", 32)
-	if utf8.RuneCountInString(got) != 32 {
+	got := formatItemLine("2.00", "19.95", "0.23", "Guarana Antarctica", "39.90", receiptWidth)
+	if utf8.RuneCountInString(got) != receiptWidth {
 		t.Fatalf("width=%d %q", utf8.RuneCountInString(got), got)
 	}
 	if !strings.HasPrefix(got, "2.00x 19.95 23%-") {
@@ -161,9 +161,44 @@ func TestRenderESCPOS_AccentEncoding(t *testing.T) {
 }
 
 func TestMoneyRow_FitsWidth(t *testing.T) {
-	got := moneyRow("Numerario", "44.30", 32)
-	if utf8.RuneCountInString(got) != 32 {
+	got := moneyRow("Numerario", "44.30", receiptWidth)
+	if utf8.RuneCountInString(got) != receiptWidth {
 		t.Fatalf("len=%d", utf8.RuneCountInString(got))
+	}
+}
+
+func TestReceiptWidthMatchesKitchen(t *testing.T) {
+	if receiptWidth != 48 {
+		t.Fatalf("receiptWidth=%d want 48 (kitchen escposWidth)", receiptWidth)
+	}
+	sum := 0
+	for _, w := range ivaSummaryColWidths {
+		sum += w
+	}
+	if sum != receiptWidth {
+		t.Fatalf("ivaSummaryColWidths sum=%d want %d", sum, receiptWidth)
+	}
+}
+
+func TestRenderESCPOS_RuleFillsWidth(t *testing.T) {
+	p := &Payload{
+		DocumentType: "FT", InvoiceNo: "FT X/1", PrintPurpose: "ORIGINAL",
+		IssuedAt: "2026-08-21T12:00:00",
+		Merchant: MerchantBlock{LegalName: "Demo", TaxRegistrationNumber: "1"},
+		Lines: []LineBlock{{
+			DisplayName: "Tea", Quantity: "1.00", UnitPriceGross: "1.00",
+			VATRate: "0.23", LineGross: "1.00",
+		}},
+		Totals:     TotalsBlock{NetTotal: "0.81", TaxPayable: "0.19", GrossTotal: "1.00"},
+		Compliance: ComplianceBlock{ATCUD: "A-1", QR: QRBlock{Content: "A:1"}, HashControlChars: "Ab12"},
+	}
+	plain := decodeTicketText(RenderESCPOS(p))
+	wantRule := strings.Repeat("-", receiptWidth)
+	if !strings.Contains(plain, wantRule) {
+		t.Fatalf("missing full-width rule %q in:\n%s", wantRule, plain)
+	}
+	if strings.Contains(plain, strings.Repeat("-", 32)+"\n") && !strings.Contains(plain, wantRule) {
+		t.Fatal("still using 32-col rule")
 	}
 }
 

@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.96
+
+**FT 票面铺满 80mm（48 列，对齐样票）**
+
+- `receiptWidth` 32→48（与厨打 `escposWidth` 一致）；虚线/`moneyRow`/Resumo IVA 铺满；禁止再缩窄。
+- 唯一渲染仍 `RenderESCPOS`。权威：`docs/fiscal-ft-receipt-layout.zh.md` P0#7。
+- `POST /local/v1/fiscal-documents` 贯通 `station_id`；M2 smoke 用 `-config` + `station_printers`（去掉失效的 `FISCAL_PRINTER_TCP`）。
+
 ## 0.3.95
 
 **Setup 向导显示版本号**
