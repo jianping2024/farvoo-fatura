@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"farvoo-fiscal-agent/internal/escposenc"
 )
 
 // 80mm paper ≈ 48 chars (Font A). Layout follows reference thermal receipts.
@@ -312,7 +314,7 @@ func (w *escposWriter) applyTextMode(mode escposTextMode) {
 
 // enableLatin selects WPC1252 (covers Portuguese accents on most 80mm printers).
 func (w *escposWriter) enableLatin() {
-	w.prefix = append(w.prefix, 0x1B, 0x74, 16)
+	w.prefix = append(w.prefix, escposenc.SelectCodeTable(escposenc.CodeTableWPC1252)...)
 }
 
 func (w *escposWriter) enableUTF8() {

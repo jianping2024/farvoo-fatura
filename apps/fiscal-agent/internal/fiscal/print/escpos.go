@@ -6,11 +6,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
+	"farvoo-fiscal-agent/internal/escposenc"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 )
 
-const receiptWidth = 42
+// Narrow thermal usable width (chars). Avoids orphan amount wrap on POS-80.
+const receiptWidth = 32
 
 // RenderESCPOS is the ONLY fiscal receipt ESC/POS renderer (from frozen Payload).
 // Layout authority: docs/fiscal-ft-receipt-layout.zh.md
@@ -20,7 +23,12 @@ func RenderESCPOS(p *Payload) []byte {
 	}
 	var b bytes.Buffer
 	b.Write([]byte{0x1B, 0x40}) // init
-	w := func(s string) { b.WriteString(s); b.WriteByte('\n') }
+	b.Write(escposenc.SelectCodeTable(escposenc.CodeTableWPC1252))
+
+	w := func(s string) {
+		b.Write(escposenc.Windows1252(s))
+		b.WriteByte('\n')
+	}
 	rule := func() { w(strings.Repeat("-", receiptWidth)) }
 
 	// ① merchant
@@ -57,8 +65,8 @@ func RenderESCPOS(p *Payload) []byte {
 		if name == "" {
 			name = strings.TrimSpace(ln.Description)
 		}
-		w(truncate(name, receiptWidth))
-		left := fmt.Sprintf("x%s  %s  IVA %s", ln.Quantity, ln.UnitPriceGross, formatVATPercent(ln.VATRate))
+		w(truncateRunes(name, receiptWidth))
+		left := fmt.Sprintf("x%s %s IVA %s", ln.Quantity, ln.UnitPriceGross, formatVATPercent(ln.VATRate))
 		w(moneyRow(left, ln.LineGross, receiptWidth))
 	}
 
@@ -74,33 +82,43 @@ func RenderESCPOS(p *Payload) []byte {
 	// ⑧ IVA summary
 	rule()
 	w("Resumo IVA")
-	w(padColumns([]string{"Taxa", "Base", "IVA", "Total"}, []int{8, 11, 11, 12}))
+	w(padColumns([]string{"Taxa", "Base", "IVA", "Tot"}, []int{6, 9, 8, 9}))
 	for _, row := range p.TaxSummary {
 		w(padColumns([]string{
 			formatVATPercent(row.VATRate),
 			row.TaxBase,
 			row.TaxAmount,
 			row.Gross,
-		}, []int{8, 11, 11, 12}))
+		}, []int{6, 9, 8, 9}))
 	}
 
-	// ⑨–⑪ compliance foot
+	// ⑨ ATCUD
 	w("")
 	w("ATCUD: " + p.Compliance.ATCUD)
+
+	// ⑩ QR centered, smaller module
 	if qr := strings.TrimSpace(p.Compliance.QR.Content); qr != "" {
-		writeQR(&b, qr)
+		b.Write([]byte{0x1B, 0x61, 1}) // align center
+		writeQR(&b, qr, 4)
+		b.Write([]byte{0x1B, 0x61, 0}) // align left
+		b.WriteByte('\n')
+		b.WriteByte('\n')
 	}
+
+	// ⑪ cert + hash
 	if p.Compliance.CertificationLine != "" {
 		w(p.Compliance.CertificationLine)
 	}
 	if p.Compliance.HashControlChars != "" {
 		w("Hash: " + p.Compliance.HashControlChars)
 	}
-	b.Write([]byte{0x1D, 0x56, 0x00}) // full cut
+
+	// ⑫ feed then cut
+	b.Write([]byte{'\n', '\n', '\n'})
+	b.Write([]byte{0x1D, 0x56, 0x00})
 	return b.Bytes()
 }
 
-// formatInvoiceLine prints the formal invoice number once (no "FT: FT FT…" pile-up).
 func formatInvoiceLine(docType, invoiceNo string) string {
 	no := strings.TrimSpace(invoiceNo)
 	dt := strings.TrimSpace(docType)
@@ -122,13 +140,12 @@ func formatInvoiceLine(docType, invoiceNo string) string {
 func formatViaLine(purpose string) string {
 	switch strings.TrimSpace(purpose) {
 	case string(domain.PrintReprint):
-		return "2ª Via — Reprint"
+		return "2a Via - Reprint"
 	default:
-		return "1ª Via — Original"
+		return "1a Via - Original"
 	}
 }
 
-// formatIssuedAt turns payload issued_at into DD/MM/YYYY HH:MM.
 func formatIssuedAt(raw string) string {
 	s := strings.TrimSpace(raw)
 	if s == "" {
@@ -149,7 +166,6 @@ func formatIssuedAt(raw string) string {
 	return s
 }
 
-// formatVATPercent maps payload decimal rate (0.23) or percent (23 / 23.00) → "23%".
 func formatVATPercent(raw string) string {
 	s := strings.TrimSpace(raw)
 	s = strings.TrimSuffix(s, "%")
@@ -192,16 +208,21 @@ func formatPaymentMethod(method string) string {
 }
 
 func moneyRow(label, amount string, width int) string {
-	label = truncate(strings.TrimSpace(label), width-1)
+	label = strings.TrimSpace(label)
 	amount = strings.TrimSpace(amount)
-	gap := width - len(label) - len(amount)
+	lw := utf8.RuneCountInString(label)
+	aw := utf8.RuneCountInString(amount)
+	if lw+aw+1 > width {
+		keep := width - aw - 1
+		if keep < 1 {
+			return truncateRunes(amount, width)
+		}
+		label = truncateRunes(label, keep)
+		lw = utf8.RuneCountInString(label)
+	}
+	gap := width - lw - aw
 	if gap < 1 {
 		gap = 1
-		label = truncate(label, width-len(amount)-1)
-		gap = width - len(label) - len(amount)
-		if gap < 1 {
-			return truncate(label+" "+amount, width)
-		}
 	}
 	return label + strings.Repeat(" ", gap) + amount
 }
@@ -209,39 +230,50 @@ func moneyRow(label, amount string, width int) string {
 func padColumns(cols []string, widths []int) string {
 	var b strings.Builder
 	for i, c := range cols {
-		w := 8
+		w := 6
 		if i < len(widths) {
 			w = widths[i]
 		}
-		cell := truncate(c, w)
+		cell := truncateRunes(c, w)
 		b.WriteString(cell)
-		if pad := w - len(cell); pad > 0 && i < len(cols)-1 {
+		pad := w - utf8.RuneCountInString(cell)
+		if pad > 0 && i < len(cols)-1 {
 			b.WriteString(strings.Repeat(" ", pad))
 		}
 	}
-	return truncate(b.String(), receiptWidth)
+	return truncateRunes(b.String(), receiptWidth)
 }
 
-func truncate(s string, n int) string {
+func truncateRunes(s string, n int) string {
 	if n <= 0 {
 		return ""
 	}
-	if len(s) <= n {
+	if utf8.RuneCountInString(s) <= n {
 		return s
 	}
-	if n <= 1 {
-		return s[:n]
+	var b strings.Builder
+	i := 0
+	for _, r := range s {
+		if i >= n-3 {
+			break
+		}
+		b.WriteRune(r)
+		i++
 	}
-	return s[:n-3] + "..."
+	b.WriteString("...")
+	return b.String()
 }
 
-func writeQR(b *bytes.Buffer, content string) {
+func writeQR(b *bytes.Buffer, content string, moduleSize byte) {
+	if moduleSize < 1 {
+		moduleSize = 4
+	}
 	data := []byte(content)
 	storeLen := len(data) + 3
 	pL := byte(storeLen % 256)
 	pH := byte(storeLen / 256)
 	b.Write([]byte{0x1D, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00})
-	b.Write([]byte{0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, 0x06})
+	b.Write([]byte{0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, moduleSize})
 	b.Write([]byte{0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x30})
 	b.Write([]byte{0x1D, 0x28, 0x6B, pL, pH, 0x31, 0x50, 0x30})
 	b.Write(data)

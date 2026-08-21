@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.91
+
+**FT 票面 P1：1252 编码、列宽 32、QR 居中缩小、脚留白**
+
+- 拉丁编码唯一 `internal/escposenc.Windows1252` + `ESC t 16`（厨打复用）；禁 UTF-8 直出。
+- 列宽 32 + rune 计宽，避免付款行孤儿金额；联次 `1a Via - Original`；QR 居中 module=4，认证/Hash 后留白再切。
+- 权威：`docs/fiscal-ft-receipt-layout.zh.md`。
+
 ## 0.3.90
 
 **FT 热敏票面按零售参考重整（唯一 RenderESCPOS）**

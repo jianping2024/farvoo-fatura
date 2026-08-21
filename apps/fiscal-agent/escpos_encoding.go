@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"golang.org/x/text/encoding/charmap"
+	"farvoo-fiscal-agent/internal/escposenc"
 )
 
 var defaultGuestPayerRe = regexp.MustCompile(`(?i)^(客人|Guest|Pessoa)\s*(\d+)$`)
@@ -120,23 +120,5 @@ func labelsASCII(lab ticketLabels) ticketLabels {
 }
 
 func encodeWindows1252(s string) []byte {
-	enc := charmap.Windows1252.NewEncoder()
-	out, err := enc.Bytes([]byte(s))
-	if err != nil {
-		// Replace unmappable runes, then retry.
-		var b strings.Builder
-		for _, r := range s {
-			if r < 128 {
-				b.WriteRune(r)
-				continue
-			}
-			t := string(r)
-			if _, err2 := enc.Bytes([]byte(t)); err2 == nil {
-				b.WriteRune(r)
-			}
-			// Skip unmappable runes (never print "?" placeholders on receipts).
-		}
-		out, _ = enc.Bytes([]byte(b.String()))
-	}
-	return out
+	return escposenc.Windows1252(s)
 }
