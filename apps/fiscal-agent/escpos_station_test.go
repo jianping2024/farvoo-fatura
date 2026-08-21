@@ -157,6 +157,46 @@ func TestHanColumnRowQtyInkInBand(t *testing.T) {
 	}
 }
 
+func TestStationSlipColumnBlockUsesHanCanvas_ZhForcesLatinMenu(t *testing.T) {
+	zh := jobPayload{
+		Locale: "zh",
+		Lines: []jobLine{{
+			ItemCode: "031", ItemName: "Guarana", DisplayName: "031-Guarana", Qty: 1,
+		}},
+	}
+	wZh := newEscposForStationTicket(zh)
+	if !stationSlipColumnBlockUsesHanCanvas(zh, wZh) {
+		t.Fatal("zh chrome must use Han Items/Qty canvas even when dish names are Latin")
+	}
+	en := jobPayload{
+		Locale: "en",
+		Lines: []jobLine{{
+			ItemCode: "031", ItemName: "Guarana", DisplayName: "031-Guarana", Qty: 1,
+		}},
+	}
+	wEn := newEscposForStationTicket(en)
+	if stationSlipColumnBlockUsesHanCanvas(en, wEn) {
+		t.Fatal("en Latin menu must stay on Font A column layout")
+	}
+}
+
+func TestZhStationSlipLatinMenuEmitsColumnRasters(t *testing.T) {
+	payload, _ := json.Marshal(jobPayload{
+		Locale:           "zh",
+		TableDisplayName: "A-03",
+		GuestCount:       2,
+		Lines: []jobLine{
+			{ItemCode: "031", ItemName: "Guarana", DisplayName: "031-Guarana", Qty: 1},
+			{ItemCode: "007", ItemName: "Cola Zero", DisplayName: "007-Cola Zero", Qty: 1},
+		},
+	})
+	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
+	// 菜品/数量 header + 2 item rows → at least 3 GS v 0 from escposHanColumnRow
+	if n := bytes.Count(raw, []byte{0x1D, 0x76, 0x30, 0x00}); n < 3 {
+		t.Fatalf("GS v 0 count %d want >= 3 (zh Items/Qty on sole Han canvas)", n)
+	}
+}
+
 func TestHanNoteWrapUsesPixelWidth(t *testing.T) {
 	fontPx := bitmapTextDefaultFontPx
 	prefix := labelsFor("zh").itemNote

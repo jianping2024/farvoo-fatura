@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.97
+
+**中文出品联：表头与数量同一套列画布**
+
+- `stationSlipColumnBlockUsesHanCanvas`：`print_locale=zh` 时强制 Items/Qty 走 Han 画布（含西文菜名）；禁止中文表头位图 + 拉丁等宽数量混排导致「数量」与数字错位。
+- 葡/英出品联、收据、FT 不动。唯一门闸仍该函数。
+
 ## 0.3.96
 
 **FT 票面铺满 80mm（48 列，对齐样票）**

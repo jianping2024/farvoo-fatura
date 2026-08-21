@@ -152,10 +152,15 @@ func hanColumnLabelMaxPx(kind hanColumnRowKind) int {
 	return max
 }
 
-// stationSlipColumnBlockUsesHanCanvas — Items/Qty block uses one 576px ruler when any line needs Han bitmap.
+// stationSlipColumnBlockUsesHanCanvas — Items/Qty block uses one 576px ruler.
+// Sole gate: zh chrome (菜品/数量) OR any line/note with Han. Never mix space-padded
+// Han labels via escposBitmapText with Latin Font A qty (qty drifts to paper edge).
 func stationSlipColumnBlockUsesHanCanvas(p jobPayload, w *escposWriter) bool {
 	if w.textMode != escposTextBitmap {
 		return false
+	}
+	if printLocaleIsZh(p.Locale) {
+		return true
 	}
 	for _, ln := range p.Lines {
 		if hasHan(stationSlipItemLabel(ln)) || hasHan(strings.TrimSpace(ln.Note)) {
