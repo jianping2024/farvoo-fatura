@@ -60,19 +60,21 @@ async function main() {
   if (existsSync(dataDir)) rmSync(dataDir, { recursive: true, force: true });
 
   const pem = readFileSync(pemPath, 'utf8');
+  const childEnv = { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` };
+  for (const k of Object.keys(childEnv)) {
+    if (k.startsWith('FISCAL_')) delete childEnv[k];
+  }
+  Object.assign(childEnv, {
+    FISCAL_DB: dbPath,
+    FISCAL_DATA_DIR: dataDir,
+    FISCAL_BIND: bind,
+    FISCAL_STORE_ID: 'store-demo-001',
+    FISCAL_AT_ENV: 'mock',
+    FISCAL_ALLOW_LOCAL_PROVISION: '1',
+  });
   const child = spawn('go', ['run', './cmd/fiscal-local'], {
     cwd: agent,
-    env: {
-      ...process.env,
-      PATH: `/opt/homebrew/bin:${process.env.PATH}`,
-      FISCAL_DB: dbPath,
-      FISCAL_DATA_DIR: dataDir,
-      FISCAL_BIND: bind,
-      FISCAL_STORE_ID: 'store-demo-001',
-      FISCAL_AT_ENV: 'mock',
-      FISCAL_ALLOW_LOCAL_PROVISION: '1',
-      // no FISCAL_SEED
-    },
+    env: childEnv,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let boot = '';
@@ -80,7 +82,7 @@ async function main() {
   child.stderr.on('data', (d) => (boot += d));
 
   let healthy = false;
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 120; i++) {
     if (child.exitCode != null && child.exitCode !== 0) break;
     try {
       await uatCmd('stack-health');

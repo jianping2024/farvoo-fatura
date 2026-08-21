@@ -317,20 +317,80 @@ func (s *FiscalService) ListBillDrafts(limit int) ([]store.BillSyncDraft, error)
 	return s.db.ListBillDrafts(limit)
 }
 
-// IssueFromBillDraft is the ONLY entry that issues FT from a bill_sync_drafts row.
-// Maps via billsync.DraftToSaleSnapshot → IssueDocument → DeleteBillDraftsBySale.
-func (s *FiscalService) IssueFromBillDraft(ctx context.Context, draftID, operatorID string) (*domain.IssueResult, error) {
+// IssueBillDraftInput is the ONLY input shape for IssueFromBillDraft.
+type IssueBillDraftInput struct {
+	DraftID      string
+	OperatorID   string
+	Mode         string // whole_table | person; empty → whole_table
+	ScopeID      string
+	CustomerNIF  string
+	CustomerName string
+}
+
+// BillDraftDetail is GET /bill-drafts/{id} read model.
+type BillDraftDetail struct {
+	Draft        store.BillSyncDraft `json:"draft"`
+	Payload      billsync.Snapshot   `json:"payload"`
+	IssuedScopes []store.SignedFTScope `json:"issued_scopes"`
+}
+
+// GetBillDraftDetail loads one draft + payload + issued scopes (tax DB).
+func (s *FiscalService) GetBillDraftDetail(draftID string) (*BillDraftDetail, error) {
 	if s == nil || s.db == nil {
 		return nil, fmt.Errorf("fiscal: service not configured")
 	}
-	draftID = strings.TrimSpace(draftID)
-	operatorID = strings.TrimSpace(operatorID)
+	draft, err := s.db.GetBillDraftByID(strings.TrimSpace(draftID))
+	if err != nil {
+		return nil, err
+	}
+	var snap billsync.Snapshot
+	if err := json.Unmarshal([]byte(draft.PayloadJSON), &snap); err != nil {
+		return nil, fmt.Errorf("fiscal: draft payload: %w", err)
+	}
+	if strings.TrimSpace(snap.SourceSaleID) == "" {
+		snap.SourceSaleID = draft.SourceSaleID
+	}
+	scopes, err := s.db.ListSignedFTScopesForSale(s.storeID, snap.SourceSystem, draft.SourceSaleID)
+	if err != nil {
+		return nil, err
+	}
+	return &BillDraftDetail{Draft: *draft, Payload: snap, IssuedScopes: scopes}, nil
+}
+
+// DiscardBillDrafts is the ONLY user discard entry: hard-delete drafts for the sale; never deletes invoices.
+func (s *FiscalService) DiscardBillDrafts(draftID string) error {
+	if s == nil || s.db == nil {
+		return fmt.Errorf("fiscal: service not configured")
+	}
+	draft, err := s.db.GetBillDraftByID(strings.TrimSpace(draftID))
+	if err != nil {
+		return err
+	}
+	return s.db.DeleteBillDraftsBySale(draft.SourceSaleID)
+}
+
+// IssueFromBillDraft is the ONLY entry that issues FT from a bill_sync_drafts row.
+// Maps via billsync.DraftToSaleSnapshot / DraftPartToSaleSnapshot → IssueDocument → DeleteBillDraftsBySale (when due).
+func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraftInput) (*domain.IssueResult, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("fiscal: service not configured")
+	}
+	draftID := strings.TrimSpace(in.DraftID)
+	operatorID := strings.TrimSpace(in.OperatorID)
+	mode := strings.TrimSpace(in.Mode)
+	if mode == "" {
+		mode = "whole_table"
+	}
 	if draftID == "" {
 		return nil, fmt.Errorf("fiscal: draft id required")
 	}
 	if operatorID == "" {
 		return nil, fmt.Errorf("fiscal: operator_id required")
 	}
+	if mode != "whole_table" && mode != "person" {
+		return nil, coded("validation_failed", fmt.Sprintf("mode %q invalid", mode))
+	}
+
 	draft, err := s.db.GetBillDraftByID(draftID)
 	if err != nil {
 		return nil, err
@@ -348,21 +408,138 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, draftID, operato
 	if strings.TrimSpace(snap.RequestID) == "" {
 		snap.RequestID = draft.RequestID
 	}
-	sale, err := billsync.DraftToSaleSnapshot(snap)
+	if strings.TrimSpace(snap.SourceSystem) == "" {
+		snap.SourceSystem = "farvoo"
+	}
+
+	payloadType := strings.TrimSpace(snap.ScopeType)
+
+	existing, err := s.db.ListSignedFTScopesForSale(s.storeID, snap.SourceSystem, draft.SourceSaleID)
 	if err != nil {
 		return nil, err
 	}
-	reqID := "draft-issue:" + draft.ID
+	if err := checkScopeMutex(mode, existing); err != nil {
+		return nil, err
+	}
+
+	// Already-issued scope → return original (NIF changes must not conflict).
+	if hit := findIssuedScope(mode, strings.TrimSpace(in.ScopeID), draft.SourceSaleID, existing); hit != nil {
+		rec, err := s.db.GetIssueRecordByID(hit.DocumentID)
+		if err != nil {
+			return nil, err
+		}
+		return &domain.IssueResult{
+			DocumentID: rec.DocumentID, InvoiceNo: rec.InvoiceNo, ATCUD: rec.ATCUD,
+			DocumentType: rec.DocumentType, DocumentStatus: rec.DocumentStatus,
+			PrintJobID: rec.PrintJobID, PrintStatus: rec.PrintStatus,
+			IssuedAt: rec.IssuedAt, IdempotentHit: true,
+		}, nil
+	}
+
+	switch mode {
+	case "whole_table":
+		if payloadType != "whole_table" {
+			return nil, coded("validation_failed", fmt.Sprintf("mode=whole_table requires payload whole_table (got %q)", payloadType))
+		}
+	case "person":
+		if payloadType != "split" {
+			return nil, coded("validation_failed", fmt.Sprintf("mode=person requires payload split (got %q)", payloadType))
+		}
+	}
+
+	var sale domain.SaleSnapshot
+	var reqID string
+	switch mode {
+	case "whole_table":
+		sale, err = billsync.DraftToSaleSnapshot(snap)
+		reqID = "draft-issue:" + draft.ID + ":whole_table"
+	case "person":
+		sale, err = billsync.DraftPartToSaleSnapshot(snap, in.ScopeID)
+		reqID = "draft-issue:" + draft.ID + ":person:" + strings.TrimSpace(in.ScopeID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := billsync.ApplyCustomerOverride(&sale, in.CustomerNIF, in.CustomerName); err != nil {
+		return nil, err
+	}
+
 	res, err := s.IssueDocument(ctx, domain.IssueRequest{
 		StoreID: s.storeID, RequestID: reqID, OperatorID: operatorID, Snapshot: sale,
 	}, domain.DocumentFT)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.db.DeleteBillDraftsBySale(draft.SourceSaleID); err != nil {
-		return nil, fmt.Errorf("fiscal: issued but draft cleanup failed: %w", err)
+
+	shouldDelete := mode == "whole_table"
+	if mode == "person" {
+		after, err := s.db.ListSignedFTScopesForSale(s.storeID, snap.SourceSystem, draft.SourceSaleID)
+		if err != nil {
+			return nil, err
+		}
+		shouldDelete = allSplitScopesIssued(snap, after)
+	}
+	if shouldDelete {
+		if err := s.db.DeleteBillDraftsBySale(draft.SourceSaleID); err != nil {
+			res.CleanupPending = true
+			// Ticket already signed — do not fail the client.
+			return res, nil
+		}
 	}
 	return res, nil
+}
+
+func checkScopeMutex(mode string, existing []store.SignedFTScope) error {
+	hasWhole, hasPerson := false, false
+	for _, sc := range existing {
+		switch strings.TrimSpace(sc.ScopeType) {
+		case "whole_table":
+			hasWhole = true
+		case "person":
+			hasPerson = true
+		}
+	}
+	if mode == "person" && hasWhole {
+		return coded("scope_mutex", "whole_table FT already exists for this sale")
+	}
+	if mode == "whole_table" && hasPerson {
+		return coded("scope_mutex", "person FT already exists for this sale")
+	}
+	return nil
+}
+
+func findIssuedScope(mode, scopeID, saleID string, existing []store.SignedFTScope) *store.SignedFTScope {
+	wantType := "whole_table"
+	wantID := saleID
+	if mode == "person" {
+		wantType = "person"
+		wantID = scopeID
+	}
+	for i := range existing {
+		if strings.TrimSpace(existing[i].ScopeType) == wantType && strings.TrimSpace(existing[i].ScopeID) == wantID {
+			return &existing[i]
+		}
+	}
+	return nil
+}
+
+func allSplitScopesIssued(snap billsync.Snapshot, scopes []store.SignedFTScope) bool {
+	if len(snap.Splits) == 0 {
+		return false
+	}
+	have := map[string]bool{}
+	for _, sc := range scopes {
+		if strings.TrimSpace(sc.ScopeType) == "person" {
+			have[strings.TrimSpace(sc.ScopeID)] = true
+		}
+	}
+	for _, sp := range snap.Splits {
+		id := strings.TrimSpace(sp.ScopeID)
+		if id == "" || !have[id] {
+			return false
+		}
+	}
+	return true
 }
 
 // DB exposes store for bill-sync puller wiring (read/ingest only via billsync package).

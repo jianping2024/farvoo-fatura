@@ -8,7 +8,9 @@
 //   POST /local/v1/fiscal-documents/{documentId}/debit-notes  (deferred UI)
 //   GET  /local/v1/print-jobs/{printJobId}
 //   GET  /local/v1/bill-drafts
-//   POST /local/v1/bill-drafts/{id}/issue  (whole_table from draft → IssueDocument → hard-delete drafts)
+//   GET  /local/v1/bill-drafts/{id}
+//   POST /local/v1/bill-drafts/{id}/issue   (mode whole_table|person + optional customer_nif)
+//   POST /local/v1/bill-drafts/{id}/discard
 //
 // Default bind: 127.0.0.1; optional STORE_LAN mode with device pairing.
 package api

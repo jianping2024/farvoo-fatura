@@ -64,9 +64,9 @@ input,textarea{width:100%;padding:.4rem;box-sizing:border-box;margin:0 0 .4rem;b
 <pre id="out">ready</pre>
 </div>
 <div class="box">
-<h2>7. 账单草稿（同步）</h2>
-<p>open 草稿可整桌开 FT（散客+现金）；成功后硬删该桌全部草稿。</p>
-<button id="btnDrafts">刷新 bill-drafts</button>
+<h2>7. 账单草稿工作台</h2>
+<p>整桌 / 按人开 FT；每人独立 NIF（空=散客）；丢弃只删草稿不删票。</p>
+<button id="btnDrafts">刷新草稿</button>
 <div id="draftActions"></div>
 <pre id="drafts">…</pre>
 </div>
@@ -85,23 +85,95 @@ async function j(method,path,body){
   return t;
 }
 async function refresh(){ statusEl.textContent=JSON.stringify(await j('GET','/local/v1/setup/status'),null,2); }
+function issuedSet(scopes){
+  const m={};
+  (scopes||[]).forEach(s=>{
+    const t=s.scope_type||s.ScopeType||'';
+    const id=s.scope_id||s.ScopeID||'';
+    if(t&&id) m[t+':'+id]=s;
+  });
+  return m;
+}
 async function refreshDrafts(){
   const data=await j('GET','/local/v1/bill-drafts');
   draftsEl.textContent=JSON.stringify(data,null,2);
   draftActions.innerHTML='';
-  (data.drafts||[]).filter(d=>d.status==='open').forEach(d=>{
-    const b=document.createElement('button');
-    b.textContent='开 FT：'+(d.table_display_name||d.source_sale_id)+' ('+d.id.slice(0,8)+'…)';
-    b.onclick=async()=>{
-      out.textContent='issuing from draft…';
-      try{
-        const res=await j('POST','/local/v1/bill-drafts/'+encodeURIComponent(d.id)+'/issue',{operator_id:'op-demo-cashier'});
-        out.textContent=JSON.stringify(res,null,2);
-        await refreshDrafts();
-      }catch(e){ out.textContent=JSON.stringify(e,null,2); }
+  const opens=(data.drafts||[]).filter(d=>d.status==='open');
+  for(const d of opens){
+    const wrap=document.createElement('div');
+    wrap.style.margin='.5rem 0';
+    wrap.style.padding='.5rem';
+    wrap.style.border='1px solid #ddd';
+    wrap.style.borderRadius='6px';
+    const title=document.createElement('div');
+    title.textContent=(d.table_display_name||'')+' '+d.source_sale_id+' ['+(d.scope_type||'?')+']';
+    wrap.appendChild(title);
+    let detail;
+    try{ detail=await j('GET','/local/v1/bill-drafts/'+encodeURIComponent(d.id)); }
+    catch(e){ wrap.appendChild(document.createTextNode(JSON.stringify(e))); draftActions.appendChild(wrap); continue; }
+    const issued=issuedSet(detail.issued_scopes);
+    const disc=document.createElement('button');
+    disc.textContent='丢弃草稿';
+    disc.onclick=async()=>{
+      try{ await j('POST','/local/v1/bill-drafts/'+encodeURIComponent(d.id)+'/discard',{}); out.textContent='discarded'; await refreshDrafts(); }
+      catch(e){ out.textContent=JSON.stringify(e,null,2); }
     };
-    draftActions.appendChild(b);
-  });
+    wrap.appendChild(disc);
+    if((d.scope_type||detail.payload?.scope_type)==='whole_table'){
+      const nif=document.createElement('input');
+      nif.placeholder='NIF（空=散客）';
+      nif.style.marginTop='.35rem';
+      wrap.appendChild(nif);
+      const b=document.createElement('button');
+      b.textContent='开整桌 FT';
+      b.onclick=async()=>{
+        out.textContent='issuing…';
+        try{
+          const res=await j('POST','/local/v1/bill-drafts/'+encodeURIComponent(d.id)+'/issue',{
+            operator_id:'op-demo-cashier', mode:'whole_table',
+            customer_nif:nif.value.trim(), customer_name:nif.value.trim()?('Cliente '+nif.value.trim()):''
+          });
+          out.textContent=JSON.stringify(res,null,2);
+          await refreshDrafts();
+        }catch(e){ out.textContent=JSON.stringify(e,null,2); }
+      };
+      wrap.appendChild(b);
+    } else {
+      const splits=(detail.payload&&detail.payload.splits)||[];
+      splits.forEach(sp=>{
+        const row=document.createElement('div');
+        row.style.marginTop='.4rem';
+        const key='person:'+sp.scope_id;
+        const done=issued[key];
+        const lab=document.createElement('span');
+        lab.textContent=(sp.name||sp.scope_id)+(done?(' ✓ '+(done.invoice_no||done.InvoiceNo||'')):'');
+        row.appendChild(lab);
+        if(!done){
+          const nif=document.createElement('input');
+          nif.placeholder='NIF 此人（空=散客）';
+          nif.style.display='block';
+          nif.style.margin='.2rem 0';
+          row.appendChild(nif);
+          const b=document.createElement('button');
+          b.textContent='开此人 FT';
+          b.onclick=async()=>{
+            out.textContent='issuing person…';
+            try{
+              const res=await j('POST','/local/v1/bill-drafts/'+encodeURIComponent(d.id)+'/issue',{
+                operator_id:'op-demo-cashier', mode:'person', scope_id:sp.scope_id,
+                customer_nif:nif.value.trim(), customer_name:nif.value.trim()?(sp.name||nif.value.trim()):''
+              });
+              out.textContent=JSON.stringify(res,null,2);
+              await refreshDrafts();
+            }catch(e){ out.textContent=JSON.stringify(e,null,2); }
+          };
+          row.appendChild(b);
+        }
+        wrap.appendChild(row);
+      });
+    }
+    draftActions.appendChild(wrap);
+  }
 }
 document.getElementById('btnStatus').onclick=()=>refresh().catch(e=>statusEl.textContent=JSON.stringify(e,null,2));
 document.getElementById('btnDrafts').onclick=()=>refreshDrafts().catch(e=>draftsEl.textContent=JSON.stringify(e,null,2));

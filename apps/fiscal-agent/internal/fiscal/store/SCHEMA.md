@@ -35,7 +35,7 @@ idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL
 
 **账单同步唯一写路径：** `billsync.PullAndIngest` → `IngestCloudJob` → `UpsertBillDraftOpen` + `UpsertFiscalProductByCode`。Realtime/Polling 只门铃/补偿，禁止第二套 HTTP/WS。
 
-**草稿开票唯一路径：** `billsync.DraftToSaleSnapshot` → `service.IssueFromBillDraft` → `IssueDocument`/`IssueFT` → `DeleteBillDraftsBySale`。开票成功硬删该 sale 全部草稿；再同步靠 `HasSignedFTForSale`。
+**草稿开票唯一路径：** `billsync.DraftToSaleSnapshot` / `DraftPartToSaleSnapshot` → `ApplyCustomerOverride` → `service.IssueFromBillDraft` → `IssueDocument`/`IssueFT` →（到期时）`DeleteBillDraftsBySale`。丢弃仅 `DiscardBillDrafts` → `DeleteBillDraftsBySale`。再同步靠 `HasSignedFTForSale` / `ListSignedFTScopesForSale`。
 
 ## 聚合 ↔ 表（实现约束）
 

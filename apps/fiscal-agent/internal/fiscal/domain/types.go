@@ -94,13 +94,14 @@ type IssueRequest struct {
 
 // IssueResult is returned after a successful FT issuance.
 type IssueResult struct {
-	DocumentID     string
-	InvoiceNo      string
-	ATCUD          string
-	DocumentType   DocumentType
-	DocumentStatus DocumentStatus
-	PrintJobID     string
-	PrintStatus    PrintStatus
-	IssuedAt       time.Time
-	IdempotentHit  bool
+	DocumentID      string         `json:"DocumentID"`
+	InvoiceNo       string         `json:"InvoiceNo"`
+	ATCUD           string         `json:"ATCUD"`
+	DocumentType    DocumentType   `json:"DocumentType"`
+	DocumentStatus  DocumentStatus `json:"DocumentStatus"`
+	PrintJobID      string         `json:"PrintJobID"`
+	PrintStatus     PrintStatus    `json:"PrintStatus"`
+	IssuedAt        time.Time      `json:"IssuedAt"`
+	IdempotentHit   bool           `json:"IdempotentHit"`
+	CleanupPending  bool           `json:"cleanup_pending,omitempty"`
 }

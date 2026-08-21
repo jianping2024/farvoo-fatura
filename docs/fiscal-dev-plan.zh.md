@@ -2,7 +2,7 @@
 
 > **状态：定稿**（里程碑顺序与每步交付物；排期日期未定）  
 > **权威：是**（本仓工程推进顺序以本文为准）  
-> **对应实现：** 按里程碑落地；当前完成至 **M2**
+> **对应实现：** 按里程碑落地；**当前完成至 M2.5**；下一步 M3（NC）/ M4（Farvoo Local API + §13）  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 ## 依据（只读，不替代本文交付定义）
@@ -10,8 +10,9 @@
 | 文档 | 用途 |
 |------|------|
 | [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) | 库表权威 |
+| [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md) | 草稿工作台（整桌/按人）Agent 侧定稿 |
 | 需求 v0.17（`document/`，本仓 gitignore） | 业务/合规规则 |
-| restaurant-ordering `docs/technical/farvoo-fiscal-agent-integration.zh.md` | Farvoo ↔ Agent 对接 |
+| restaurant-ordering `docs/technical/farvoo-fiscal-agent-integration.zh.md` | Farvoo ↔ Agent 对接（只读） |
 | [`print-agent-lessons.zh.md`](print-agent-lessons.zh.md) | 打印/安装器踩坑 |
 
 冲突时：DDL / schema 定列；需求定业务规则；**谁先做哪一刀以本文为准**。
@@ -35,8 +36,9 @@
 | **M0** | 纯打发票 FT（本地权威闭环） | **已完成**（`ebec039`） |
 | **M1** | 身份、AT 系列、激活开票 | **已完成**（`ba9c95f`） |
 | **M2** | 并入主 Agent + 真机税务打印 | **已完成** |
+| **M2.5** | 账单草稿打票工作台（整桌/按人/NIF） | **本提交实现**（回归见 `fiscal-bill-sync-regression.mjs`） |
 | **M3** | NC（冲销） | 未开始 |
-| **M4** | Farvoo Local API 联调 | 未开始 |
+| **M4** | Farvoo Local API 联调（含 §13 鉴权子集） | 未开始 |
 | **M5** | SAF-T 月报导出 | 未开始 |
 | **M6** | FS/FR/ND + 加固（认证扫尾） | 未开始（可与认证窗口并行细化） |
 
@@ -44,6 +46,7 @@
 M0 开 FT（seed）
  └─► M1 真系列/真钥
       └─► M2 托盘进程 + 真打印机
+           ├─► M2.5 草稿工作台（整桌/按人）← M4 前置体验
            ├─► M3 NC
            ├─► M4 Farvoo 收银打进来
            └─► M5 SAF-T
@@ -169,6 +172,45 @@ M1（至少能 ACTIVE 系列 + Signer）；打印机 fake 可在 M1 未完成时
 
 ---
 
+## M2.5 — 账单草稿打票工作台（整桌 / 按人）
+
+> **状态：已完成**（本仓实现 + `fiscal-bill-sync-regression.mjs`）  
+> **权威方案：** [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md)
+
+### 目标
+
+本机工作台对 `bill_sync_drafts`：整桌一键开 FT（收编现有 MVP）；`split` 按人开/补票；**开票前可填 NIF（整桌一处 / 按人各自，默认可散客）**；互斥与清草稿规则按方案文；签发仍唯一 `IssueDocument` → `IssueFT`。
+
+### 非目标
+
+- 改 restaurant-ordering 契约文档或同步载荷  
+- NC/重打完整工作台、云端打票页  
+- **§13 PIN / `operator_token` / 开票终端**（完整方案有；**归 M4**，本刀继续本机 Admin 信任）  
+- 混合付款（P1）  
+- 第二套插票 / 第二套 Realtime  
+
+### 交付物（实现刀）
+
+| # | 交付物 | 定义「完成」 |
+|---|--------|----------------|
+| D2.5.0 | **方案文** | 工作台文已定稿（含 NIF P0、`cleanup_pending`） |
+| D2.5.1 | **映射** | `DraftPartToSaleSnapshot`（或同包单出口）；禁止第二套拼装；按人 `request_id` 含 `scope_id` |
+| D2.5.2 | **Issue API** | `POST .../issue` 带 `mode`/`scope_id`/`customer_nif`/`customer_name`；互斥；按人清草稿；签票成功与删草稿失败解耦 |
+| D2.5.3 | **Discard** | `POST .../discard` → `DeleteBillDraftsBySale` |
+| D2.5.4 | **详情 + 已开标记** | `GET .../{id}`；按业务键标已开 scope |
+| D2.5.5 | **UI** | `17880` 草稿工作台；整桌/每人独立 NIF 输入 |
+| D2.5.6 | **回归** | 方案文 §11（含 NIF 与 `cleanup_pending`）；无 `t.Skip` |
+
+### 验收清单
+
+见 [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md) §11。
+
+### 依赖
+
+M2（主进程 + 开票可用）；账单同步入草稿（已有）。宜在 **M4 大联调前**完成，避免收银只能整桌 demo。
+
+---
+
 ## M3 — NC（冲销）
 
 ### 目标
@@ -218,7 +260,7 @@ Farvoo 桌台「打印发票」经 Agent Local API 只开 FT；业务幂等键�
 | # | 交付物 | 定义「完成」 |
 |---|--------|----------------|
 | D4.1 | **契约冻结** | 请求/响应 JSON 示例落入 `docs/fiscal-local-api.zh.md`（与 v0.17 / 对接说明字段对齐） |
-| D4.2 | **鉴权** | Local API：本机默认；LAN 模式设备鉴权（按对接说明 P0 子集） |
+| D4.2 | **鉴权（§13 子集）** | Local API：本机默认可保留开发；LAN / 正式收银路径：开票终端凭证 + 操作员（`operator_token` / PIN，按对接说明 P0 子集）；**含**工作台 `/bill-drafts/.../issue` 与 `fiscal-documents` |
 | D4.3 | **业务幂等** | `store_id+source_system+source_sale_id+scope_*+fiscal_purpose` 已实现并有测试 |
 | D4.4 | **sync_outbox** | 签发成功写 outbox；worker 推送（可先 stub Farvoo endpoint + 重试字段） |
 | D4.5 | **联调记录** | `docs/fiscal-m4-farvoo-uat.zh.md`：用 mesa/Farvoo 测账号打一单 FT 的步骤与结果 |
@@ -326,3 +368,6 @@ M1–M5 主路径稳定。
 | 2026-08-20 | 首版定稿：M0–M6、每步交付物与验收；M0 已完成 |
 | 2026-08-20 | M1 完成：身份/系列/激活 + `fiscal-m1-regression.mjs` |
 | 2026-08-20 | M2 完成：主进程 `-fiscal-standalone` 嵌入 + `ResolveFiscalPrinterTCP`/`TCPSink` + `fiscal-m2-print-smoke.mjs` |
+| 2026-08-21 | 增补 **M2.5** 草稿工作台里程碑；挂 `fiscal-bill-draft-workbench.zh.md` |
+| 2026-08-21 | M2.5：NIF 编辑升为 P0；§13 明确归 M4；进度头标明「下一步 = 实现 M2.5」 |
+| 2026-08-21 | **M2.5 完成**：按人/NIF/`discard`/详情已开标记 + 回归全绿；VERSION 0.3.87 |

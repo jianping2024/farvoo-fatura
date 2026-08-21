@@ -20,12 +20,17 @@ func (d *DB) GetByRequestID(storeID, requestID string) (*IssueRecord, error) {
 	if err != nil {
 		return nil, err
 	}
+	return d.GetIssueRecordByID(invID)
+}
+
+// GetIssueRecordByID loads a committed issue by invoice id (draft workbench idempotent scope hit).
+func (d *DB) GetIssueRecordByID(invoiceID string) (*IssueRecord, error) {
 	tx, err := d.SQL.Begin()
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	rec, err := loadIssueRecord(tx, invID)
+	rec, err := loadIssueRecord(tx, invoiceID)
 	if err != nil {
 		return nil, err
 	}

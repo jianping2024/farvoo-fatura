@@ -53,8 +53,14 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("GET /local/v1/bill-drafts", func(w http.ResponseWriter, r *http.Request) {
 		handleListBillDrafts(w, r, deps)
 	})
+	mux.HandleFunc("GET /local/v1/bill-drafts/{id}", func(w http.ResponseWriter, r *http.Request) {
+		handleGetBillDraft(w, r, deps)
+	})
 	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/issue", func(w http.ResponseWriter, r *http.Request) {
 		handleIssueBillDraft(w, r, deps)
+	})
+	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/discard", func(w http.ResponseWriter, r *http.Request) {
+		handleDiscardBillDraft(w, r, deps)
 	})
 }
 
@@ -285,6 +291,39 @@ func handleListBillDrafts(w http.ResponseWriter, r *http.Request, deps HandlerDe
 	writeJSON(w, http.StatusOK, map[string]any{"drafts": out})
 }
 
+func handleGetBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	if deps.Fiscal == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
+		return
+	}
+	detail, err := deps.Fiscal.GetBillDraftDetail(r.PathValue("id"))
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeErr(w, http.StatusNotFound, "draft_not_found", err.Error())
+			return
+		}
+		writeErr(w, http.StatusInternalServerError, "get_failed", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, detail)
+}
+
+func handleDiscardBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	if deps.Fiscal == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
+		return
+	}
+	if err := deps.Fiscal.DiscardBillDrafts(r.PathValue("id")); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeErr(w, http.StatusNotFound, "draft_not_found", err.Error())
+			return
+		}
+		writeErr(w, http.StatusInternalServerError, "discard_failed", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
 func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	if deps.Fiscal == nil {
 		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
@@ -292,13 +331,23 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 	}
 	id := r.PathValue("id")
 	var body struct {
-		OperatorID string `json:"operator_id"`
+		OperatorID   string `json:"operator_id"`
+		Mode         string `json:"mode"`
+		ScopeID      string `json:"scope_id"`
+		CustomerNIF  string `json:"customer_nif"`
+		CustomerName string `json:"customer_name"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if body.OperatorID == "" {
 		body.OperatorID = "op-demo-cashier"
 	}
-	res, err := deps.Fiscal.IssueFromBillDraft(r.Context(), id, body.OperatorID)
+	if body.Mode == "" {
+		body.Mode = "whole_table"
+	}
+	res, err := deps.Fiscal.IssueFromBillDraft(r.Context(), service.IssueBillDraftInput{
+		DraftID: id, OperatorID: body.OperatorID, Mode: body.Mode, ScopeID: body.ScopeID,
+		CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
+	})
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			writeErr(w, http.StatusNotFound, "draft_not_found", err.Error())
@@ -323,6 +372,8 @@ func writeCoded(w http.ResponseWriter, err error) {
 			status = http.StatusBadGateway
 		case service.ErrCodeSignerNotReady, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing:
 			status = http.StatusConflict
+		case "scope_mutex", "draft_not_open", "validation_failed", "already_invoiced":
+			status = http.StatusBadRequest
 		}
 		writeErr(w, status, ce.Code, ce.Msg)
 		return

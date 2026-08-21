@@ -107,18 +107,22 @@ async function main() {
   const dbPath = join(dataRoot, 'fiscal.db');
   const secure = join(dataRoot, 'secure');
 
+  const childEnv = { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` };
+  for (const k of Object.keys(childEnv)) {
+    if (k.startsWith('FISCAL_') || k.startsWith('FARVOO_')) delete childEnv[k];
+  }
+  Object.assign(childEnv, {
+    FISCAL_DB: dbPath,
+    FISCAL_DATA_DIR: secure,
+    FISCAL_BIND: '127.0.0.1:17886',
+    FISCAL_STORE_ID: 'store-demo-001',
+    FISCAL_AT_ENV: 'mock',
+    FISCAL_ALLOW_LOCAL_PROVISION: '1',
+  });
+
   const child = spawn('go', ['run', './cmd/fiscal-local'], {
     cwd: agent,
-    env: {
-      ...process.env,
-      PATH: `/opt/homebrew/bin:${process.env.PATH}`,
-      FISCAL_DB: dbPath,
-      FISCAL_DATA_DIR: secure,
-      FISCAL_BIND: '127.0.0.1:17886',
-      FISCAL_STORE_ID: 'store-demo-001',
-      FISCAL_AT_ENV: 'mock',
-      FISCAL_ALLOW_LOCAL_PROVISION: '1',
-    },
+    env: childEnv,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let boot = '';
@@ -126,7 +130,7 @@ async function main() {
   child.stderr.on('data', (d) => (boot += d));
 
   let healthy = false;
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 120; i++) {
     try {
       await uatCmd('stack-health');
       healthy = true;
@@ -366,7 +370,7 @@ async function main() {
         'POST',
         `/local/v1/bill-drafts/${openDraftId}/issue`,
         '--body',
-        JSON.stringify({ operator_id: 'op-demo-cashier' }),
+        JSON.stringify({ operator_id: 'op-demo-cashier', mode: 'whole_table' }),
       ),
     );
     const drafts = JSON.parse(await uatCmd('req', 'GET', '/local/v1/bill-drafts'));
@@ -399,6 +403,45 @@ async function main() {
   try {
     pendingJobs = [
       {
+        id: 'job-nif',
+        status: 'pending',
+        payload: snap({ request_id: 'req-nif', source_sale_id: 'sale-nif-1' }),
+      },
+    ];
+    acks.length = 0;
+    await runPull();
+    const drafts = JSON.parse(await uatCmd('req', 'GET', '/local/v1/bill-drafts'));
+    const d = (drafts.drafts || []).find((x) => x.source_sale_id === 'sale-nif-1' && x.status === 'open');
+    if (!d) throw new Error('nif draft missing');
+    const issued = JSON.parse(
+      await uatCmd(
+        'req',
+        'POST',
+        `/local/v1/bill-drafts/${d.id}/issue`,
+        '--body',
+        JSON.stringify({
+          operator_id: 'op-demo-cashier',
+          mode: 'whole_table',
+          customer_nif: '123456789',
+          customer_name: 'Cliente Teste',
+        }),
+      ),
+    );
+    const docID = issued.DocumentID || issued.document_id;
+    const tax = (
+      await run('sqlite3', [
+        dbPath,
+        `SELECT customer_tax_id FROM invoice_customer_snapshots WHERE invoice_id='${docID}';`,
+      ])
+    ).trim();
+    record('whole-table-custom-nif', tax === '123456789', `tax=${tax}`);
+  } catch (e) {
+    record('whole-table-custom-nif', false, String(e));
+  }
+
+  try {
+    pendingJobs = [
+      {
         id: 'job-re',
         status: 'pending',
         payload: snap({ request_id: 'req-re', source_sale_id: 'sale-issue-1' }),
@@ -415,15 +458,186 @@ async function main() {
     record('already-invoiced-via-tax-db', false, String(e));
   }
 
+  const scopeA = '11111111-1111-1111-1111-111111111111';
+  const scopeB = '22222222-2222-2222-2222-222222222222';
+  let splitDraftId = null;
+
   try {
     const splitPayload = snap({
-      request_id: 'req-split',
-      source_sale_id: 'sale-split',
+      request_id: 'req-split-work',
+      source_sale_id: 'sale-split-work',
+      scope_type: 'split',
+      lines: [],
+      gross_total: undefined,
+      splits: [
+        {
+          scope_id: scopeA,
+          name: 'Ana',
+          lines: [
+            {
+              item_code: '006',
+              name: 'CERVEJA',
+              qty: '1.00',
+              unit_price_gross: '2.25',
+              line_gross: '2.25',
+              vat_rate: '23.00',
+            },
+          ],
+          gross_total: '2.25',
+        },
+        {
+          scope_id: scopeB,
+          name: 'Bruno',
+          lines: [
+            {
+              item_code: 'BF-LUNCH-ADULT',
+              name: 'BUFFET',
+              qty: '1.00',
+              unit_price_gross: '14.95',
+              line_gross: '14.95',
+              vat_rate: '13.00',
+            },
+          ],
+          gross_total: '14.95',
+        },
+      ],
+    });
+    delete splitPayload.gross_total;
+    delete splitPayload.lines;
+    pendingJobs = [{ id: 'job-split-work', status: 'pending', payload: splitPayload }];
+    acks.length = 0;
+    await runPull();
+    const drafts = JSON.parse(await uatCmd('req', 'GET', '/local/v1/bill-drafts'));
+    const d = (drafts.drafts || []).find((x) => x.source_sale_id === 'sale-split-work' && x.status === 'open');
+    splitDraftId = d?.id;
+    record('ingest-split-draft', !!splitDraftId && acks[0]?.status === 'succeeded', splitDraftId || '');
+  } catch (e) {
+    record('ingest-split-draft', false, String(e));
+  }
+
+  try {
+    if (!splitDraftId) throw new Error('no split draft');
+    const r = await fetch(`${base}/local/v1/bill-drafts/${splitDraftId}/issue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ operator_id: 'op-demo-cashier', mode: 'whole_table' }),
+    });
+    const body = await r.json();
+    record(
+      'reject-split-mode-whole-table',
+      r.status >= 400 && body.error === 'validation_failed',
+      JSON.stringify(body),
+    );
+  } catch (e) {
+    record('reject-split-mode-whole-table', false, String(e));
+  }
+
+  let invA = null;
+  try {
+    if (!splitDraftId) throw new Error('no split draft');
+    const issued = JSON.parse(
+      await uatCmd(
+        'req',
+        'POST',
+        `/local/v1/bill-drafts/${splitDraftId}/issue`,
+        '--body',
+        JSON.stringify({
+          operator_id: 'op-demo-cashier',
+          mode: 'person',
+          scope_id: scopeA,
+          customer_nif: '123456789',
+          customer_name: 'Ana',
+        }),
+      ),
+    );
+    invA = issued.InvoiceNo || issued.invoice_no;
+    const detail = JSON.parse(await uatCmd('req', 'GET', `/local/v1/bill-drafts/${splitDraftId}`));
+    const scopes = detail.issued_scopes || [];
+    const drafts = JSON.parse(await uatCmd('req', 'GET', '/local/v1/bill-drafts'));
+    const still = (drafts.drafts || []).find((x) => x.id === splitDraftId && x.status === 'open');
+    const tax = (
+      await run('sqlite3', [
+        dbPath,
+        `SELECT customer_tax_id FROM invoice_customer_snapshots WHERE invoice_id='${issued.DocumentID || issued.document_id}';`,
+      ])
+    ).trim();
+    record(
+      'person-issue-a-keeps-draft',
+      !!invA && !!still && scopes.length === 1 && tax === '123456789',
+      JSON.stringify({ invA, scopes: scopes.length, tax }),
+    );
+  } catch (e) {
+    record('person-issue-a-keeps-draft', false, String(e));
+  }
+
+  try {
+    if (!splitDraftId) throw new Error('no split draft');
+    const r = await fetch(`${base}/local/v1/bill-drafts/${splitDraftId}/issue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ operator_id: 'op-demo-cashier', mode: 'whole_table' }),
+    });
+    const body = await r.json();
+    record('scope-mutex-after-person', r.status >= 400 && body.error === 'scope_mutex', JSON.stringify(body));
+  } catch (e) {
+    record('scope-mutex-after-person', false, String(e));
+  }
+
+  try {
+    if (!splitDraftId) throw new Error('no split draft');
+    const again = JSON.parse(
+      await uatCmd(
+        'req',
+        'POST',
+        `/local/v1/bill-drafts/${splitDraftId}/issue`,
+        '--body',
+        JSON.stringify({ operator_id: 'op-demo-cashier', mode: 'person', scope_id: scopeA }),
+      ),
+    );
+    const hit = again.IdempotentHit || again.idempotent_hit;
+    const no = again.InvoiceNo || again.invoice_no;
+    record('person-idempotent-a', hit === true && no === invA, JSON.stringify(again));
+  } catch (e) {
+    record('person-idempotent-a', false, String(e));
+  }
+
+  try {
+    if (!splitDraftId) throw new Error('no split draft');
+    const issued = JSON.parse(
+      await uatCmd(
+        'req',
+        'POST',
+        `/local/v1/bill-drafts/${splitDraftId}/issue`,
+        '--body',
+        JSON.stringify({ operator_id: 'op-demo-cashier', mode: 'person', scope_id: scopeB }),
+      ),
+    );
+    const tax = (
+      await run('sqlite3', [
+        dbPath,
+        `SELECT customer_tax_id FROM invoice_customer_snapshots WHERE invoice_id='${issued.DocumentID || issued.document_id}';`,
+      ])
+    ).trim();
+    const drafts = JSON.parse(await uatCmd('req', 'GET', '/local/v1/bill-drafts'));
+    const left = (drafts.drafts || []).filter((x) => x.source_sale_id === 'sale-split-work');
+    record(
+      'person-issue-b-deletes-draft',
+      tax === '999999990' && left.length === 0 && !!(issued.InvoiceNo || issued.invoice_no),
+      JSON.stringify({ tax, left: left.length }),
+    );
+  } catch (e) {
+    record('person-issue-b-deletes-draft', false, String(e));
+  }
+
+  try {
+    const discPayload = snap({
+      request_id: 'req-disc',
+      source_sale_id: 'sale-disc',
       scope_type: 'split',
       lines: [],
       splits: [
         {
-          scope_id: 'p1',
+          scope_id: scopeA,
           name: 'A',
           lines: [
             {
@@ -437,28 +651,52 @@ async function main() {
           ],
           gross_total: '1.00',
         },
+        {
+          scope_id: scopeB,
+          name: 'B',
+          lines: [
+            {
+              item_code: 'B',
+              name: 'Y',
+              qty: '1',
+              unit_price_gross: '1.00',
+              line_gross: '1.00',
+              vat_rate: '23.00',
+            },
+          ],
+          gross_total: '1.00',
+        },
       ],
     });
-    pendingJobs = [{ id: 'job-split', status: 'pending', payload: splitPayload }];
-    acks.length = 0;
+    delete discPayload.gross_total;
+    delete discPayload.lines;
+    pendingJobs = [{ id: 'job-disc', status: 'pending', payload: discPayload }];
     await runPull();
     const drafts = JSON.parse(await uatCmd('req', 'GET', '/local/v1/bill-drafts'));
-    const d = (drafts.drafts || []).find((x) => x.source_sale_id === 'sale-split' && x.status === 'open');
-    if (!d) throw new Error('split draft missing');
-    const r = await fetch(`${base}/local/v1/bill-drafts/${d.id}/issue`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ operator_id: 'op-demo-cashier' }),
-    });
-    const body = await r.json();
+    const d = (drafts.drafts || []).find((x) => x.source_sale_id === 'sale-disc' && x.status === 'open');
+    if (!d) throw new Error('disc draft missing');
+    const issued = JSON.parse(
+      await uatCmd(
+        'req',
+        'POST',
+        `/local/v1/bill-drafts/${d.id}/issue`,
+        '--body',
+        JSON.stringify({ operator_id: 'op-demo-cashier', mode: 'person', scope_id: scopeA }),
+      ),
+    );
+    await uatCmd('req', 'POST', `/local/v1/bill-drafts/${d.id}/discard`, '--body', '{}');
+    const after = JSON.parse(await uatCmd('req', 'GET', '/local/v1/bill-drafts'));
+    const left = (after.drafts || []).filter((x) => x.source_sale_id === 'sale-disc');
+    const nInv = (
+      await run('sqlite3', [dbPath, `SELECT COUNT(1) FROM invoices WHERE source_sale_id='sale-disc';`])
+    ).trim();
     record(
-      'reject-split-issue',
-      r.status >= 400 &&
-        (body.error === 'validation_failed' || String(body.message || '').includes('whole_table')),
-      JSON.stringify(body),
+      'discard-keeps-invoices',
+      left.length === 0 && nInv === '1' && !!(issued.InvoiceNo || issued.invoice_no),
+      `left=${left.length} inv=${nInv}`,
     );
   } catch (e) {
-    record('reject-split-issue', false, String(e));
+    record('discard-keeps-invoices', false, String(e));
   }
 
   child.kill('SIGTERM');

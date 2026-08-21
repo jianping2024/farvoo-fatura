@@ -614,6 +614,8 @@ Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `Ing
 
 **整桌从草稿开 FT：** `billsync.DraftToSaleSnapshot`（唯一映射）→ `service.IssueFromBillDraft` → `IssueDocument`/`IssueFT` → `DeleteBillDraftsBySale`。`fiscal_products` 不删。
 
+**按人 / 工作台：** 清草稿与互斥、每人 NIF（开票时写入本票客户快照，不进草稿表列）见 [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md)（整桌立刻删；按人开完或 discard 才删；签票成功不因删草稿失败回滚）。
+
 ## 7. 签发事务写序（必须）
 
 同事务 `BEGIN IMMEDIATE`：

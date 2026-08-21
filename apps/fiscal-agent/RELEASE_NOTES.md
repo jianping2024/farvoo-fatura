@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.87
+
+**M2.5 草稿工作台：整桌/按人 + NIF**
+
+- `POST .../issue`：`mode`/`scope_id`/`customer_nif`；按人 `DraftPartToSaleSnapshot`；互斥 `scope_mutex`；按人开完才硬删草稿。
+- `GET .../bill-drafts/{id}` 已开标记；`POST .../discard`；签票成功不因清草稿失败失败（`cleanup_pending`）。
+- Admin §7 演进为工作台（每人独立 NIF）。
+
 ## 0.3.86
 
 **账单同步进本地草稿（不自动开票）+ 整桌从草稿开 FT**

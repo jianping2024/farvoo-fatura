@@ -53,21 +53,25 @@ async function main() {
   mkdirSync(join(agent, 'data'), { recursive: true });
   if (existsSync(dbPath)) rmSync(dbPath);
 
+  const childEnv = { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` };
+  for (const k of Object.keys(childEnv)) {
+    if (k.startsWith('FISCAL_')) delete childEnv[k];
+  }
+  Object.assign(childEnv, {
+    FISCAL_DB: dbPath,
+    FISCAL_BIND: '127.0.0.1:17880',
+    FISCAL_STORE_ID: 'store-demo-001',
+    FISCAL_SEED: '1',
+    FISCAL_ALLOW_DEV_KEY: '1',
+    FISCAL_AT_ENV: 'mock',
+  });
+
   const child = spawn(
     'go',
     ['run', './cmd/fiscal-local'],
     {
       cwd: agent,
-      env: {
-        ...process.env,
-        PATH: `/opt/homebrew/bin:${process.env.PATH}`,
-        FISCAL_DB: dbPath,
-        FISCAL_BIND: '127.0.0.1:17880',
-        FISCAL_STORE_ID: 'store-demo-001',
-        FISCAL_SEED: '1',
-        FISCAL_ALLOW_DEV_KEY: '1',
-        FISCAL_AT_ENV: 'mock',
-      },
+      env: childEnv,
       stdio: ['ignore', 'pipe', 'pipe'],
     },
   );
@@ -78,9 +82,9 @@ async function main() {
     if (code && code !== 0) boot += `\n[fiscal-local exited ${code}]`;
   });
 
-  // wait health
+  // wait health (go run compile can exceed 15s on cold cache)
   let healthy = false;
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 120; i++) {
     if (child.exitCode != null && child.exitCode !== 0) break;
     try {
       await uatCmd('stack-health');

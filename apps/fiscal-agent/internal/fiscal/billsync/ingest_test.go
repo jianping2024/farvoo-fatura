@@ -3,6 +3,7 @@ package billsync_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -104,7 +105,9 @@ func TestIngest_AlreadyInvoicedViaTaxDB(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.IssueFromBillDraft(context.Background(), draft.ID, "op-demo-cashier"); err != nil {
+	if _, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
+		DraftID: draft.ID, OperatorID: "op-demo-cashier", Mode: "whole_table",
+	}); err != nil {
 		t.Fatal(err)
 	}
 	list, _ := db.ListBillDrafts(10)
@@ -155,7 +158,9 @@ func TestIssueFromBillDraft_WholeTablePrintsAndDeletes(t *testing.T) {
 		t.Fatalf("want 2 drafts got %d", len(before))
 	}
 
-	res, err := svc.IssueFromBillDraft(context.Background(), draft2.ID, "op-demo-cashier")
+	res, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
+		DraftID: draft2.ID, OperatorID: "op-demo-cashier", Mode: "whole_table",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,9 +210,172 @@ func TestIssueFromBillDraft_RejectNonOpen(t *testing.T) {
 	if _, err := billsync.IngestCloudJob(db, billsync.CloudJob{ID: "j2", Payload: payload2}); err != nil {
 		t.Fatal(err)
 	}
-	_, err = svc.IssueFromBillDraft(context.Background(), d1.ID, "op-demo-cashier")
+	_, err = svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
+		DraftID: d1.ID, OperatorID: "op-demo-cashier", Mode: "whole_table",
+	})
 	if err == nil {
 		t.Fatal("expected reject discarded draft")
+	}
+}
+
+func TestDraftPartToSaleSnapshot_Person(t *testing.T) {
+	scopeA := "11111111-1111-1111-1111-111111111111"
+	scopeB := "22222222-2222-2222-2222-222222222222"
+	snap := billsync.Snapshot{
+		SourceSaleID: "sale-split", ScopeType: "split", TableDisplayName: "018",
+		Splits: []billsync.SplitPart{
+			{ScopeID: scopeA, Name: "Ana", GrossTotal: "2.25", Lines: []billsync.Line{
+				{ItemCode: "006", Name: "Cerveja", Qty: "1", UnitPriceGross: "2.25", LineGross: "2.25", VATRate: "23.00"},
+			}},
+			{ScopeID: scopeB, Name: "Bruno", GrossTotal: "14.95", Lines: []billsync.Line{
+				{ItemCode: "BF", Name: "Buffet", Qty: "1", UnitPriceGross: "14.95", LineGross: "14.95", VATRate: "13.00"},
+			}},
+		},
+	}
+	sale, err := billsync.DraftPartToSaleSnapshot(snap, scopeA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sale.ScopeType != "person" || sale.ScopeID != scopeA || sale.Lines[0].VATRate != "0.23" {
+		t.Fatalf("%+v", sale)
+	}
+	if err := billsync.ApplyCustomerOverride(&sale, "123456789", "Ana"); err != nil {
+		t.Fatal(err)
+	}
+	if sale.Customer.TaxID != "123456789" {
+		t.Fatalf("nif %+v", sale.Customer)
+	}
+}
+
+func TestIssueFromBillDraft_PersonPartialThenComplete(t *testing.T) {
+	dir := t.TempDir()
+	db, svc := seedFiscal(t, dir)
+	defer db.Close()
+
+	scopeA := "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+	scopeB := "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+	payload, _ := json.Marshal(billsync.Snapshot{
+		RequestID: "req-split", SourceSaleID: "sale-p", ScopeType: "split",
+		Splits: []billsync.SplitPart{
+			{ScopeID: scopeA, Name: "A", GrossTotal: "1.00", Lines: []billsync.Line{
+				{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+			}},
+			{ScopeID: scopeB, Name: "B", GrossTotal: "2.00", Lines: []billsync.Line{
+				{ItemCode: "B", Name: "Y", Qty: "1", UnitPriceGross: "2.00", LineGross: "2.00", VATRate: "23.00"},
+			}},
+		},
+	})
+	draft, err := billsync.IngestCloudJob(db, billsync.CloudJob{ID: "js", Payload: payload})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resA, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
+		DraftID: draft.ID, OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
+		CustomerNIF: "123456789", CustomerName: "Ana",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	taxA, err := db.InvoiceCustomerTaxID(resA.DocumentID)
+	if err != nil || taxA != "123456789" {
+		t.Fatalf("taxA=%s err=%v", taxA, err)
+	}
+	list, _ := db.ListBillDrafts(10)
+	if len(list) != 1 || list[0].Status != store.BillDraftOpen {
+		t.Fatalf("draft should remain open after first person: %+v", list)
+	}
+	_, err = svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
+		DraftID: draft.ID, OperatorID: "op-demo-cashier", Mode: "whole_table",
+	})
+	if err == nil {
+		t.Fatal("expected scope_mutex")
+	}
+	var ce *service.CodedError
+	if !errors.As(err, &ce) || ce.Code != "scope_mutex" {
+		t.Fatalf("want scope_mutex got %v", err)
+	}
+	resA2, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
+		DraftID: draft.ID, OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resA2.IdempotentHit || resA2.InvoiceNo != resA.InvoiceNo {
+		t.Fatalf("idempotent person: %+v vs %+v", resA2, resA)
+	}
+	resB, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
+		DraftID: draft.ID, OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeB,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	taxB, _ := db.InvoiceCustomerTaxID(resB.DocumentID)
+	if taxB != "999999990" {
+		t.Fatalf("B should be CF got %s", taxB)
+	}
+	after, _ := db.ListBillDrafts(10)
+	if len(after) != 0 {
+		t.Fatalf("all scopes issued → drafts deleted, got %d", len(after))
+	}
+}
+
+func TestIssueFromBillDraft_RejectPersonOnWholeTable(t *testing.T) {
+	dir := t.TempDir()
+	db, svc := seedFiscal(t, dir)
+	defer db.Close()
+	payload, _ := json.Marshal(billsync.Snapshot{
+		RequestID: "r1", SourceSaleID: "s-wt", ScopeType: "whole_table", GrossTotal: "1.00",
+		Lines: []billsync.Line{{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"}},
+	})
+	d, err := billsync.IngestCloudJob(db, billsync.CloudJob{ID: "j1", Payload: payload})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
+		DraftID: d.ID, OperatorID: "op-demo-cashier", Mode: "person", ScopeID: "11111111-1111-1111-1111-111111111111",
+	})
+	if err == nil {
+		t.Fatal("expected validation_failed")
+	}
+}
+
+func TestDiscardBillDrafts_KeepsInvoices(t *testing.T) {
+	dir := t.TempDir()
+	db, svc := seedFiscal(t, dir)
+	defer db.Close()
+	scopeA := "cccccccc-cccc-cccc-cccc-cccccccccccc"
+	scopeB := "dddddddd-dddd-dddd-dddd-dddddddddddd"
+	payload, _ := json.Marshal(billsync.Snapshot{
+		RequestID: "req-d", SourceSaleID: "sale-d", ScopeType: "split",
+		Splits: []billsync.SplitPart{
+			{ScopeID: scopeA, Name: "A", GrossTotal: "1.00", Lines: []billsync.Line{
+				{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+			}},
+			{ScopeID: scopeB, Name: "B", GrossTotal: "1.00", Lines: []billsync.Line{
+				{ItemCode: "B", Name: "Y", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+			}},
+		},
+	})
+	draft, err := billsync.IngestCloudJob(db, billsync.CloudJob{ID: "jd", Payload: payload})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
+		DraftID: draft.ID, OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.DiscardBillDrafts(draft.ID); err != nil {
+		t.Fatal(err)
+	}
+	list, _ := db.ListBillDrafts(10)
+	if len(list) != 0 {
+		t.Fatalf("drafts should be gone")
+	}
+	scopes, err := db.ListSignedFTScopesForSale("store-demo-001", "farvoo", "sale-d")
+	if err != nil || len(scopes) != 1 || scopes[0].InvoiceNo != res.InvoiceNo {
+		t.Fatalf("invoice must remain: %+v err=%v", scopes, err)
 	}
 }
 
