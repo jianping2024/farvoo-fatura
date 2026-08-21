@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.93
+
+**FT 脚对齐样票：认证在 QR 上、TOTAL 突出、无 Hash 行**
+
+- `Fatura No.:`；TOTAL 加粗倍高；认证=`{四字}-Processado…`（无 `Hash:`）；ATCUD+QR 居中 module=6；QR 下只留白+`GS V 66` 切。
+- 依据 VOZ/Pingo 样票原文 + 0.3.92 真机横切。见 `docs/fiscal-ft-receipt-layout.zh.md`。
+
 ## 0.3.92
 
 **FT 票面：居中抬头 + 单行明细**

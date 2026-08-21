@@ -124,7 +124,7 @@ func BuildPayload(in BuildInput) (*Payload, string, error) {
 			ATCUD:             in.ATCUD,
 			QR:                QRBlock{Content: in.QRContent},
 			HashControlChars:  qChars,
-			CertificationLine: fmt.Sprintf("Processado por programa certificado n.º %s/AT", in.SoftwareCertificateNumber),
+			CertificationLine: fmt.Sprintf("Processado por programa certificado n. %s/AT", in.SoftwareCertificateNumber),
 		},
 	}
 	raw, err := json.Marshal(p)

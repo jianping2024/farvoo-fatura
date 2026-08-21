@@ -1,9 +1,9 @@
 # 税票 FT 小票版式（对照零售参考票）
 
 > **状态：定稿**  
-> **权威：是**（本仓 FT 热敏票面以本文为准；出纸通道仍见工作台/schema，不改）  
-> **对应实现：** `apps/fiscal-agent/internal/fiscal/print/escpos.go` 的 `RenderESCPOS`（唯一税票 ESC/POS 出口）；拉丁编码唯一 `internal/escposenc`  
-> **参考样张：** 葡语零售热敏票（仅对齐/分段习惯；店名等数据仍用本店 payload）  
+> **权威：是**  
+> **对应实现：** `print.RenderESCPOS`（唯一）；拉丁编码 `escposenc`  
+> **参考样张：** VOZ / Pingo Doce（版式习惯）；店名等数据仍用本店 payload  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 ---
@@ -12,98 +12,56 @@
 
 | 做 | 不做 |
 |----|------|
-| FT ORIGINAL：居中抬头、单行明细、编码/QR | 改厨打三票；第二套 Render / TCP |
-| 只用冻结 `print.Payload` | 写死店名；Logo；手写 Nome 虚线；抄对方票号/证书号 |
-
-**店名：** 已是参数 — `merchant.legal_name`（+ 可选 `business_name`），禁止写死参考票店名。
+| 居中抬头、单行明细、票号标签、合规脚（认证+ATCUD+QR） | 单独 `Hash:` 行；QR 下再印业务字；第二套 Render |
+| 只用冻结 Payload | 写死店名/对方证号 |
 
 ---
 
-## 2. P0 定法（本刀）
+## 2. P0 定法（本刀依据：样票原文 + 0.3.92 真机切坏）
 
-| # | 定法 |
-|---|------|
-| 1 | **抬头居中**：法定名（可加粗）+ 经营名（若不同）+ 地址 + `NIF: PT…` 用 `ESC a 1`；打完 `ESC a 0` |
-| 2 | **单行明细**：表头 `Qtd Preco IVA%-Desc` … `Soma`；每行 `qtyx unit vat%-name` 左、`line_gross` 右（`moneyRow`，宽 32）；**禁止**品名独占一行再跟金额行 |
-| 3 | 票号/日期/联次、客户、合计/付款、IVA 表：仍 **左对齐**（客户位置本刀不挪） |
-| 4 | 编码 / 联次 / QR / 切前留白：沿用既有（1252、`1a Via - Original`、QR 居中 module=4） |
+| # | 定法 | 依据 |
+|---|------|------|
+| 1 | 票号：`Fatura No.: ` + `invoice_no` | VOZ：`Fatura No.: …` |
+| 2 | 认证句：`{QRHashChars}-` + `Processado por… n. {证号}/AT`（票面无 `º`）；**禁止** `Hash:` 行 | VOZ `/IJ6 -- Processado…`；Pingo `XLM/-Processado…` |
+| 3 | 顺序：认证 → ATCUD → QR → 留白切；QR 下无业务字 | 样票 QR 垫底；0.3.92 Hash 被横切 |
+| 4 | ATCUD + QR **居中**；QR module **6** | VOZ 居中大 QR |
+| 5 | 抬头居中 + 单行明细 | 既有定法，保留 |
+| 6 | **TOTAL 突出**：加粗 + 倍高（`ESC E` + `GS ! 0x01`）；Liquido/IVA/付款普通 | VOZ：`TOTAL: … Euro` 明显大于邻行 |
+
+四字 = `compliance.QRHashChars`（已有）；斜杠是否出现取决于 Hash，不硬插。
 
 ---
 
 ## 3. 票面顺序
 
 ```text
-① 商家抬头（居中）
-② 单据身份（左：票号、日期、联次）
+① 抬头（居中）
+② Fatura No. / 日期 / 联次（左）
 ③ 客户（左）
-④ 分隔线 + 明细表头 + 单行明细
-⑤ 分隔线 + Liquido / IVA / TOTAL / 付款
-⑥ Resumo IVA
-⑦ ATCUD（左）
-⑧ QR（居中）
-⑨ 认证 + Hash（左；本刀不强制居中脚）
-⑩ 留白 + 切纸
+④ 明细表（单行）
+⑤ Liquido / IVA（普通）→ **TOTAL（加粗倍高）** → 付款 → Resumo IVA
+⑥ 认证句（居中，含四字前缀）
+⑦ ATCUD（居中）
+⑧ QR module=6（居中）
+⑨ 留白 + 切纸
 ```
 
-### 3.1 抬头
-
-| 行 | 内容 | 对齐 |
-|----|------|------|
-| 法定名 | `merchant.legal_name` | 居中；可 `ESC E 1` |
-| 经营名 | 与法定名不同才印 | 居中 |
-| 地址 | `merchant.address` | 居中 |
-| NIF | `NIF: PT` + 税号 | 居中 |
-
-### 3.2 单据 / 客户
-
-票号禁止 `FT: FT FT…`；日期 `DD/MM/YYYY HH:MM`；联次 `1a Via - Original` / `2a Via - Reprint`。
-
-### 3.3 明细（单行）
-
-| 列区 | 定法 |
-|------|------|
-| 数量 | payload `quantity` + 后缀 `x`（如 `2.00x`） |
-| 单价 | `unit_price_gross` 原样 |
-| 税+品名 | `{百分数}-` + 品名（`display_name`，空则 `description`）；超长截断 |
-| 行合计 | `line_gross` **右齐** |
-
-税率：payload 小数 → 票面百分数；禁止票面 `0.23`。
-
-### 3.4 合计 / IVA / 合规
-
-`Liquido` / `IVA` / `TOTAL` / 付款 `moneyRow`；IVA 表 `Taxa|Base|IVA|Tot`；ATCUD → QR → 认证 → Hash → 切。
-
 ---
 
-## 4. 明确不做
-
-- Logo、手写客户虚线、宣传语、对方 `FAC A/…` / 证书号  
-- 第二套 `RenderESCPOS` 或第二套拉丁编码器  
-
----
-
-## 5. 实现约束
+## 4. 唯一写法
 
 | 项 | 定法 |
 |----|------|
-| 唯一渲染 | `print.RenderESCPOS` |
-| 唯一拉丁 | `escposenc.Windows1252` + `ESC t 16` |
-| 测 | 抬头含 `ESC a 1`；明细单行含 `23%-` 与右齐金额；无两行品名模式；`RenderESCPOS` = 1 |
+| 渲染 | 仅 `RenderESCPOS` |
+| 认证票面拼装 | 仅 `formatCertificationFace` |
+| 票号标签行 | 仅 `formatFaturaNoLine` |
+| 拉丁编码 | 仅 `escposenc.Windows1252` |
 
 ---
 
-## 6. 验收
+## 5. 验收
 
-1. 真机抬头大致居中  
-2. 明细一行可读，金额右齐、无孤儿金额  
-3. 店名为本店 setup 名，非样张店名  
-4. `rg 'func RenderESCPOS'` = 1  
-
----
-
-## 7. 关联
-
-| 文档 | 关系 |
-|------|------|
-| `internal/escposenc` | 拉丁编码唯一包 |
-| `internal/fiscal/print/payload.go` | 字段字典 |
+1. 输出含 `Fatura No.:`；无独立 `Hash:`  
+2. 认证在 ATCUD/QR 之前；含四字 + `Processado`  
+3. QR 后至 cut 无业务 ASCII 行  
+4. `rg 'func RenderESCPOS'`=1；`Hash:` 拼接在 Render 中不存在  

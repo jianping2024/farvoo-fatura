@@ -15,11 +15,14 @@ import (
 // Narrow thermal usable width (chars). Avoids orphan amount wrap on POS-80.
 const receiptWidth = 32
 
+// cutFeedDots — GS V 66 n; enough paper past knife so last line is not bisected.
+const cutFeedDots byte = 80
+
 // RenderESCPOS is the ONLY fiscal receipt ESC/POS renderer (from frozen Payload).
 // Layout authority: docs/fiscal-ft-receipt-layout.zh.md
 func RenderESCPOS(p *Payload) []byte {
 	if p == nil {
-		return []byte{0x1B, 0x40, 0x1D, 0x56, 0x00}
+		return []byte{0x1B, 0x40, 0x1D, 0x56, 0x42, cutFeedDots}
 	}
 	var b bytes.Buffer
 	b.Write([]byte{0x1B, 0x40}) // init
@@ -39,7 +42,7 @@ func RenderESCPOS(p *Payload) []byte {
 	}
 	rule := func() { w(strings.Repeat("-", receiptWidth)) }
 
-	// ① merchant — centered (payload names only; never hardcode venue)
+	// ① merchant — centered
 	align(1)
 	bold(true)
 	w(p.Merchant.LegalName)
@@ -56,7 +59,7 @@ func RenderESCPOS(p *Payload) []byte {
 	align(0)
 
 	// ② document identity
-	w(formatInvoiceLine(p.DocumentType, p.InvoiceNo))
+	w(formatFaturaNoLine(p.InvoiceNo))
 	if dt := formatIssuedAt(p.IssuedAt); dt != "" {
 		w(dt)
 	}
@@ -81,11 +84,15 @@ func RenderESCPOS(p *Payload) []byte {
 		w(formatItemLine(ln.Quantity, ln.UnitPriceGross, ln.VATRate, name, ln.LineGross, receiptWidth))
 	}
 
-	// ⑦ totals + payments
+	// ⑦ totals + payments — TOTAL emphasized (sample: larger/bold total line)
 	rule()
 	w(moneyRow("Liquido", p.Totals.NetTotal, receiptWidth))
 	w(moneyRow("IVA", p.Totals.TaxPayable, receiptWidth))
+	bold(true)
+	b.Write([]byte{0x1D, 0x21, 0x01}) // GS ! — double height only (width stays 32 cols)
 	w(moneyRow("TOTAL", p.Totals.GrossTotal, receiptWidth))
+	b.Write([]byte{0x1D, 0x21, 0x00})
+	bold(false)
 	for _, pay := range p.Payments {
 		w(moneyRow(formatPaymentMethod(pay.Method), pay.Amount, receiptWidth))
 	}
@@ -103,31 +110,44 @@ func RenderESCPOS(p *Payload) []byte {
 		}, []int{6, 9, 8, 9}))
 	}
 
-	// ⑨ ATCUD
-	w("")
-	w("ATCUD: " + p.Compliance.ATCUD)
-
-	// ⑩ QR centered
+	// ⑥⑦⑧ foot: cert → ATCUD → QR (centered); nothing below QR but feed+cut
+	align(1)
+	if face := formatCertificationFace(p.Compliance.HashControlChars, p.Compliance.CertificationLine); face != "" {
+		w(face)
+	}
+	if p.Compliance.ATCUD != "" {
+		w("ATCUD: " + p.Compliance.ATCUD)
+	}
 	if qr := strings.TrimSpace(p.Compliance.QR.Content); qr != "" {
-		align(1)
-		writeQR(&b, qr, 4)
-		align(0)
-		b.WriteByte('\n')
-		b.WriteByte('\n')
+		writeQR(&b, qr, 6)
 	}
+	align(0)
 
-	// ⑪ cert + hash
-	if p.Compliance.CertificationLine != "" {
-		w(p.Compliance.CertificationLine)
-	}
-	if p.Compliance.HashControlChars != "" {
-		w("Hash: " + p.Compliance.HashControlChars)
-	}
-
-	// ⑫ feed then cut
-	b.Write([]byte{'\n', '\n', '\n'})
-	b.Write([]byte{0x1D, 0x56, 0x00})
+	// feed-then-cut (same family as kitchen GS V 66); no business text after QR
+	b.Write([]byte{'\n', '\n'})
+	b.Write([]byte{0x1D, 0x56, 0x42, cutFeedDots})
 	return b.Bytes()
+}
+
+// formatFaturaNoLine is the ONLY ticket label for invoice number (sample: "Fatura No.: …").
+func formatFaturaNoLine(invoiceNo string) string {
+	return "Fatura No.: " + strings.TrimSpace(invoiceNo)
+}
+
+// formatCertificationFace is the ONLY ticket face for cert + control chars (no separate Hash: line).
+// Sample style: "XLM/-Processado por programa certificado 369/AT"
+func formatCertificationFace(controlChars, certLine string) string {
+	cert := strings.TrimSpace(certLine)
+	cert = strings.ReplaceAll(cert, "n.º", "n.")
+	cert = strings.ReplaceAll(cert, "n.°", "n.")
+	chars := strings.TrimSpace(controlChars)
+	if chars == "" {
+		return cert
+	}
+	if cert == "" {
+		return chars
+	}
+	return chars + "-" + cert
 }
 
 // formatItemLine builds one item row: "2.00x 19.95 23%-Name……39.90"
@@ -136,7 +156,7 @@ func formatItemLine(qty, unitPrice, vatRate, name, lineGross string, width int) 
 	if q != "" && !strings.HasSuffix(strings.ToLower(q), "x") {
 		q += "x"
 	}
-	pct := formatVATPercent(vatRate) // e.g. 23%
+	pct := formatVATPercent(vatRate)
 	vatTag := pct + "-"
 	prefix := strings.TrimSpace(q + " " + strings.TrimSpace(unitPrice) + " " + vatTag)
 	aw := utf8.RuneCountInString(strings.TrimSpace(lineGross))
@@ -145,24 +165,6 @@ func formatItemLine(qty, unitPrice, vatRate, name, lineGross string, width int) 
 		return moneyRow(truncateRunes(prefix, width-aw-1), lineGross, width)
 	}
 	return moneyRow(prefix+truncateRunes(strings.TrimSpace(name), maxName), lineGross, width)
-}
-
-func formatInvoiceLine(docType, invoiceNo string) string {
-	no := strings.TrimSpace(invoiceNo)
-	dt := strings.TrimSpace(docType)
-	if no == "" {
-		return dt
-	}
-	if dt != "" {
-		prefix := dt + " "
-		if strings.HasPrefix(no, prefix) || strings.EqualFold(no, dt) {
-			return no
-		}
-	}
-	if dt == "" {
-		return no
-	}
-	return dt + " " + no
 }
 
 func formatViaLine(purpose string) string {
@@ -294,7 +296,7 @@ func truncateRunes(s string, n int) string {
 
 func writeQR(b *bytes.Buffer, content string, moduleSize byte) {
 	if moduleSize < 1 {
-		moduleSize = 4
+		moduleSize = 6
 	}
 	data := []byte(content)
 	storeLen := len(data) + 3
