@@ -209,7 +209,7 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | `signing_keys.status` | `ACTIVE` `RETIRED` `COMPROMISED` |
 | `sync_outbox.status` | `PENDING` `SENT` `FAILED` |
 | `saft validation_status` | `PENDING` `VALID` `INVALID` |
-| `bill_sync_drafts.status` | `open` `invoiced` `discarded` |
+| `bill_sync_drafts.status` | `open` `discarded`（开票成功后**硬删**该 `source_sale_id` 全部行，不保留 `invoiced`） |
 
 ---
 
@@ -596,13 +596,23 @@ Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `Ing
 | request_id | TEXT | 是 | 幂等键；UNIQUE |
 | source_sale_id | TEXT | 是 | Farvoo sale id |
 | payload_json | TEXT | 是 | 完整 Snapshot JSON |
-| status | TEXT | 是 | open / invoiced / discarded |
+| status | TEXT | 是 | 仅 `open` / `discarded`（覆盖时旧 open→discarded） |
 | cloud_job_id | TEXT | 否 | Farvoo job id |
 | last_error | TEXT | 否 | |
 | created_at | TEXT | 是 | UTC |
 | updated_at | TEXT | 是 | UTC |
 
-**唯一写路径：** `store.UpsertBillDraftOpen`（开/覆盖 open）；`MarkBillDraftInvoiced`（开票成功后）。商品：`UpsertFiscalProductByCode`（`vat_rate` 存百分数串如 `"13.00"`）。
+**唯一写路径：**
+
+| 动作 | 唯一入口 |
+|------|----------|
+| 入站/覆盖草稿 | `store.UpsertBillDraftOpen` |
+| 开票成功清临时数据 | `store.DeleteBillDraftsBySale`（硬删该 `source_sale_id` 全部行） |
+| 商品 upsert | `UpsertFiscalProductByCode`（`vat_rate` 百分数串如 `"13.00"`） |
+
+**再同步挡重（P0）：** 查税务库是否已有同 `source_system`+`source_sale_id` 的已签 FT（`store.HasSignedFTForSale`），有则 ingest ack `already_invoiced`。**不以**草稿行状态为准（开票后草稿已删）。
+
+**整桌从草稿开 FT：** `billsync.DraftToSaleSnapshot`（唯一映射）→ `service.IssueFromBillDraft` → `IssueDocument`/`IssueFT` → `DeleteBillDraftsBySale`。`fiscal_products` 不删。
 
 ## 7. 签发事务写序（必须）
 

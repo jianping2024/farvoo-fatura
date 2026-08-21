@@ -12,9 +12,9 @@ import (
 )
 
 // Bill draft status values (farvoo-fiscal-bill-sync-api).
+// Runtime only open/discarded — invoiced rows are not kept; FT success hard-deletes.
 const (
 	BillDraftOpen      = "open"
-	BillDraftInvoiced  = "invoiced"
 	BillDraftDiscarded = "discarded"
 )
 
@@ -31,15 +31,23 @@ type BillSyncDraft struct {
 	UpdatedAt    string
 }
 
-// ErrAlreadyInvoiced means an open re-sync is refused because a draft is already invoiced.
+// ErrAlreadyInvoiced means re-sync is refused because a signed FT exists for the sale.
 var ErrAlreadyInvoiced = errors.New("already_invoiced")
+
+// GetBillDraftByID loads one draft by primary key.
+func (d *DB) GetBillDraftByID(id string) (*BillSyncDraft, error) {
+	row := d.SQL.QueryRow(`
+		SELECT id, request_id, source_sale_id, payload_json, status, IFNULL(cloud_job_id,''), IFNULL(last_error,''), created_at, updated_at
+		FROM bill_sync_drafts WHERE id = ?`, id)
+	return scanBillDraft(row)
+}
 
 // GetBillDraftBySale returns the latest draft row for a sale (any status), or ErrNotFound.
 func (d *DB) GetBillDraftBySale(sourceSaleID string) (*BillSyncDraft, error) {
 	row := d.SQL.QueryRow(`
 		SELECT id, request_id, source_sale_id, payload_json, status, IFNULL(cloud_job_id,''), IFNULL(last_error,''), created_at, updated_at
 		FROM bill_sync_drafts WHERE source_sale_id = ?
-		ORDER BY CASE status WHEN 'invoiced' THEN 0 WHEN 'open' THEN 1 ELSE 2 END, updated_at DESC
+		ORDER BY CASE status WHEN 'open' THEN 0 ELSE 1 END, updated_at DESC
 		LIMIT 1`, sourceSaleID)
 	return scanBillDraft(row)
 }
@@ -97,7 +105,7 @@ func (d *DB) ListBillDrafts(limit int) ([]BillSyncDraft, error) {
 }
 
 // UpsertBillDraftOpen is the ONLY writer that creates/covers open bill sync drafts.
-// Same request_id → idempotent (no double write). Same source_sale_id with invoiced → ErrAlreadyInvoiced.
+// Same request_id → idempotent (no double write). Signed FT for sale → ErrAlreadyInvoiced.
 // Open/discarded/missing → replace with new open payload.
 func (d *DB) UpsertBillDraftOpen(requestID, sourceSaleID, cloudJobID string, payload any) (*BillSyncDraft, error) {
 	requestID = strings.TrimSpace(requestID)
@@ -113,12 +121,6 @@ func (d *DB) UpsertBillDraftOpen(requestID, sourceSaleID, cloudJobID string, pay
 	if existing, err := d.GetBillDraftByRequestID(requestID); err == nil {
 		return existing, nil
 	} else if !errors.Is(err, ErrNotFound) {
-		return nil, err
-	}
-
-	if inv, err := d.GetBillDraftBySale(sourceSaleID); err == nil && inv.Status == BillDraftInvoiced {
-		return nil, ErrAlreadyInvoiced
-	} else if err != nil && !errors.Is(err, ErrNotFound) {
 		return nil, err
 	}
 
@@ -147,19 +149,39 @@ func (d *DB) UpsertBillDraftOpen(requestID, sourceSaleID, cloudJobID string, pay
 	return d.GetBillDraftByRequestID(requestID)
 }
 
-// MarkBillDraftInvoiced sets status invoiced for the open draft of a sale (ONLY after FT issue).
-func (d *DB) MarkBillDraftInvoiced(sourceSaleID string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	res, err := d.SQL.Exec(`UPDATE bill_sync_drafts SET status = ?, updated_at = ? WHERE source_sale_id = ? AND status = ?`,
-		BillDraftInvoiced, now, sourceSaleID, BillDraftOpen)
+// DeleteBillDraftsBySale is the ONLY post-issue cleanup: hard-delete all drafts for the sale.
+func (d *DB) DeleteBillDraftsBySale(sourceSaleID string) error {
+	sourceSaleID = strings.TrimSpace(sourceSaleID)
+	if sourceSaleID == "" {
+		return fmt.Errorf("store: source_sale_id required")
+	}
+	_, err := d.SQL.Exec(`DELETE FROM bill_sync_drafts WHERE source_sale_id = ?`, sourceSaleID)
+	return err
+}
+
+// HasSignedFTForSale is the ONLY already_invoiced gate for bill-sync re-ingest (tax DB, not draft status).
+func (d *DB) HasSignedFTForSale(storeID, sourceSystem, sourceSaleID string) (bool, error) {
+	storeID = strings.TrimSpace(storeID)
+	sourceSystem = strings.TrimSpace(sourceSystem)
+	sourceSaleID = strings.TrimSpace(sourceSaleID)
+	if sourceSaleID == "" {
+		return false, fmt.Errorf("store: source_sale_id required")
+	}
+	if sourceSystem == "" {
+		sourceSystem = "farvoo"
+	}
+	var n int
+	q := `SELECT COUNT(1) FROM invoices WHERE source_sale_id = ? AND IFNULL(source_system,'') = ?`
+	args := []any{sourceSaleID, sourceSystem}
+	if storeID != "" {
+		q += ` AND store_id = ?`
+		args = append(args, storeID)
+	}
+	err := d.SQL.QueryRow(q, args...).Scan(&n)
 	if err != nil {
-		return err
+		return false, err
 	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return n > 0, nil
 }
 
 func nullIfEmpty(s string) any {

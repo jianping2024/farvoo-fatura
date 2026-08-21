@@ -35,6 +35,8 @@ idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL
 
 **账单同步唯一写路径：** `billsync.PullAndIngest` → `IngestCloudJob` → `UpsertBillDraftOpen` + `UpsertFiscalProductByCode`。Realtime/Polling 只门铃/补偿，禁止第二套 HTTP/WS。
 
+**草稿开票唯一路径：** `billsync.DraftToSaleSnapshot` → `service.IssueFromBillDraft` → `IssueDocument`/`IssueFT` → `DeleteBillDraftsBySale`。开票成功硬删该 sale 全部草稿；再同步靠 `HasSignedFTForSale`。
+
 ## 聚合 ↔ 表（实现约束）
 
 | 聚合 / 模块 | 表 | 唯一入口 |
@@ -42,7 +44,7 @@ idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL
 | Series | `series` | 仅 `IssueFT` 更新 `last_number`/`last_hash` |
 | Invoice（签后不可变） | `invoices` + lines/snapshot/payments | 仅 `IssueFT` INSERT |
 | Fiscal Print Job | `local_print_jobs` + `print_attempts` | 签发插入；`worker.Worker` 认领完成 |
-| Bill sync draft | `bill_sync_drafts` | 仅 `UpsertBillDraftOpen` / `MarkBillDraftInvoiced` |
+| Bill sync draft | `bill_sync_drafts` | 写入仅 `UpsertBillDraftOpen`；开票后清仅 `DeleteBillDraftsBySale` |
 | 序号字符串 | — | 仅 `compliance.FormatSequence` / `FormatInvoiceNo` / `FormatATCUD` |
 | Hash 输入 | — | 仅 `compliance.BuildSignPayload` |
 | QR | — | 仅 `compliance.BuildQR` |

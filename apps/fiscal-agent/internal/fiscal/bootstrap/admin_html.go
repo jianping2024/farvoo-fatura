@@ -65,7 +65,9 @@ input,textarea{width:100%;padding:.4rem;box-sizing:border-box;margin:0 0 .4rem;b
 </div>
 <div class="box">
 <h2>7. 账单草稿（同步）</h2>
+<p>open 草稿可整桌开 FT（散客+现金）；成功后硬删该桌全部草稿。</p>
 <button id="btnDrafts">刷新 bill-drafts</button>
+<div id="draftActions"></div>
 <pre id="drafts">…</pre>
 </div>
 <script>
@@ -75,6 +77,7 @@ document.getElementById('rid').value='req-'+Date.now();
 const out=document.getElementById('out');
 const statusEl=document.getElementById('status');
 const draftsEl=document.getElementById('drafts');
+const draftActions=document.getElementById('draftActions');
 async function j(method,path,body){
   const r=await fetch(path,{method,headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});
   const t=await r.json();
@@ -82,7 +85,24 @@ async function j(method,path,body){
   return t;
 }
 async function refresh(){ statusEl.textContent=JSON.stringify(await j('GET','/local/v1/setup/status'),null,2); }
-async function refreshDrafts(){ draftsEl.textContent=JSON.stringify(await j('GET','/local/v1/bill-drafts'),null,2); }
+async function refreshDrafts(){
+  const data=await j('GET','/local/v1/bill-drafts');
+  draftsEl.textContent=JSON.stringify(data,null,2);
+  draftActions.innerHTML='';
+  (data.drafts||[]).filter(d=>d.status==='open').forEach(d=>{
+    const b=document.createElement('button');
+    b.textContent='开 FT：'+(d.table_display_name||d.source_sale_id)+' ('+d.id.slice(0,8)+'…)';
+    b.onclick=async()=>{
+      out.textContent='issuing from draft…';
+      try{
+        const res=await j('POST','/local/v1/bill-drafts/'+encodeURIComponent(d.id)+'/issue',{operator_id:'op-demo-cashier'});
+        out.textContent=JSON.stringify(res,null,2);
+        await refreshDrafts();
+      }catch(e){ out.textContent=JSON.stringify(e,null,2); }
+    };
+    draftActions.appendChild(b);
+  });
+}
 document.getElementById('btnStatus').onclick=()=>refresh().catch(e=>statusEl.textContent=JSON.stringify(e,null,2));
 document.getElementById('btnDrafts').onclick=()=>refreshDrafts().catch(e=>draftsEl.textContent=JSON.stringify(e,null,2));
 document.getElementById('btnTax').onclick=async()=>{

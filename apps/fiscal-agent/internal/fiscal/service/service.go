@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"farvoo-fiscal-agent/internal/fiscal/at"
+	"farvoo-fiscal-agent/internal/fiscal/billsync"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/protect"
 	"farvoo-fiscal-agent/internal/fiscal/signer"
@@ -313,6 +315,54 @@ func (s *FiscalService) GetPrintJob(id string) (*store.PrintJobView, error) {
 // ListBillDrafts returns local bill sync drafts (read model).
 func (s *FiscalService) ListBillDrafts(limit int) ([]store.BillSyncDraft, error) {
 	return s.db.ListBillDrafts(limit)
+}
+
+// IssueFromBillDraft is the ONLY entry that issues FT from a bill_sync_drafts row.
+// Maps via billsync.DraftToSaleSnapshot → IssueDocument → DeleteBillDraftsBySale.
+func (s *FiscalService) IssueFromBillDraft(ctx context.Context, draftID, operatorID string) (*domain.IssueResult, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("fiscal: service not configured")
+	}
+	draftID = strings.TrimSpace(draftID)
+	operatorID = strings.TrimSpace(operatorID)
+	if draftID == "" {
+		return nil, fmt.Errorf("fiscal: draft id required")
+	}
+	if operatorID == "" {
+		return nil, fmt.Errorf("fiscal: operator_id required")
+	}
+	draft, err := s.db.GetBillDraftByID(draftID)
+	if err != nil {
+		return nil, err
+	}
+	if draft.Status != store.BillDraftOpen {
+		return nil, coded("draft_not_open", fmt.Sprintf("draft status %q is not open", draft.Status))
+	}
+	var snap billsync.Snapshot
+	if err := json.Unmarshal([]byte(draft.PayloadJSON), &snap); err != nil {
+		return nil, fmt.Errorf("fiscal: draft payload: %w", err)
+	}
+	if strings.TrimSpace(snap.SourceSaleID) == "" {
+		snap.SourceSaleID = draft.SourceSaleID
+	}
+	if strings.TrimSpace(snap.RequestID) == "" {
+		snap.RequestID = draft.RequestID
+	}
+	sale, err := billsync.DraftToSaleSnapshot(snap)
+	if err != nil {
+		return nil, err
+	}
+	reqID := "draft-issue:" + draft.ID
+	res, err := s.IssueDocument(ctx, domain.IssueRequest{
+		StoreID: s.storeID, RequestID: reqID, OperatorID: operatorID, Snapshot: sale,
+	}, domain.DocumentFT)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.db.DeleteBillDraftsBySale(draft.SourceSaleID); err != nil {
+		return nil, fmt.Errorf("fiscal: issued but draft cleanup failed: %w", err)
+	}
+	return res, nil
 }
 
 // DB exposes store for bill-sync puller wiring (read/ingest only via billsync package).

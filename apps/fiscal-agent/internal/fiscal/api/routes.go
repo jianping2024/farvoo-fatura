@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"farvoo-fiscal-agent/internal/fiscal/billsync"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/service"
 	"farvoo-fiscal-agent/internal/fiscal/store"
@@ -51,6 +52,9 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	})
 	mux.HandleFunc("GET /local/v1/bill-drafts", func(w http.ResponseWriter, r *http.Request) {
 		handleListBillDrafts(w, r, deps)
+	})
+	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/issue", func(w http.ResponseWriter, r *http.Request) {
+		handleIssueBillDraft(w, r, deps)
 	})
 }
 
@@ -263,20 +267,51 @@ func handleListBillDrafts(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		CloudJobID       string `json:"cloud_job_id,omitempty"`
 		UpdatedAt        string `json:"updated_at"`
 		TableDisplayName string `json:"table_display_name,omitempty"`
+		ScopeType        string `json:"scope_type,omitempty"`
 	}
 	out := make([]row, 0, len(list))
 	for _, d := range list {
 		var meta struct {
 			TableDisplayName string `json:"table_display_name"`
+			ScopeType        string `json:"scope_type"`
 		}
 		_ = json.Unmarshal([]byte(d.PayloadJSON), &meta)
 		out = append(out, row{
 			ID: d.ID, RequestID: d.RequestID, SourceSaleID: d.SourceSaleID,
 			Status: d.Status, CloudJobID: d.CloudJobID, UpdatedAt: d.UpdatedAt,
-			TableDisplayName: meta.TableDisplayName,
+			TableDisplayName: meta.TableDisplayName, ScopeType: meta.ScopeType,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"drafts": out})
+}
+
+func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	if deps.Fiscal == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
+		return
+	}
+	id := r.PathValue("id")
+	var body struct {
+		OperatorID string `json:"operator_id"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if body.OperatorID == "" {
+		body.OperatorID = "op-demo-cashier"
+	}
+	res, err := deps.Fiscal.IssueFromBillDraft(r.Context(), id, body.OperatorID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeErr(w, http.StatusNotFound, "draft_not_found", err.Error())
+			return
+		}
+		if ie := billsync.AsIngestError(err); ie != nil {
+			writeErr(w, http.StatusBadRequest, ie.Code, ie.Message)
+			return
+		}
+		writeCoded(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
 }
 
 func writeCoded(w http.ResponseWriter, err error) {

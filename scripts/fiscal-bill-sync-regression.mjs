@@ -5,7 +5,7 @@
  */
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { mkdirSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,6 +16,9 @@ const base = 'http://127.0.0.1:17886';
 const mockPort = 17991;
 const dataRoot = join(agent, 'data', 'bill-sync-uat');
 const uat = join(root, 'scripts', 'fiscal-local-uat.mjs');
+const pemPath = join(agent, 'internal', 'fiscal', 'testdata', 'dev_signing_key.pem');
+const pem = readFileSync(pemPath, 'utf8');
+const year = new Date().getFullYear();
 
 const results = [];
 function record(name, ok, note) {
@@ -269,24 +272,193 @@ async function main() {
     record('reject-item-conflict', false, String(e));
   }
 
+  // Setup fiscal (taxpayer/AT/series/activate/operator) then issue-from-draft.
   try {
-    await run('sqlite3', [dbPath, `UPDATE bill_sync_drafts SET status='invoiced' WHERE source_sale_id='sale-bill-1';`]);
+    await uatCmd(
+      'req',
+      'PUT',
+      '/local/v1/setup/taxpayer',
+      '--body',
+      JSON.stringify({
+        tax_registration_number: '517535009',
+        legal_name: 'Demo Lda',
+        address_detail: 'Rua 1',
+        city: 'Lisboa',
+        postal_code: '1000-001',
+        country: 'PT',
+        timezone: 'Europe/Lisbon',
+        software_certificate_number: '0',
+      }),
+    );
+    await uatCmd(
+      'req',
+      'PUT',
+      '/local/v1/setup/at-credentials',
+      '--body',
+      JSON.stringify({ username: '517535009/37', password: 'demo' }),
+    );
+    const y = year;
+    await uatCmd(
+      'req',
+      'POST',
+      '/local/v1/setup/series/register',
+      '--body',
+      JSON.stringify({ series_code: `FT${y}DEMO01`, document_type: 'FT', fiscal_year: y }),
+    );
+    await uatCmd(
+      'req',
+      'POST',
+      '/local/v1/setup/activate',
+      '--body',
+      JSON.stringify({ product_private_key_pem: pem }),
+    );
+    await uatCmd(
+      'req',
+      'PUT',
+      '/local/v1/setup/operator',
+      '--body',
+      JSON.stringify({ id: 'op-demo-cashier', role: 'cashier', display_name: 'Cashier' }),
+    );
+    record('fiscal-setup', true, 'taxpayer/at/series/activate/op');
+  } catch (e) {
+    record('fiscal-setup', false, String(e));
+  }
+
+  let openDraftId = null;
+  try {
+    pendingJobs = [
+      {
+        id: 'job-issue',
+        status: 'pending',
+        payload: snap({ request_id: 'req-issue-1', source_sale_id: 'sale-issue-1' }),
+      },
+    ];
+    acks.length = 0;
+    await runPull();
+    pendingJobs = [
+      {
+        id: 'job-issue-2',
+        status: 'pending',
+        payload: snap({ request_id: 'req-issue-2', source_sale_id: 'sale-issue-1' }),
+      },
+    ];
+    await runPull();
+    const drafts = JSON.parse(await uatCmd('req', 'GET', '/local/v1/bill-drafts'));
+    const open = (drafts.drafts || []).filter((d) => d.source_sale_id === 'sale-issue-1' && d.status === 'open');
+    const discarded = (drafts.drafts || []).filter(
+      (d) => d.source_sale_id === 'sale-issue-1' && d.status === 'discarded',
+    );
+    openDraftId = open[0]?.id;
+    record(
+      'cover-keeps-one-open',
+      open.length === 1 && discarded.length >= 1 && !!openDraftId,
+      `open=${open.length} discarded=${discarded.length}`,
+    );
+  } catch (e) {
+    record('cover-keeps-one-open', false, String(e));
+  }
+
+  try {
+    if (!openDraftId) throw new Error('no open draft');
+    const issued = JSON.parse(
+      await uatCmd(
+        'req',
+        'POST',
+        `/local/v1/bill-drafts/${openDraftId}/issue`,
+        '--body',
+        JSON.stringify({ operator_id: 'op-demo-cashier' }),
+      ),
+    );
+    const drafts = JSON.parse(await uatCmd('req', 'GET', '/local/v1/bill-drafts'));
+    const left = (drafts.drafts || []).filter((d) => d.source_sale_id === 'sale-issue-1');
+    const invoiceNo = issued.InvoiceNo || issued.invoice_no;
+    const printJobID = issued.PrintJobID || issued.print_job_id;
+    const ok = !!invoiceNo && left.length === 0;
+    record('issue-from-draft-hard-delete', ok, JSON.stringify({ InvoiceNo: invoiceNo, left: left.length }));
+    if (printJobID) {
+      await uatCmd(
+        'wait-json',
+        'GET',
+        `/local/v1/print-jobs/${printJobID}`,
+        '--path',
+        'job_status',
+        '--equals',
+        'PRINTED',
+        '--timeout-ms',
+        '8000',
+      );
+      record('issue-from-draft-print-job', true, printJobID);
+    } else {
+      record('issue-from-draft-print-job', false, 'no PrintJobID');
+    }
+  } catch (e) {
+    record('issue-from-draft-hard-delete', false, String(e));
+    record('issue-from-draft-print-job', false, String(e));
+  }
+
+  try {
     pendingJobs = [
       {
         id: 'job-re',
         status: 'pending',
-        payload: snap({ request_id: 'req-re', source_sale_id: 'sale-bill-1' }),
+        payload: snap({ request_id: 'req-re', source_sale_id: 'sale-issue-1' }),
       },
     ];
     acks.length = 0;
     await runPull();
     record(
-      'already-invoiced-ack-failed',
+      'already-invoiced-via-tax-db',
       acks[0]?.status === 'failed' && acks[0]?.error_code === 'already_invoiced',
       JSON.stringify(acks[0]),
     );
   } catch (e) {
-    record('already-invoiced-ack-failed', false, String(e));
+    record('already-invoiced-via-tax-db', false, String(e));
+  }
+
+  try {
+    const splitPayload = snap({
+      request_id: 'req-split',
+      source_sale_id: 'sale-split',
+      scope_type: 'split',
+      lines: [],
+      splits: [
+        {
+          scope_id: 'p1',
+          name: 'A',
+          lines: [
+            {
+              item_code: 'A',
+              name: 'X',
+              qty: '1',
+              unit_price_gross: '1.00',
+              line_gross: '1.00',
+              vat_rate: '23.00',
+            },
+          ],
+          gross_total: '1.00',
+        },
+      ],
+    });
+    pendingJobs = [{ id: 'job-split', status: 'pending', payload: splitPayload }];
+    acks.length = 0;
+    await runPull();
+    const drafts = JSON.parse(await uatCmd('req', 'GET', '/local/v1/bill-drafts'));
+    const d = (drafts.drafts || []).find((x) => x.source_sale_id === 'sale-split' && x.status === 'open');
+    if (!d) throw new Error('split draft missing');
+    const r = await fetch(`${base}/local/v1/bill-drafts/${d.id}/issue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ operator_id: 'op-demo-cashier' }),
+    });
+    const body = await r.json();
+    record(
+      'reject-split-issue',
+      r.status >= 400 &&
+        (body.error === 'validation_failed' || String(body.message || '').includes('whole_table')),
+      JSON.stringify(body),
+    );
+  } catch (e) {
+    record('reject-split-issue', false, String(e));
   }
 
   child.kill('SIGTERM');
