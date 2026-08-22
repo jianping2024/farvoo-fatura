@@ -124,8 +124,9 @@ func (d *DB) CompletePrintJob(jobID string, ok bool, errMsg string) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var invoiceID string
-	if err := tx.QueryRow(`SELECT invoice_id FROM local_print_jobs WHERE id = ?`, jobID).Scan(&invoiceID); err != nil {
+		var invoiceID, printPurpose string
+	if err := tx.QueryRow(`SELECT invoice_id, print_purpose FROM local_print_jobs WHERE id = ?`, jobID).
+		Scan(&invoiceID, &printPurpose); err != nil {
 		return err
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -135,7 +136,7 @@ func (d *DB) CompletePrintJob(jobID string, ok bool, errMsg string) error {
 			now, now, jobID); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(`UPDATE invoices SET print_status = ? WHERE id = ?`, string(domain.PrintPrinted), invoiceID); err != nil {
+		if _, err := tx.Exec(`UPDATE invoices SET print_status = ? WHERE id = ?`, invoicePrintStatus(printPurpose, ok), invoiceID); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(`INSERT INTO print_attempts (id, print_job_id, attempted_at, result, error_code, error_message, device_hint)
@@ -147,7 +148,9 @@ func (d *DB) CompletePrintJob(jobID string, ok bool, errMsg string) error {
 			errMsg, now, jobID); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(`UPDATE invoices SET print_status = ? WHERE id = ?`, string(domain.PrintFailed), invoiceID); err != nil {
+		if printPurpose == string(domain.PrintReprint) {
+			// reprint failure: leave invoice print_status unchanged
+		} else if _, err := tx.Exec(`UPDATE invoices SET print_status = ? WHERE id = ?`, string(domain.PrintFailed), invoiceID); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(`INSERT INTO print_attempts (id, print_job_id, attempted_at, result, error_code, error_message, device_hint)
@@ -156,6 +159,16 @@ func (d *DB) CompletePrintJob(jobID string, ok bool, errMsg string) error {
 		}
 	}
 	return tx.Commit()
+}
+
+func invoicePrintStatus(printPurpose string, ok bool) string {
+	if !ok {
+		return string(domain.PrintFailed)
+	}
+	if printPurpose == string(domain.PrintReprint) {
+		return string(domain.PrintReprinted)
+	}
+	return string(domain.PrintPrinted)
 }
 
 // DecodePayloadJSON is a tiny helper for workers.

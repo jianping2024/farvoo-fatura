@@ -45,6 +45,8 @@ idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL
 
 **手动 FT 唯一路径：** `catalog.BuildManualSaleSnapshot` → `service.IssueManualFT` → `IssueDocument` → `IssueFT`（API `POST /local/v1/fiscal-documents/manual`）。
 
+**重打唯一路径：** `print.ClonePayloadForReprint` → `store.CreateReprintPrintJob`（API `POST /local/v1/fiscal-documents/{id}/reprints`）。禁止重签；禁止经 `IssueFT` 插入 REPRINT 行。
+
 ## 聚合 ↔ 表（实现约束）
 
 | 聚合 / 模块 | 表 | 唯一入口 |

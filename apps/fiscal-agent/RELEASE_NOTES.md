@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.0
+
+**M2.6：正式 Admin + 重打 API**
+
+- 重打唯一路径：`print.ClonePayloadForReprint` → `store.CreateReprintPrintJob` → `POST /local/v1/fiscal-documents/{id}/reprints`（不重签）。
+- 发票列表/详情：`GET /local/v1/fiscal-documents`、`GET /local/v1/fiscal-documents/{id}`。
+- 正式 Admin（v2 原型）：订单四步、餐馆/商超、待开票账单、商品/客户/设置；替换调试 § 页。
+- 回归：`scripts/fiscal-reprint-regression.mjs`。
+
 ## 0.3.99
 
 **FT 收口：薄商品 / 客户 + 手动开 FT**

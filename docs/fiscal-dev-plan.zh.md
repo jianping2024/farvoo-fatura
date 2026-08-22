@@ -2,7 +2,7 @@
 
 > **状态：定稿**（里程碑顺序与每步交付物；排期日期未定）  
 > **权威：是**（本仓工程推进顺序以本文为准）  
-> **对应实现：** 按里程碑落地；**M2.5 已完成**；**M2.6 进行中**（M2.6a 后端 0.3.99 已落地）；**下一步 M2.6b–e（FT 收口 + 正式 Admin）**，其后 M3（NC）/ M4（Farvoo + §13）  
+> **对应实现：** 按里程碑落地；**M2.5 已完成**；**M2.6 已完成**（0.4.0）；**下一步 M3（NC）** / **M4（Farvoo + §13）**  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 ## 依据（只读，不替代本文交付定义）
@@ -41,7 +41,7 @@
 | **M1** | 身份、AT 系列、激活开票 | **已完成**（`ba9c95f`） |
 | **M2** | 并入主 Agent + 真机税务打印 | **已完成** |
 | **M2.5** | 待开票账单 / 分单开票（整桌/按人/NIF） | **已完成**（回归见 `fiscal-bill-sync-regression.mjs`） |
-| **M2.6** | 正式 Admin + FT 日常收口 | **进行中**（M2.6a 已完成；M2.6b–e 未开始） |
+| **M2.6** | 正式 Admin + FT 日常收口 | **已完成**（0.4.0；`fiscal-reprint-regression.mjs`） |
 | **M3** | NC（冲销） | 未开始（**非日常 urgent**；M2.6 FT 收口后再做） |
 | **M4** | Farvoo Local API 联调（含 §13 鉴权子集） | 未开始 |
 | **M5** | SAF-T 月报导出 | 未开始 |
@@ -220,7 +220,7 @@ M2（主进程 + 开票可用）；账单同步入草稿（已有）。宜在 **
 
 ## M2.6 — 正式 Admin + FT 日常收口
 
-> **状态：进行中**（M2.6a **已完成** VERSION 0.3.99；M2.6b–e 未开始）  
+> **状态：已完成**（0.4.0）  
 > **UI 流程权威：** [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)（v2 流程对齐稿，**定稿**）  
 > **Admin 工程说明：** [`apps/fiscal-agent/web/fiscal-admin/README.md`](../apps/fiscal-agent/web/fiscal-admin/README.md)
 
@@ -256,12 +256,12 @@ M2（主进程 + 开票可用）；账单同步入草稿（已有）。宜在 **
 | D2.6.2 | **LOCAL 客户 API** | `GET/POST /local/v1/customers`；开票 `ensureCustomerIDTx` | **已完成**（0.3.99） |
 | D2.6.3 | **手动 FT API** | `POST /local/v1/fiscal-documents/manual` → `BuildManualSaleSnapshot` → `IssueDocument` | **已完成**（0.3.99） |
 | D2.6.4 | **手动 FT 回归** | `scripts/fiscal-manual-ft-regression.mjs` 全绿 | **已完成**（0.3.99） |
-| D2.6.5 | **重打 API** | `POST /local/v1/fiscal-documents/{documentId}/reprints` 挂载 + 服务层 + 单测 | 未开始 |
-| D2.6.6 | **正式 Admin 壳** | 登录（业态+PIN 占位）、侧栏、Toast；去掉调试 § 编号与工程词 | 未开始 |
-| D2.6.7 | **订单四步 UI** | 新建订单 / 加商品 / 确认 / 开票；手动走 D2.6.3；餐馆「待开票账单」走 M2.5 issue | 未开始 |
-| D2.6.8 | **发票列表/详情** | 查票、展示 ATCUD/票号、重打按钮（依赖 D2.6.5） | 未开始 |
-| D2.6.9 | **商品/客户/设置页** | 对齐原型；设置含 M1 身份/系列（自现 Admin 迁入） | 未开始 |
-| D2.6.10 | **回归** | 扩展现有 fiscal-local / bill-sync / manual-ft；新增 reprint 脚本；无 `t.Skip` | 未开始 |
+| D2.6.5 | **重打 API** | `POST /local/v1/fiscal-documents/{documentId}/reprints` 挂载 + 服务层 + 单测 | **已完成**（0.4.0） |
+| D2.6.6 | **正式 Admin 壳** | 登录（业态+PIN 占位）、侧栏、Toast；去掉调试 § 编号与工程词 | **已完成**（0.4.0） |
+| D2.6.7 | **订单四步 UI** | 新建订单 / 加商品 / 确认 / 开票；手动走 D2.6.3；餐馆「待开票账单」走 M2.5 issue | **已完成**（0.4.0） |
+| D2.6.8 | **发票列表/详情** | 查票、展示 ATCUD/票号、重打按钮（依赖 D2.6.5） | **已完成**（0.4.0） |
+| D2.6.9 | **商品/客户/设置页** | 对齐原型；设置含 M1 身份/系列（自现 Admin 迁入） | **已完成**（0.4.0） |
+| D2.6.10 | **回归** | 扩展现有 fiscal-local / bill-sync / manual-ft；新增 reprint 脚本；无 `t.Skip` | **已完成**（0.4.0） |
 
 ### 验收清单
 
@@ -448,4 +448,4 @@ M1–M5 主路径稳定。
 | 2026-08-21 | M2.5：NIF 编辑升为 P0；§13 明确归 M4；进度头标明「下一步 = 实现 M2.5」 |
 | 2026-08-21 | **M2.5 完成**：按人/NIF/`discard`/详情已开标记 + 回归全绿；VERSION 0.3.87 |
 | 2026-08-22 | 增补 **M2.6**（正式 Admin + FT 收口）；UI 对齐 [`fiscal-admin-ui-prototype`](fiscal-admin-ui-prototype/README.md) v2；M3 降为 M2.6 之后 |
-| 2026-08-22 | **M2.6a 完成**（0.3.99）：LOCAL 商品/客户 + 手动 FT API + 回归；M2.6b–e 待做 |
+| 2026-08-22 | **M2.6 完成**（0.4.0）：重打 API + 正式 Admin v2 + `fiscal-reprint-regression.mjs` |
