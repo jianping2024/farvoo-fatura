@@ -138,6 +138,10 @@ async function main() {
   console.log('\n=== MANUAL-FT SUMMARY ===');
   for (const r of results) console.log(`${r.status}\t${r.name}\t${r.note}`);
   child.kill('SIGTERM');
+  await new Promise((r) => {
+    child.on('close', r);
+    setTimeout(r, 2000);
+  });
   if (results.some((r) => r.status === 'fail')) process.exit(1);
 }
 

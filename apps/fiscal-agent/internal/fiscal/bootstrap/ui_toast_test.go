@@ -22,3 +22,15 @@ func TestAdminHTMLUsesSharedToastOnly(t *testing.T) {
 		t.Fatal("toast.js must export FiscalUI.showToast")
 	}
 }
+
+func TestAdminHTMLSplitSyncScopeHelper(t *testing.T) {
+	if !strings.Contains(adminHTML, "function isSplitSyncScope") {
+		t.Fatal("admin must define isSplitSyncScope for split bill-sync payloads")
+	}
+	if !strings.Contains(adminHTML, "function syncScopeType") {
+		t.Fatal("admin must define syncScopeType helper")
+	}
+	if strings.Contains(adminHTML, "scopeType === 'person'") {
+		t.Fatal("admin must not compare sync scope_type to 'person'; cloud sends split, issue mode is person")
+	}
+}

@@ -625,6 +625,21 @@
       localStorage.getItem(STATION_LS) || '';
   }
 
+  /** Sync payload scope_type: whole_table | split. Issue API mode: whole_table | person. */
+  function syncScopeType(snap, draft) {
+    const s = snap || {};
+    const d = draft || {};
+    return s.scope_type || d.scope_type || 'whole_table';
+  }
+
+  function isSplitSyncScope(scopeType) {
+    return scopeType === 'split';
+  }
+
+  function billScopeLabel(scopeType) {
+    return isSplitSyncScope(scopeType) ? '按人' : '整桌';
+  }
+
   async function refreshPrinters() {
     const sels = [$('#stationSel'), $('#invStationSel')].filter(Boolean);
     const data = await j('GET', '/local/v1/printers');
@@ -880,7 +895,7 @@
       return;
     }
     tbody.innerHTML = drafts.map(d => {
-      const scope = d.scope_type === 'person' ? '按人' : '整桌';
+      const scope = billScopeLabel(d.scope_type || 'whole_table');
       return '<tr class="clickable" data-bill-id="' + d.id + '">' +
         '<td><strong>' + (d.table_display_name || '—') + '</strong></td>' +
         '<td>' + scope + '</td>' +
@@ -897,14 +912,14 @@
     const snap = detail.payload || {};
     const draft = detail.draft || {};
     $('#billTable').textContent = snap.table_display_name || draft.source_sale_id || '—';
-    const scopeType = snap.scope_type || draft.scope_type || 'whole_table';
-    $('#billScopeLabel').textContent = scopeType === 'person' ? '按人' : '整桌';
+    const scopeType = syncScopeType(snap, draft);
+    $('#billScopeLabel').textContent = billScopeLabel(scopeType);
     $('#billNif').value = '';
     $('#billName').value = '';
     const personList = $('#billPersonList');
     personList.innerHTML = '';
     const issued = issuedSet(detail.issued_scopes);
-    if (scopeType === 'person' && snap.splits && snap.splits.length) {
+    if (isSplitSyncScope(scopeType) && snap.splits && snap.splits.length) {
       personList.innerHTML = '<p class="hint">选择开票对象：</p>';
       snap.splits.forEach(sp => {
         const key = 'person:' + sp.scope_id;
@@ -1210,8 +1225,8 @@
   $('#btnBillIssue').onclick = () => withBusy($('#btnBillIssue'), '开票中…', async () => {
     if (!currentBillDetail) return;
     try {
-      const scopeType = (currentBillDetail.payload && currentBillDetail.payload.scope_type) || 'whole_table';
-      if (scopeType === 'person') {
+      const scopeType = syncScopeType(currentBillDetail.payload, currentBillDetail.draft);
+      if (isSplitSyncScope(scopeType)) {
         const picked = $('input[name="billPerson"]:checked');
         if (!picked) { toast('请选择开票对象', 'error'); return; }
         await issueBill('person', picked.value);

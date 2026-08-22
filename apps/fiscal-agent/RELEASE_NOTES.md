@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.1
+
+**Admin：按人账单 scope 对齐 cloud**
+
+- 同步载荷 `scope_type=split` 与开票 API `mode=person` 分离；唯一 helper：`syncScopeType` / `isSplitSyncScope` / `billScopeLabel`。
+- 待开票账单列表/详情正确显示「按人」并列出 splits 人选。
+- 回归：`TestAdminHTMLSplitSyncScopeHelper`；`scripts/fiscal-admin-split-ui-prep.mjs`。
+- M4 联调清单：`docs/fiscal-m4-farvoo-uat.zh.md`（白云饭店 · 整桌+按人）。
+
 ## 0.4.0
 
 **M2.6：正式 Admin + 重打 API**
