@@ -1,18 +1,38 @@
-# 账单草稿 → 打票工作台（整桌 / 按人）
+# 待开票账单 → 分单开票（整桌 / 按人）
 
-> **状态：定稿**（实现已落地，见 Agent `IssueFromBillDraft` / Admin §7）  
-> **权威：是**（本仓「从同步草稿开票 / 分单补票」以本文为准）  
+> **状态：定稿**（实现已落地，见 Agent `IssueFromBillDraft` / Admin §7 调试页）  
+> **权威：是**（本仓「从同步账单开票 / 分单补票」以本文为准；**库表/API 内部名不变**）  
 > **对应实现：** 已落地（`mode`/`scope_id`/NIF/`discard`/详情已开标记）；§13 仍归 M4  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)  
 > **库表权威：** [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §6.21  
 > **只读依据（不改对方仓文档）：** restaurant-ordering `farvoo-fiscal-agent-integration.zh.md` §3.1（整桌/按人互斥、`scope_id` 稳定 UUID）；挂单载荷见同仓 `farvoo-fiscal-bill-sync-api.zh.md` §5  
-> **工程进度：** 本仓 [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) — **M2.5 本提交完成**；下一步 M3/M4
+> **工程进度：** [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) — **M2.5 已完成**；店员 UI 见 **M2.6** + [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)
+
+---
+
+## 0. 业务用语 vs 内部名（P0）
+
+**产品界面、培训、对外说明**只用左列；右列仅出现在本仓设计文、代码、日志。
+
+| 界面 / 业务用语 | 内部（代码 / 表 / API） |
+|-----------------|-------------------------|
+| 待开票账单 | `bill_sync_drafts`；路由前缀 `/local/v1/bill-drafts` |
+| 转订单 | 进入 M2.6 订单四步流；载荷仍来自同步或映射 |
+| 订单 | 开票前销售聚合（手动为 snapshot；同步为 draft 映射） |
+| 签发发票 | `IssueDocument` → FT |
+| 发票 | `invoices` + 打印作业 |
+| 重打 | `print_purpose=REPRINT` 新打印作业（**M2.6b**） |
+| 作废账单 | `POST .../discard` → `DeleteBillDraftsBySale`（**不删**已开发票） |
+| 商品 | `fiscal_products`（LOCAL 维护见 M2.6a） |
+| 客户 | `customers` / 开票时 NIF 覆盖 |
+
+**禁止**在店员可见 UI 出现：草稿、LOCAL、bill-draft、M3、API、scope_id（可展示桌号/人名）。
 
 ---
 
 ## 1. 一句话
 
-Farvoo 结账只负责「同步账单」进本机 `bill_sync_drafts`；**整桌或按人开 FT、补票、丢弃草稿**一律在本机 Fiscal Agent 打票工作台完成。税务签发仍唯一走 `IssueDocument` → `IssueFT`。
+Farvoo 结账只负责「同步账单」进本机 `bill_sync_drafts`；**整桌或按人开 FT、补票、作废待开票账单**一律在本机 Fiscal Agent 完成（餐馆：**待开票账单** → 转订单 → 开票）。税务签发仍唯一走 `IssueDocument` → `IssueFT`。
 
 ---
 
@@ -25,7 +45,7 @@ Farvoo 结账只负责「同步账单」进本机 `bill_sync_drafts`；**整桌�
 | 按人 / `split` 草稿 | `DraftToSaleSnapshot` **拒绝** | **开放**：`mode=person` + `scope_id` |
 | NIF / 客户名 | MVP 固定散客 | **P0**：开票前可编辑；默认可散客；按人**各自**指定 |
 | 再同步挡重 | `HasSignedFTForSale`（按 `source_sale_id` 有任一张 FT 即挡） | 实现刀须收紧：见 §5.2（按业务键区分整桌/按人） |
-| UI | Admin 调试页 §7 | 同进程 `127.0.0.1:17880` 演进为「草稿工作台」页 |
+| UI | Admin 调试页 §7（工程） | **M2.6** 正式 Admin「待开票账单」→ 订单四步 → 开票 |
 | §13 鉴权 | Admin `/issue` **无**登录（本机 `127.0.0.1` 信任） | **本里程碑仍后置**；正式挂 §13 见开发计划 **M4** |
 
 ---
@@ -35,7 +55,7 @@ Farvoo 结账只负责「同步账单」进本机 `bill_sync_drafts`；**整桌�
 | 侧 | 管 | 不管 |
 |----|----|------|
 | Farvoo 结账 | 功能开关；点「同步账单」；挂 `bill_sync_jobs`；示「同步完成」 | 分单开票 UI、税票、ATCUD、改草稿、填 NIF |
-| Agent 工作台 | 列 `open` 草稿；选整桌或按人 scope；**填 NIF（可选）**；开 FT；进度展示；丢弃草稿 | 改云端菜单、关台、替 Restaurant 结账 |
+| Agent | 列 open 待开票账单；选整桌或按人 scope；**填 NIF（可选）**；签发发票；进度展示；作废账单 | 改云端菜单、关台、替 Restaurant 结账 |
 
 发票开票人 = 打票本机操作员（第一实现刀可暂用 `op-demo-cashier`）。  
 **§13 PIN / `operator_token` / 开票终端凭证：不在本里程碑交付**（完整方案有；工程排在 **M4**）。本刀继续本机 Admin 信任模型，与现 MVP 一致。
@@ -47,8 +67,8 @@ Farvoo 结账只负责「同步账单」进本机 `bill_sync_drafts`；**整桌�
 ### 4.1 整桌（`payload.scope_type = whole_table`）
 
 ```text
-工作台选草稿 →（可选）填本票 NIF / 客户名；空则散客
-  → 确认整桌开 FT
+待开票账单（或订单详情）→（可选）填本票 NIF / 客户名；空则散客
+  → 确认订单 / 确认整桌开票
   → DraftToSaleSnapshot（whole_table）+ 本次客户覆盖
   → IssueFromBillDraft(mode=whole_table)
   → IssueDocument / IssueFT
@@ -59,13 +79,13 @@ Farvoo 结账只负责「同步账单」进本机 `bill_sync_drafts`；**整桌�
 ### 4.2 按人（`payload.scope_type = split`）
 
 ```text
-工作台打开草稿 → 列出 splits[]（每人一行）
-  → 未开：可开 FT；已开：显示票号 / 仅重打（重打 API 后置，本刀可只展示）
+打开待开票账单 → 列出 splits[]（每人一行）
+  → 未开：可签发发票；已开：显示票号 / 重打（**M2.6b**）
   → 选一人 →（可选）为该人填 NIF / 客户名；空则该人散客；不沿用其他人的 NIF
   → mode=person + scope_id=splits[i].scope_id
   → DraftPartToSaleSnapshot（唯一映射出口，见 §7）+ 本次客户覆盖
   → IssueDocument / IssueFT
-  → 若仍有未开 person scope → 保留草稿
+  → 若仍有未开 person scope → 保留待开票账单
   → 若全部 person scope 均已有 FT → DeleteBillDraftsBySale（尽力；见 §6）
 ```
 
@@ -191,12 +211,13 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 
 ## 9. UI（P0）
 
-- 入口：本机 `http://127.0.0.1:17880`（与 Fiscal Admin 同进程）；从现 §7「账单草稿」演进为 **草稿工作台** 页。  
-- **不做** Farvoo 云端打票工作台。  
-- 列表：桌号、`source_sale_id`、同步时间、`whole_table`/`split`、未开/已开人数。  
-- 详情：行项目；split 时每人一块「开 FT」；整桌一个「开整桌 FT」。  
+- **店员路径（M2.6）：** 正式 Admin，流程见 [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)。餐馆侧栏 **待开票账单** → **转订单** → 四步进度条 → **签发发票**。  
+- **工程调试：** 本机 `http://127.0.0.1:17880` Admin §7 保留至 M2.6 正式页替代；**不对店员暴露** § 编号与「草稿」字样。  
+- **不做** Farvoo 云端开票页。  
+- 列表：桌号、`source_sale_id`、同步时间、整桌/分单、未开/已开人数。  
+- 详情：行项目；split 时每人一块「签发」；整桌一个「整桌签发」。  
 - **NIF：** 整桌开票前一个输入框；按人则**每个人一块独立输入**（默认空=散客）；不得把 A 的 NIF 默认填给 B。  
-- 成功：展示 `InvoiceNo`、ATCUD；按人刷新已开标记；整桌或全员开完后草稿从列表消失（若 `cleanup_pending` 则提示稍后清理，票号仍展示）。
+- 成功：展示 `InvoiceNo`、ATCUD；按人刷新已开标记；整桌或全员开完后待开票账单从列表消失（若 `cleanup_pending` 则提示稍后清理，票号仍展示）。
 
 ### 第一实现刀默认（文档锁定）
 
@@ -212,7 +233,7 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 |----|------|
 | 混合付款 | 多 `payments[]` |
 | §13 PIN / Farvoo `operator_token` / 开票终端 | 正式开票员与设备鉴权（**M4**） |
-| 重打 / NC 入口 | 挂已开票；NC 见 **M3** |
+| 重打 / NC 入口 | 发票详情：**重打 M2.6b**；**NC M3** |
 | 新 NIF 写入本地客户主档 | 对接文 A7；本刀至少写入本票快照即可 |
 
 ---
@@ -265,7 +286,7 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 1. 扩展映射 `DraftPartToSaleSnapshot` + issue body `mode`/`scope_id`/客户字段 + 互斥 + 按人 `request_id`  
 2. 按人清草稿策略（§6）+ `cleanup_pending` + discard API  
 3. `GET .../{id}` + 已开标记  
-4. Admin → 工作台 UI（含每人/整桌 NIF 输入）  
+4. Admin → 正式 Admin 待开票账单页（M2.6；含每人/整桌 NIF 输入）  
 5. 单测与回归：方案文 §11；无 `t.Skip`  
 
 ---
@@ -276,3 +297,4 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 |------|------|
 | 2026-08-21 | 首版定稿：整桌/按人工作台、API、清草稿 |
 | 2026-08-21 | NIF/客户名编辑升为 **P0**；签票成功与清草稿失败解耦；明确 §13 归 M4 非本刀；按人 `request_id` 须含 `scope_id` |
+| 2026-08-22 | 增补 §0 业务用语；UI 指向 M2.6 + v2 原型；「待开票账单」替代界面「草稿」 |
