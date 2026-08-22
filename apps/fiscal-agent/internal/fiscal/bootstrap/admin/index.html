@@ -352,7 +352,7 @@
         <div class="panel hidden" id="billDetail">
           <h2>桌 <span id="billTable">—</span> · <span id="billScopeLabel">—</span></h2>
           <div id="billPersonList"></div>
-          <div class="field"><label>购方 NIF（可选）</label><input id="billNif" placeholder="空 = 散客" /></div>
+          <div class="field"><label>购方 NIF（可选）</label><input id="billNif" placeholder="空 = 散客" list="customerNifList" /></div>
           <div class="field"><label>购方名称（可选）</label><input id="billName" placeholder="Consumidor Final" /></div>
           <div class="actions">
             <button type="button" id="btnBillIssue">签发发票并打印</button>
@@ -640,6 +640,76 @@
     return isSplitSyncScope(scopeType) ? '按人' : '整桌';
   }
 
+  /** ONLY bill-sync payload amount helper (list + detail). */
+  function billSyncPayloadAmount(snap) {
+    const s = snap || {};
+    if (isSplitSyncScope(s.scope_type) && s.splits && s.splits.length) {
+      let sum = 0;
+      s.splits.forEach(sp => {
+        const v = Number(sp.gross_total);
+        if (isFinite(v)) sum += v;
+      });
+      return sum > 0 ? sum.toFixed(2) : '';
+    }
+    return s.gross_total || '';
+  }
+
+  function formatBillSyncAmount(raw) {
+    return raw ? fmtMoney(raw) : '—';
+  }
+
+  /** ONLY customer NIF format check (UI); backend ApplyCustomerOverride mirrors 9 digits. */
+  function isNineDigitNif(nif) {
+    return /^\d{9}$/.test(String(nif || '').trim());
+  }
+
+  function customerNifInputError(nif) {
+    const t = String(nif || '').trim();
+    if (!t) return '';
+    if (!isNineDigitNif(t)) return 'NIF 须为 9 位数字';
+    return '';
+  }
+
+  function assertCustomerNifOrToast(nif) {
+    const err = customerNifInputError(nif);
+    if (err) {
+      toast(err, 'error');
+      return false;
+    }
+    return true;
+  }
+
+  function renderCustomerNifDatalist() {
+    const dl = $('#customerNifList');
+    if (!dl) return;
+    dl.innerHTML = catalogCustomers.map(c =>
+      '<option value="' + c.customer_tax_id + '">' + c.company_name + '</option>'
+    ).join('');
+  }
+
+  function fillCustomerNameFromCatalog(nif, nameEl) {
+    const c = catalogCustomers.find(x => x.customer_tax_id === String(nif || '').trim());
+    if (c && nameEl) nameEl.value = c.company_name;
+  }
+
+  function bindCustomerNifAutofill(nifEl, nameEl) {
+    if (!nifEl || nifEl.dataset.nifBound) return;
+    nifEl.dataset.nifBound = '1';
+    nifEl.addEventListener('change', () => fillCustomerNameFromCatalog(nifEl.value, nameEl));
+  }
+
+  async function ensureCustomerCatalog() {
+    if (catalogCustomers.length) {
+      renderCustomerNifDatalist();
+      return;
+    }
+    try {
+      const data = await j('GET', '/local/v1/customers');
+      catalogCustomers = data.customers || [];
+      renderCustomerNifDatalist();
+    } catch (_) { /* list may stay empty */ }
+  }
+
   async function refreshPrinters() {
     const sels = [$('#stationSel'), $('#invStationSel')].filter(Boolean);
     const data = await j('GET', '/local/v1/printers');
@@ -852,9 +922,8 @@
   async function refreshCustomers() {
     const data = await j('GET', '/local/v1/customers');
     catalogCustomers = data.customers || [];
+    renderCustomerNifDatalist();
     const tbody = $('#customersTbody');
-    const dl = $('#customerNifList');
-    dl.innerHTML = catalogCustomers.map(c => '<option value="' + c.customer_tax_id + '">' + c.company_name + '</option>').join('');
     if (!catalogCustomers.length) {
       tbody.innerHTML = '<tr><td colspan="3" class="hint">暂无客户</td></tr>';
       return;
@@ -896,10 +965,11 @@
     }
     tbody.innerHTML = drafts.map(d => {
       const scope = billScopeLabel(d.scope_type || 'whole_table');
+      const amt = formatBillSyncAmount(d.gross_total || '');
       return '<tr class="clickable" data-bill-id="' + d.id + '">' +
         '<td><strong>' + (d.table_display_name || '—') + '</strong></td>' +
         '<td>' + scope + '</td>' +
-        '<td>—</td>' +
+        '<td>' + amt + '</td>' +
         '<td>' + fmtTimeShort(d.updated_at) + '</td>' +
         '<td><button type="button" class="secondary" data-bill-open="' + d.id + '">选择开票</button></td></tr>';
     }).join('');
@@ -935,7 +1005,7 @@
         personList.appendChild(row);
       });
     } else {
-      const gt = snap.gross_total ? fmtMoney(snap.gross_total) : '—';
+      const gt = formatBillSyncAmount(billSyncPayloadAmount(snap));
       personList.innerHTML = '<p class="hint">金额合计：' + gt + '</p>';
     }
     $('#billDetail').classList.remove('hidden');
@@ -945,6 +1015,7 @@
     if (!currentOrder || currentOrder.status === 'issued') return;
     const sid = requireStation($('#invStationSel'));
     const nif = $('#invNif').value.trim();
+    if (!assertCustomerNifOrToast(nif)) return;
     const name = $('#invName').value.trim() || 'Consumidor Final';
     const pay = $('#invPay').value.trim() || 'CASH';
     const requestId = currentOrder.requestId || ('req-order-' + currentOrder.id + '-' + Date.now());
@@ -985,6 +1056,7 @@
     if (!currentBill) return;
     const sid = requireStation($('#stationSel'));
     const nif = $('#billNif').value.trim();
+    if (!assertCustomerNifOrToast(nif)) return;
     const name = $('#billName').value.trim();
     const body = {
       operator_id: OPERATOR_ID,
@@ -1030,6 +1102,7 @@
     showView('home');
     refreshPrinters().catch(() => {});
     refreshInvoices().catch(() => {});
+    ensureCustomerCatalog().catch(() => {});
     if (mode === 'restaurant') refreshBills().catch(() => {});
     toast(mode === 'restaurant' ? '已进入 · 餐馆模式' : '已进入 · 商超模式', 'success');
   }
@@ -1204,11 +1277,8 @@
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#invNif').addEventListener('change', () => {
-    const nif = $('#invNif').value.trim();
-    const c = catalogCustomers.find(x => x.customer_tax_id === nif);
-    if (c) $('#invName').value = c.company_name;
-  });
+  bindCustomerNifAutofill($('#invNif'), $('#invName'));
+  bindCustomerNifAutofill($('#billNif'), $('#billName'));
 
   $('#btnBillBack').onclick = () => $('#billDetail').classList.add('hidden');
 

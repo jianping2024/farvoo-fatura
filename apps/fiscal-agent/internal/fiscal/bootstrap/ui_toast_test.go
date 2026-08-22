@@ -34,3 +34,24 @@ func TestAdminHTMLSplitSyncScopeHelper(t *testing.T) {
 		t.Fatal("admin must not compare sync scope_type to 'person'; cloud sends split, issue mode is person")
 	}
 }
+
+func TestAdminHTMLBillListAndCustomerNifHelpers(t *testing.T) {
+	if !strings.Contains(adminHTML, "function billSyncPayloadAmount") {
+		t.Fatal("admin must define billSyncPayloadAmount for bill list/detail amounts")
+	}
+	if !strings.Contains(adminHTML, "function assertCustomerNifOrToast") {
+		t.Fatal("admin must define assertCustomerNifOrToast for NIF validation")
+	}
+	if !strings.Contains(adminHTML, "function renderCustomerNifDatalist") {
+		t.Fatal("admin must define renderCustomerNifDatalist once for customer lookup")
+	}
+	if !strings.Contains(adminHTML, `id="billNif"`) || !strings.Contains(adminHTML, `list="customerNifList"`) {
+		t.Fatal("billNif must use shared customerNifList datalist")
+	}
+	if strings.Contains(adminHTML, "invNif').addEventListener('change'") {
+		t.Fatal("do not bind invNif change separately; use bindCustomerNifAutofill")
+	}
+	if strings.Contains(adminHTML, "'<td>—</td>' +\n        '<td>' + fmtTimeShort") {
+		t.Fatal("bill list must not hardcode amount column to em dash")
+	}
+}

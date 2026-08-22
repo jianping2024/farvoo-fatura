@@ -171,8 +171,14 @@ async function main() {
       drafts.drafts[0].source_sale_id === 'sale-bill-1' &&
       acks[0]?.status === 'succeeded';
     record('ingest-happy-ack', ok, JSON.stringify({ drafts: drafts.drafts?.[0], ack: acks[0] }));
+    record(
+      'list-draft-gross-total',
+      drafts.drafts?.[0]?.gross_total === '47.10',
+      drafts.drafts?.[0]?.gross_total || 'missing',
+    );
   } catch (e) {
     record('ingest-happy-ack', false, String(e));
+    record('list-draft-gross-total', false, String(e));
   }
 
   try {

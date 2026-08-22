@@ -139,10 +139,14 @@ async function main() {
   for (const r of results) console.log(`${r.status}\t${r.name}\t${r.note}`);
   child.kill('SIGTERM');
   await new Promise((r) => {
-    child.on('close', r);
-    setTimeout(r, 2000);
+    const done = () => r();
+    child.once('close', done);
+    setTimeout(() => {
+      try { child.kill('SIGKILL'); } catch (_) { /* gone */ }
+      done();
+    }, 2000);
   });
-  if (results.some((r) => r.status === 'fail')) process.exit(1);
+  process.exit(results.some((x) => x.status === 'fail') ? 1 : 0);
 }
 
 main().catch((e) => {

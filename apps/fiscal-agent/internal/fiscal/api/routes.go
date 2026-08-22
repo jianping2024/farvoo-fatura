@@ -326,6 +326,7 @@ func handleListBillDrafts(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		UpdatedAt        string `json:"updated_at"`
 		TableDisplayName string `json:"table_display_name,omitempty"`
 		ScopeType        string `json:"scope_type,omitempty"`
+		GrossTotal       string `json:"gross_total,omitempty"`
 	}
 	out := make([]row, 0, len(list))
 	for _, d := range list {
@@ -338,6 +339,7 @@ func handleListBillDrafts(w http.ResponseWriter, r *http.Request, deps HandlerDe
 			ID: d.ID, RequestID: d.RequestID, SourceSaleID: d.SourceSaleID,
 			Status: d.Status, CloudJobID: d.CloudJobID, UpdatedAt: d.UpdatedAt,
 			TableDisplayName: meta.TableDisplayName, ScopeType: meta.ScopeType,
+			GrossTotal:       billsync.ListGrossTotalFromPayload(d.PayloadJSON),
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"drafts": out})

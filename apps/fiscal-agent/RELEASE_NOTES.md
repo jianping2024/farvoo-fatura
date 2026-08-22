@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.2
+
+**Admin：待开票账单列表金额 + NIF 体验**
+
+- 列表 API / UI 显示 `gross_total`（整桌直读；按人汇总 splits）。
+- **待开票账单** 与 **订单开票** 共用客户 datalist + 选 NIF 自动填名；登录即预拉 customers。
+- 签发前 UI 校验 NIF 须 9 位数字（空=散客）；唯一 helper：`billSyncPayloadAmount` / `assertCustomerNifOrToast` / `renderCustomerNifDatalist`。
+
 ## 0.4.1
 
 **Admin：按人账单 scope 对齐 cloud**
