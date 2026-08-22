@@ -10,7 +10,7 @@ const adminHTML = `<!DOCTYPE html>
 <title>Farvoo Fiscal — Setup + FT</title>
 <link rel="stylesheet" href="/fiscal-ui/toast.css"/>
 <style>
-body{font-family:ui-sans-serif,system-ui;max-width:720px;margin:1.5rem auto;padding:0 1rem;background:#f6f4ef;color:#1a1a1a}
+body{font-family:ui-sans-serif,system-ui;max-width:920px;margin:1.5rem auto;padding:0 1rem;background:#f6f4ef;color:#1a1a1a}
 h1{font-size:1.35rem;margin:0 0 .25rem}
 h2{font-size:1.05rem;margin:1.25rem 0 .4rem}
 p,label{color:#444;font-size:.9rem}
@@ -62,13 +62,47 @@ input,textarea{width:100%;padding:.4rem;box-sizing:border-box;margin:0 0 .4rem;b
 <button id="btnOp" type="button">确保 cashier</button>
 </div>
 <div class="box">
-<h2>6. 开 FT</h2>
-<input id="rid" value=""/>
-<button id="issue" type="button">开 FT</button>
-<pre id="out">ready</pre>
+<h2>6. 商品主档（LOCAL）</h2>
+<p>薄商品 · REMOTE_SYNC 由账单同步写入，本区只维护 LOCAL。</p>
+<div class="row">
+<input id="pCode" placeholder="product_code" value="LOCAL-TEA"/>
+<input id="pName" placeholder="display_name" value="花茶套餐"/>
+</div>
+<div class="row">
+<input id="pSaft" placeholder="saft_name" value="Cha sortido"/>
+<input id="pPrice" placeholder="unit_price_gross" value="4.50"/>
+</div>
+<input id="pVat" placeholder="vat_rate percent" value="13.00"/>
+<button id="btnSaveProduct" type="button">保存 LOCAL 商品</button>
+<button id="btnListProducts" type="button">刷新列表</button>
+<pre id="productsOut">…</pre>
 </div>
 <div class="box">
-<h2>7. 账单草稿工作台</h2>
+<h2>7. 客户主档</h2>
+<div class="row">
+<input id="cNif" placeholder="customer_tax_id (9位)" value="123456789"/>
+<input id="cName" placeholder="company_name" value="Cliente Demo"/>
+</div>
+<button id="btnSaveCustomer" type="button">保存客户</button>
+<button id="btnListCustomers" type="button">刷新列表</button>
+<pre id="customersOut">…</pre>
+</div>
+<div class="box">
+<h2>8. 手动开 FT</h2>
+<p>从 LOCAL 商品或临时行开票 · 唯一入口 <code>/fiscal-documents/manual</code></p>
+<label>打印档口 <select id="manualStationSel"><option value="">（加载中…）</option></select></label>
+<input id="manualRid" value=""/>
+<input id="manualCode" placeholder="product_code（LOCAL）" value="LOCAL-TEA"/>
+<input id="manualQty" placeholder="qty" value="1"/>
+<div class="row">
+<input id="manualNif" placeholder="NIF（空=散客）"/>
+<input id="manualPay" placeholder="payment CASH" value="CASH"/>
+</div>
+<button id="btnManualIssue" type="button">手动开 FT</button>
+<pre id="manualOut">ready</pre>
+</div>
+<div class="box">
+<h2>9. 账单草稿工作台</h2>
 <p>整桌 / 按人开 FT；每人独立 NIF（空=散客）；丢弃只删草稿不删票。</p>
 <p>税票出纸复用档口绑定（TCP/USB）。无映射请先配置打印机。</p>
 <label>打印档口 <select id="stationSel"><option value="">（加载中…）</option></select>
@@ -83,8 +117,11 @@ input,textarea{width:100%;padding:.4rem;box-sizing:border-box;margin:0 0 .4rem;b
 <script>
 const y=new Date().getFullYear();
 document.getElementById('series').value='FT'+y+'DEMO01';
-document.getElementById('rid').value='req-'+Date.now();
-const out=document.getElementById('out');
+document.getElementById('manualRid').value='req-manual-'+Date.now();
+const productsOut=document.getElementById('productsOut');
+const customersOut=document.getElementById('customersOut');
+const manualOut=document.getElementById('manualOut');
+const out=manualOut;
 const statusEl=document.getElementById('status');
 const draftsEl=document.getElementById('drafts');
 const draftActions=document.getElementById('draftActions');
@@ -316,6 +353,66 @@ document.getElementById('btnAct').onclick=()=>withBusy(btnAct,'激活中…',asy
     toast('开票已激活','success');
   }catch(e){ toast(errText(e),'error'); throw e; }
 });
+async function refreshManualPrinters(){
+  const sel=document.getElementById('manualStationSel');
+  const data=await j('GET','/local/v1/printers');
+  const stations=data.stations||[];
+  sel.innerHTML='';
+  stations.forEach(s=>{
+    const o=document.createElement('option');
+    o.value=s.id; o.textContent=(s.printer||s.id);
+    sel.appendChild(o);
+  });
+  if(stations.length) sel.value=stations[0].id;
+}
+document.getElementById('btnSaveProduct').onclick=()=>withBusy(btnSaveProduct,'保存中…',async()=>{
+  try{
+    const res=await j('POST','/local/v1/products',{product_code:pCode.value,display_name:pName.value,saft_name:pSaft.value,unit_price_gross:pPrice.value,vat_rate:pVat.value});
+    productsOut.textContent=JSON.stringify(res,null,2);
+    toast('LOCAL 商品已保存','success');
+  }catch(e){ toast(errText(e),'error'); productsOut.textContent=JSON.stringify(e,null,2); throw e; }
+});
+document.getElementById('btnListProducts').onclick=()=>withBusy(btnListProducts,'刷新中…',async()=>{
+  try{
+    const res=await j('GET','/local/v1/products');
+    productsOut.textContent=JSON.stringify(res,null,2);
+    toast('商品列表已刷新','success');
+  }catch(e){ toast(errText(e),'error'); throw e; }
+});
+document.getElementById('btnSaveCustomer').onclick=()=>withBusy(btnSaveCustomer,'保存中…',async()=>{
+  try{
+    const res=await j('POST','/local/v1/customers',{customer_tax_id:cNif.value,company_name:cName.value});
+    customersOut.textContent=JSON.stringify(res,null,2);
+    toast('客户已保存','success');
+  }catch(e){ toast(errText(e),'error'); customersOut.textContent=JSON.stringify(e,null,2); throw e; }
+});
+document.getElementById('btnListCustomers').onclick=()=>withBusy(btnListCustomers,'刷新中…',async()=>{
+  try{
+    const res=await j('GET','/local/v1/customers');
+    customersOut.textContent=JSON.stringify(res,null,2);
+    toast('客户列表已刷新','success');
+  }catch(e){ toast(errText(e),'error'); throw e; }
+});
+document.getElementById('btnManualIssue').onclick=()=>withBusy(btnManualIssue,'开票中…',async()=>{
+  manualOut.textContent='issuing…';
+  const sid=(document.getElementById('manualStationSel').value||'').trim();
+  const body={
+    request_id:manualRid.value, operator_id:'op-demo-cashier', station_id:sid||undefined,
+    customer_nif:manualNif.value.trim(), payment_method:manualPay.value.trim()||'CASH',
+    lines:[{product_code:manualCode.value.trim(), quantity:manualQty.value.trim()||'1'}]
+  };
+  try{
+    const res=await j('POST','/local/v1/fiscal-documents/manual',body);
+    manualOut.textContent=JSON.stringify(res,null,2);
+    toast('手动 FT 成功 '+(res.invoice_no||''),'success');
+    document.getElementById('manualRid').value='req-manual-'+Date.now();
+  }catch(e){
+    manualOut.textContent=JSON.stringify(e,null,2);
+    toast(errText(e),'error');
+    throw e;
+  }
+});
+refreshManualPrinters().catch(()=>{});
 document.getElementById('btnOp').onclick=()=>withBusy(btnOp,'保存中…',async()=>{
   try{
     await j('PUT','/local/v1/setup/operator',{id:'op-demo-cashier',role:'cashier',display_name:'Demo Cashier'});
@@ -323,26 +420,10 @@ document.getElementById('btnOp').onclick=()=>withBusy(btnOp,'保存中…',async
     toast('开票员已保存','success');
   }catch(e){ toast(errText(e),'error'); throw e; }
 });
-document.getElementById('issue').onclick=()=>withBusy(issue,'开票中…',async()=>{
-  out.textContent='issuing…';
-  const body={request_id:rid.value,operator_id:'op-demo-cashier',document_type:'FT',snapshot:{
-    source_system:'farvoo',source_sale_id:'sale-'+rid.value,scope_type:'session',scope_id:'scope-'+rid.value,fiscal_purpose:'sale',
-    lines:[{product_code:'DEMO1',display_name:'Prato Demo',saft_name:'Prato Demo',quantity:'1',unit_price_gross:'12.50',vat_rate:'0.23',product_type:'P',unit_of_measure:'UN'}],
-    customer:{tax_id:'999999990',company_name:'Consumidor Final',country:'PT'},
-    payments:[{method:'CASH',amount:'12.50'}]
-  }};
-  try{
-    const res=await j('POST','/local/v1/fiscal-documents',body);
-    out.textContent=JSON.stringify(res,null,2);
-    toast('开 FT 成功 '+(res.invoice_no||res.InvoiceNo||''),'success');
-  }catch(e){
-    out.textContent=JSON.stringify(e,null,2);
-    toast(errText(e),'error');
-    throw e;
-  }
-});
 refresh().catch(e=>{ statusEl.textContent=JSON.stringify(e,null,2); toast(errText(e),'error'); });
 refreshDrafts().catch(e=>{ draftsEl.textContent=JSON.stringify(e,null,2); toast(errText(e),'error'); });
+document.getElementById('btnListProducts').click();
+document.getElementById('btnListCustomers').click();
 </script>
 </body>
 </html>

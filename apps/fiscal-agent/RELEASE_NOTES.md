@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.3.99
+
+**FT 收口：薄商品 / 客户 + 手动开 FT**
+
+- LOCAL 商品：`UpsertLocalFiscalProduct`（REMOTE 同步 `UpsertFiscalProductByCode` 不覆盖 LOCAL）。
+- LOCAL 客户：`UpsertLocalCustomer`；开票 `ensureCustomerIDTx` 绑定 `invoices.customer_id`。
+- 手动 FT 唯一入口：`POST /local/v1/fiscal-documents/manual` → `catalog.BuildManualSaleSnapshot` → `IssueDocument`。
+- Admin §6–8：商品 / 客户 / 手动开票（去掉旧 demo 直开 FT）。
+
 ## 0.3.98
 
 **FT 明细表头 + 店名抬头**

@@ -2,6 +2,11 @@
 //
 // Routes (v0.17 + bill-sync):
 //   POST /local/v1/fiscal-documents          (station_id required when Agent PrintBytesFn is live)
+//   POST /local/v1/fiscal-documents/manual   (catalog/temp lines → IssueManualFT)
+//   GET  /local/v1/products
+//   POST /local/v1/products                  (LOCAL only)
+//   GET  /local/v1/customers
+//   POST /local/v1/customers                 (LOCAL only; not consumidor final)
 //   GET  /local/v1/fiscal-documents/by-request/{requestId}
 //   POST /local/v1/fiscal-documents/{documentId}/reprints
 //   POST /local/v1/fiscal-documents/{documentId}/credit-notes

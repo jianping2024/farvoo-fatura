@@ -37,6 +37,14 @@ idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL
 
 **草稿开票唯一路径：** `billsync.DraftToSaleSnapshot` / `DraftPartToSaleSnapshot` → `ApplyCustomerOverride` → `service.IssueFromBillDraft` → `IssueDocument`/`IssueFT` →（到期时）`DeleteBillDraftsBySale`。丢弃仅 `DiscardBillDrafts` → `DeleteBillDraftsBySale`。再同步靠 `HasSignedFTForSale` / `ListSignedFTScopesForSale`。
 
+**REMOTE 商品同步唯一写路径：** `IngestCloudJob` → `UpsertFiscalProductByCode`（不覆盖 LOCAL）。
+
+**LOCAL 商品唯一写路径：** `UpsertLocalFiscalProduct`（API `POST /local/v1/products`）。
+
+**LOCAL 客户唯一写路径：** `UpsertLocalCustomer`（API `POST /local/v1/customers`）；开票绑 `customer_id` 仅 `ensureCustomerIDTx`。
+
+**手动 FT 唯一路径：** `catalog.BuildManualSaleSnapshot` → `service.IssueManualFT` → `IssueDocument` → `IssueFT`（API `POST /local/v1/fiscal-documents/manual`）。
+
 ## 聚合 ↔ 表（实现约束）
 
 | 聚合 / 模块 | 表 | 唯一入口 |

@@ -52,6 +52,21 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/fiscal-documents", func(w http.ResponseWriter, r *http.Request) {
 		handleIssue(w, r, deps)
 	})
+	mux.HandleFunc("POST /local/v1/fiscal-documents/manual", func(w http.ResponseWriter, r *http.Request) {
+		handleIssueManualFT(w, r, deps)
+	})
+	mux.HandleFunc("GET /local/v1/products", func(w http.ResponseWriter, r *http.Request) {
+		handleListProducts(w, r, deps)
+	})
+	mux.HandleFunc("POST /local/v1/products", func(w http.ResponseWriter, r *http.Request) {
+		handleUpsertProduct(w, r, deps)
+	})
+	mux.HandleFunc("GET /local/v1/customers", func(w http.ResponseWriter, r *http.Request) {
+		handleListCustomers(w, r, deps)
+	})
+	mux.HandleFunc("POST /local/v1/customers", func(w http.ResponseWriter, r *http.Request) {
+		handleUpsertCustomer(w, r, deps)
+	})
 	mux.HandleFunc("GET /local/v1/fiscal-documents/by-request/{requestId}", func(w http.ResponseWriter, r *http.Request) {
 		handleGetByRequest(w, r, deps)
 	})

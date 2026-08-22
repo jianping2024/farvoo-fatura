@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Farvoo Fiscal Admin — UI 原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #14201b;
+      --muted: #5c6b64;
+      --paper: #f3efe6;
+      --panel: #fffcf7;
+      --line: #ddd4c4;
+      --green: #0b3d2e;
+      --green-2: #146048;
+      --accent: #c45c26;
+      --ok: #1f7a4c;
+      --warn: #9a6700;
+      --danger: #a33b2a;
+      --shadow: 0 10px 30px rgba(20, 32, 27, 0.08);
+      --radius: 14px;
+      --font: "Manrope", system-ui, sans-serif;
+      --display: "Fraunces", Georgia, serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #e8f0ea 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #f7e7d8 0%, transparent 45%),
+        var(--paper);
+    }
+    button, input, select, textarea { font: inherit; }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 0.65rem 1rem;
+      background: var(--green);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: var(--green-2); }
+    button.secondary {
+      background: transparent;
+      color: var(--green);
+      border: 1px solid var(--line);
+    }
+    button.ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 0;
+      padding: 0.4rem 0.6rem;
+    }
+    button.danger { background: var(--danger); }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+      background: #fff;
+      color: var(--ink);
+    }
+    label { display: block; font-size: 0.82rem; color: var(--muted); margin: 0 0 0.35rem; font-weight: 600; }
+    .field { margin: 0 0 0.85rem; }
+    .row { display: grid; gap: 0.75rem; }
+    .row.2 { grid-template-columns: 1fr 1fr; }
+    .row.3 { grid-template-columns: 1fr 1fr 1fr; }
+    .hint { color: var(--muted); font-size: 0.85rem; line-height: 1.45; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: #e7efe9;
+      color: var(--green);
+    }
+    .badge.warn { background: #fff1d6; color: var(--warn); }
+    .badge.ok { background: #dff3e7; color: var(--ok); }
+    .badge.muted { background: #eeeae2; color: var(--muted); }
+
+    /* —— Login —— */
+    #view-login {
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 2rem 1rem;
+    }
+    .login-card {
+      width: min(420px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 2rem 1.75rem 1.5rem;
+    }
+    .brand-mark {
+      font-family: var(--display);
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin: 0 0 0.25rem;
+      color: var(--green);
+    }
+    .pin-pad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.55rem;
+      margin: 1rem 0 1.25rem;
+    }
+    .pin-pad button {
+      aspect-ratio: 1.4;
+      background: #f7f2e8;
+      color: var(--ink);
+      font-size: 1.2rem;
+    }
+    .pin-pad button:hover { background: #efe7d7; }
+    .pin-dots {
+      display: flex;
+      justify-content: center;
+      gap: 0.55rem;
+      margin: 0.75rem 0 0.25rem;
+    }
+    .pin-dots span {
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid var(--green);
+      background: transparent;
+    }
+    .pin-dots span.on { background: var(--green); }
+
+    /* —— Shell —— */
+    #app-shell { display: none; min-height: 100%; }
+    #app-shell.on { display: grid; grid-template-columns: 240px 1fr; }
+    .sidebar {
+      background: var(--green);
+      color: #e8f2ec;
+      padding: 1.25rem 0.9rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      min-height: 100vh;
+      position: sticky;
+      top: 0;
+    }
+    .sidebar .brand {
+      font-family: var(--display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      padding: 0.4rem 0.65rem 1rem;
+      letter-spacing: -0.02em;
+    }
+    .sidebar .brand small {
+      display: block;
+      font-family: var(--font);
+      font-size: 0.72rem;
+      font-weight: 500;
+      opacity: 0.7;
+      margin-top: 0.2rem;
+      letter-spacing: 0;
+    }
+    .nav-btn {
+      text-align: left;
+      background: transparent;
+      color: #d5e8dd;
+      border-radius: 10px;
+      padding: 0.7rem 0.75rem;
+      font-weight: 600;
+    }
+    .nav-btn:hover, .nav-btn.active {
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+    }
+    .nav-btn .sub {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      opacity: 0.65;
+      margin-top: 0.1rem;
+    }
+    .sidebar .foot {
+      margin-top: auto;
+      padding: 0.75rem;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      font-size: 0.82rem;
+    }
+    .main {
+      padding: 1.25rem 1.5rem 2.5rem;
+      max-width: 1100px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 1.1rem;
+    }
+    .topbar h1 {
+      font-family: var(--display);
+      font-size: 1.7rem;
+      margin: 0;
+      letter-spacing: -0.03em;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1rem 1.1rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1rem;
+    }
+    .panel h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.05rem;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+    }
+    .stat {
+      background: linear-gradient(180deg, #fff, #f8f4eb);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+    }
+    .stat .k { color: var(--muted); font-size: 0.8rem; font-weight: 600; }
+    .stat .v {
+      font-family: var(--display);
+      font-size: 1.55rem;
+      margin-top: 0.25rem;
+      letter-spacing: -0.02em;
+    }
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+    .tile {
+      text-align: left;
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1rem;
+      min-height: 110px;
+    }
+    .tile:hover { border-color: #b7c9bf; background: #fbfffC; }
+    .tile strong { display: block; font-size: 1.05rem; margin-bottom: 0.35rem; }
+    .tile span { color: var(--muted); font-size: 0.85rem; line-height: 1.4; font-weight: 500; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 0.65rem 0.4rem; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-size: 0.78rem; font-weight: 700; }
+    tr.clickable { cursor: pointer; }
+    tr.clickable:hover { background: #f7f3ea; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.85rem; }
+    .toast {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      background: var(--ink);
+      color: #fff;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: 0.2s ease;
+      z-index: 50;
+      max-width: min(360px, calc(100vw - 2rem));
+      font-size: 0.9rem;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .proto-banner {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: #1d2a24;
+      color: #dce8e1;
+      font-size: 0.8rem;
+      padding: 0.45rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+    }
+    .proto-banner code { color: #9fd6b8; }
+    .split {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 0.85rem;
+    }
+    .muted-box {
+      background: #f7f2e8;
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      border: 1px dashed #d2c7b4;
+    }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.5rem 0 0.75rem; }
+    .hidden { display: none !important; }
+    @media (max-width: 900px) {
+      #app-shell.on { grid-template-columns: 1fr; }
+      .sidebar { position: static; min-height: auto; }
+      .stats, .tiles, .row.2, .row.3, .split { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="proto-banner">
+    <span>Farvoo Fiscal Admin · <strong>可点击 UI 原型</strong>（无后端 · 假数据）</span>
+    <span>打开：<code>docs/fiscal-admin-ui-prototype/index.html</code></span>
+  </div>
+
+  <!-- LOGIN -->
+  <section id="view-login">
+    <div class="login-card">
+      <p class="brand-mark">Farvoo Fiscal</p>
+      <p class="hint">本机开票工作台 · 操作员 PIN（原型）</p>
+      <div class="pin-dots" id="pinDots" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="pin-pad" id="pinPad">
+        <button type="button" data-k="1">1</button>
+        <button type="button" data-k="2">2</button>
+        <button type="button" data-k="3">3</button>
+        <button type="button" data-k="4">4</button>
+        <button type="button" data-k="5">5</button>
+        <button type="button" data-k="6">6</button>
+        <button type="button" data-k="7">7</button>
+        <button type="button" data-k="8">8</button>
+        <button type="button" data-k="9">9</button>
+        <button type="button" data-k="C" class="secondary">C</button>
+        <button type="button" data-k="0">0</button>
+        <button type="button" data-k="OK">OK</button>
+      </div>
+      <p class="hint">演示 PIN：<strong>1234</strong> · 任意 4 位也可进入（原型不校验真伪）</p>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <div id="app-shell">
+    <aside class="sidebar">
+      <div class="brand">Farvoo<small>Fiscal Admin · 原型</small></div>
+      <button type="button" class="nav-btn active" data-nav="home">主页<span class="sub">今日摘要 / 快捷入口</span></button>
+      <button type="button" class="nav-btn" data-nav="drafts">草稿开票<span class="sub">整桌 / 按人</span></button>
+      <button type="button" class="nav-btn" data-nav="invoices">查票<span class="sub">详情 / 重打</span></button>
+      <button type="button" class="nav-btn" data-nav="manual">手动开 FT<span class="sub">临时行 / 选商品</span></button>
+      <button type="button" class="nav-btn" data-nav="products">商品主档<span class="sub">薄 LOCAL 商品</span></button>
+      <button type="button" class="nav-btn" data-nav="settings">设置<span class="sub">纳税人 / 系列 / 打印</span></button>
+      <button type="button" class="nav-btn" data-nav="nc">冲销 NC<span class="sub">占位 · M3</span></button>
+      <div class="foot">
+        <div>操作员 · 李四（cashier）</div>
+        <button type="button" class="ghost" id="btnLogout" style="color:#cfe3d7;padding-left:0;margin-top:0.35rem">退出登录</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <!-- HOME -->
+      <section class="view" id="view-home">
+        <div class="topbar">
+          <div>
+            <h1>主页</h1>
+            <p class="hint">门店本机开票 · Farvoo Demo Lda</p>
+          </div>
+          <span class="badge ok">系列 ACTIVE · FT2026DEM001</span>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="k">今日 FT</div><div class="v">12</div></div>
+          <div class="stat"><div class="k">待开草稿</div><div class="v">2</div></div>
+          <div class="stat"><div class="k">打印失败</div><div class="v">0</div></div>
+          <div class="stat"><div class="k">Agent</div><div class="v" style="font-size:1.15rem;margin-top:0.45rem">0.3.98</div></div>
+        </div>
+        <div class="panel" style="margin-top:1rem">
+          <h2>快捷入口</h2>
+          <div class="tiles">
+            <button type="button" class="tile" data-nav="drafts"><strong>草稿开票</strong><span>Farvoo 同步过来的桌台账单，整桌或按人开 FT。</span></button>
+            <button type="button" class="tile" data-nav="invoices"><strong>查票 / 重打</strong><span>按票号查找已签 FT，再打一张（2a Via）。</span></button>
+            <button type="button" class="tile" data-nav="manual"><strong>手动开 FT</strong><span>无草稿时直接选商品或填临时行开票。</span></button>
+            <button type="button" class="tile" data-nav="products"><strong>商品主档</strong><span>维护 LOCAL 薄商品（非 Farvoo 完整菜单）。</span></button>
+            <button type="button" class="tile" data-nav="settings"><strong>设置</strong><span>纳税人、AT、系列、开票员、打印机。</span></button>
+            <button type="button" class="tile" data-nav="nc"><strong>冲销 NC</strong><span>占位：对已开 FT 开 NC（M3）。</span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- DRAFTS -->
+      <section class="view hidden" id="view-drafts">
+        <div class="topbar">
+          <div>
+            <h1>草稿开票</h1>
+            <p class="hint">对应 M2.5 工作台能力的正式壳</p>
+          </div>
+          <button type="button" class="secondary" id="btnRefreshDrafts">刷新草稿</button>
+        </div>
+        <div class="panel" id="draftList">
+          <table>
+            <thead>
+              <tr><th>桌号</th><th>范围</th><th>金额</th><th>同步</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>018</strong></td>
+                <td>整桌</td>
+                <td>€28.30</td>
+                <td>21:44</td>
+                <td><button type="button" data-open-draft="018">打开</button></td>
+              </tr>
+              <tr>
+                <td><strong>A-05</strong></td>
+                <td>按人 · 2 人</td>
+                <td>€41.50</td>
+                <td>21:12</td>
+                <td><button type="button" data-open-draft="A05">打开</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel hidden" id="draftDetail">
+          <div class="topbar" style="margin-bottom:0.5rem">
+            <div>
+              <h2 id="draftTitle" style="margin:0">桌 018</h2>
+              <p class="hint">整桌开票 · NIF 可选（空=散客 999999990）</p>
+            </div>
+            <button type="button" class="secondary" id="btnBackDrafts">返回列表</button>
+          </div>
+          <div class="split">
+            <div>
+              <table>
+                <thead><tr><th>商品</th><th>Qty</th><th>价</th><th>IVA</th></tr></thead>
+                <tbody>
+                  <tr><td>Buffet livre</td><td>1</td><td>19.95</td><td>23%</td></tr>
+                  <tr><td>Cola Zero</td><td>1</td><td>2.20</td><td>23%</td></tr>
+                  <tr><td>Guaraná</td><td>1</td><td>2.20</td><td>23%</td></tr>
+                  <tr><td>Cuba Libre</td><td>1</td><td>3.95</td><td>23%</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <div class="field">
+                <label>客户 NIF</label>
+                <input id="draftNif" placeholder="空 = Consumidor Final" />
+              </div>
+              <div class="field">
+                <label>客户名（可选）</label>
+                <input id="draftName" placeholder="Consumidor Final" />
+              </div>
+              <div class="field">
+                <label>打印档口</label>
+                <select><option>收银 Hotpath</option><option>厨房-中餐</option></select>
+              </div>
+              <div class="actions">
+                <button type="button" id="btnIssueDraft">开整桌 FT</button>
+                <button type="button" class="secondary" id="btnDiscardDraft">丢弃草稿</button>
+              </div>
+              <p class="hint" style="margin-top:0.75rem">成功后展示票号 / ATCUD；草稿硬删。原型只弹 Toast。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- INVOICES -->
+      <section class="view hidden" id="view-invoices">
+        <div class="topbar">
+          <div>
+            <h1>查票</h1>
+            <p class="hint">已签 FT · 详情 · 重打 2a Via</p>
+          </div>
+        </div>
+        <div class="panel" id="invoiceList">
+          <div class="row 2" style="margin-bottom:0.75rem">
+            <div class="field" style="margin:0">
+              <label>搜索票号 / ATCUD</label>
+              <input id="invSearch" placeholder="FT2026DEM001/8" />
+            </div>
+            <div class="field" style="margin:0">
+              <label>&nbsp;</label>
+              <button type="button" class="secondary" id="btnSearchInv">搜索</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>票号</th><th>时间</th><th>总额</th><th>打印</th><th></th></tr></thead>
+            <tbody>
+              <tr class="clickable" data-open-inv="8">
+                <td>FT FT2026DEM001/8</td><td>21/08 21:44</td><td>€28.30</td><td><span class="badge ok">PRINTED</span></td>
+                <td>详情 →</td>
+              </tr>
+              <tr class="clickable" data-open-inv="7">
+                <td>FT FT2026DEM001/7</td><td>21/08 20:02</td><td>€15.00</td><td><span class="badge ok">PRINTED</span></td>
+                <td>详情 →</td>
+              </tr>
+              <tr class="clickable" data-open-inv="6">
+                <td>FT FT2026DEM001/6</td><td>21/08 19:18</td><td>€42.10</td><td><span class="badge warn">FAILED</span></td>
+                <td>详情 →</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel hidden" id="invoiceDetail">
+          <div class="topbar" style="margin-bottom:0.5rem">
+            <div>
+              <h2 style="margin:0">FT FT2026DEM001/8</h2>
+              <p class="hint">SIGNED · ATCUD CSDF7T5H-8</p>
+            </div>
+            <button type="button" class="secondary" id="btnBackInv">返回列表</button>
+          </div>
+          <div class="pill-row">
+            <span class="badge ok">ORIGINAL 已打</span>
+            <span class="badge muted">可重打 REPRINT</span>
+          </div>
+          <div class="muted-box">
+            <div><strong>客户</strong> Consumidor Final · NIF 999999990</div>
+            <div style="margin-top:0.35rem"><strong>TOTAL</strong> €28.30 · Numerario</div>
+            <div style="margin-top:0.35rem"><strong>Hash 四字</strong> Zuun · Processado por… n. 0/AT</div>
+          </div>
+          <div class="actions">
+            <button type="button" id="btnReprint">再打一张（2a Via）</button>
+            <button type="button" class="secondary" data-nav="nc">开 NC 冲销…</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- MANUAL FT -->
+      <section class="view hidden" id="view-manual">
+        <div class="topbar">
+          <div>
+            <h1>手动开 FT</h1>
+            <p class="hint">无 Farvoo 草稿时的本地开票</p>
+          </div>
+        </div>
+        <div class="split">
+          <div class="panel">
+            <h2>明细行</h2>
+            <table>
+              <thead><tr><th>商品</th><th>Qty</th><th>价</th><th></th></tr></thead>
+              <tbody id="manualLines">
+                <tr><td>Buffet livre</td><td>1</td><td>19.95</td><td><button type="button" class="ghost">删</button></td></tr>
+              </tbody>
+            </table>
+            <div class="actions">
+              <button type="button" class="secondary" id="btnAddFromCatalog">从商品主档添加</button>
+              <button type="button" class="secondary" id="btnAddTempLine">临时行</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h2>客户与提交</h2>
+            <div class="field"><label>NIF</label><input placeholder="999999990" value="999999990" /></div>
+            <div class="field"><label>客户名</label><input value="Consumidor Final" /></div>
+            <div class="field"><label>付款</label><select><option>Numerario / CASH</option><option>Cartao / CARD</option></select></div>
+            <div class="actions">
+              <button type="button" id="btnIssueManual">签发 FT</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PRODUCTS -->
+      <section class="view hidden" id="view-products">
+        <div class="topbar">
+          <div>
+            <h1>商品主档</h1>
+            <p class="hint">薄投影 · LOCAL 可改 · REMOTE_SYNC 只读</p>
+          </div>
+          <button type="button" id="btnNewProduct">新建 LOCAL</button>
+        </div>
+        <div class="panel" id="productList">
+          <table>
+            <thead><tr><th>代码</th><th>名称</th><th>价</th><th>IVA</th><th>来源</th><th></th></tr></thead>
+            <tbody>
+              <tr>
+                <td>006</td><td>Cola Zero</td><td>2.20</td><td>23%</td>
+                <td><span class="badge">REMOTE</span></td>
+                <td><span class="hint">只读</span></td>
+              </tr>
+              <tr>
+                <td>LOCAL-TEA</td><td>花茶套餐</td><td>4.50</td><td>13%</td>
+                <td><span class="badge warn">LOCAL</span></td>
+                <td><button type="button" class="secondary" data-edit-product>编辑</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel hidden" id="productEdit">
+          <h2>编辑 LOCAL 商品</h2>
+          <div class="row 2">
+            <div class="field"><label>product_code</label><input value="LOCAL-TEA" /></div>
+            <div class="field"><label>unit_price_gross</label><input value="4.50" /></div>
+          </div>
+          <div class="row 2">
+            <div class="field"><label>display_name</label><input value="花茶套餐" /></div>
+            <div class="field"><label>saft_name</label><input value="Cha sortido" /></div>
+          </div>
+          <div class="row 2">
+            <div class="field"><label>vat_rate</label><input value="13.00" /></div>
+            <div class="field"><label>tax_code</label><select><option>INT</option><option>NOR</option><option>RED</option><option>ISE</option></select></div>
+          </div>
+          <div class="actions">
+            <button type="button" id="btnSaveProduct">保存</button>
+            <button type="button" class="secondary" id="btnCancelProduct">取消</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view hidden" id="view-settings">
+        <div class="topbar">
+          <div>
+            <h1>设置</h1>
+            <p class="hint">把现有 Setup 能力收进正式壳（原型）</p>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="pill-row">
+            <button type="button" class="secondary set-tab active" data-set="tax">纳税人</button>
+            <button type="button" class="secondary set-tab" data-set="at">AT 凭证</button>
+            <button type="button" class="secondary set-tab" data-set="series">系列</button>
+            <button type="button" class="secondary set-tab" data-set="print">打印机</button>
+          </div>
+          <div class="set-pane" id="set-tax">
+            <div class="row 2">
+              <div class="field"><label>NIF</label><input value="517535009" /></div>
+              <div class="field"><label>Legal name</label><input value="Farvoo Demo Lda" /></div>
+            </div>
+            <div class="field"><label>Address</label><input value="Rua Demo 1, 1000-001 Lisboa" /></div>
+            <button type="button" data-toast="已保存纳税人（原型）">保存</button>
+          </div>
+          <div class="set-pane hidden" id="set-at">
+            <div class="field"><label>Username</label><input value="517535009/37" /></div>
+            <div class="field"><label>Password</label><input type="password" value="••••••••" /></div>
+            <button type="button" data-toast="已保存 AT 凭证（原型）">保存</button>
+          </div>
+          <div class="set-pane hidden" id="set-series">
+            <p class="hint">FT2026DEM001 · validation CSDF7T5H · <span class="badge ok">ACTIVE</span></p>
+            <div class="actions">
+              <button type="button" class="secondary" data-toast="已刷新系列状态（原型）">刷新</button>
+              <button type="button" data-toast="注册系列（原型）">注册新系列</button>
+            </div>
+          </div>
+          <div class="set-pane hidden" id="set-print">
+            <p class="hint">税票出纸复用档口绑定。正式实现跳转现有 configure 页。</p>
+            <button type="button" class="secondary" data-toast="打开档口打印机配置（原型）">管理档口打印机</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- NC placeholder -->
+      <section class="view hidden" id="view-nc">
+        <div class="topbar">
+          <div>
+            <h1>冲销 NC</h1>
+            <p class="hint">M3 占位 · 先选已开 FT</p>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="muted-box">
+            正式能力：选原 FT → 填原因/行 → 独立 NC 系列签发 → 打印引用原票。<br />
+            当前仅占位，避免和 FT 收口抢刀。
+          </div>
+          <div class="actions">
+            <button type="button" class="secondary" data-nav="invoices">先去查票选原 FT</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+    const login = $("#view-login");
+    const shell = $("#app-shell");
+    const toastEl = $("#toast");
+    let pin = "";
+    let toastTimer;
+
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2200);
+    }
+
+    function renderPin() {
+      $$("#pinDots span").forEach((el, i) => el.classList.toggle("on", i < pin.length));
+    }
+
+    function enterApp() {
+      login.classList.add("hidden");
+      shell.classList.add("on");
+      showView("home");
+      toast("已登录 · 李四");
+    }
+
+    $("#pinPad").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-k]");
+      if (!btn) return;
+      const k = btn.dataset.k;
+      if (k === "C") pin = "";
+      else if (k === "OK") {
+        if (pin.length >= 4) enterApp();
+        else toast("请输入至少 4 位 PIN");
+      } else if (pin.length < 4) pin += k;
+      renderPin();
+      if (pin.length === 4 && k !== "OK" && k !== "C") {
+        // auto-ok for demo speed
+        setTimeout(enterApp, 180);
+      }
+    });
+
+    $("#btnLogout").addEventListener("click", () => {
+      pin = "";
+      renderPin();
+      shell.classList.remove("on");
+      login.classList.remove("hidden");
+      toast("已退出");
+    });
+
+    function showView(name) {
+      $$(".view").forEach((v) => v.classList.add("hidden"));
+      const el = $("#view-" + name);
+      if (el) el.classList.remove("hidden");
+      $$(".nav-btn").forEach((b) => b.classList.toggle("active", b.dataset.nav === name));
+      // reset nested panels
+      if (name === "drafts") {
+        $("#draftList").classList.remove("hidden");
+        $("#draftDetail").classList.add("hidden");
+      }
+      if (name === "invoices") {
+        $("#invoiceList").classList.remove("hidden");
+        $("#invoiceDetail").classList.add("hidden");
+      }
+      if (name === "products") {
+        $("#productList").classList.remove("hidden");
+        $("#productEdit").classList.add("hidden");
+      }
+    }
+
+    document.addEventListener("click", (e) => {
+      const nav = e.target.closest("[data-nav]");
+      if (nav) {
+        showView(nav.dataset.nav);
+        return;
+      }
+      const t = e.target.closest("[data-toast]");
+      if (t) toast(t.dataset.toast);
+    });
+
+    // Drafts
+    $$("[data-open-draft]").forEach((b) => b.addEventListener("click", () => {
+      $("#draftList").classList.add("hidden");
+      $("#draftDetail").classList.remove("hidden");
+      $("#draftTitle").textContent = "桌 " + b.dataset.openDraft.replace("A05", "A-05");
+    }));
+    $("#btnBackDrafts").addEventListener("click", () => {
+      $("#draftDetail").classList.add("hidden");
+      $("#draftList").classList.remove("hidden");
+    });
+    $("#btnRefreshDrafts").addEventListener("click", () => toast("草稿已刷新（原型）"));
+    $("#btnIssueDraft").addEventListener("click", () => {
+      toast("已开 FT FT2026DEM001/9 · ATCUD CSDF7T5H-9（原型）");
+      showView("invoices");
+    });
+    $("#btnDiscardDraft").addEventListener("click", () => {
+      toast("草稿已丢弃 · 已开发票保留（原型）");
+      showView("drafts");
+      $("#draftDetail").classList.add("hidden");
+      $("#draftList").classList.remove("hidden");
+    });
+
+    // Invoices
+    $$("[data-open-inv]").forEach((row) => row.addEventListener("click", () => {
+      $("#invoiceList").classList.add("hidden");
+      $("#invoiceDetail").classList.remove("hidden");
+    }));
+    $("#btnBackInv").addEventListener("click", () => {
+      $("#invoiceDetail").classList.add("hidden");
+      $("#invoiceList").classList.remove("hidden");
+    });
+    $("#btnSearchInv").addEventListener("click", () => toast("搜索（原型）：" + ($("#invSearch").value || "全部")));
+    $("#btnReprint").addEventListener("click", () => toast("已入队重打 · 2a Via - Reprint（原型）"));
+
+    // Manual
+    $("#btnAddFromCatalog").addEventListener("click", () => {
+      showView("products");
+      toast("从商品主档挑选后回到手动开票（原型跳转）");
+    });
+    $("#btnAddTempLine").addEventListener("click", () => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = '<td>临时商品</td><td>1</td><td>1.00</td><td><button type="button" class="ghost">删</button></td>';
+      $("#manualLines").appendChild(tr);
+      toast("已加临时行");
+    });
+    $("#btnIssueManual").addEventListener("click", () => toast("已签发手动 FT（原型）"));
+
+    // Products
+    function openProductEdit() {
+      $("#productList").classList.add("hidden");
+      $("#productEdit").classList.remove("hidden");
+    }
+    $("#btnNewProduct").addEventListener("click", openProductEdit);
+    $$("[data-edit-product]").forEach((b) => b.addEventListener("click", openProductEdit));
+    $("#btnSaveProduct").addEventListener("click", () => {
+      toast("LOCAL 商品已保存（原型）");
+      showView("products");
+    });
+    $("#btnCancelProduct").addEventListener("click", () => showView("products"));
+
+    // Settings tabs
+    $$(".set-tab").forEach((tab) => tab.addEventListener("click", () => {
+      $$(".set-tab").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      $$(".set-pane").forEach((p) => p.classList.add("hidden"));
+      $("#set-" + tab.dataset.set).classList.remove("hidden");
+    }));
+  </script>
+</body>
+</html>

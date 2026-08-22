@@ -138,6 +138,10 @@ func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueR
 	}
 
 	cust := normalizeCustomer(p.Snapshot.Customer)
+	custID, err := d.ensureCustomerIDTx(tx, cust)
+	if err != nil {
+		return nil, err
+	}
 	qr, err := compliance.BuildQR(compliance.QRInput{
 		IssuerNIF:              nif,
 		CustomerTaxID:          cust.TaxID,
@@ -205,11 +209,11 @@ func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueR
 		software_certificate_number, source_system, source_sale_id, scope_type, scope_id,
 		fiscal_purpose, external_bill_id, display_meta_json, credited_gross_total, created_at
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SIGNED', 'PENDING',
-		?, ?, ?, 'cust-final', ?, ?, ?, ?, ?, ?, ?, ?, ?, '0.00', ?)`,
+		?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '0.00', ?)`,
 		docID, p.StoreID, string(p.DocType), seriesID, seriesCode, seq, invoiceNo,
 		atcud, hashB64, hashControl, keyVersion, lastHash, qr,
 		invoiceDate, systemEntry,
-		grossStr, netStr, taxStr, opID,
+		grossStr, netStr, taxStr, custID, opID,
 		cert, nullStr(p.Snapshot.SourceSystem), nullStr(p.Snapshot.SourceSaleID),
 		nullStr(p.Snapshot.ScopeType), nullStr(p.Snapshot.ScopeID),
 		nullStr(p.Snapshot.FiscalPurpose), nullStr(p.Snapshot.ExternalBillID),
