@@ -7,8 +7,6 @@ import (
 
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/ptnif"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -41,46 +39,20 @@ func DraftToSaleSnapshot(snap Snapshot) (domain.SaleSnapshot, error) {
 	return buildSaleSnapshot(saleID, "whole_table", saleID, outLines, total, tableMeta(snap)), nil
 }
 
-// DraftPartToSaleSnapshot maps one splits[] part of a split Snapshot → person SaleSnapshot.
-// ONLY person path in the Draft*ToSaleSnapshot family.
+// DraftPartToSaleSnapshot seeds allocation from splits[] then delegates to DraftPersonFromAllocation
+// (ONLY person SaleSnapshot builder). Adapter for legacy split payloads / unit tests.
 func DraftPartToSaleSnapshot(snap Snapshot, scopeID string) (domain.SaleSnapshot, error) {
-	if strings.TrimSpace(snap.ScopeType) != "split" {
+	if strings.TrimSpace(snap.ScopeType) != "split" && len(snap.Splits) == 0 {
 		return domain.SaleSnapshot{}, ingestErr(CodeValidationFailed, fmt.Sprintf("DraftPartToSaleSnapshot requires split (got %q)", snap.ScopeType))
 	}
-	saleID := strings.TrimSpace(snap.SourceSaleID)
-	if saleID == "" {
-		return domain.SaleSnapshot{}, ingestErr(CodeValidationFailed, "source_sale_id required")
+	if err := FreezeSourceLines(&snap); err != nil {
+		return domain.SaleSnapshot{}, err
 	}
-	scopeID = strings.TrimSpace(scopeID)
-	if scopeID == "" {
-		return domain.SaleSnapshot{}, ingestErr(CodeValidationFailed, "scope_id required for person issue")
-	}
-	if _, err := uuid.Parse(scopeID); err != nil {
-		return domain.SaleSnapshot{}, ingestErr(CodeValidationFailed, fmt.Sprintf("scope_id must be UUID (got %q)", scopeID))
-	}
-	var part *SplitPart
-	for i := range snap.Splits {
-		if strings.TrimSpace(snap.Splits[i].ScopeID) == scopeID {
-			part = &snap.Splits[i]
-			break
-		}
-	}
-	if part == nil {
-		return domain.SaleSnapshot{}, ingestErr(CodeValidationFailed, fmt.Sprintf("scope_id %q not in splits", scopeID))
-	}
-	outLines, gross, err := mapDraftLines(part.Lines)
+	alloc, err := AllocationFromSplits(snap)
 	if err != nil {
 		return domain.SaleSnapshot{}, err
 	}
-	total := strings.TrimSpace(part.GrossTotal)
-	if total == "" {
-		total = strconv.FormatFloat(gross, 'f', 2, 64)
-	}
-	meta := tableMeta(snap)
-	if n := strings.TrimSpace(part.Name); n != "" {
-		meta["split_name"] = n
-	}
-	return buildSaleSnapshot(saleID, "person", scopeID, outLines, total, meta), nil
+	return DraftPersonFromAllocation(snap, alloc, scopeID)
 }
 
 // ApplyCustomerOverride sets buyer on sale. Empty nif → Consumidor Final.

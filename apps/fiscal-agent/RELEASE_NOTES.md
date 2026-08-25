@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.8
+
+**收银账单本机按菜分单工作台**
+
+- Admin：`view-bill-split` 主区（左剩余池 / 右当前人份额 / 同页开票条）；废止列表下钻 `#billDetail`。
+- 本机 `allocation_json` + OCC `allocation_revision`；入库冻结 `source_lines`；不回写云。
+- `whole_table` 可本机代分后 `mode=person`；签发校验超分；清草稿须人开完且池空。
+- 唯一路径：`DraftPersonFromAllocation` / `SaveBillDraftAllocation`；`DraftPartToSaleSnapshot` 仅适配器。
+
 ## 0.4.7
 
 **NIF 失焦即时校验**

@@ -51,9 +51,6 @@ func TestAdminHTMLBillListAndCustomerNifHelpers(t *testing.T) {
 	if n := strings.Count(adminHTML, "function validatePortugueseNif"); n != 1 {
 		t.Fatalf("validatePortugueseNif (Mod-11) must appear exactly once, got %d", n)
 	}
-	if n := strings.Count(adminHTML, "function readPersonBuyer"); n != 1 {
-		t.Fatalf("readPersonBuyer must appear exactly once, got %d", n)
-	}
 	if n := strings.Count(adminHTML, "function bindCustomerNifAutofill"); n != 1 {
 		t.Fatalf("bindCustomerNifAutofill must appear exactly once, got %d", n)
 	}
@@ -63,11 +60,14 @@ func TestAdminHTMLBillListAndCustomerNifHelpers(t *testing.T) {
 	if strings.Contains(adminHTML, `/^\d{9}$/`) {
 		t.Fatal("must not use only-9-digit regex as sole NIF check")
 	}
-	if !strings.Contains(adminHTML, `id="billBuyerShared"`) || !strings.Contains(adminHTML, `data-person-nif=`) {
-		t.Fatal("split bills need per-person NIF inputs; whole_table keeps billBuyerShared")
+	if !strings.Contains(adminHTML, `id="splitNif"`) || !strings.Contains(adminHTML, `id="view-bill-split"`) {
+		t.Fatal("bill split workbench must use splitNif on view-bill-split")
 	}
-	if !strings.Contains(adminHTML, `id="billNif"`) || !strings.Contains(adminHTML, `list="customerNifList"`) {
-		t.Fatal("billNif must use shared customerNifList datalist")
+	if strings.Contains(adminHTML, `id="billBuyerShared"`) || strings.Contains(adminHTML, `id="billNif"`) {
+		t.Fatal("legacy billDetail NIF UI must be removed")
+	}
+	if !strings.Contains(adminHTML, `list="customerNifList"`) {
+		t.Fatal("NIF inputs must use shared customerNifList datalist")
 	}
 	if !strings.Contains(adminHTML, "addEventListener('blur'") || !strings.Contains(adminHTML, "customerNifInputError(nifEl.value)") {
 		t.Fatal("NIF fields must validate on blur via customerNifInputError (not only on issue click)")
@@ -75,7 +75,7 @@ func TestAdminHTMLBillListAndCustomerNifHelpers(t *testing.T) {
 	if strings.Contains(adminHTML, "invNif').addEventListener('change'") {
 		t.Fatal("do not bind invNif change separately; use bindCustomerNifAutofill")
 	}
-	if strings.Contains(adminHTML, "billNif').addEventListener('blur'") || strings.Contains(adminHTML, "cNif').addEventListener('blur'") {
+	if strings.Contains(adminHTML, "splitNif').addEventListener('blur'") || strings.Contains(adminHTML, "cNif').addEventListener('blur'") {
 		t.Fatal("do not bind NIF blur ad-hoc; use bindCustomerNifAutofill only")
 	}
 	if strings.Contains(adminHTML, "'<td>—</td>' +\n        '<td>' + fmtTimeShort") {
@@ -181,7 +181,10 @@ func TestAdminHTMLBillDraftEventsUnique(t *testing.T) {
 		"function startBillDraftEvents",
 		"function stopBillDraftEvents",
 		"function validatePortugueseNif",
-		"function readPersonBuyer",
+		"function openBillDetail",
+		"function renderBillSplitWorkbench",
+		"function saveSplitAllocation",
+		"function issueBill",
 	} {
 		if n := strings.Count(adminHTML, fn); n != 1 {
 			t.Fatalf("%s must appear exactly once, got %d", fn, n)
@@ -202,7 +205,13 @@ func TestAdminHTMLBillDraftEventsUnique(t *testing.T) {
 	if strings.Contains(adminHTML, "function isNineDigitNif") {
 		t.Fatal("replace isNineDigitNif with validatePortugueseNif Mod-11")
 	}
-	if !strings.Contains(adminHTML, "data-person-nif") || !strings.Contains(adminHTML, "data-issue-person") {
-		t.Fatal("split bill UI must offer per-person NIF + issue")
+	if strings.Count(adminHTML, `id="view-bill-split"`) != 1 {
+		t.Fatal("bill split must be dedicated main view view-bill-split")
+	}
+	if strings.Contains(adminHTML, `id="billDetail"`) {
+		t.Fatal("legacy billDetail under list must be removed")
+	}
+	if !strings.Contains(adminHTML, "/allocation") || !strings.Contains(adminHTML, "allocation_revision") {
+		t.Fatal("split workbench must save allocation and pass allocation_revision on person issue")
 	}
 }

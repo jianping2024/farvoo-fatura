@@ -596,7 +596,9 @@ Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `Ing
 | id | TEXT PK | 是 | UUID |
 | request_id | TEXT | 是 | 幂等键；UNIQUE |
 | source_sale_id | TEXT | 是 | Farvoo sale id |
-| payload_json | TEXT | 是 | 完整 Snapshot JSON |
+| payload_json | TEXT | 是 | 完整 Snapshot JSON（含入库冻结的 `source_lines`） |
+| allocation_json | TEXT | 是 | 本机按菜分单；默认 `{}`；见分单 UX |
+| allocation_revision | INTEGER | 是 | OCC 版本；种子入库为 0（whole）或 1（split）；`SaveBillDraftAllocation` 递增 |
 | status | TEXT | 是 | 仅 `open` / `discarded`（覆盖时旧 open→discarded） |
 | cloud_job_id | TEXT | 否 | Farvoo job id |
 | last_error | TEXT | 否 | |
@@ -607,7 +609,8 @@ Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `Ing
 
 | 动作 | 唯一入口 |
 |------|----------|
-| 入站/覆盖草稿 | `store.UpsertBillDraftOpen` |
+| 入站/覆盖草稿 | `store.UpsertBillDraftOpen`（可带 allocation 种子） |
+| 本机分单保存 | `store.SaveBillDraftAllocation`（OCC；唯一更新 allocation） |
 | 开票成功清临时数据 | `store.DeleteBillDraftsBySale`（硬删该 `source_sale_id` 全部行） |
 | 商品 upsert | `UpsertFiscalProductByCode`（`vat_rate` 百分数串如 `"13.00"`） |
 

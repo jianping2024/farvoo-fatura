@@ -97,6 +97,9 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/issue", func(w http.ResponseWriter, r *http.Request) {
 		handleIssueBillDraft(w, r, deps)
 	})
+	mux.HandleFunc("PUT /local/v1/bill-drafts/{id}/allocation", func(w http.ResponseWriter, r *http.Request) {
+		handleSaveBillDraftAllocation(w, r, deps)
+	})
 	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/discard", func(w http.ResponseWriter, r *http.Request) {
 		handleDiscardBillDraft(w, r, deps)
 	})
@@ -424,12 +427,13 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 	}
 	id := r.PathValue("id")
 	var body struct {
-		OperatorID   string `json:"operator_id"`
-		Mode         string `json:"mode"`
-		ScopeID      string `json:"scope_id"`
-		StationID    string `json:"station_id"`
-		CustomerNIF  string `json:"customer_nif"`
-		CustomerName string `json:"customer_name"`
+		OperatorID           string `json:"operator_id"`
+		Mode                 string `json:"mode"`
+		ScopeID              string `json:"scope_id"`
+		StationID            string `json:"station_id"`
+		CustomerNIF          string `json:"customer_nif"`
+		CustomerName         string `json:"customer_name"`
+		AllocationRevision   *int64 `json:"allocation_revision"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if body.OperatorID == "" {
@@ -441,6 +445,7 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 	res, err := deps.Fiscal.IssueFromBillDraft(r.Context(), service.IssueBillDraftInput{
 		DraftID: id, OperatorID: body.OperatorID, Mode: body.Mode, ScopeID: body.ScopeID,
 		StationID: body.StationID, CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
+		AllocationRevision: body.AllocationRevision,
 	})
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -457,6 +462,37 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 	writeJSON(w, http.StatusOK, res)
 }
 
+func handleSaveBillDraftAllocation(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	if deps.Fiscal == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
+		return
+	}
+	var body struct {
+		ExpectedRevision int64               `json:"expected_revision"`
+		Allocation       billsync.Allocation `json:"allocation"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "validation_failed", "invalid json")
+		return
+	}
+	detail, err := deps.Fiscal.SaveBillDraftAllocation(service.SaveBillDraftAllocationInput{
+		DraftID: r.PathValue("id"), ExpectedRevision: body.ExpectedRevision, Allocation: body.Allocation,
+	})
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeErr(w, http.StatusNotFound, "draft_not_found", err.Error())
+			return
+		}
+		if ie := billsync.AsIngestError(err); ie != nil {
+			writeErr(w, http.StatusBadRequest, ie.Code, ie.Message)
+			return
+		}
+		writeCoded(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, detail)
+}
+
 func writeCoded(w http.ResponseWriter, err error) {
 	var ce *service.CodedError
 	if errors.As(err, &ce) {
@@ -466,7 +502,9 @@ func writeCoded(w http.ResponseWriter, err error) {
 			status = http.StatusBadGateway
 		case service.ErrCodeSignerNotReady, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing:
 			status = http.StatusConflict
-		case "scope_mutex", "draft_not_open", "validation_failed", "already_invoiced":
+		case "scope_mutex", "allocation_conflict", "draft_not_open", "already_invoiced":
+			status = http.StatusConflict
+		case "validation_failed":
 			status = http.StatusBadRequest
 		}
 		writeErr(w, status, ce.Code, ce.Msg)

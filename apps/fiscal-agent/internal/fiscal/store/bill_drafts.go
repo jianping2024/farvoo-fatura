@@ -18,35 +18,41 @@ const (
 	BillDraftDiscarded = "discarded"
 )
 
-// BillSyncDraft is a local copy of a Farvoo bill snapshot.
+// BillSyncDraft is a local copy of a Farvoo bill snapshot + local allocation.
 type BillSyncDraft struct {
-	ID           string
-	RequestID    string
-	SourceSaleID string
-	PayloadJSON  string
-	Status       string
-	CloudJobID   string
-	LastError    string
-	CreatedAt    string
-	UpdatedAt    string
+	ID                 string `json:"id"`
+	RequestID          string `json:"request_id"`
+	SourceSaleID       string `json:"source_sale_id"`
+	PayloadJSON        string `json:"payload_json"`
+	AllocationJSON     string `json:"allocation_json"`
+	AllocationRevision int64  `json:"allocation_revision"`
+	Status             string `json:"status"`
+	CloudJobID         string `json:"cloud_job_id"`
+	LastError          string `json:"last_error"`
+	CreatedAt          string `json:"created_at"`
+	UpdatedAt          string `json:"updated_at"`
 }
 
 // ErrAlreadyInvoiced means re-sync is refused because a signed FT exists for the sale.
 var ErrAlreadyInvoiced = errors.New("already_invoiced")
 
+// ErrAllocationConflict means OCC revision mismatch on SaveBillDraftAllocation.
+var ErrAllocationConflict = errors.New("allocation_conflict")
+
+const billDraftSelectCols = `id, request_id, source_sale_id, payload_json,
+		IFNULL(allocation_json,'{}'), IFNULL(allocation_revision,0),
+		status, IFNULL(cloud_job_id,''), IFNULL(last_error,''), created_at, updated_at`
+
 // GetBillDraftByID loads one draft by primary key.
 func (d *DB) GetBillDraftByID(id string) (*BillSyncDraft, error) {
-	row := d.SQL.QueryRow(`
-		SELECT id, request_id, source_sale_id, payload_json, status, IFNULL(cloud_job_id,''), IFNULL(last_error,''), created_at, updated_at
-		FROM bill_sync_drafts WHERE id = ?`, id)
+	row := d.SQL.QueryRow(`SELECT `+billDraftSelectCols+` FROM bill_sync_drafts WHERE id = ?`, id)
 	return scanBillDraft(row)
 }
 
 // GetBillDraftBySale returns the latest draft row for a sale (any status), or ErrNotFound.
 func (d *DB) GetBillDraftBySale(sourceSaleID string) (*BillSyncDraft, error) {
 	row := d.SQL.QueryRow(`
-		SELECT id, request_id, source_sale_id, payload_json, status, IFNULL(cloud_job_id,''), IFNULL(last_error,''), created_at, updated_at
-		FROM bill_sync_drafts WHERE source_sale_id = ?
+		SELECT `+billDraftSelectCols+` FROM bill_sync_drafts WHERE source_sale_id = ?
 		ORDER BY CASE status WHEN 'open' THEN 0 ELSE 1 END, updated_at DESC
 		LIMIT 1`, sourceSaleID)
 	return scanBillDraft(row)
@@ -55,8 +61,7 @@ func (d *DB) GetBillDraftBySale(sourceSaleID string) (*BillSyncDraft, error) {
 // GetOpenBillDraftBySale returns open draft for sale or ErrNotFound.
 func (d *DB) GetOpenBillDraftBySale(sourceSaleID string) (*BillSyncDraft, error) {
 	row := d.SQL.QueryRow(`
-		SELECT id, request_id, source_sale_id, payload_json, status, IFNULL(cloud_job_id,''), IFNULL(last_error,''), created_at, updated_at
-		FROM bill_sync_drafts WHERE source_sale_id = ? AND status = ? LIMIT 1`,
+		SELECT `+billDraftSelectCols+` FROM bill_sync_drafts WHERE source_sale_id = ? AND status = ? LIMIT 1`,
 		sourceSaleID, BillDraftOpen)
 	return scanBillDraft(row)
 }
@@ -64,14 +69,15 @@ func (d *DB) GetOpenBillDraftBySale(sourceSaleID string) (*BillSyncDraft, error)
 // GetBillDraftByRequestID looks up by request_id (idempotent replay).
 func (d *DB) GetBillDraftByRequestID(requestID string) (*BillSyncDraft, error) {
 	row := d.SQL.QueryRow(`
-		SELECT id, request_id, source_sale_id, payload_json, status, IFNULL(cloud_job_id,''), IFNULL(last_error,''), created_at, updated_at
-		FROM bill_sync_drafts WHERE request_id = ? LIMIT 1`, requestID)
+		SELECT `+billDraftSelectCols+` FROM bill_sync_drafts WHERE request_id = ? LIMIT 1`, requestID)
 	return scanBillDraft(row)
 }
 
 func scanBillDraft(row *sql.Row) (*BillSyncDraft, error) {
 	var b BillSyncDraft
-	err := row.Scan(&b.ID, &b.RequestID, &b.SourceSaleID, &b.PayloadJSON, &b.Status, &b.CloudJobID, &b.LastError, &b.CreatedAt, &b.UpdatedAt)
+	err := row.Scan(&b.ID, &b.RequestID, &b.SourceSaleID, &b.PayloadJSON,
+		&b.AllocationJSON, &b.AllocationRevision,
+		&b.Status, &b.CloudJobID, &b.LastError, &b.CreatedAt, &b.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -87,8 +93,7 @@ func (d *DB) ListBillDrafts(limit int) ([]BillSyncDraft, error) {
 		limit = 50
 	}
 	rows, err := d.SQL.Query(`
-		SELECT id, request_id, source_sale_id, payload_json, status, IFNULL(cloud_job_id,''), IFNULL(last_error,''), created_at, updated_at
-		FROM bill_sync_drafts ORDER BY updated_at DESC LIMIT ?`, limit)
+		SELECT `+billDraftSelectCols+` FROM bill_sync_drafts ORDER BY updated_at DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +101,9 @@ func (d *DB) ListBillDrafts(limit int) ([]BillSyncDraft, error) {
 	var out []BillSyncDraft
 	for rows.Next() {
 		var b BillSyncDraft
-		if err := rows.Scan(&b.ID, &b.RequestID, &b.SourceSaleID, &b.PayloadJSON, &b.Status, &b.CloudJobID, &b.LastError, &b.CreatedAt, &b.UpdatedAt); err != nil {
+		if err := rows.Scan(&b.ID, &b.RequestID, &b.SourceSaleID, &b.PayloadJSON,
+			&b.AllocationJSON, &b.AllocationRevision,
+			&b.Status, &b.CloudJobID, &b.LastError, &b.CreatedAt, &b.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, b)
@@ -137,10 +144,10 @@ func tableHintFromPayload(payload any) string {
 	return ""
 }
 
-// UpsertBillDraftOpen is the ONLY writer that creates/covers open bill sync drafts.
-// Same request_id → idempotent (no double write). Signed FT for sale → ErrAlreadyInvoiced.
-// Open/discarded/missing → replace with new open payload.
-func (d *DB) UpsertBillDraftOpen(requestID, sourceSaleID, cloudJobID string, payload any) (*BillSyncDraft, error) {
+// UpsertBillDraftOpen is the ONLY writer that creates/covers open bill sync drafts (payload + seed allocation).
+// Same request_id → idempotent (no double write). Open/discarded/missing → replace with new open payload.
+// allocationJSON seed + allocationRevision are set only on INSERT; later edits MUST use SaveBillDraftAllocation.
+func (d *DB) UpsertBillDraftOpen(requestID, sourceSaleID, cloudJobID string, payload any, allocationJSON string, allocationRevision int64) (*BillSyncDraft, error) {
 	requestID = strings.TrimSpace(requestID)
 	sourceSaleID = strings.TrimSpace(sourceSaleID)
 	if requestID == "" || sourceSaleID == "" {
@@ -149,6 +156,13 @@ func (d *DB) UpsertBillDraftOpen(requestID, sourceSaleID, cloudJobID string, pay
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
+	}
+	allocationJSON = strings.TrimSpace(allocationJSON)
+	if allocationJSON == "" {
+		allocationJSON = "{}"
+	}
+	if allocationRevision < 0 {
+		allocationRevision = 0
 	}
 
 	if existing, err := d.GetBillDraftByRequestID(requestID); err == nil {
@@ -171,9 +185,9 @@ func (d *DB) UpsertBillDraftOpen(requestID, sourceSaleID, cloudJobID string, pay
 
 	id := uuid.NewString()
 	if _, err := tx.Exec(`
-		INSERT INTO bill_sync_drafts(id, request_id, source_sale_id, payload_json, status, cloud_job_id, last_error, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
-		id, requestID, sourceSaleID, string(raw), BillDraftOpen, nullIfEmpty(cloudJobID), now, now); err != nil {
+		INSERT INTO bill_sync_drafts(id, request_id, source_sale_id, payload_json, allocation_json, allocation_revision, status, cloud_job_id, last_error, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+		id, requestID, sourceSaleID, string(raw), allocationJSON, allocationRevision, BillDraftOpen, nullIfEmpty(cloudJobID), now, now); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -181,6 +195,43 @@ func (d *DB) UpsertBillDraftOpen(requestID, sourceSaleID, cloudJobID string, pay
 	}
 	d.fireBillDraftsChanged(tableHintFromPayload(payload), "upsert")
 	return d.GetBillDraftByRequestID(requestID)
+}
+
+// SaveBillDraftAllocation is the ONLY writer that updates allocation_json after draft create (OCC).
+// expectedRevision must match current allocation_revision; on success revision becomes expected+1.
+func (d *DB) SaveBillDraftAllocation(draftID string, expectedRevision int64, allocationJSON string) (*BillSyncDraft, error) {
+	draftID = strings.TrimSpace(draftID)
+	if draftID == "" {
+		return nil, fmt.Errorf("store: draft id required")
+	}
+	allocationJSON = strings.TrimSpace(allocationJSON)
+	if allocationJSON == "" {
+		allocationJSON = "{}"
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	res, err := d.SQL.Exec(`
+		UPDATE bill_sync_drafts
+		SET allocation_json = ?, allocation_revision = ?, updated_at = ?
+		WHERE id = ? AND status = ? AND allocation_revision = ?`,
+		allocationJSON, expectedRevision+1, now, draftID, BillDraftOpen, expectedRevision)
+	if err != nil {
+		return nil, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if n == 0 {
+		cur, err := d.GetBillDraftByID(draftID)
+		if err != nil {
+			return nil, err
+		}
+		if cur.Status != BillDraftOpen {
+			return nil, fmt.Errorf("store: draft not open")
+		}
+		return nil, ErrAllocationConflict
+	}
+	return d.GetBillDraftByID(draftID)
 }
 
 // DeleteBillDraftsBySale is the ONLY post-issue cleanup: hard-delete all drafts for the sale.

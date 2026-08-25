@@ -30,20 +30,23 @@ func (e *IngestError) Error() string { return e.Message }
 
 func ingestErr(code, msg string) error { return &IngestError{Code: code, Message: msg} }
 
-// Snapshot is the Farvoo bill_sync_jobs payload body.
+// Snapshot is the Farvoo bill_sync_jobs payload body (+ Agent freeze fields).
 type Snapshot struct {
-	RequestID         string      `json:"request_id"`
-	SourceSystem      string      `json:"source_system"`
-	SourceSaleID      string      `json:"source_sale_id"`
-	TableDisplayName  string      `json:"table_display_name"`
-	ScopeType         string      `json:"scope_type"`
-	Lines             []Line      `json:"lines"`
-	GrossTotal        string      `json:"gross_total"`
-	Splits            []SplitPart `json:"splits"`
+	RequestID        string      `json:"request_id"`
+	SourceSystem     string      `json:"source_system"`
+	SourceSaleID     string      `json:"source_sale_id"`
+	TableDisplayName string      `json:"table_display_name"`
+	ScopeType        string      `json:"scope_type"`
+	Lines            []Line      `json:"lines"`
+	GrossTotal       string      `json:"gross_total"`
+	Splits           []SplitPart `json:"splits"`
+	// SourceLines is frozen at ingest (Agent); allocation shares reference LineKey.
+	SourceLines []Line `json:"source_lines,omitempty"`
 }
 
 // Line is a sale line (qty/line_gross not stored in product master).
 type Line struct {
+	LineKey        string `json:"line_key,omitempty"`
 	ItemCode       string `json:"item_code"`
 	Name           string `json:"name"`
 	Qty            string `json:"qty"`
@@ -185,12 +188,36 @@ func IngestCloudJob(db *store.DB, job CloudJob) (*store.BillSyncDraft, error) {
 	if len(lines) == 0 {
 		return nil, ingestErr(CodeValidationFailed, "no lines")
 	}
+	if err := FreezeSourceLines(&snap); err != nil {
+		return nil, err
+	}
 	products, err := ValidateAndDedupeProducts(lines)
 	if err != nil {
 		return nil, err
 	}
 
-	draft, err := db.UpsertBillDraftOpen(snap.RequestID, snap.SourceSaleID, job.ID, snap)
+	var allocJSON string
+	var allocRev int64
+	if strings.TrimSpace(snap.ScopeType) == "split" {
+		alloc, err := AllocationFromSplits(snap)
+		if err != nil {
+			return nil, err
+		}
+		if err := ValidateAllocation(snap, alloc); err != nil {
+			return nil, err
+		}
+		rawAlloc, err := json.Marshal(alloc)
+		if err != nil {
+			return nil, ingestErr(CodePersistFailed, err.Error())
+		}
+		allocJSON = string(rawAlloc)
+		allocRev = 1
+	} else {
+		allocJSON = "{}"
+		allocRev = 0
+	}
+
+	draft, err := db.UpsertBillDraftOpen(snap.RequestID, snap.SourceSaleID, job.ID, snap, allocJSON, allocRev)
 	if err != nil {
 		return nil, ingestErr(CodePersistFailed, err.Error())
 	}

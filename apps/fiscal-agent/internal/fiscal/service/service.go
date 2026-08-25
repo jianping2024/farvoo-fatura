@@ -319,23 +319,27 @@ func (s *FiscalService) ListBillDrafts(limit int) ([]store.BillSyncDraft, error)
 
 // IssueBillDraftInput is the ONLY input shape for IssueFromBillDraft.
 type IssueBillDraftInput struct {
-	DraftID      string
-	OperatorID   string
-	Mode         string // whole_table | person; empty → whole_table
-	ScopeID      string
-	StationID    string // required: station_printers key for ORIGINAL print
-	CustomerNIF  string
-	CustomerName string
+	DraftID              string
+	OperatorID           string
+	Mode                 string // whole_table | person; empty → whole_table
+	ScopeID              string
+	StationID            string // required: station_printers key for ORIGINAL print
+	CustomerNIF          string
+	CustomerName         string
+	AllocationRevision   *int64 // person: required OCC; must match draft.allocation_revision
 }
 
 // BillDraftDetail is GET /bill-drafts/{id} read model.
 type BillDraftDetail struct {
-	Draft        store.BillSyncDraft `json:"draft"`
-	Payload      billsync.Snapshot   `json:"payload"`
-	IssuedScopes []store.SignedFTScope `json:"issued_scopes"`
+	Draft               store.BillSyncDraft  `json:"draft"`
+	Payload             billsync.Snapshot    `json:"payload"`
+	Allocation          billsync.Allocation  `json:"allocation"`
+	AllocationRevision  int64                `json:"allocation_revision"`
+	IssuedScopes        []store.SignedFTScope `json:"issued_scopes"`
+	Remaining           map[string]string    `json:"remaining,omitempty"` // line_key → qty label
 }
 
-// GetBillDraftDetail loads one draft + payload + issued scopes (tax DB).
+// GetBillDraftDetail loads one draft + payload + allocation + issued scopes (tax DB).
 func (s *FiscalService) GetBillDraftDetail(draftID string) (*BillDraftDetail, error) {
 	if s == nil || s.db == nil {
 		return nil, fmt.Errorf("fiscal: service not configured")
@@ -351,11 +355,139 @@ func (s *FiscalService) GetBillDraftDetail(draftID string) (*BillDraftDetail, er
 	if strings.TrimSpace(snap.SourceSaleID) == "" {
 		snap.SourceSaleID = draft.SourceSaleID
 	}
+	if err := billsync.FreezeSourceLines(&snap); err != nil && len(snap.SourceLines) == 0 {
+		return nil, err
+	}
+	alloc, err := billsync.ParseAllocationJSON(draft.AllocationJSON)
+	if err != nil {
+		return nil, err
+	}
 	scopes, err := s.db.ListSignedFTScopesForSale(s.storeID, snap.SourceSystem, draft.SourceSaleID)
 	if err != nil {
 		return nil, err
 	}
-	return &BillDraftDetail{Draft: *draft, Payload: snap, IssuedScopes: scopes}, nil
+	remMap := map[string]string{}
+	if rem, err := billsync.RemainingPool(snap, alloc); err == nil {
+		for k, q := range rem {
+			remMap[k] = billsync.FormatRational(q)
+		}
+	}
+	return &BillDraftDetail{
+		Draft: *draft, Payload: snap, Allocation: alloc,
+		AllocationRevision: draft.AllocationRevision,
+		IssuedScopes: scopes, Remaining: remMap,
+	}, nil
+}
+
+// SaveBillDraftAllocationInput is the ONLY input for SaveBillDraftAllocation.
+type SaveBillDraftAllocationInput struct {
+	DraftID            string
+	ExpectedRevision   int64
+	Allocation         billsync.Allocation
+}
+
+// SaveBillDraftAllocation is the ONLY service entry that persists local by-item allocation (OCC).
+func (s *FiscalService) SaveBillDraftAllocation(in SaveBillDraftAllocationInput) (*BillDraftDetail, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("fiscal: service not configured")
+	}
+	draft, err := s.db.GetBillDraftByID(strings.TrimSpace(in.DraftID))
+	if err != nil {
+		return nil, err
+	}
+	if draft.Status != store.BillDraftOpen {
+		return nil, coded("draft_not_open", "draft not open")
+	}
+	var snap billsync.Snapshot
+	if err := json.Unmarshal([]byte(draft.PayloadJSON), &snap); err != nil {
+		return nil, fmt.Errorf("fiscal: draft payload: %w", err)
+	}
+	if strings.TrimSpace(snap.SourceSaleID) == "" {
+		snap.SourceSaleID = draft.SourceSaleID
+	}
+	if err := billsync.FreezeSourceLines(&snap); err != nil && len(snap.SourceLines) == 0 {
+		return nil, err
+	}
+	// Lock issued people: cannot drop or mutate their shares.
+	existing, err := s.db.ListSignedFTScopesForSale(s.storeID, snap.SourceSystem, draft.SourceSaleID)
+	if err != nil {
+		return nil, err
+	}
+	issued := map[string]bool{}
+	for _, sc := range existing {
+		if strings.TrimSpace(sc.ScopeType) == "person" {
+			issued[strings.TrimSpace(sc.ScopeID)] = true
+		}
+	}
+	prev, err := billsync.ParseAllocationJSON(draft.AllocationJSON)
+	if err != nil {
+		return nil, err
+	}
+	prevByScope := map[string]billsync.AllocPerson{}
+	for _, p := range prev.People {
+		prevByScope[strings.TrimSpace(p.ScopeID)] = p
+	}
+	for _, p := range in.Allocation.People {
+		sid := strings.TrimSpace(p.ScopeID)
+		if issued[sid] {
+			old := prevByScope[sid]
+			if !allocPersonEqual(old, p) {
+				return nil, coded("validation_failed", "cannot edit issued person allocation")
+			}
+		}
+	}
+	for sid := range issued {
+		if _, ok := findPerson(in.Allocation, sid); !ok {
+			return nil, coded("validation_failed", "cannot remove issued person from allocation")
+		}
+	}
+	if err := billsync.ValidateAllocation(snap, in.Allocation); err != nil {
+		return nil, err
+	}
+	raw, err := json.Marshal(in.Allocation)
+	if err != nil {
+		return nil, err
+	}
+	updated, err := s.db.SaveBillDraftAllocation(draft.ID, in.ExpectedRevision, string(raw))
+	if err != nil {
+		if errors.Is(err, store.ErrAllocationConflict) {
+			return nil, coded("allocation_conflict", "allocation was updated elsewhere; refresh and retry")
+		}
+		return nil, err
+	}
+	_ = updated
+	return s.GetBillDraftDetail(draft.ID)
+}
+
+func findPerson(a billsync.Allocation, scopeID string) (billsync.AllocPerson, bool) {
+	for _, p := range a.People {
+		if strings.TrimSpace(p.ScopeID) == scopeID {
+			return p, true
+		}
+	}
+	return billsync.AllocPerson{}, false
+}
+
+func allocPersonEqual(a, b billsync.AllocPerson) bool {
+	if strings.TrimSpace(a.Name) != strings.TrimSpace(b.Name) || len(a.Shares) != len(b.Shares) {
+		return false
+	}
+	type key struct {
+		k string
+		n, d int64
+	}
+	ma := map[key]bool{}
+	for _, sh := range a.Shares {
+		q := billsync.NormalizeRational(sh.Qty)
+		ma[key{sh.LineKey, q.Num, q.Den}] = true
+	}
+	for _, sh := range b.Shares {
+		q := billsync.NormalizeRational(sh.Qty)
+		if !ma[key{sh.LineKey, q.Num, q.Den}] {
+			return false
+		}
+	}
+	return true
 }
 
 // DiscardBillDrafts is the ONLY user discard entry: hard-delete drafts for the sale; never deletes invoices.
@@ -371,7 +503,7 @@ func (s *FiscalService) DiscardBillDrafts(draftID string) error {
 }
 
 // IssueFromBillDraft is the ONLY entry that issues FT from a bill_sync_drafts row.
-// Maps via billsync.DraftToSaleSnapshot / DraftPartToSaleSnapshot → IssueDocument → DeleteBillDraftsBySale (when due).
+// whole_table → DraftToSaleSnapshot; person → DraftPersonFromAllocation (ONLY person builder).
 func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraftInput) (*domain.IssueResult, error) {
 	if s == nil || s.db == nil {
 		return nil, fmt.Errorf("fiscal: service not configured")
@@ -416,6 +548,9 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraf
 	if strings.TrimSpace(snap.SourceSystem) == "" {
 		snap.SourceSystem = "farvoo"
 	}
+	if err := billsync.FreezeSourceLines(&snap); err != nil && len(snap.SourceLines) == 0 {
+		return nil, err
+	}
 
 	payloadType := strings.TrimSpace(snap.ScopeType)
 
@@ -441,14 +576,28 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraf
 		}, nil
 	}
 
+	alloc, err := billsync.ParseAllocationJSON(draft.AllocationJSON)
+	if err != nil {
+		return nil, err
+	}
+
 	switch mode {
 	case "whole_table":
 		if payloadType != "whole_table" {
 			return nil, coded("validation_failed", fmt.Sprintf("mode=whole_table requires payload whole_table (got %q)", payloadType))
 		}
+		if len(alloc.People) > 0 {
+			return nil, coded("validation_failed", "cannot whole_table issue after local allocation; use person issue")
+		}
 	case "person":
-		if payloadType != "split" {
-			return nil, coded("validation_failed", fmt.Sprintf("mode=person requires payload split (got %q)", payloadType))
+		if in.AllocationRevision == nil {
+			return nil, coded("validation_failed", "allocation_revision required for person issue")
+		}
+		if *in.AllocationRevision != draft.AllocationRevision {
+			return nil, coded("allocation_conflict", "allocation was updated elsewhere; refresh and retry")
+		}
+		if len(alloc.People) == 0 {
+			return nil, coded("validation_failed", "mode=person requires local allocation")
 		}
 	}
 
@@ -459,7 +608,7 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraf
 		sale, err = billsync.DraftToSaleSnapshot(snap)
 		reqID = "draft-issue:" + draft.ID + ":whole_table"
 	case "person":
-		sale, err = billsync.DraftPartToSaleSnapshot(snap, in.ScopeID)
+		sale, err = billsync.DraftPersonFromAllocation(snap, alloc, in.ScopeID)
 		reqID = "draft-issue:" + draft.ID + ":person:" + strings.TrimSpace(in.ScopeID)
 	}
 	if err != nil {
@@ -482,12 +631,20 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraf
 		if err != nil {
 			return nil, err
 		}
-		shouldDelete = allSplitScopesIssued(snap, after)
+		refs := make([]billsync.IssuedScopeRef, 0, len(after))
+		for _, sc := range after {
+			refs = append(refs, billsync.IssuedScopeRef{ScopeType: sc.ScopeType, ScopeID: sc.ScopeID})
+		}
+		peopleDone := billsync.AllAllocationPeopleIssued(alloc, refs)
+		poolEmpty, err := billsync.PoolEmpty(snap, alloc)
+		if err != nil {
+			return nil, err
+		}
+		shouldDelete = peopleDone && poolEmpty
 	}
 	if shouldDelete {
 		if err := s.db.DeleteBillDraftsBySale(draft.SourceSaleID); err != nil {
 			res.CleanupPending = true
-			// Ticket already signed — do not fail the client.
 			return res, nil
 		}
 	}
@@ -526,25 +683,6 @@ func findIssuedScope(mode, scopeID, saleID string, existing []store.SignedFTScop
 		}
 	}
 	return nil
-}
-
-func allSplitScopesIssued(snap billsync.Snapshot, scopes []store.SignedFTScope) bool {
-	if len(snap.Splits) == 0 {
-		return false
-	}
-	have := map[string]bool{}
-	for _, sc := range scopes {
-		if strings.TrimSpace(sc.ScopeType) == "person" {
-			have[strings.TrimSpace(sc.ScopeID)] = true
-		}
-	}
-	for _, sp := range snap.Splits {
-		id := strings.TrimSpace(sp.ScopeID)
-		if id == "" || !have[id] {
-			return false
-		}
-	}
-	return true
 }
 
 // DB exposes store for bill-sync puller wiring (read/ingest only via billsync package).

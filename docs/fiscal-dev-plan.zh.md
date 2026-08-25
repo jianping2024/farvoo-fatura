@@ -11,6 +11,7 @@
 |------|------|
 | [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) | 库表权威 |
 | [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md) | 待开票账单 / 分单开票（整桌/按人）Agent 侧定稿 |
+| [`fiscal-bill-split-workbench-ux.zh.md`](fiscal-bill-split-workbench-ux.zh.md) | 收银账单按菜分单 UX（main view；本机分配；开票消账）定稿 |
 | [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md) | 正式 Admin **流程与导航**对齐稿（v2 已定稿） |
 | [`fiscal-ft-receipt-layout.zh.md`](fiscal-ft-receipt-layout.zh.md) | FT 热敏票面版式（定稿；RenderESCPOS；48 列满宽） |
 | 需求 v0.17（`document/`，本仓 gitignore） | 业务/合规规则 |

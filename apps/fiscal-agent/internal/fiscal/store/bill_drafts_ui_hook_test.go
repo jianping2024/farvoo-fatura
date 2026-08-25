@@ -34,7 +34,7 @@ func TestBillDraftWritersFireUIHook(t *testing.T) {
 			"unit_price_gross": "1.00", "line_gross": "1.00", "vat_rate": "13.00",
 		}},
 	}
-	if _, err := db.UpsertBillDraftOpen("req-ui-1", "sale-ui-1", "job-1", payload); err != nil {
+	if _, err := db.UpsertBillDraftOpen("req-ui-1", "sale-ui-1", "job-1", payload, "{}", 0); err != nil {
 		t.Fatal(err)
 	}
 	if len(calls) != 1 || calls[0].n != 1 || calls[0].hint != "B-12" || calls[0].kind != "upsert" {
@@ -42,7 +42,7 @@ func TestBillDraftWritersFireUIHook(t *testing.T) {
 	}
 
 	// Idempotent same request_id: no second notify.
-	if _, err := db.UpsertBillDraftOpen("req-ui-1", "sale-ui-1", "job-1", payload); err != nil {
+	if _, err := db.UpsertBillDraftOpen("req-ui-1", "sale-ui-1", "job-1", payload, "{}", 0); err != nil {
 		t.Fatal(err)
 	}
 	if len(calls) != 1 {

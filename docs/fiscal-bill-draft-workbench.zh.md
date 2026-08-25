@@ -7,7 +7,8 @@
 > **库表权威：** [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §6.21  
 > **只读依据（不改对方仓文档）：** restaurant-ordering `farvoo-fiscal-agent-integration.zh.md` §3.1（整桌/按人互斥、`scope_id` 稳定 UUID）；挂单载荷见同仓 `farvoo-fiscal-bill-sync-api.zh.md` §5  
 > **工程进度：** [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) — **M2.5 已完成**；店员 UI 见 **M2.6** + [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)  
-> **UI 用语权威：** 方案 A 以原型 README「业务用语」为准（收银账单 / 手工开票）
+> **UI 用语权威：** 方案 A 以原型 README「业务用语」为准（收银账单 / 手工开票）  
+> **按菜分单 UX 权威：** [`fiscal-bill-split-workbench-ux.zh.md`](fiscal-bill-split-workbench-ux.zh.md)（main view + 同页开票条；本机分配；开票消账）
 
 ---
 
@@ -69,31 +70,45 @@ Farvoo 结账只负责「同步账单」进本机 `bill_sync_drafts`；**整桌�
 
 ### 4.1 整桌（`payload.scope_type = whole_table`）
 
+**两条店员路径（P0）：**
+
+| 路径 | 何时 | 开票 |
+|------|------|------|
+| 整桌一张 | 客人不要分、店员也不代分 | `mode=whole_table`（既有） |
+| **本机代分后按人** | 云端整桌进来，店员在 Agent 按菜分单（客人懒得在收银侧操作） | 写 `allocation` 后 `mode=person`（见分单 UX） |
+
 ```text
-收银账单（或手工开票详情）→（可选）填本票 NIF / 客户名；空则散客
-  → 确认 / 确认整桌开票
+收银账单 → 进入分单工作台（main view）
+  → 可选：不分配，直接整桌签发（mode=whole_table）
+  → 或：添加用餐人、按菜分配（含几分之几）→ 按人签发（mode=person）
+  → 互斥与清草稿见 §5 / §6；壳层见 fiscal-bill-split-workbench-ux
+```
+
+整桌签发（不分配）时：
+
+```text
+（可选）填本票 NIF / 客户名；空则散客
   → DraftToSaleSnapshot（whole_table）+ 本次客户覆盖
   → IssueFromBillDraft(mode=whole_table)
   → IssueDocument / IssueFT
   → DeleteBillDraftsBySale（尽力；见 §6）
-  → 展示 InvoiceNo / ATCUD；可走本地税务打印队列
 ```
 
-### 4.2 按人（`payload.scope_type = split`）
+### 4.2 按人（同步已是 `scope_type = split`，或本机 allocation 已有人）
 
 ```text
-打开收银账单 → 列出 splits[]（每人一行）
-  → 未开：可签发发票；已开：显示票号 / 重打（**M2.6b**）
+打开收银账单 → 分单工作台（与 whole 同一 UI；初值来自云端 splits 或本机 allocation）
+  → 未开：可改分配后签发；已开：只读票号
   → 选一人 →（可选）为该人填 NIF / 客户名；空则该人散客；不沿用其他人的 NIF
-  → mode=person + scope_id=splits[i].scope_id
-  → DraftPartToSaleSnapshot（唯一映射出口，见 §7）+ 本次客户覆盖
+  → mode=person + scope_id=allocation 中该人 UUID
+  → 由 source_lines + allocation 派生 SaleSnapshot（唯一映射出口，见 §7）+ 本次客户覆盖
   → IssueDocument / IssueFT
-  → 若仍有未开 person scope → 保留收银账单
-  → 若全部 person scope 均已有 FT → DeleteBillDraftsBySale（尽力；见 §6）
+  → 清草稿条件见 §6（人开完且池空）
 ```
 
-**禁止：** 对 `split` 草稿发 `mode=whole_table`（API 拒绝，明确错误码）。  
-**禁止：** 对 `whole_table` 草稿发 `mode=person`。
+**禁止：** 对已存在任一张 **按人** FT 的 sale 再发 `mode=whole_table`（`scope_mutex`）。  
+**禁止：** 对同步即为 `split` 且从未意图整桌的草稿发 `mode=whole_table`（API 拒绝）。  
+**允许（定稿修订）：** 同步为 `whole_table` 的草稿，在本机完成按菜分配后发 `mode=person`（店员代分主路径）。**旧禁止「whole 草稿不得 person」作废。**
 
 同步载荷默认**不带**每人 NIF；工作台必须允许开票前逐人指定。
 
@@ -149,12 +164,15 @@ store_id | source_system | source_sale_id | scope_type | scope_id | fiscal_purpo
 |------|------|
 | `mode=whole_table` 成功 | **立刻** `DeleteBillDraftsBySale(source_sale_id)` |
 | `mode=person` 成功且仍有未开 person scope | **不删**草稿；UI 标已开 `scope_id` |
-| `mode=person` 成功且该草稿全部 `splits[].scope_id` 均已有 FT | **自动** `DeleteBillDraftsBySale` |
+| `mode=person` 成功且所有 person scope 均已有 FT，**但**相对冻结源行（`source_lines`）剩余池非空 | **不删**草稿；须继续分配剩余或用户丢弃 |
+| `mode=person` 成功且所有 person scope 均已有 FT，**且**剩余池为空 | **自动** `DeleteBillDraftsBySale` |
 | 用户丢弃 | `POST .../discard` → 硬删该 sale 全部草稿；**不删**已开发票 |
+
+> **相对旧定法：** 不再仅凭「全部 `splits[].scope_id` 已有 FT」清草稿。池空判定与分配模型见 [`fiscal-bill-split-workbench-ux.zh.md`](fiscal-bill-split-workbench-ux.zh.md) §0/§5/§6。
 
 `fiscal_products` **永不**因开票/丢弃而删。
 
-**不采用：** 每开一张按人票就删草稿（会丢失未开人的初稿）。
+**不采用：** 每开一张按人票就删草稿（会丢失未开人的初稿）；**不采用：** 人开完但池非空时静默删草稿。
 
 **签发 vs 清草稿（P0 定法）：** 已签 FT **不得**因删草稿失败而回滚。`IssueDocument` 成功后删草稿失败 → HTTP 仍按开票成功返回（含票号），并带 `cleanup_pending=true`（或等价字段）；记日志；允许补偿重试删。禁止「票已开却让客户端以为失败」导致盲目连点（幂等可挡双开，体验仍差）。
 
@@ -236,9 +254,10 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 - **不做** Farvoo 云端开票页。  
 - **工作台双 CTA（P0）：** 与 [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)「工作台双 CTA」一致：`新建开票` 与 `处理收银账单` **同级视觉**；有 open 收银账单时后者 **优先焦点**。禁止灰边弱化收银账单入口。  
 - 列表：桌号、金额、同步时间、整桌/分单、未开/已开人数。  
-- 详情：行项目；split 时每人一块「签发」；整桌一个「整桌签发」。  
+- **进入开票 / 分单：** 列表点入 → **专用 main view**（非列表下钻小块、非小弹窗分配器）；交互与壳层以 [`fiscal-bill-split-workbench-ux.zh.md`](fiscal-bill-split-workbench-ux.zh.md) 为准（左剩余池 / 右当前人份额 / 同页开票条；`whole_table` 与已 `split` 同一界面可实时改；本机持久化、不回写云）。  
+- **签发：** 按人在开票条签发；整桌仅在尚未走按人开票路径时保留「整桌签发」（互斥见 §5）。  
 - **NIF：** 整桌开票前一个输入框；按人则**每个人一块独立输入**（默认空=散客）；不得把 A 的 NIF 默认填给 B。  
-- 成功：展示 `InvoiceNo`、ATCUD；按人刷新已开标记；整桌或全员开完后收银账单从列表消失（若 `cleanup_pending` 则提示稍后清理，票号仍展示）。
+- 成功：展示 `InvoiceNo`、ATCUD；已开份额从总池消去；按人刷新已开标记；整桌或全员开完且池空后收银账单从列表消失（若 `cleanup_pending` 则提示稍后清理，票号仍展示）。
 
 ### 第一实现刀默认（文档锁定）
 
@@ -282,12 +301,13 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 2. `split` 两人草稿 → 开 A → 草稿仍在且 A 已开、B 可开 → 开 B → 草稿自动硬删。  
 3. 已开 A 后再开 A → 幂等原票，不重签。  
 4. 已开任一人后点整桌 → `scope_mutex`。  
-5. `split` 草稿 `mode=whole_table` → 拒绝。  
+5. 同步 `split` 草稿 `mode=whole_table` → 拒绝。同步 `whole_table` 本机分配后 `mode=person` → **允许**（代分主路径）。  
 6. 丢弃草稿 → 行消失；已开发票仍在。  
 7. 按人 A 填 NIF、B 不填 → A 票面非散客、B 为散客；两人 NIF 互不串。  
 8. 整桌不填 NIF → 散客；整桌填 NIF → 票面用该 NIF。  
 9. 签票成功但删草稿失败 → 仍返回成功 + `cleanup_pending`；库中有票。  
-10. `rg`：映射 / `IssueFromBillDraft` / `DeleteBillDraftsBySale` 仍各唯一入口。
+10. `rg`：映射 / `IssueFromBillDraft` / `DeleteBillDraftsBySale` 仍各唯一入口。  
+11. `whole_table` → 本机分两人 → 开 A → 池与草稿仍在 → 开 B 且池空 → 草稿删。
 
 ---
 
@@ -295,10 +315,11 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 
 - NC / 重打完整工作台、SAF-T、FS/FR/ND  
 - §13 鉴权落地（归 **M4**；非「方案没有」）  
-- 修改 Restaurant 同步载荷契约文或 API（本仓只消费已有 `split`）  
+- 修改 Restaurant 同步载荷契约文或 API（本仓消费已有 `split`；**本机按菜再分配不回写云**，见分单 UX 定稿）  
 - 第二套 Realtime / 第二套插票  
 - 云端打票页、手机直连签发  
 - 混合付款  
+- Agent 上 even / custom 金额分单（只做按菜 by_item 对齐，见分单 UX）
 
 ---
 
@@ -322,3 +343,7 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 | 2026-08-25 | §9：工作台双 CTA 同级 + 有待开票时优先焦点（挂原型 README） |
 | 2026-08-25 | §7.1：Agent→Admin SSE `bill_drafts_changed` + 侧栏角标（禁浏览器空转轮询主路径） |
 | 2026-08-25 | §0/§9：**方案 A** 用语：收银账单 / 手工开票 / 新建开票 / 处理收银账单（Will 确认） |
+| 2026-08-25 | §9/§12：挂接按菜分单 UX 定稿（main view + 本机分配消账）；细节以该文为准 |
+| 2026-08-25 | 与分单 UX 对齐：同单只同步一次（后续关台）；不做开票前再同步覆盖本机分单的冲突策略 |
+| 2026-08-25 | §6：按人清草稿改为「全部 person 已开 **且** 剩余池空」；挂分单 UX |
+| 2026-08-25 | §4/§11：废止「whole 禁 person」；整桌同步可本机代分后按人开票 |

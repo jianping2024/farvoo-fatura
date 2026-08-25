@@ -274,9 +274,10 @@ func TestIssueFromBillDraft_PersonPartialThenComplete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	rev := draft.AllocationRevision
 	resA, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
 		DraftID: draft.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
-		CustomerNIF: "123456789", CustomerName: "Ana",
+		CustomerNIF: "123456789", CustomerName: "Ana", AllocationRevision: &rev,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -301,6 +302,7 @@ func TestIssueFromBillDraft_PersonPartialThenComplete(t *testing.T) {
 	}
 	resA2, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
 		DraftID: draft.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
+		AllocationRevision: &rev,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -310,6 +312,7 @@ func TestIssueFromBillDraft_PersonPartialThenComplete(t *testing.T) {
 	}
 	resB, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
 		DraftID: draft.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeB,
+		AllocationRevision: &rev,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -324,23 +327,62 @@ func TestIssueFromBillDraft_PersonPartialThenComplete(t *testing.T) {
 	}
 }
 
-func TestIssueFromBillDraft_RejectPersonOnWholeTable(t *testing.T) {
+func TestIssueFromBillDraft_PersonOnWholeTableViaAllocation(t *testing.T) {
 	dir := t.TempDir()
 	db, svc := seedFiscal(t, dir)
 	defer db.Close()
 	payload, _ := json.Marshal(billsync.Snapshot{
-		RequestID: "r1", SourceSaleID: "s-wt", ScopeType: "whole_table", GrossTotal: "1.00",
-		Lines: []billsync.Line{{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"}},
+		RequestID: "r1", SourceSaleID: "s-wt", ScopeType: "whole_table", GrossTotal: "3.00",
+		Lines: []billsync.Line{{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "3.00", LineGross: "3.00", VATRate: "23.00"}},
 	})
 	d, err := billsync.IngestCloudJob(db, billsync.CloudJob{ID: "j1", Payload: payload})
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, err = svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
-		DraftID: d.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person", ScopeID: "11111111-1111-1111-1111-111111111111",
+		DraftID: d.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person",
+		ScopeID: "11111111-1111-1111-1111-111111111111",
 	})
 	if err == nil {
-		t.Fatal("expected validation_failed")
+		t.Fatal("person without allocation must fail")
+	}
+	detail, err := svc.GetBillDraftDetail(d.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lineKey := detail.Payload.SourceLines[0].LineKey
+	scopeA := "11111111-1111-1111-1111-111111111111"
+	scopeB := "22222222-2222-2222-2222-222222222222"
+	alloc := billsync.Allocation{People: []billsync.AllocPerson{
+		{ScopeID: scopeA, Name: "Ana", Shares: []billsync.AllocShare{{LineKey: lineKey, Qty: billsync.Rational{Num: 1, Den: 2}}}},
+		{ScopeID: scopeB, Name: "Bruno", Shares: []billsync.AllocShare{{LineKey: lineKey, Qty: billsync.Rational{Num: 1, Den: 2}}}},
+	}}
+	saved, err := svc.SaveBillDraftAllocation(service.SaveBillDraftAllocationInput{
+		DraftID: d.ID, ExpectedRevision: 0, Allocation: alloc,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rev := saved.AllocationRevision
+	if _, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
+		DraftID: d.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
+		AllocationRevision: &rev,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	list, _ := db.ListBillDrafts(10)
+	if len(list) != 1 {
+		t.Fatalf("should keep draft after partial: %d", len(list))
+	}
+	if _, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
+		DraftID: d.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeB,
+		AllocationRevision: &rev,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := db.ListBillDrafts(10)
+	if len(after) != 0 {
+		t.Fatalf("pool empty + people done → delete, got %d", len(after))
 	}
 }
 
@@ -365,8 +407,10 @@ func TestDiscardBillDrafts_KeepsInvoices(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	rev := draft.AllocationRevision
 	res, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
 		DraftID: draft.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
+		AllocationRevision: &rev,
 	})
 	if err != nil {
 		t.Fatal(err)

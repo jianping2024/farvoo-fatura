@@ -47,6 +47,18 @@ async function uatCmd(...args) {
   ).trim();
 }
 
+/** Person issue body with OCC revision from GET detail (ONLY path). */
+async function personIssuePayload(draftId, extra = {}) {
+  const detail = JSON.parse(await uatCmd('req', 'GET', `/local/v1/bill-drafts/${draftId}`));
+  return {
+    station_id: 'st-uat',
+    operator_id: 'op-demo-cashier',
+    mode: 'person',
+    allocation_revision: detail.allocation_revision,
+    ...extra,
+  };
+}
+
 function snap(overrides = {}) {
   return {
     request_id: 'req-bill-1',
@@ -547,13 +559,11 @@ async function main() {
         'POST',
         `/local/v1/bill-drafts/${splitDraftId}/issue`,
         '--body',
-        JSON.stringify({ station_id: "st-uat",
-          operator_id: 'op-demo-cashier',
-          mode: 'person',
+        JSON.stringify(await personIssuePayload(splitDraftId, {
           scope_id: scopeA,
           customer_nif: '123456789',
           customer_name: 'Ana',
-        }),
+        })),
       ),
     );
     invA = issued.InvoiceNo || issued.invoice_no;
@@ -597,7 +607,7 @@ async function main() {
         'POST',
         `/local/v1/bill-drafts/${splitDraftId}/issue`,
         '--body',
-        JSON.stringify({ station_id: "st-uat", operator_id: 'op-demo-cashier', mode: 'person', scope_id: scopeA }),
+        JSON.stringify(await personIssuePayload(splitDraftId, { scope_id: scopeA })),
       ),
     );
     const hit = again.IdempotentHit || again.idempotent_hit;
@@ -615,7 +625,7 @@ async function main() {
         'POST',
         `/local/v1/bill-drafts/${splitDraftId}/issue`,
         '--body',
-        JSON.stringify({ station_id: "st-uat", operator_id: 'op-demo-cashier', mode: 'person', scope_id: scopeB }),
+        JSON.stringify(await personIssuePayload(splitDraftId, { scope_id: scopeB })),
       ),
     );
     const tax = (
@@ -687,7 +697,7 @@ async function main() {
         'POST',
         `/local/v1/bill-drafts/${d.id}/issue`,
         '--body',
-        JSON.stringify({ station_id: "st-uat", operator_id: 'op-demo-cashier', mode: 'person', scope_id: scopeA }),
+        JSON.stringify(await personIssuePayload(d.id, { scope_id: scopeA })),
       ),
     );
     await uatCmd('req', 'POST', `/local/v1/bill-drafts/${d.id}/discard`, '--body', '{}');
