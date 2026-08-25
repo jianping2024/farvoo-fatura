@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.7
+
+**NIF 失焦即时校验**
+
+- 唯一绑定 `bindCustomerNifAutofill`：`blur` → Mod-11 toast；签发/保存仍走 `assertCustomerNifOrToast`。
+- 覆盖手工开票、收银账单（含按人）、客户表单。
+
 ## 0.4.6
 
 **Admin 用语方案 A：收银账单 / 手工开票**
