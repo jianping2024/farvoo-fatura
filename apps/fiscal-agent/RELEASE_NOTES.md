@@ -9,6 +9,7 @@ Each release section starts with `## X.Y.Z`. The release workflow reads the matc
 - 去掉「添加一行」；唯一入口「添加商品」→ `openProductWorkbench`。
 - 弹窗：名称/编码检索选用；无命中可新建（同一套 `#pCode`… 字段）；保存走 `saveProductFromFields` 并加入订单。
 - 商品页新建/编辑复用同一工作台。
+- **P0 定法（文档）**：餐馆不加扫码；商超扫码为主路径（实现待后续刀）。
 
 ## 0.4.3
 
