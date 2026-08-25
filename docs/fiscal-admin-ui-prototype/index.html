@@ -282,8 +282,7 @@
               </tbody>
             </table>
             <div class="actions">
-              <button type="button" class="secondary" id="btnPickProduct">从商品库添加</button>
-              <button type="button" class="secondary" id="btnAddLine">添加一行</button>
+              <button type="button" id="btnPickProduct">添加商品</button>
             </div>
           </div>
           <div class="panel">
@@ -555,11 +554,9 @@
       showView('order-invoice');
       $('#invOrderNo').textContent = 'ORD-' + Date.now().toString().slice(-4);
     };
-    $('#btnPickProduct').onclick = () => { showView('products'); toast('选商品后回到订单'); };
-    $('#btnAddLine').onclick = () => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td>新商品</td><td>1</td><td>0.00</td><td>0.00</td><td><button type="button" class="ghost">删</button></td>';
-      $('#orderLines').appendChild(tr);
+    $('#btnPickProduct').onclick = () => {
+      toast('添加商品：检索选用 / 无命中可新建（正式 Admin 弹窗）');
+      showView('products');
     };
   </script>
 </body>

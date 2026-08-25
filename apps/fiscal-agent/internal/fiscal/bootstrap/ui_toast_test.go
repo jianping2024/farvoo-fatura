@@ -80,3 +80,31 @@ func TestAdminHTMLHomeCtaPeerAndFocus(t *testing.T) {
 		t.Fatalf("pending bills CTA must not be demoted: %s", snippet)
 	}
 }
+
+func TestAdminHTMLProductWorkbenchUnique(t *testing.T) {
+	if strings.Contains(adminHTML, `id="btnAddLine"`) || strings.Contains(adminHTML, "添加一行") {
+		t.Fatal("remove btnAddLine / 添加一行; order lines come from product workbench only")
+	}
+	for _, fn := range []string{
+		"function openProductWorkbench",
+		"function filterCatalogProducts",
+		"function saveProductFromFields",
+		"function addProductToCurrentOrder",
+	} {
+		if n := strings.Count(adminHTML, fn); n != 1 {
+			t.Fatalf("%s must appear exactly once, got %d", fn, n)
+		}
+	}
+	if strings.Count(adminHTML, `id="pCode"`) != 1 {
+		t.Fatal("product fields must exist exactly once (shared workbench)")
+	}
+	if strings.Count(adminHTML, `id="btnPickProduct"`) != 1 {
+		t.Fatal("order CTA btnPickProduct must exist exactly once")
+	}
+	if !strings.Contains(adminHTML, `id="pickerSearch"`) {
+		t.Fatal("product workbench must include pickerSearch")
+	}
+	if strings.Contains(adminHTML, `id="productForm"`) {
+		t.Fatal("inline productForm panel must not return; use productFormFields in workbench")
+	}
+}

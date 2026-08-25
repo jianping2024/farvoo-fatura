@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.4
+
+**订单添加商品：检索 + 新建一体弹窗**
+
+- 去掉「添加一行」；唯一入口「添加商品」→ `openProductWorkbench`。
+- 弹窗：名称/编码检索选用；无命中可新建（同一套 `#pCode`… 字段）；保存走 `saveProductFromFields` 并加入订单。
+- 商品页新建/编辑复用同一工作台。
+
 ## 0.4.3
 
 **Admin 工作台双 CTA + FT 票号加粗**

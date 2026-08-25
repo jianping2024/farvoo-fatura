@@ -265,8 +265,7 @@
               <tbody id="orderLines"></tbody>
             </table>
             <div class="actions">
-              <button type="button" class="secondary" id="btnPickProduct">从商品库添加</button>
-              <button type="button" class="secondary" id="btnAddLine">添加一行</button>
+              <button type="button" id="btnPickProduct">添加商品</button>
             </div>
           </div>
           <div class="panel">
@@ -384,22 +383,6 @@
           <div><h1>商品</h1><p class="hint">本店可售商品；开票时从订单选用。</p></div>
           <button type="button" id="btnNewProd">新建商品</button>
         </div>
-        <div class="panel hidden" id="productForm">
-          <h2 id="productFormTitle">新建商品</h2>
-          <div class="row split">
-            <div class="field"><label>编码</label><input id="pCode" placeholder="TEA-01" /></div>
-            <div class="field"><label>名称</label><input id="pName" placeholder="花茶套餐" /></div>
-          </div>
-          <div class="row split">
-            <div class="field"><label>税票名称</label><input id="pSaft" placeholder="Cha sortido" /></div>
-            <div class="field"><label>售价（含税）</label><input id="pPrice" placeholder="4.50" /></div>
-          </div>
-          <div class="field"><label>IVA %</label><input id="pVat" placeholder="13.00" value="13.00" /></div>
-          <div class="actions">
-            <button type="button" id="btnSaveProduct">保存</button>
-            <button type="button" class="secondary" id="btnCancelProduct">取消</button>
-          </div>
-        </div>
         <div class="panel">
           <table>
             <thead><tr><th>编码</th><th>名称</th><th>售价</th><th>IVA</th><th></th></tr></thead>
@@ -490,9 +473,28 @@
 
   <div id="productPicker" class="modal-backdrop hidden">
     <div class="modal">
-      <h2>选择商品</h2>
-      <div id="pickerList"></div>
-      <div class="actions"><button type="button" class="secondary" id="btnClosePicker">关闭</button></div>
+      <h2 id="productPickerTitle">添加商品</h2>
+      <div id="pickerSearchBlock">
+        <div class="field"><label>检索</label><input id="pickerSearch" placeholder="名称或编码" autocomplete="off" /></div>
+        <div id="pickerList" style="max-height:12rem;overflow:auto;margin:0.75rem 0"></div>
+        <button type="button" class="secondary" id="btnShowProductCreate" style="margin-bottom:0.75rem">没有？新建商品</button>
+      </div>
+      <div id="productFormFields" class="hidden">
+        <p class="hint" id="productFormHint">填写后保存到本店商品库</p>
+        <div class="row split">
+          <div class="field"><label>编码</label><input id="pCode" placeholder="TEA-01" /></div>
+          <div class="field"><label>名称</label><input id="pName" placeholder="花茶套餐" /></div>
+        </div>
+        <div class="row split">
+          <div class="field"><label>税票名称</label><input id="pSaft" placeholder="Cha sortido" /></div>
+          <div class="field"><label>售价（含税）</label><input id="pPrice" placeholder="4.50" /></div>
+        </div>
+        <div class="field"><label>IVA %</label><input id="pVat" placeholder="13.00" value="13.00" /></div>
+      </div>
+      <div class="actions">
+        <button type="button" id="btnSaveProduct">保存</button>
+        <button type="button" class="secondary" id="btnClosePicker">关闭</button>
+      </div>
     </div>
   </div>
 
@@ -516,6 +518,8 @@
   let currentBillDetail = null;
   let catalogProducts = [];
   let catalogCustomers = [];
+  /** product workbench mode: pick | create | edit — ONE form (#pCode…). */
+  let productWorkbenchMode = 'pick';
 
   async function j(method, path, body) {
     let r, t;
@@ -841,7 +845,7 @@
   function renderOrderLines() {
     const tbody = $('#orderLines');
     if (!currentOrder || !currentOrder.lines.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无明细 · 从商品库添加</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无明细 · 点击「添加商品」</td></tr>';
       $('#orderTotal').textContent = fmtMoney(0);
       return;
     }
@@ -900,6 +904,133 @@
     $('#invOrderNo').textContent = order.id;
     renderInvoiceSummary(order);
     showView('order-invoice');
+  }
+
+  function clearProductFields() {
+    $('#pCode').value = '';
+    $('#pName').value = '';
+    $('#pSaft').value = '';
+    $('#pPrice').value = '';
+    $('#pVat').value = '13.00';
+  }
+
+  function fillProductFields(p) {
+    $('#pCode').value = p.product_code || '';
+    $('#pName').value = p.display_name || '';
+    $('#pSaft').value = p.saft_name || '';
+    $('#pPrice').value = p.unit_price_gross || '';
+    $('#pVat').value = p.vat_rate || '13.00';
+  }
+
+  function readProductFields() {
+    return {
+      product_code: $('#pCode').value.trim(),
+      display_name: $('#pName').value.trim(),
+      saft_name: $('#pSaft').value.trim(),
+      unit_price_gross: $('#pPrice').value.trim(),
+      vat_rate: $('#pVat').value.trim()
+    };
+  }
+
+  /** ONLY catalog filter for product workbench search. */
+  function filterCatalogProducts(query) {
+    const q = String(query || '').trim().toLowerCase();
+    if (!q) return catalogProducts.slice();
+    return catalogProducts.filter(p =>
+      String(p.product_code || '').toLowerCase().includes(q) ||
+      String(p.display_name || '').toLowerCase().includes(q) ||
+      String(p.saft_name || '').toLowerCase().includes(q)
+    );
+  }
+
+  function addProductToCurrentOrder(p) {
+    if (!currentOrder) newBlankOrder();
+    currentOrder.lines.push({
+      product_code: p.product_code,
+      name: p.display_name,
+      saft_name: p.saft_name,
+      qty: 1,
+      price: Number(p.unit_price_gross),
+      vat: p.vat_rate
+    });
+    renderOrderLines();
+  }
+
+  function renderPickerList(list) {
+    const el = $('#pickerList');
+    if (!list.length) {
+      el.innerHTML = '<p class="hint">无匹配商品 · 可点下方新建</p>';
+      return;
+    }
+    el.innerHTML = list.map(p =>
+      '<button type="button" class="cta-big secondary" style="margin-bottom:0.5rem" data-pick="' + p.product_code + '">' +
+      '<strong>' + p.display_name + '</strong><span>' + p.product_code + ' · ' + p.unit_price_gross + ' · IVA ' + p.vat_rate + '%</span></button>'
+    ).join('');
+  }
+
+  /** ONLY entry to open product workbench (order pick / catalog create / edit). */
+  async function openProductWorkbench(mode, product) {
+    productWorkbenchMode = mode;
+    await refreshProducts().catch(() => {});
+    const searchBlock = $('#pickerSearchBlock');
+    const fields = $('#productFormFields');
+    const saveBtn = $('#btnSaveProduct');
+    $('#pickerSearch').value = '';
+    if (mode === 'pick') {
+      $('#productPickerTitle').textContent = '添加商品';
+      searchBlock.classList.remove('hidden');
+      fields.classList.add('hidden');
+      saveBtn.classList.add('hidden');
+      renderPickerList(filterCatalogProducts(''));
+      if (!catalogProducts.length) {
+        fields.classList.remove('hidden');
+        saveBtn.classList.remove('hidden');
+        clearProductFields();
+        $('#productFormHint').textContent = '暂无商品 · 先新建再加入订单';
+      } else {
+        $('#productFormHint').textContent = '保存后加入本店商品库，并加入当前订单';
+      }
+    } else if (mode === 'edit' && product) {
+      $('#productPickerTitle').textContent = '编辑商品';
+      searchBlock.classList.add('hidden');
+      fields.classList.remove('hidden');
+      saveBtn.classList.remove('hidden');
+      saveBtn.textContent = '保存';
+      fillProductFields(product);
+      $('#productFormHint').textContent = '修改后保存到本店商品库';
+    } else {
+      $('#productPickerTitle').textContent = '新建商品';
+      searchBlock.classList.add('hidden');
+      fields.classList.remove('hidden');
+      saveBtn.classList.remove('hidden');
+      saveBtn.textContent = '保存';
+      clearProductFields();
+      $('#productFormHint').textContent = '保存到本店商品库';
+    }
+    if (mode === 'pick') saveBtn.textContent = '保存并加入订单';
+    $('#productPicker').classList.remove('hidden');
+    if (mode === 'pick') {
+      try { $('#pickerSearch').focus(); } catch (_) { /* ignore */ }
+    } else {
+      try { $('#pCode').focus(); } catch (_) { /* ignore */ }
+    }
+  }
+
+  function closeProductWorkbench() {
+    $('#productPicker').classList.add('hidden');
+  }
+
+  /** ONLY POST /local/v1/products writer from Admin UI. */
+  async function saveProductFromFields() {
+    const body = readProductFields();
+    if (!body.product_code || !body.display_name || !body.unit_price_gross) {
+      toast('请填写编码、名称与售价', 'error');
+      return null;
+    }
+    if (!body.saft_name) body.saft_name = body.display_name;
+    await j('POST', '/local/v1/products', body);
+    await refreshProducts();
+    return catalogProducts.find(x => x.product_code === body.product_code) || body;
   }
 
   async function refreshProducts() {
@@ -1204,15 +1335,7 @@
     const editProd = e.target.closest('[data-edit-prod]');
     if (editProd) {
       const p = catalogProducts.find(x => x.product_code === editProd.dataset.editProd);
-      if (p) {
-        $('#productForm').classList.remove('hidden');
-        $('#productFormTitle').textContent = '编辑商品';
-        $('#pCode').value = p.product_code;
-        $('#pName').value = p.display_name;
-        $('#pSaft').value = p.saft_name;
-        $('#pPrice').value = p.unit_price_gross;
-        $('#pVat').value = p.vat_rate;
-      }
+      if (p) openProductWorkbench('edit', p).catch(er => toast(errText(er), 'error'));
     }
   });
 
@@ -1231,47 +1354,37 @@
     renderOrderLines();
   });
 
-  $('#btnAddLine').onclick = () => {
+  $('#btnPickProduct').onclick = () => withBusy($('#btnPickProduct'), '打开…', async () => {
     if (!currentOrder) newBlankOrder();
-    currentOrder.lines.push({ name: '新商品', saft_name: 'Novo', qty: 1, price: 0, vat: '23.00' });
-    renderOrderLines();
-  };
+    await openProductWorkbench('pick');
+  });
 
-  $('#btnPickProduct').onclick = async () => {
-    try {
-      await refreshProducts();
-      const list = $('#pickerList');
-      if (!catalogProducts.length) {
-        list.innerHTML = '<p class="hint">暂无商品 · 请先在商品页维护</p>';
-      } else {
-        list.innerHTML = catalogProducts.map(p =>
-          '<button type="button" class="cta-big secondary" style="margin-bottom:0.5rem" data-pick="' + p.product_code + '">' +
-          '<strong>' + p.display_name + '</strong><span>' + p.product_code + ' · ' + p.unit_price_gross + ' · IVA ' + p.vat_rate + '%</span></button>'
-        ).join('');
-      }
-      $('#productPicker').classList.remove('hidden');
-    } catch (er) { toast(errText(er), 'error'); }
+  $('#pickerSearch').addEventListener('input', () => {
+    if (productWorkbenchMode !== 'pick') return;
+    renderPickerList(filterCatalogProducts($('#pickerSearch').value));
+  });
+
+  $('#btnShowProductCreate').onclick = () => {
+    $('#productFormFields').classList.remove('hidden');
+    $('#btnSaveProduct').classList.remove('hidden');
+    $('#btnSaveProduct').textContent = '保存并加入订单';
+    clearProductFields();
+    const q = $('#pickerSearch').value.trim();
+    if (q) $('#pName').value = q;
+    try { $('#pCode').focus(); } catch (_) { /* ignore */ }
   };
 
   $('#pickerList').addEventListener('click', e => {
     const pick = e.target.closest('[data-pick]');
-    if (!pick || !currentOrder) return;
+    if (!pick || productWorkbenchMode !== 'pick') return;
     const p = catalogProducts.find(x => x.product_code === pick.dataset.pick);
     if (!p) return;
-    currentOrder.lines.push({
-      product_code: p.product_code,
-      name: p.display_name,
-      saft_name: p.saft_name,
-      qty: 1,
-      price: Number(p.unit_price_gross),
-      vat: p.vat_rate
-    });
-    renderOrderLines();
-    $('#productPicker').classList.add('hidden');
+    addProductToCurrentOrder(p);
+    closeProductWorkbench();
     toast('已添加 ' + p.display_name, 'success');
   });
 
-  $('#btnClosePicker').onclick = () => $('#productPicker').classList.add('hidden');
+  $('#btnClosePicker').onclick = () => closeProductWorkbench();
 
   $('#btnConfirmOrder').onclick = () => withBusy($('#btnConfirmOrder'), '确认中…', async () => {
     if (!currentOrder) return;
@@ -1336,29 +1449,20 @@
   });
 
   $('#btnNewProd').onclick = () => {
-    $('#productForm').classList.remove('hidden');
-    $('#productFormTitle').textContent = '新建商品';
-    $('#pCode').value = '';
-    $('#pName').value = '';
-    $('#pSaft').value = '';
-    $('#pPrice').value = '';
-    $('#pVat').value = '13.00';
+    openProductWorkbench('create').catch(er => toast(errText(er), 'error'));
   };
-
-  $('#btnCancelProduct').onclick = () => $('#productForm').classList.add('hidden');
 
   $('#btnSaveProduct').onclick = () => withBusy($('#btnSaveProduct'), '保存中…', async () => {
     try {
-      await j('POST', '/local/v1/products', {
-        product_code: $('#pCode').value.trim(),
-        display_name: $('#pName').value.trim(),
-        saft_name: $('#pSaft').value.trim(),
-        unit_price_gross: $('#pPrice').value.trim(),
-        vat_rate: $('#pVat').value.trim()
-      });
-      toast('商品已保存', 'success');
-      $('#productForm').classList.add('hidden');
-      await refreshProducts();
+      const saved = await saveProductFromFields();
+      if (!saved) return;
+      if (productWorkbenchMode === 'pick') {
+        addProductToCurrentOrder(saved);
+        toast('已保存并加入订单', 'success');
+      } else {
+        toast('商品已保存', 'success');
+      }
+      closeProductWorkbench();
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
