@@ -74,9 +74,17 @@
     .nav-btn {
       text-align: left; background: transparent; color: #d5e8dd;
       border-radius: 10px; padding: 0.65rem 0.75rem; font-weight: 600; width: 100%;
+      position: relative;
     }
     .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,.14); color: #fff; }
     .nav-btn small { display: block; font-size: 0.7rem; opacity: 0.7; font-weight: 500; margin-top: 0.1rem; }
+    .nav-badge {
+      display: none; position: absolute; top: 0.45rem; right: 0.55rem;
+      min-width: 1.25rem; height: 1.25rem; padding: 0 0.35rem;
+      border-radius: 999px; background: #f5c542; color: #1a1a1a;
+      font-size: 0.72rem; font-weight: 800; line-height: 1.25rem; text-align: center;
+    }
+    .nav-badge.on { display: inline-block; }
     .sidebar .foot { margin-top: auto; padding: 0.75rem; font-size: 0.82rem; border-top: 1px solid rgba(255,255,255,.12); }
     .main { padding: 1.25rem 1.5rem 2.5rem; max-width: 960px; }
     .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
@@ -177,7 +185,7 @@
       <div class="mode-tag" id="sidebarMode">餐馆模式</div>
       <button type="button" class="nav-btn active" data-nav="home">工作台<small>今日概览</small></button>
       <button type="button" class="nav-btn" data-nav="orders">订单<small>进行中 / 待开票</small></button>
-      <button type="button" class="nav-btn rest-only" data-nav="bills">待开票账单<small>来自收银系统</small></button>
+      <button type="button" class="nav-btn rest-only" data-nav="bills" id="navBills">待开票账单<small>来自收银系统</small><span class="nav-badge" id="navBillsBadge" aria-hidden="true">0</span></button>
       <button type="button" class="nav-btn" data-nav="invoices">发票<small>查询 / 重打</small></button>
       <button type="button" class="nav-btn" data-nav="products">商品<small>本店商品维护</small></button>
       <button type="button" class="nav-btn" data-nav="customers">客户<small>常用购方</small></button>
@@ -352,8 +360,10 @@
         <div class="panel hidden" id="billDetail">
           <h2>桌 <span id="billTable">—</span> · <span id="billScopeLabel">—</span></h2>
           <div id="billPersonList"></div>
-          <div class="field"><label>购方 NIF（可选）</label><input id="billNif" placeholder="空 = 散客" list="customerNifList" /></div>
-          <div class="field"><label>购方名称（可选）</label><input id="billName" placeholder="Consumidor Final" /></div>
+          <div id="billBuyerShared">
+            <div class="field"><label>购方 NIF（可选）</label><input id="billNif" placeholder="空 = 散客" list="customerNifList" /></div>
+            <div class="field"><label>购方名称（可选）</label><input id="billName" placeholder="Consumidor Final" /></div>
+          </div>
           <div class="actions">
             <button type="button" id="btnBillIssue">签发发票并打印</button>
             <button type="button" class="secondary" id="btnBillDiscard">不再处理</button>
@@ -520,6 +530,9 @@
   let catalogCustomers = [];
   /** product workbench mode: pick | create | edit — ONE form (#pCode…). */
   let productWorkbenchMode = 'pick';
+  /** last known open bill-draft count for toast-on-increase. */
+  let lastOpenBillCount = 0;
+  let billEventsSource = null;
 
   async function j(method, path, body) {
     let r, t;
@@ -663,15 +676,29 @@
     return raw ? fmtMoney(raw) : '—';
   }
 
-  /** ONLY customer NIF format check (UI); backend ApplyCustomerOverride mirrors 9 digits. */
-  function isNineDigitNif(nif) {
-    return /^\d{9}$/.test(String(nif || '').trim());
+  /** ONLY Portuguese buyer NIF check (Mod-11; empty = 散客; 999999990 OK). */
+  function nifDigits(raw) {
+    return String(raw || '').replace(/\D/g, '').slice(0, 9);
+  }
+
+  function validatePortugueseNif(raw) {
+    const nif = nifDigits(raw);
+    if (nif.length === 0) return true;
+    if (nif === '999999990') return true;
+    if (nif.length !== 9 || nif[0] === '0') return false;
+    let sum = 0;
+    for (let i = 0; i < 8; i++) sum += Number(nif[i]) * (9 - i);
+    let expected = 11 - (sum % 11);
+    if (expected >= 10) expected = 0;
+    return Number(nif[8]) === expected;
   }
 
   function customerNifInputError(nif) {
     const t = String(nif || '').trim();
     if (!t) return '';
-    if (!isNineDigitNif(t)) return 'NIF 须为 9 位数字';
+    const d = nifDigits(t);
+    if (d.length !== 9) return '购方 NIF 须为 9 位数字';
+    if (!validatePortugueseNif(d)) return '购方 NIF 校验位不正确';
     return '';
   }
 
@@ -693,7 +720,7 @@
   }
 
   function fillCustomerNameFromCatalog(nif, nameEl) {
-    const c = catalogCustomers.find(x => x.customer_tax_id === String(nif || '').trim());
+    const c = catalogCustomers.find(x => x.customer_tax_id === nifDigits(nif));
     if (c && nameEl) nameEl.value = c.company_name;
   }
 
@@ -701,6 +728,16 @@
     if (!nifEl || nifEl.dataset.nifBound) return;
     nifEl.dataset.nifBound = '1';
     nifEl.addEventListener('change', () => fillCustomerNameFromCatalog(nifEl.value, nameEl));
+  }
+
+  /** ONLY reader for per-person buyer fields on split bill detail. */
+  function readPersonBuyer(scopeId) {
+    const nifEl = document.querySelector('[data-person-nif="' + scopeId + '"]');
+    const nameEl = document.querySelector('[data-person-name="' + scopeId + '"]');
+    return {
+      nif: nifEl ? nifEl.value.trim() : '',
+      name: nameEl ? nameEl.value.trim() : ''
+    };
   }
 
   async function ensureCustomerCatalog() {
@@ -1098,11 +1135,27 @@
     }
   }
 
-  async function refreshBills() {
-    if (mode !== 'restaurant') return;
+  /** ONLY sidebar badge writer for open bill drafts (restaurant). */
+  function updateBillsNavBadge(openCount) {
+    const el = $('#navBillsBadge');
+    if (!el) return;
+    const n = Number(openCount) || 0;
+    el.textContent = String(n);
+    el.classList.toggle('on', mode === 'restaurant' && n > 0);
+    el.setAttribute('aria-hidden', n > 0 ? 'false' : 'true');
+  }
+
+  async function refreshBills(opts) {
+    opts = opts || {};
+    if (mode !== 'restaurant') {
+      updateBillsNavBadge(0);
+      return;
+    }
     const data = await j('GET', '/local/v1/bill-drafts');
     const drafts = (data.drafts || []).filter(d => d.status === 'open');
-    $('#statPendingBills').textContent = String(drafts.length);
+    const n = drafts.length;
+    $('#statPendingBills').textContent = String(n);
+    updateBillsNavBadge(n);
     const tbody = $('#billsTbody');
     if (!drafts.length) {
       tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无待开票账单</td></tr>';
@@ -1121,6 +1174,37 @@
     if (!$('#view-home').classList.contains('hidden')) {
       focusHomePrimaryCta(drafts.length);
     }
+    if (opts.fromEvent && n > lastOpenBillCount) {
+      const hint = String(opts.tableHint || '').trim();
+      toast(hint ? ('桌 ' + hint + ' 待开票') : '有新的待开票账单', 'success');
+    }
+    lastOpenBillCount = n;
+  }
+
+  /** ONLY Admin listener for Agent SSE bill_drafts_changed. */
+  function startBillDraftEvents() {
+    if (billEventsSource) {
+      try { billEventsSource.close(); } catch (_) { /* ignore */ }
+      billEventsSource = null;
+    }
+    if (mode !== 'restaurant' || typeof EventSource === 'undefined') return;
+    try {
+      billEventsSource = new EventSource('/local/v1/events');
+      billEventsSource.addEventListener('bill_drafts_changed', ev => {
+        let tableHint = '';
+        try {
+          const p = JSON.parse(ev.data || '{}');
+          tableHint = p.table_display_name || '';
+        } catch (_) { /* ignore */ }
+        refreshBills({ fromEvent: true, tableHint: tableHint }).catch(() => {});
+      });
+    } catch (_) { /* ignore */ }
+  }
+
+  function stopBillDraftEvents() {
+    if (!billEventsSource) return;
+    try { billEventsSource.close(); } catch (_) { /* ignore */ }
+    billEventsSource = null;
   }
 
   async function openBillDetail(draftId) {
@@ -1137,22 +1221,41 @@
     const personList = $('#billPersonList');
     personList.innerHTML = '';
     const issued = issuedSet(detail.issued_scopes);
+    const sharedBuyer = $('#billBuyerShared');
+    const sharedIssue = $('#btnBillIssue');
     if (isSplitSyncScope(scopeType) && snap.splits && snap.splits.length) {
-      personList.innerHTML = '<p class="hint">选择开票对象：</p>';
+      if (sharedBuyer) sharedBuyer.classList.add('hidden');
+      if (sharedIssue) sharedIssue.classList.add('hidden');
+      personList.innerHTML = '<p class="hint">按人开票：每人各自填写购方 NIF（可空=散客）后签发</p>';
       snap.splits.forEach(sp => {
         const key = 'person:' + sp.scope_id;
         const done = issued[key];
         const row = document.createElement('div');
-        row.style.marginBottom = '0.5rem';
+        row.className = 'panel';
+        row.style.padding = '0.75rem';
+        row.style.marginBottom = '0.65rem';
         if (done) {
           row.innerHTML = '<span class="badge done">' + (sp.name || sp.scope_id) + ' · 已开 ' + (done.invoice_no || '') + '</span>';
         } else {
-          row.innerHTML = '<label><input type="radio" name="billPerson" value="' + sp.scope_id + '" /> ' +
-            (sp.name || sp.scope_id) + ' · ' + fmtMoney(sp.gross_total) + '</label>';
+          row.innerHTML =
+            '<strong>' + (sp.name || sp.scope_id) + '</strong> · ' + fmtMoney(sp.gross_total) +
+            '<div class="row split" style="margin-top:0.5rem">' +
+            '<div class="field"><label>购方 NIF</label><input data-person-nif="' + sp.scope_id + '" list="customerNifList" placeholder="空 = 散客" /></div>' +
+            '<div class="field"><label>购方名称</label><input data-person-name="' + sp.scope_id + '" placeholder="Consumidor Final" /></div>' +
+            '</div>' +
+            '<button type="button" data-issue-person="' + sp.scope_id + '">签发此人发票</button>';
         }
         personList.appendChild(row);
+        if (!done) {
+          bindCustomerNifAutofill(
+            row.querySelector('[data-person-nif]'),
+            row.querySelector('[data-person-name]')
+          );
+        }
       });
     } else {
+      if (sharedBuyer) sharedBuyer.classList.remove('hidden');
+      if (sharedIssue) sharedIssue.classList.remove('hidden');
       const gt = formatBillSyncAmount(billSyncPayloadAmount(snap));
       personList.innerHTML = '<p class="hint">金额合计：' + gt + '</p>';
     }
@@ -1186,6 +1289,7 @@
       customer_nif: nif,
       customer_name: name,
       payment_method: pay,
+      table_display_name: currentOrder.tableNo || '',
       lines
     };
     const res = await j('POST', '/local/v1/fiscal-documents/manual', body);
@@ -1200,12 +1304,20 @@
     renderOrdersList();
   }
 
-  async function issueBill(mode, scopeId) {
+  async function issueBill(mode, scopeId, buyer) {
     if (!currentBill) return;
     const sid = requireStation($('#stationSel'));
-    const nif = $('#billNif').value.trim();
+    let nif = '';
+    let name = '';
+    if (mode === 'person' && scopeId) {
+      const fromRow = buyer && (buyer.nif != null || buyer.name != null) ? buyer : readPersonBuyer(scopeId);
+      nif = String(fromRow.nif || '').trim();
+      name = String(fromRow.name || '').trim();
+    } else {
+      nif = $('#billNif').value.trim();
+      name = $('#billName').value.trim();
+    }
     if (!assertCustomerNifOrToast(nif)) return;
-    const name = $('#billName').value.trim();
     const body = {
       operator_id: OPERATOR_ID,
       mode: mode,
@@ -1254,6 +1366,7 @@
     showView('home');
     refreshPrinters().catch(() => {});
     ensureCustomerCatalog().catch(() => {});
+    startBillDraftEvents();
     toast(mode === 'restaurant' ? '已进入 · 餐馆模式' : '已进入 · 商超模式', 'success');
   }
 
@@ -1282,6 +1395,7 @@
   });
 
   $('#btnLogout').onclick = () => {
+    stopBillDraftEvents();
     pin = '';
     $$('#pinDots i').forEach(d => d.classList.remove('on'));
     $('#app-shell').classList.remove('on');
@@ -1429,13 +1543,23 @@
     try {
       const scopeType = syncScopeType(currentBillDetail.payload, currentBillDetail.draft);
       if (isSplitSyncScope(scopeType)) {
-        const picked = $('input[name="billPerson"]:checked');
-        if (!picked) { toast('请选择开票对象', 'error'); return; }
-        await issueBill('person', picked.value);
-      } else {
-        await issueBill('whole_table');
+        toast('按人账单请在每人卡片上点「签发此人发票」', 'error');
+        return;
       }
+      await issueBill('whole_table');
     } catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+
+  $('#billPersonList').addEventListener('click', e => {
+    const btn = e.target.closest('[data-issue-person]');
+    if (!btn) return;
+    const scopeId = btn.dataset.issuePerson;
+    withBusy(btn, '开票中…', async () => {
+      try {
+        const buyer = readPersonBuyer(scopeId);
+        await issueBill('person', scopeId, buyer);
+      } catch (er) { toast(errText(er), 'error'); throw er; }
+    });
   });
 
   $('#btnRefreshBills').onclick = () => withBusy($('#btnRefreshBills'), '刷新中…', async () => {

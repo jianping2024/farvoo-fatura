@@ -8,6 +8,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/billsync"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/store"
+	"farvoo-fiscal-agent/internal/fiscal/vatpercent"
 )
 
 // ManualLineInput is one manual FT line: catalog code and/or temp fields.
@@ -22,11 +23,12 @@ type ManualLineInput struct {
 
 // ManualIssueInput is the ONLY API input for manual FT (before snapshot build).
 type ManualIssueInput struct {
-	RequestID     string
-	CustomerNIF   string
-	CustomerName  string
-	PaymentMethod string
-	Lines         []ManualLineInput
+	RequestID          string
+	CustomerNIF        string
+	CustomerName       string
+	PaymentMethod      string
+	TableDisplayName   string
+	Lines              []ManualLineInput
 }
 
 // BuildManualSaleSnapshot is the ONLY builder for manual FT → IssueDocument.
@@ -72,10 +74,11 @@ func BuildManualSaleSnapshot(db *store.DB, in ManualIssueInput) (domain.SaleSnap
 			}
 			code = fmt.Sprintf("TEMP-%d", i+1)
 		}
-		if err := billsync.ValidateVATPercent(vatPercent); err != nil {
+		norm, err := vatpercent.Normalize(vatPercent)
+		if err != nil {
 			return domain.SaleSnapshot{}, fmt.Errorf("catalog: lines[%d]: %w", i, err)
 		}
-		dec, err := billsync.PercentVATToDecimal(vatPercent)
+		dec, err := billsync.PercentVATToDecimal(norm)
 		if err != nil {
 			return domain.SaleSnapshot{}, fmt.Errorf("catalog: lines[%d]: %w", i, err)
 		}
@@ -104,6 +107,9 @@ func BuildManualSaleSnapshot(db *store.DB, in ManualIssueInput) (domain.SaleSnap
 		Payments: []domain.PaymentInput{
 			{Method: normalizePayMethod(in.PaymentMethod), Amount: total},
 		},
+	}
+	if t := strings.TrimSpace(in.TableDisplayName); t != "" {
+		sale.DisplayMeta = map[string]string{"table_display_name": t}
 	}
 	if err := billsync.ApplyCustomerOverride(&sale, in.CustomerNIF, in.CustomerName); err != nil {
 		return domain.SaleSnapshot{}, err

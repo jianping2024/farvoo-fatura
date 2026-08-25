@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"farvoo-fiscal-agent/internal/fiscal/compliance"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
@@ -17,6 +18,7 @@ type BuildInput struct {
 	PrintPurpose              string
 	InvoiceNo                 string
 	IssuedAt                  string
+	TableDisplayName          string
 	LegalName                 string
 	BusinessName              string
 	TaxRegistrationNumber     string
@@ -100,6 +102,7 @@ func BuildPayload(in BuildInput) (*Payload, string, error) {
 		PrintPurpose: in.PrintPurpose,
 		InvoiceNo:    in.InvoiceNo,
 		IssuedAt:     in.IssuedAt,
+		TableDisplayName: strings.TrimSpace(in.TableDisplayName),
 		Merchant: MerchantBlock{
 			LegalName:                 in.LegalName,
 			BusinessName:              in.BusinessName,

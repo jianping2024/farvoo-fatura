@@ -45,6 +45,21 @@ func TestAdminHTMLBillListAndCustomerNifHelpers(t *testing.T) {
 	if !strings.Contains(adminHTML, "function renderCustomerNifDatalist") {
 		t.Fatal("admin must define renderCustomerNifDatalist once for customer lookup")
 	}
+	if n := strings.Count(adminHTML, "function validatePortugueseNif"); n != 1 {
+		t.Fatalf("validatePortugueseNif (Mod-11) must appear exactly once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function readPersonBuyer"); n != 1 {
+		t.Fatalf("readPersonBuyer must appear exactly once, got %d", n)
+	}
+	if strings.Contains(adminHTML, "function isNineDigitNif") {
+		t.Fatal("remove isNineDigitNif; Mod-11 validatePortugueseNif is the ONLY NIF check")
+	}
+	if strings.Contains(adminHTML, `/^\d{9}$/`) {
+		t.Fatal("must not use only-9-digit regex as sole NIF check")
+	}
+	if !strings.Contains(adminHTML, `id="billBuyerShared"`) || !strings.Contains(adminHTML, `data-person-nif=`) {
+		t.Fatal("split bills need per-person NIF inputs; whole_table keeps billBuyerShared")
+	}
 	if !strings.Contains(adminHTML, `id="billNif"`) || !strings.Contains(adminHTML, `list="customerNifList"`) {
 		t.Fatal("billNif must use shared customerNifList datalist")
 	}
@@ -106,5 +121,37 @@ func TestAdminHTMLProductWorkbenchUnique(t *testing.T) {
 	}
 	if strings.Contains(adminHTML, `id="productForm"`) {
 		t.Fatal("inline productForm panel must not return; use productFormFields in workbench")
+	}
+}
+
+func TestAdminHTMLBillDraftEventsUnique(t *testing.T) {
+	for _, fn := range []string{
+		"function updateBillsNavBadge",
+		"function startBillDraftEvents",
+		"function stopBillDraftEvents",
+		"function validatePortugueseNif",
+		"function readPersonBuyer",
+	} {
+		if n := strings.Count(adminHTML, fn); n != 1 {
+			t.Fatalf("%s must appear exactly once, got %d", fn, n)
+		}
+	}
+	if strings.Count(adminHTML, "new EventSource('/local/v1/events')") != 1 {
+		t.Fatal("Admin must open EventSource /local/v1/events exactly once")
+	}
+	if strings.Contains(adminHTML, "setInterval(() =>") || strings.Contains(adminHTML, "setInterval(function") {
+		t.Fatal("do not poll refreshBills via setInterval; SSE is the primary path")
+	}
+	if !strings.Contains(adminHTML, `id="navBillsBadge"`) {
+		t.Fatal("sidebar must include navBillsBadge")
+	}
+	if strings.Count(adminHTML, "addEventListener('bill_drafts_changed'") != 1 {
+		t.Fatal("must listen for bill_drafts_changed exactly once")
+	}
+	if strings.Contains(adminHTML, "function isNineDigitNif") {
+		t.Fatal("replace isNineDigitNif with validatePortugueseNif Mod-11")
+	}
+	if !strings.Contains(adminHTML, "data-person-nif") || !strings.Contains(adminHTML, "data-issue-person") {
+		t.Fatal("split bill UI must offer per-person NIF + issue")
 	}
 }

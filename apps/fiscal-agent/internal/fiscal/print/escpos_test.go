@@ -15,6 +15,7 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 		InvoiceNo:    "FT FT2026DEMO01/3",
 		PrintPurpose: "ORIGINAL",
 		IssuedAt:     "2026-08-21T18:26:25",
+		TableDisplayName: "018",
 		Merchant: MerchantBlock{
 			LegalName: "Farvoo Demo Lda", Address: "Rua Demo 1, 1000-001 Lisboa",
 			TaxRegistrationNumber: "517535009",
@@ -33,7 +34,7 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 			ATCUD:             "CSDF7T5H-3",
 			QR:                QRBlock{Content: "A:517535009*B:999999990*C:PT"},
 			HashControlChars:  "0L2I",
-			CertificationLine: "Processado por programa certificado n. 0/AT",
+			CertificationLine: "Processado por programa certificado n. 369/AT",
 		},
 	}
 	raw := RenderESCPOS(p)
@@ -45,6 +46,7 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 		"Fatura No.: FT FT2026DEMO01/3",
 		"21/08/2026 18:26",
 		"1a Via - Original",
+		"MESA: 018",
 		"Cliente: Consumidor Final",
 		"Qtd",
 		"Preco",
@@ -55,7 +57,8 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 		"TOTAL",
 		"Numerario",
 		"Resumo IVA",
-		"0L2I-Processado por programa certificado n. 0/AT",
+		"0L2I-Processado por programa",
+		"certificado n. 369/AT",
 		"ATCUD: CSDF7T5H-3",
 	}
 	for _, s := range mustContain {
@@ -83,13 +86,23 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 		t.Fatalf("ticket face must not use ordinal º:\n%s", plain)
 	}
 
-	// order: TOTAL → Resumo → cert → ATCUD; no business text after QR region
+	// order: Via → MESA → Cliente; TOTAL → Resumo → cert → ATCUD
+	via := strings.Index(plain, "1a Via - Original")
+	mesa := strings.Index(plain, "MESA: 018")
+	cliente := strings.Index(plain, "Cliente:")
+	if !(via >= 0 && mesa > via && cliente > mesa) {
+		t.Fatalf("MESA order via=%d mesa=%d cliente=%d\n%s", via, mesa, cliente, plain)
+	}
 	total := strings.Index(plain, "TOTAL")
 	resumo := strings.Index(plain, "Resumo IVA")
 	cert := strings.Index(plain, "0L2I-Processado")
 	atcud := strings.Index(plain, "ATCUD:")
 	if !(total >= 0 && resumo > total && cert > resumo && atcud > cert) {
 		t.Fatalf("block order total=%d resumo=%d cert=%d atcud=%d\n%s", total, resumo, cert, atcud, plain)
+	}
+	// Long cert must print as two lines (prefer split after "programa ").
+	if !strings.Contains(plain, "0L2I-Processado por programa\ncertificado n. 369/AT") {
+		t.Fatalf("long cert must wrap to 2 lines:\n%s", plain)
 	}
 
 	// Store name: 1×2 bold, reset to 1×1, one blank LF, then address at 1×1
@@ -146,6 +159,28 @@ func TestFormatCertificationFace(t *testing.T) {
 	got := formatCertificationFace("0L2I", "Processado por programa certificado n.º 0/AT")
 	if got != "0L2I-Processado por programa certificado n. 0/AT" {
 		t.Fatalf("%q", got)
+	}
+	// Exactly receiptWidth → one line; longer → prefer split after "programa ".
+	eqWidth := formatCertificationFaceLines("0L2I", "Processado por programa certificado n. 0/AT", receiptWidth)
+	if len(eqWidth) != 1 || eqWidth[0] != got {
+		t.Fatalf("eq-width want 1 line, got %#v", eqWidth)
+	}
+	long := formatCertificationFaceLines("0L2I", "Processado por programa certificado n. 369/AT", receiptWidth)
+	if len(long) != 2 || long[0] != "0L2I-Processado por programa" || long[1] != "certificado n. 369/AT" {
+		t.Fatalf("long wrap %#v", long)
+	}
+	short := formatCertificationFaceLines("AB", "ok", receiptWidth)
+	if len(short) != 1 || short[0] != "AB-ok" {
+		t.Fatalf("short %#v", short)
+	}
+}
+
+func TestFormatMesaLine(t *testing.T) {
+	if formatMesaLine(" 018 ") != "MESA: 018" {
+		t.Fatal(formatMesaLine(" 018 "))
+	}
+	if formatMesaLine("") != "" {
+		t.Fatal("empty mesa")
 	}
 }
 

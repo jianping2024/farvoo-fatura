@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/service"
 	"farvoo-fiscal-agent/internal/fiscal/store"
+	"farvoo-fiscal-agent/internal/fiscal/uievents"
 )
 
 // HandlerDeps groups dependencies for HTTP handlers.
@@ -18,6 +20,7 @@ type HandlerDeps struct {
 	Fiscal            *service.FiscalService
 	StoreID           string
 	StationPrintersFn func() map[string]string // live Agent station_printers; may be nil
+	UIEvents          *uievents.Hub            // Admin SSE; may be nil in unit tests
 }
 
 // PrinterStation is one mapped station for GET /local/v1/printers.
@@ -97,6 +100,42 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/discard", func(w http.ResponseWriter, r *http.Request) {
 		handleDiscardBillDraft(w, r, deps)
 	})
+	mux.HandleFunc("GET /local/v1/events", func(w http.ResponseWriter, r *http.Request) {
+		if deps.UIEvents == nil {
+			writeErr(w, http.StatusServiceUnavailable, "events_unavailable", "UI events hub not configured")
+			return
+		}
+		deps.UIEvents.ServeSSE(w, r)
+	})
+	// Dev/UAT only: run the SAME PullAndIngest path in-process so SSE Hub sees draft writers.
+	mux.HandleFunc("POST /local/v1/dev/bill-sync/pull", func(w http.ResponseWriter, r *http.Request) {
+		handleDevBillSyncPull(w, r, deps)
+	})
+}
+
+// handleDevBillSyncPull is the ONLY HTTP trigger for billsync.PullAndIngest (fiscal-local UAT).
+// Gated by FISCAL_ALLOW_DEV_KEY=1. Uses FARVOO_API + FARVOO_JWT — same as production doorbell.
+func handleDevBillSyncPull(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	if os.Getenv("FISCAL_ALLOW_DEV_KEY") != "1" {
+		writeErr(w, http.StatusForbidden, "dev_forbidden", "set FISCAL_ALLOW_DEV_KEY=1 for local UAT pull")
+		return
+	}
+	if deps.Fiscal == nil || deps.Fiscal.DB() == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
+		return
+	}
+	apiBase := strings.TrimSpace(os.Getenv("FARVOO_API"))
+	jwt := strings.TrimSpace(os.Getenv("FARVOO_JWT"))
+	if apiBase == "" || jwt == "" {
+		writeErr(w, http.StatusBadRequest, "farvoo_env_missing", "FARVOO_API and FARVOO_JWT required")
+		return
+	}
+	n, err := (&billsync.Puller{APIBase: apiBase, JWT: jwt, DB: deps.Fiscal.DB()}).PullAndIngest(r.Context())
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, "bill_sync_pull_failed", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"processed": n})
 }
 
 func handleListPrinters(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {

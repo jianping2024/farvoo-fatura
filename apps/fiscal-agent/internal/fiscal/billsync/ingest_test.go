@@ -48,8 +48,13 @@ func TestIngestCloudJob_HappyAndIdempotent(t *testing.T) {
 }
 
 func TestIngest_RejectDecimalVAT(t *testing.T) {
-	if err := billsync.ValidateVATPercent("0.23"); err == nil {
+	err := billsync.ValidateVATPercent("0.23")
+	if err == nil {
 		t.Fatal("expected reject")
+	}
+	ie := billsync.AsIngestError(err)
+	if ie == nil || ie.Code != billsync.CodeInvalidVATRate {
+		t.Fatalf("want invalid_vat_rate, got %v", err)
 	}
 	if err := billsync.ValidateVATPercent("23.00"); err != nil {
 		t.Fatal(err)

@@ -17,6 +17,8 @@
 //   GET  /local/v1/printers                 (mapped station_printers)
 //   POST /local/v1/bill-drafts/{id}/issue   (mode + station_id + optional customer_nif)
 //   POST /local/v1/bill-drafts/{id}/discard
+//   GET  /local/v1/events                   (SSE; bill_drafts_changed)
+//   POST /local/v1/dev/bill-sync/pull       (UAT only; FISCAL_ALLOW_DEV_KEY=1 → PullAndIngest)
 //
 // Default bind: 127.0.0.1; optional STORE_LAN mode with device pairing.
 package api

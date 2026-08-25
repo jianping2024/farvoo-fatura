@@ -73,6 +73,9 @@ func RenderESCPOS(p *Payload) []byte {
 		w(dt)
 	}
 	w(formatViaLine(p.PrintPurpose))
+	if mesa := formatMesaLine(p.TableDisplayName); mesa != "" {
+		w(mesa)
+	}
 
 	// ③ customer
 	if p.Customer.CompanyName != "" {
@@ -121,10 +124,10 @@ func RenderESCPOS(p *Payload) []byte {
 		}, ivaSummaryColWidths))
 	}
 
-	// ⑥⑦⑧ foot: cert → ATCUD → QR (centered); nothing below QR but feed+cut
+	// foot: cert → ATCUD → QR (centered); nothing below QR but feed+cut
 	align(1)
-	if face := formatCertificationFace(p.Compliance.HashControlChars, p.Compliance.CertificationLine); face != "" {
-		w(face)
+	for _, line := range formatCertificationFaceLines(p.Compliance.HashControlChars, p.Compliance.CertificationLine, receiptWidth) {
+		w(line)
 	}
 	if p.Compliance.ATCUD != "" {
 		w("ATCUD: " + p.Compliance.ATCUD)
@@ -145,7 +148,16 @@ func formatFaturaNoLine(invoiceNo string) string {
 	return "Fatura No.: " + strings.TrimSpace(invoiceNo)
 }
 
-// formatCertificationFace is the ONLY ticket face for cert + control chars (no separate Hash: line).
+// formatMesaLine is the ONLY ticket line for restaurant table (sample: "MESA: 018").
+func formatMesaLine(tableDisplayName string) string {
+	t := strings.TrimSpace(tableDisplayName)
+	if t == "" {
+		return ""
+	}
+	return "MESA: " + t
+}
+
+// formatCertificationFace is the ONLY ticket face string for cert + control chars (no separate Hash: line).
 // Sample style: "XLM/-Processado por programa certificado 369/AT"
 func formatCertificationFace(controlChars, certLine string) string {
 	cert := strings.TrimSpace(certLine)
@@ -159,6 +171,41 @@ func formatCertificationFace(controlChars, certLine string) string {
 		return chars
 	}
 	return chars + "-" + cert
+}
+
+// formatCertificationFaceLines is the ONLY multi-line cert writer (intentional wrap when over width).
+func formatCertificationFaceLines(controlChars, certLine string, width int) []string {
+	face := formatCertificationFace(controlChars, certLine)
+	if face == "" {
+		return nil
+	}
+	if width <= 0 {
+		width = receiptWidth
+	}
+	if utf8.RuneCountInString(face) <= width {
+		return []string{face}
+	}
+	const prefer = "programa "
+	if i := strings.Index(face, prefer); i >= 0 {
+		cut := i + len(prefer)
+		left := strings.TrimSpace(face[:cut])
+		right := strings.TrimSpace(face[cut:])
+		if left != "" && right != "" {
+			return []string{left, right}
+		}
+	}
+	// Hard wrap at width (rune-safe).
+	runes := []rune(face)
+	var out []string
+	for len(runes) > 0 {
+		n := width
+		if n > len(runes) {
+			n = len(runes)
+		}
+		out = append(out, string(runes[:n]))
+		runes = runes[n:]
+	}
+	return out
 }
 
 // Item line bands (Font A cols) — Qtd / Preco must read as separate columns (not "Qtd Preco").

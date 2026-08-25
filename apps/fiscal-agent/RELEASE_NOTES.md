@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.5
+
+**待开票实时提示 + 税率/NIF 收口 + 票面 MESA/认证折行 + 按人 NIF**
+
+- **SSE**：草稿写入/删除 → `uievents.Hub` → `GET /local/v1/events`；Admin 侧栏角标 + `refreshBills`；禁空转轮询主路径。UAT 门铃：`POST /local/v1/dev/bill-sync/pull`（同进程 `PullAndIngest`）。
+- **税率**：唯一 `vatpercent.Normalize`（`23`→`23.00`）；商品保存/同步/手动开票统一；清晰中文错误。
+- **NIF**：唯一 `ptnif` Mod-11（空=散客；`999999990` 放行）；Admin + `ApplyCustomerOverride` + 客户保存。
+- **票面**：有桌号印 `MESA:`；认证句超宽故意两行（`formatCertificationFaceLines`）。
+- **按人**：每人独立 NIF/名称 +「签发此人发票」。
+
 ## 0.4.4
 
 **订单添加商品：检索 + 新建一体弹窗**

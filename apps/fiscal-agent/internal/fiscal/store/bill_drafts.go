@@ -104,6 +104,39 @@ func (d *DB) ListBillDrafts(limit int) ([]BillSyncDraft, error) {
 	return out, rows.Err()
 }
 
+// CountOpenBillDrafts returns how many status=open drafts exist.
+func (d *DB) CountOpenBillDrafts() (int, error) {
+	var n int
+	err := d.SQL.QueryRow(`SELECT COUNT(*) FROM bill_sync_drafts WHERE status = ?`, BillDraftOpen).Scan(&n)
+	return n, err
+}
+
+func (d *DB) fireBillDraftsChanged(tableHint, kind string) {
+	if d == nil || d.OnBillDraftsChanged == nil {
+		return
+	}
+	n, err := d.CountOpenBillDrafts()
+	if err != nil {
+		n = 0
+	}
+	d.OnBillDraftsChanged(n, strings.TrimSpace(tableHint), kind)
+}
+
+func tableHintFromPayload(payload any) string {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return ""
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return ""
+	}
+	if v, ok := m["table_display_name"].(string); ok {
+		return strings.TrimSpace(v)
+	}
+	return ""
+}
+
 // UpsertBillDraftOpen is the ONLY writer that creates/covers open bill sync drafts.
 // Same request_id → idempotent (no double write). Signed FT for sale → ErrAlreadyInvoiced.
 // Open/discarded/missing → replace with new open payload.
@@ -146,6 +179,7 @@ func (d *DB) UpsertBillDraftOpen(requestID, sourceSaleID, cloudJobID string, pay
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
+	d.fireBillDraftsChanged(tableHintFromPayload(payload), "upsert")
 	return d.GetBillDraftByRequestID(requestID)
 }
 
@@ -156,7 +190,11 @@ func (d *DB) DeleteBillDraftsBySale(sourceSaleID string) error {
 		return fmt.Errorf("store: source_sale_id required")
 	}
 	_, err := d.SQL.Exec(`DELETE FROM bill_sync_drafts WHERE source_sale_id = ?`, sourceSaleID)
-	return err
+	if err != nil {
+		return err
+	}
+	d.fireBillDraftsChanged("", "delete")
+	return nil
 }
 
 // SignedFTScope is one signed FT business scope for a Farvoo sale.

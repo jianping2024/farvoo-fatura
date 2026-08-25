@@ -12,6 +12,7 @@ type Payload struct {
 	PrintPurpose  string `json:"print_purpose"`
 	InvoiceNo     string `json:"invoice_no"`
 	IssuedAt      string `json:"issued_at"`
+	TableDisplayName string `json:"table_display_name,omitempty"`
 	Merchant      MerchantBlock `json:"merchant"`
 	Customer      CustomerBlock `json:"customer"`
 	Lines         []LineBlock   `json:"lines"`

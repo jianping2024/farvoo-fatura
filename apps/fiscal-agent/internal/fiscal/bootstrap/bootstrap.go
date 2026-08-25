@@ -13,6 +13,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/service"
 	"farvoo-fiscal-agent/internal/fiscal/signer"
 	"farvoo-fiscal-agent/internal/fiscal/store"
+	"farvoo-fiscal-agent/internal/fiscal/uievents"
 	"farvoo-fiscal-agent/internal/fiscal/worker"
 )
 
@@ -117,9 +118,18 @@ func StartCore(opts Options) (*Runtime, error) {
 	go w.Loop(ctx, 200*time.Millisecond)
 
 	mux := http.NewServeMux()
+	hub := uievents.NewHub()
+	db.OnBillDraftsChanged = func(openCount int, tableHint, kind string) {
+		hub.NotifyBillDraftsChanged(uievents.BillDraftsChangedPayload{
+			OpenCount:        openCount,
+			TableDisplayName: tableHint,
+			Kind:             kind,
+		})
+	}
 	MountRoutes(mux, api.HandlerDeps{
 		Fiscal: svc, StoreID: opts.StoreID,
 		StationPrintersFn: opts.StationPrintersFn,
+		UIEvents:          hub,
 	})
 
 	return &Runtime{

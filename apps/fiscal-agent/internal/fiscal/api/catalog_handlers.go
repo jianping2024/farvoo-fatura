@@ -103,13 +103,14 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		return
 	}
 	var body struct {
-		RequestID     string                  `json:"request_id"`
-		OperatorID    string                  `json:"operator_id"`
-		StationID     string                  `json:"station_id"`
-		CustomerNIF   string                  `json:"customer_nif"`
-		CustomerName  string                  `json:"customer_name"`
-		PaymentMethod string                  `json:"payment_method"`
-		Lines         []catalog.ManualLineInput `json:"lines"`
+		RequestID          string                    `json:"request_id"`
+		OperatorID         string                    `json:"operator_id"`
+		StationID          string                    `json:"station_id"`
+		CustomerNIF        string                    `json:"customer_nif"`
+		CustomerName       string                    `json:"customer_name"`
+		PaymentMethod      string                    `json:"payment_method"`
+		TableDisplayName   string                    `json:"table_display_name"`
+		Lines              []catalog.ManualLineInput `json:"lines"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
@@ -120,7 +121,7 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 	}
 	res, err := deps.Fiscal.IssueManualFT(r.Context(), catalog.ManualIssueInput{
 		RequestID: body.RequestID, CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
-		PaymentMethod: body.PaymentMethod, Lines: body.Lines,
+		PaymentMethod: body.PaymentMethod, TableDisplayName: body.TableDisplayName, Lines: body.Lines,
 	}, body.OperatorID, body.StationID)
 	if errors.Is(err, store.ErrConflict) {
 		writeErr(w, http.StatusConflict, "idempotency_conflict", err.Error())

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"farvoo-fiscal-agent/internal/fiscal/domain"
+	"farvoo-fiscal-agent/internal/fiscal/ptnif"
 
 	"github.com/google/uuid"
 )
@@ -83,7 +84,7 @@ func DraftPartToSaleSnapshot(snap Snapshot, scopeID string) (domain.SaleSnapshot
 }
 
 // ApplyCustomerOverride sets buyer on sale. Empty nif → Consumidor Final.
-// ONLY customer override for draft→issue path.
+// ONLY customer override for draft→issue / manual FT path.
 func ApplyCustomerOverride(sale *domain.SaleSnapshot, nif, name string) error {
 	if sale == nil {
 		return ingestErr(CodeValidationFailed, "sale required")
@@ -98,30 +99,19 @@ func ApplyCustomerOverride(sale *domain.SaleSnapshot, nif, name string) error {
 		}
 		return nil
 	}
-	if !validPTNIF(nif) {
-		return ingestErr(CodeValidationFailed, fmt.Sprintf("customer_nif %q invalid (need 9 digits)", nif))
+	norm, err := ptnif.NormalizeBuyer(nif)
+	if err != nil {
+		return ingestErr(CodeValidationFailed, err.Error())
 	}
 	if name == "" {
-		name = nif
+		name = norm
 	}
 	sale.Customer = domain.CustomerInput{
-		TaxID:       nif,
+		TaxID:       norm,
 		CompanyName: name,
 		Country:     "PT",
 	}
 	return nil
-}
-
-func validPTNIF(nif string) bool {
-	if len(nif) != 9 {
-		return false
-	}
-	for _, c := range nif {
-		if c < '0' || c > '9' {
-			return false
-		}
-	}
-	return true
 }
 
 func tableMeta(snap Snapshot) map[string]string {
@@ -166,10 +156,11 @@ func mapDraftLines(lines []Line) ([]domain.SaleLine, float64, error) {
 		if code == "" {
 			return nil, 0, ingestErr(CodeEmptyItemCode, fmt.Sprintf("lines[%d]: item_code required", i))
 		}
-		if err := ValidateVATPercent(ln.VATRate); err != nil {
+		norm, err := NormalizeVATPercent(ln.VATRate)
+		if err != nil {
 			return nil, 0, err
 		}
-		dec, err := PercentVATToDecimal(ln.VATRate)
+		dec, err := PercentVATToDecimal(norm)
 		if err != nil {
 			return nil, 0, err
 		}

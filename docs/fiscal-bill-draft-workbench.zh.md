@@ -169,11 +169,28 @@ store_id | source_system | source_sale_id | scope_type | scope_id | fiscal_purpo
 | 丢弃草稿 | `service.DiscardBillDrafts`（或同名）→ `DeleteBillDraftsBySale` |
 | 再同步挡重 | 仅税务库查询（见 §5.3） |
 
-签发禁止第二套插票。Realtime/Polling 仍只门铃同步，不进工作台。
+签发禁止第二套插票。Cloud→Agent 的 Realtime/Polling 仍只门铃同步入库；**Agent→Admin 工作台**见下节 SSE（不是浏览器空转轮询）。
 
 按人幂等 `request_id` **必须**含 `scope_id`（禁止仅用 `draft-issue:{draft.id}`，否则多人互撞）。
 
 ---
+
+## 7.1 Admin 实时提示（P0 定法）
+
+**体感：** 待开票账单入库后约 1 秒内，餐馆侧栏角标更新；在工作台/待开票列表时列表自刷新；open 数增加时轻 toast（含桌号若有）。不打断当前填表。商超无此菜单、无角标。
+
+| 项 | 定法 |
+|----|------|
+| 推送通道 | **唯一** `GET /local/v1/events`（SSE）；事件名 `bill_drafts_changed` |
+| 何时推 | `UpsertBillDraftOpen` / `DeleteBillDraftsBySale` **成功后** 各调一次 fan-out（幂等命中已有 `request_id` **不**推） |
+| Hub | **唯一** `uievents.Hub`：`NotifyBillDraftsChanged` → 所有 SSE 客户端 |
+| 浏览器 | **唯一** `EventSource('/local/v1/events')`；收到后只调现有 `refreshBills()`；角标 **唯一** `updateBillsNavBadge` |
+| Toast | 仅 `open_count` **增加**时；文案业务用语（桌号 / 「有新的待开票账单」） |
+| 轮询 | **禁止**作为主路径；SSE 断线靠浏览器自动重连 |
+| UAT 门铃 | **唯一** `POST /local/v1/dev/bill-sync/pull`（`FISCAL_ALLOW_DEV_KEY=1`）→ 同进程 `PullAndIngest`；禁止另起进程写 SQLite 冒充推送 |
+| 非目标 | 第二套 WS、Cloud Realtime 直连网页、强制跳转待开票页、强模态 |
+
+**依据：** 店员不刷新也应知道有活；门铃由 Agent 按，网页不空转敲门。
 
 ## 8. API（P0）
 
@@ -300,3 +317,4 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 | 2026-08-21 | NIF/客户名编辑升为 **P0**；签票成功与清草稿失败解耦；明确 §13 归 M4 非本刀；按人 `request_id` 须含 `scope_id` |
 | 2026-08-22 | 增补 §0 业务用语；UI 指向 M2.6 + v2 原型；「待开票账单」替代界面「草稿」 |
 | 2026-08-25 | §9：工作台双 CTA 同级 + 有待开票时优先焦点（挂原型 README） |
+| 2026-08-25 | §7.1：Agent→Admin SSE `bill_drafts_changed` + 侧栏角标（禁浏览器空转轮询主路径） |

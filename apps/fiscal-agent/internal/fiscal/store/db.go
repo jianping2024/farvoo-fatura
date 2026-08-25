@@ -17,6 +17,9 @@ var migrationFS embed.FS
 // DB wraps SQLite access for fiscal authority.
 type DB struct {
 	SQL *sql.DB
+	// OnBillDraftsChanged is set by bootstrap to fan-out Admin SSE after draft writers.
+	// Signature: openCount, tableHint, kind ("upsert"|"delete").
+	OnBillDraftsChanged func(openCount int, tableHint, kind string)
 }
 
 // Open opens (or creates) the fiscal SQLite file and applies migrations.

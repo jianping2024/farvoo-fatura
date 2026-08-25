@@ -60,6 +60,19 @@ func TestUpsertLocalFiscalProduct_andRemoteGuard(t *testing.T) {
 	}
 }
 
+func TestUpsertLocalFiscalProduct_NormalizesVATPercent(t *testing.T) {
+	db := openTestDB(t)
+	row, err := db.UpsertLocalFiscalProduct(LocalProductInput{
+		ProductCode: "VAT-23", DisplayName: "Beer", SaftName: "Cerveja", UnitPriceGross: "3.00", VATRate: "23",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row.VATRate != "23.00" {
+		t.Fatalf("want vat 23.00, got %q", row.VATRate)
+	}
+}
+
 func TestUpsertLocalCustomer_andIssueCustomerID(t *testing.T) {
 	db := openTestDB(t)
 	cust, err := db.UpsertLocalCustomer(LocalCustomerInput{

@@ -166,12 +166,17 @@ func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueR
 	idemID := uuid.NewString()
 	nowRFC := p.NowUTC.Format(time.RFC3339)
 
+	tableName := ""
+	if p.Snapshot.DisplayMeta != nil {
+		tableName = p.Snapshot.DisplayMeta["table_display_name"]
+	}
 	printPayload, payloadHashPrint, err := fiscalprint.BuildPayload(fiscalprint.BuildInput{
 		DocumentID:                docID,
 		DocumentType:              string(p.DocType),
 		PrintPurpose:              string(domain.PrintOriginal),
 		InvoiceNo:                 invoiceNo,
 		IssuedAt:                  systemEntry,
+		TableDisplayName:          tableName,
 		LegalName:                 legalName,
 		BusinessName:              businessName,
 		TaxRegistrationNumber:     nif,

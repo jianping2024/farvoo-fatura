@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"farvoo-fiscal-agent/internal/fiscal/domain"
+	"farvoo-fiscal-agent/internal/fiscal/ptnif"
 
 	"github.com/google/uuid"
 )
@@ -43,12 +44,14 @@ func (d *DB) UpsertLocalCustomer(in LocalCustomerInput) (*CustomerRow, error) {
 	if tax == "" {
 		return nil, fmt.Errorf("store: customer_tax_id required")
 	}
-	if tax == "999999990" {
+	if tax == ptnif.FinalConsumer {
 		return nil, fmt.Errorf("store: cannot upsert consumidor final via LOCAL API")
 	}
-	if len(tax) != 9 {
-		return nil, fmt.Errorf("store: customer_tax_id must be 9 digits")
+	norm, err := ptnif.NormalizeBuyer(tax)
+	if err != nil {
+		return nil, err
 	}
+	tax = norm
 	name := strings.TrimSpace(in.CompanyName)
 	if name == "" {
 		name = tax
@@ -72,7 +75,7 @@ func (d *DB) UpsertLocalCustomer(in LocalCustomerInput) (*CustomerRow, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	var id string
-	err := d.SQL.QueryRow(`SELECT id FROM customers WHERE customer_tax_id = ?`, tax).Scan(&id)
+	err = d.SQL.QueryRow(`SELECT id FROM customers WHERE customer_tax_id = ?`, tax).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		id = uuid.NewString()
 		_, err = d.SQL.Exec(`INSERT INTO customers (

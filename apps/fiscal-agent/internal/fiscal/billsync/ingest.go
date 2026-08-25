@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"farvoo-fiscal-agent/internal/fiscal/store"
+	"farvoo-fiscal-agent/internal/fiscal/vatpercent"
 )
 
 // Error codes for ack / HTTP.
@@ -68,22 +67,22 @@ type CloudJob struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-var vatPercentRe = regexp.MustCompile(`^\d+\.\d{2}$`)
-
-// ValidateVATPercent enforces "13.00" style; rejects decimal rates like "0.23".
+// ValidateVATPercent is kept for call sites that only need an error; canonical path is vatpercent.Normalize.
 func ValidateVATPercent(raw string) error {
-	v := strings.TrimSpace(raw)
-	if !vatPercentRe.MatchString(v) {
-		return ingestErr(CodeInvalidVATRate, fmt.Sprintf("vat_rate %q must be percent with two decimals (e.g. \"23.00\")", raw))
-	}
-	f, err := strconv.ParseFloat(v, 64)
+	_, err := vatpercent.Normalize(raw)
 	if err != nil {
 		return ingestErr(CodeInvalidVATRate, err.Error())
 	}
-	if f > 0 && f < 1 {
-		return ingestErr(CodeInvalidVATRate, fmt.Sprintf("vat_rate %q looks like a decimal rate; use percent e.g. \"23.00\"", raw))
-	}
 	return nil
+}
+
+// NormalizeVATPercent is the billsync wrapper around vatpercent.Normalize (typed ingest error).
+func NormalizeVATPercent(raw string) (string, error) {
+	n, err := vatpercent.Normalize(raw)
+	if err != nil {
+		return "", ingestErr(CodeInvalidVATRate, err.Error())
+	}
+	return n, nil
 }
 
 // CollectLines returns all lines from whole_table or splits.
@@ -121,12 +120,13 @@ func ValidateAndDedupeProducts(lines []Line) ([]store.ProductUpsertInput, error)
 		if code == "" {
 			return nil, ingestErr(CodeEmptyItemCode, fmt.Sprintf("lines[%d]: item_code required", i))
 		}
-		if err := ValidateVATPercent(ln.VATRate); err != nil {
+		norm, err := NormalizeVATPercent(ln.VATRate)
+		if err != nil {
 			return nil, err
 		}
 		name := strings.TrimSpace(ln.Name)
 		price := strings.TrimSpace(ln.UnitPriceGross)
-		vat := strings.TrimSpace(ln.VATRate)
+		vat := norm
 		if prev, ok := m[code]; ok {
 			if prev.name != name || prev.price != price || prev.vat != vat {
 				return nil, ingestErr(CodeItemCodeConflict, fmt.Sprintf("item_code %q conflict on name/price/vat_rate", code))

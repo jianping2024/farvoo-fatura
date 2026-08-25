@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"farvoo-fiscal-agent/internal/fiscal/vatpercent"
+
 	"github.com/google/uuid"
 )
 
@@ -60,6 +62,11 @@ func (d *DB) UpsertFiscalProductByCode(in ProductUpsertInput) (created, updated 
 	if strings.TrimSpace(in.UnitPriceGross) == "" || strings.TrimSpace(in.VATRate) == "" {
 		return false, false, fmt.Errorf("store: unit_price_gross and vat_rate required")
 	}
+	normVAT, err := vatpercent.Normalize(in.VATRate)
+	if err != nil {
+		return false, false, err
+	}
+	in.VATRate = normVAT
 	if in.TaxCode == "" {
 		in.TaxCode = TaxCodeFromVATPercent(in.VATRate)
 	}
@@ -126,13 +133,18 @@ func (d *DB) UpsertLocalFiscalProduct(in LocalProductInput) (*FiscalProductRow, 
 	if strings.TrimSpace(in.UnitPriceGross) == "" || strings.TrimSpace(in.VATRate) == "" {
 		return nil, fmt.Errorf("store: unit_price_gross and vat_rate required")
 	}
+	normVAT, err := vatpercent.Normalize(in.VATRate)
+	if err != nil {
+		return nil, err
+	}
+	in.VATRate = normVAT
 	if in.TaxCode == "" {
 		in.TaxCode = TaxCodeFromVATPercent(in.VATRate)
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	var id, source string
-	err := d.SQL.QueryRow(`SELECT id, source FROM fiscal_products WHERE product_code = ?`, in.ProductCode).Scan(&id, &source)
+	err = d.SQL.QueryRow(`SELECT id, source FROM fiscal_products WHERE product_code = ?`, in.ProductCode).Scan(&id, &source)
 	if err == nil && source == "REMOTE_SYNC" {
 		return nil, fmt.Errorf("store: product_code %q owned by REMOTE_SYNC", in.ProductCode)
 	}
