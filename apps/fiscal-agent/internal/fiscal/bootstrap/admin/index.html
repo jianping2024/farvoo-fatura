@@ -724,9 +724,15 @@
     if (c && nameEl) nameEl.value = c.company_name;
   }
 
+  /** ONLY NIF field binder: blur → Mod-11 toast; change → catalog name fill. */
   function bindCustomerNifAutofill(nifEl, nameEl) {
     if (!nifEl || nifEl.dataset.nifBound) return;
     nifEl.dataset.nifBound = '1';
+    nifEl.addEventListener('blur', () => {
+      const err = customerNifInputError(nifEl.value);
+      if (err) toast(err, 'error');
+      else if (nameEl) fillCustomerNameFromCatalog(nifEl.value, nameEl);
+    });
     nifEl.addEventListener('change', () => fillCustomerNameFromCatalog(nifEl.value, nameEl));
   }
 
@@ -1525,6 +1531,7 @@
 
   bindCustomerNifAutofill($('#invNif'), $('#invName'));
   bindCustomerNifAutofill($('#billNif'), $('#billName'));
+  bindCustomerNifAutofill($('#cNif'), $('#cName'));
 
   $('#btnBillBack').onclick = () => $('#billDetail').classList.add('hidden');
 
@@ -1595,8 +1602,14 @@
 
   $('#btnSaveCustomer').onclick = () => withBusy($('#btnSaveCustomer'), '保存中…', async () => {
     try {
+      const tax = $('#cNif').value.trim();
+      if (!assertCustomerNifOrToast(tax)) return;
+      if (!tax) {
+        toast('客户 NIF 不能为空', 'error');
+        return;
+      }
       await j('POST', '/local/v1/customers', {
-        customer_tax_id: $('#cNif').value.trim(),
+        customer_tax_id: tax,
         company_name: $('#cName').value.trim()
       });
       toast('客户已保存', 'success');

@@ -45,11 +45,17 @@ func TestAdminHTMLBillListAndCustomerNifHelpers(t *testing.T) {
 	if !strings.Contains(adminHTML, "function renderCustomerNifDatalist") {
 		t.Fatal("admin must define renderCustomerNifDatalist once for customer lookup")
 	}
+	if !strings.Contains(adminHTML, "function bindCustomerNifAutofill") {
+		t.Fatal("admin must define bindCustomerNifAutofill as the ONLY NIF field binder")
+	}
 	if n := strings.Count(adminHTML, "function validatePortugueseNif"); n != 1 {
 		t.Fatalf("validatePortugueseNif (Mod-11) must appear exactly once, got %d", n)
 	}
 	if n := strings.Count(adminHTML, "function readPersonBuyer"); n != 1 {
 		t.Fatalf("readPersonBuyer must appear exactly once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function bindCustomerNifAutofill"); n != 1 {
+		t.Fatalf("bindCustomerNifAutofill must appear exactly once, got %d", n)
 	}
 	if strings.Contains(adminHTML, "function isNineDigitNif") {
 		t.Fatal("remove isNineDigitNif; Mod-11 validatePortugueseNif is the ONLY NIF check")
@@ -63,8 +69,14 @@ func TestAdminHTMLBillListAndCustomerNifHelpers(t *testing.T) {
 	if !strings.Contains(adminHTML, `id="billNif"`) || !strings.Contains(adminHTML, `list="customerNifList"`) {
 		t.Fatal("billNif must use shared customerNifList datalist")
 	}
+	if !strings.Contains(adminHTML, "addEventListener('blur'") || !strings.Contains(adminHTML, "customerNifInputError(nifEl.value)") {
+		t.Fatal("NIF fields must validate on blur via customerNifInputError (not only on issue click)")
+	}
 	if strings.Contains(adminHTML, "invNif').addEventListener('change'") {
 		t.Fatal("do not bind invNif change separately; use bindCustomerNifAutofill")
+	}
+	if strings.Contains(adminHTML, "billNif').addEventListener('blur'") || strings.Contains(adminHTML, "cNif').addEventListener('blur'") {
+		t.Fatal("do not bind NIF blur ad-hoc; use bindCustomerNifAutofill only")
 	}
 	if strings.Contains(adminHTML, "'<td>—</td>' +\n        '<td>' + fmtTimeShort") {
 		t.Fatal("bill list must not hardcode amount column to em dash")
