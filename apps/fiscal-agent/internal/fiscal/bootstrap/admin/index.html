@@ -184,8 +184,8 @@
       <div class="logo">Farvoo 开票</div>
       <div class="mode-tag" id="sidebarMode">餐馆模式</div>
       <button type="button" class="nav-btn active" data-nav="home">工作台<small>今日概览</small></button>
-      <button type="button" class="nav-btn" data-nav="orders">订单<small>进行中 / 待开票</small></button>
-      <button type="button" class="nav-btn rest-only" data-nav="bills" id="navBills">待开票账单<small>来自收银系统</small><span class="nav-badge" id="navBillsBadge" aria-hidden="true">0</span></button>
+      <button type="button" class="nav-btn" data-nav="orders">手工开票<small>本机新建</small></button>
+      <button type="button" class="nav-btn rest-only" data-nav="bills" id="navBills">收银账单<small>待开票 · 来自收银</small><span class="nav-badge" id="navBillsBadge" aria-hidden="true">0</span></button>
       <button type="button" class="nav-btn" data-nav="invoices">发票<small>查询 / 重打</small></button>
       <button type="button" class="nav-btn" data-nav="products">商品<small>本店商品维护</small></button>
       <button type="button" class="nav-btn" data-nav="customers">客户<small>常用购方</small></button>
@@ -201,21 +201,21 @@
         <div class="topbar">
           <div>
             <h1>工作台</h1>
-            <p class="hint" id="homeSubtitle">餐馆 · 先订单，后发票</p>
+            <p class="hint" id="homeSubtitle">餐馆 · 先建单，后发票</p>
           </div>
         </div>
         <div class="stat-row">
-          <div class="stat"><div class="k">待开票订单</div><div class="v" id="statPendingOrders">0</div></div>
+          <div class="stat"><div class="k">手工待开</div><div class="v" id="statPendingOrders">0</div></div>
           <div class="stat"><div class="k">今日已开发票</div><div class="v" id="statTodayInvoices">0</div></div>
-          <div class="stat rest-only"><div class="k">待开票账单</div><div class="v" id="statPendingBills">0</div></div>
+          <div class="stat rest-only"><div class="k">收银账单</div><div class="v" id="statPendingBills">0</div></div>
           <div class="stat retail-only"><div class="k">今日营业额</div><div class="v" id="statTodaySales">€0</div></div>
         </div>
         <button type="button" class="cta-big" id="ctaNewOrder" data-goto="order-new">
-          <strong>＋ 新建订单</strong>
-          <span>添加商品 → 确认订单 → 选择开票类型 → 签发发票</span>
+          <strong>＋ 新建开票</strong>
+          <span>添加商品 → 确认 → 选择开票类型 → 签发发票</span>
         </button>
         <button type="button" class="cta-big rest-only" id="ctaPendingBills" data-nav="bills">
-          <strong>处理待开票账单</strong>
+          <strong>处理收银账单</strong>
           <span>收银已结账、尚未开票的桌台账单（餐馆）</span>
         </button>
       </section>
@@ -223,14 +223,14 @@
       <section class="view hidden" id="view-orders">
         <div class="topbar">
           <div>
-            <h1>订单</h1>
-            <p class="hint">订单未开票前可改商品；开票后生成发票，订单只读。</p>
+            <h1>手工开票</h1>
+            <p class="hint">未开票前可改商品；开票后生成发票，本单只读。</p>
           </div>
-          <button type="button" data-goto="order-new">新建订单</button>
+          <button type="button" data-goto="order-new">新建开票</button>
         </div>
         <div class="panel">
           <table>
-            <thead><tr><th>订单号</th><th>来源</th><th>金额</th><th>状态</th><th></th></tr></thead>
+            <thead><tr><th>单号</th><th>来源</th><th>金额</th><th>状态</th><th></th></tr></thead>
             <tbody id="ordersTbody"></tbody>
           </table>
         </div>
@@ -238,15 +238,15 @@
 
       <section class="view hidden" id="view-order-new">
         <div class="flow-bar" id="flowBarNew">
-          <div class="flow-step active" data-step="1"><span class="num">1</span>创建订单</div>
+          <div class="flow-step active" data-step="1"><span class="num">1</span>创建开票</div>
           <div class="flow-step" data-step="2"><span class="num">2</span>添加商品</div>
-          <div class="flow-step" data-step="3"><span class="num">3</span>确认订单</div>
+          <div class="flow-step" data-step="3"><span class="num">3</span>确认</div>
           <div class="flow-step" data-step="4"><span class="num">4</span>开票</div>
         </div>
         <div class="topbar">
           <div>
-            <h1 id="orderNewTitle">新建订单</h1>
-            <p class="hint">先完成订单，再进入开票步骤。</p>
+            <h1 id="orderNewTitle">新建开票</h1>
+            <p class="hint">先完成本单，再进入开票步骤。</p>
           </div>
           <button type="button" class="secondary" data-nav="orders">返回列表</button>
         </div>
@@ -267,7 +267,7 @@
         </div>
         <div class="split">
           <div class="panel">
-            <h2>订单明细</h2>
+            <h2>本单明细</h2>
             <table>
               <thead><tr><th>商品</th><th>数量</th><th>单价</th><th>小计</th><th></th></tr></thead>
               <tbody id="orderLines"></tbody>
@@ -277,11 +277,11 @@
             </div>
           </div>
           <div class="panel">
-            <h2>订单合计</h2>
+            <h2>本单合计</h2>
             <p style="font-family:var(--display);font-size:1.6rem;margin:0.5rem 0" id="orderTotal">€0.00</p>
             <p class="hint">含 IVA · 未开票</p>
             <div class="actions" style="margin-top:1.5rem">
-              <button type="button" id="btnConfirmOrder">确认订单，去开票</button>
+              <button type="button" id="btnConfirmOrder">确认，去开票</button>
             </div>
           </div>
         </div>
@@ -289,20 +289,20 @@
 
       <section class="view hidden" id="view-order-invoice">
         <div class="flow-bar">
-          <div class="flow-step done"><span class="num">✓</span>创建订单</div>
+          <div class="flow-step done"><span class="num">✓</span>创建开票</div>
           <div class="flow-step done"><span class="num">✓</span>添加商品</div>
-          <div class="flow-step done"><span class="num">✓</span>确认订单</div>
+          <div class="flow-step done"><span class="num">✓</span>确认</div>
           <div class="flow-step active"><span class="num">4</span>开票</div>
         </div>
         <div class="topbar">
           <div>
             <h1>开票 · <span id="invOrderNo">—</span></h1>
-            <p class="hint">订单已确认，选择发票类型与购方信息后签发。</p>
+            <p class="hint">本单已确认，选择发票类型与购方信息后签发。</p>
           </div>
         </div>
         <div class="split">
           <div class="panel">
-            <h2>订单摘要</h2>
+            <h2>本单摘要</h2>
             <table>
               <tbody id="invSummaryLines"></tbody>
             </table>
@@ -346,8 +346,8 @@
       <section class="view hidden rest-only" id="view-bills">
         <div class="topbar">
           <div>
-            <h1>待开票账单</h1>
-            <p class="hint">收银系统已同步的结账记录；转为订单后再开票。整桌或按人（餐馆）。</p>
+            <h1>收银账单</h1>
+            <p class="hint">收银系统已同步的结账记录；确认后开票。整桌或按人（餐馆）。</p>
           </div>
           <button type="button" class="secondary" id="btnRefreshBills">刷新</button>
         </div>
@@ -382,7 +382,7 @@
         </div>
         <div class="panel">
           <table>
-            <thead><tr><th>票号</th><th>订单</th><th>时间</th><th>金额</th><th></th></tr></thead>
+            <thead><tr><th>票号</th><th>来源</th><th>时间</th><th>金额</th><th></th></tr></thead>
             <tbody id="invoicesTbody"></tbody>
           </table>
         </div>
@@ -390,7 +390,7 @@
 
       <section class="view hidden" id="view-products">
         <div class="topbar">
-          <div><h1>商品</h1><p class="hint">本店可售商品；开票时从订单选用。</p></div>
+          <div><h1>商品</h1><p class="hint">本店可售商品；开票时从本店商品选用。</p></div>
           <button type="button" id="btnNewProd">新建商品</button>
         </div>
         <div class="panel">
@@ -627,8 +627,8 @@
     document.body.classList.toggle('mode-retail', mode === 'retail');
     $('#sidebarMode').textContent = mode === 'restaurant' ? '餐馆模式' : '商超模式';
     $('#homeSubtitle').textContent = mode === 'restaurant'
-      ? '餐馆 · 桌台账单 → 订单 → 发票'
-      : '商超 · 收银订单 → 发票';
+      ? '餐馆 · 收银账单 → 开票 → 发票'
+      : '商超 · 新建开票 → 发票';
     sessionStorage.setItem('fiscal_mode', mode);
   }
 
@@ -862,7 +862,7 @@
     const tbody = $('#ordersTbody');
     const orders = loadOrders();
     if (!orders.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无订单 · 点击「新建订单」</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无手工开票 · 点击「新建开票」</td></tr>';
       return;
     }
     tbody.innerHTML = orders.map(o => {
@@ -910,7 +910,7 @@
 
   function openOrderEditor(order) {
     currentOrder = order;
-    $('#orderNewTitle').textContent = order.status === 'issued' ? ('订单 ' + order.id) : (order.id ? ('编辑 ' + order.id) : '新建订单');
+    $('#orderNewTitle').textContent = order.status === 'issued' ? ('单号 ' + order.id) : (order.id ? ('编辑 ' + order.id) : '新建开票');
     $('#orderTable').value = order.tableNo || '';
     $('#orderRegister').value = order.registerNo || '';
     renderOrderLines();
@@ -1023,9 +1023,9 @@
         fields.classList.remove('hidden');
         saveBtn.classList.remove('hidden');
         clearProductFields();
-        $('#productFormHint').textContent = '暂无商品 · 先新建再加入订单';
+        $('#productFormHint').textContent = '暂无商品 · 先新建再加入本单';
       } else {
-        $('#productFormHint').textContent = '保存后加入本店商品库，并加入当前订单';
+        $('#productFormHint').textContent = '保存后加入本店商品库，并加入本单';
       }
     } else if (mode === 'edit' && product) {
       $('#productPickerTitle').textContent = '编辑商品';
@@ -1044,7 +1044,7 @@
       clearProductFields();
       $('#productFormHint').textContent = '保存到本店商品库';
     }
-    if (mode === 'pick') saveBtn.textContent = '保存并加入订单';
+    if (mode === 'pick') saveBtn.textContent = '保存并加入本单';
     $('#productPicker').classList.remove('hidden');
     if (mode === 'pick') {
       try { $('#pickerSearch').focus(); } catch (_) { /* ignore */ }
@@ -1158,7 +1158,7 @@
     updateBillsNavBadge(n);
     const tbody = $('#billsTbody');
     if (!drafts.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无待开票账单</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无收银账单</td></tr>';
     } else {
       tbody.innerHTML = drafts.map(d => {
         const scope = billScopeLabel(d.scope_type || 'whole_table');
@@ -1176,7 +1176,7 @@
     }
     if (opts.fromEvent && n > lastOpenBillCount) {
       const hint = String(opts.tableHint || '').trim();
-      toast(hint ? ('桌 ' + hint + ' 待开票') : '有新的待开票账单', 'success');
+      toast(hint ? ('桌 ' + hint + ' 待开票') : '有新的收银账单', 'success');
     }
     lastOpenBillCount = n;
   }
@@ -1481,7 +1481,7 @@
   $('#btnShowProductCreate').onclick = () => {
     $('#productFormFields').classList.remove('hidden');
     $('#btnSaveProduct').classList.remove('hidden');
-    $('#btnSaveProduct').textContent = '保存并加入订单';
+    $('#btnSaveProduct').textContent = '保存并加入本单';
     clearProductFields();
     const q = $('#pickerSearch').value.trim();
     if (q) $('#pName').value = q;
@@ -1515,7 +1515,7 @@
     currentOrder.confirmedAt = new Date().toISOString();
     upsertOrder(currentOrder);
     openOrderForInvoice(currentOrder);
-    toast('订单已确认 · 请选择发票类型', 'success');
+    toast('已确认 · 请选择发票类型', 'success');
   });
 
   $('#btnIssueInvoice').onclick = () => withBusy($('#btnIssueInvoice'), '开票中…', async () => {
@@ -1582,7 +1582,7 @@
       if (!saved) return;
       if (productWorkbenchMode === 'pick') {
         addProductToCurrentOrder(saved);
-        toast('已保存并加入订单', 'success');
+        toast('已保存并加入本单', 'success');
       } else {
         toast('商品已保存', 'success');
       }

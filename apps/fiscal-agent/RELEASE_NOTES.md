@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.6
+
+**Admin 用语方案 A：收银账单 / 手工开票**
+
+- 侧栏：「收银账单」（待开票 · 来自收银）、「手工开票」（本机新建）；废止侧栏主名「待开票账单」「订单」。
+- 工作台 CTA：「新建开票」「处理收银账单」；SSE toast「有新的收银账单」。
+- 文档：原型 README / workbench §0 / M2.6 定法同步；`TestAdminHTMLSchemeACopyUnique` 锁唯一文案。
+
 ## 0.4.5
 
 **待开票实时提示 + 税率/NIF 收口 + 票面 MESA/认证折行 + 按人 NIF**

@@ -9,7 +9,7 @@
 
 | 用例 | 说明 |
 |------|------|
-| 整桌 | 同步载荷 `scope_type=whole_table` → 待开票账单 → 签发一张 FT |
+| 整桌 | 同步载荷 `scope_type=whole_table` → 收银账单 → 签发一张 FT |
 | 按人 | 同步载荷 `scope_type=split` + `splits[]` → 选人 → 各签一张 FT；互斥规则见 workbench §5.2 |
 
 ## 2. 前置（P0）
@@ -20,15 +20,15 @@
 | P2 | Agent 已配对 store，Realtime 收到 `bill_sync_jobs` | |
 | P3 | 本机 M1：纳税人 / 系列 / 激活（非 seed demo） | |
 | P4 | 打印机档口已绑（17892/configure） | |
-| P5 | Admin 登录 **餐馆模式** → 可见「待开票账单」 | |
+| P5 | Admin 登录 **餐馆模式** → 可见「收银账单」 | |
 
 ## 3. 整桌用例
 
 ```text
 Farvoo 结账 → 同步账单
-  → Agent PullAndIngest → Admin 待开票账单出现
+  → Agent PullAndIngest → Admin 收银账单出现
   → 选择开票 → 整桌 →（可选 NIF）→ 签发 FT → 热敏出纸
-  → 待开票账单消失；再点同步 → cloud ack already_invoiced
+  → 收银账单消失；再点同步 → cloud ack already_invoiced
 ```
 
 | 步骤 | 预期 | 结果 |
@@ -42,10 +42,10 @@ Farvoo 结账 → 同步账单
 
 ```text
 Cloud 下发 scope_type=split（含 scope_id UUID 的 splits[]）
-  → Admin 待开票账单显示「按人」
+  → Admin 收银账单显示「按人」
   → 详情：列出各位（如 Ana / Bruno）；已开显示票号
   → 选一人 → NIF（可选）→ 签发 → 草稿保留直至全员开完
-  → 第二人同理；全员完成后待开票账单消失
+  → 第二人同理；全员完成后收银账单消失
   → 禁止：已开任一人后再开整桌（scope_mutex）
 ```
 

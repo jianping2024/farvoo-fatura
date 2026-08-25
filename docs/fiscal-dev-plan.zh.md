@@ -182,7 +182,7 @@ M1（至少能 ACTIVE 系列 + Signer）；打印机 fake 可在 M1 未完成时
 
 > **状态：已完成**（本仓实现 + `fiscal-bill-sync-regression.mjs`）  
 > **权威方案：** [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md)  
-> **产品 UI 用语：** 餐馆侧同步账单在界面称 **「待开票账单」**（不叫草稿）；正式 Admin 见 **M2.6**。
+> **产品 UI 用语：** 餐馆侧同步账单在界面称 **「收银账单」**（不叫草稿；旧称「待开票账单」仅文档别名）；正式 Admin 见 **M2.6** + 原型 README 方案 A。
 
 ### 目标
 
@@ -226,7 +226,7 @@ M2（主进程 + 开票可用）；账单同步入草稿（已有）。宜在 **
 
 ### 目标
 
-1. **产品 UI** 按 v2 原型：**订单 → 加商品 → 确认 → 开票** 四步；登录选 **餐馆 / 商超**；导航为工作台、订单、发票、商品、客户、设置（餐馆另有 **待开票账单**）。  
+1. **产品 UI** 按 v2 原型：**创建开票 → 加商品 → 确认 → 开票** 四步；登录选 **餐馆 / 商超**；导航为工作台、手工开票、发票、商品、客户、设置（餐馆另有 **收银账单**）。  
 2. **FT 日常闭环**：LOCAL 商品与客户、手动开票、发票查询、**重打**（不重签）。  
 3. 替换 `admin_html.go` 调试页为正式 Admin（Toast 仍唯一 `FiscalUI.showToast`）。
 
@@ -242,10 +242,10 @@ M2（主进程 + 开票可用）；账单同步入草稿（已有）。宜在 **
 
 | 项 | 定法 |
 |----|------|
-| 界面用语 | 见 [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md) §0；禁止把 `bill_sync_drafts`、LOCAL、M3 等暴露给店员 |
-| 业态 | `restaurant` \| `retail` 登录时选定；餐馆显示「待开票账单」；商超不显示 |
-| 订单四步 | 手动与「待开票账单 → 转订单」共用同一套进度条与开票页 |
-| 工作台双 CTA | 餐馆：`新建订单` 与 `处理待开票账单` **同级**；有 open 待开票时后者 **优先焦点**（定法见 [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)） |
+| 界面用语 | 见 [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)「业务用语」与 [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md) §0；**方案 A**：收银账单 / 手工开票；禁止把 `bill_sync_drafts`、LOCAL、M3 等暴露给店员 |
+| 业态 | `restaurant` \| `retail` 登录时选定；餐馆显示「收银账单」；商超不显示 |
+| 手工开票四步 | 手动与「收银账单 → 进入开票」共用同一套进度条与开票页 |
+| 工作台双 CTA | 餐馆：`新建开票` 与 `处理收银账单` **同级**；有 open 收银账单时后者 **优先焦点**（定法见原型 README） |
 | 重打 | 克隆 ORIGINAL `payload_json`，`print_purpose=REPRINT`，新 `local_print_jobs` 行；**禁止**重签 |
 | 签发 | 仍唯一 `service.IssueDocument` → `store.IssueFT`（及既有 `IssueFromBillDraft` / manual 入口） |
 
@@ -259,15 +259,15 @@ M2（主进程 + 开票可用）；账单同步入草稿（已有）。宜在 **
 | D2.6.4 | **手动 FT 回归** | `scripts/fiscal-manual-ft-regression.mjs` 全绿 | **已完成**（0.3.99） |
 | D2.6.5 | **重打 API** | `POST /local/v1/fiscal-documents/{documentId}/reprints` 挂载 + 服务层 + 单测 | **已完成**（0.4.0） |
 | D2.6.6 | **正式 Admin 壳** | 登录（业态+PIN 占位）、侧栏、Toast；去掉调试 § 编号与工程词 | **已完成**（0.4.0） |
-| D2.6.7 | **订单四步 UI** | 新建订单 / 加商品 / 确认 / 开票；手动走 D2.6.3；餐馆「待开票账单」走 M2.5 issue | **已完成**（0.4.0） |
+| D2.6.7 | **手工开票四步 UI** | 新建开票 / 加商品 / 确认 / 开票；手动走 D2.6.3；餐馆「收银账单」走 M2.5 issue | **已完成**（0.4.0） |
 | D2.6.8 | **发票列表/详情** | 查票、展示 ATCUD/票号、重打按钮（依赖 D2.6.5） | **已完成**（0.4.0） |
 | D2.6.9 | **商品/客户/设置页** | 对齐原型；设置含 M1 身份/系列（自现 Admin 迁入） | **已完成**（0.4.0） |
 | D2.6.10 | **回归** | 扩展现有 fiscal-local / bill-sync / manual-ft；新增 reprint 脚本；无 `t.Skip` | **已完成**（0.4.0） |
 
 ### 验收清单
 
-1. 餐馆：待开票账单 → 转订单 → 四步 → 签发 FT → 打印队列。  
-2. 商超：新建订单 → 四步 → 手动 FT（无待开票账单菜单）。  
+1. 餐馆：收银账单 → 进入开票 → 签发 FT → 打印队列。  
+2. 商超：新建开票 → 四步 → 手动 FT（无收银账单菜单）。  
 3. 发票详情可重打；重打票面带「2a Via」或等价标记；原票 Hash 不变。  
 4. 界面全文检索不得出现「草稿」「LOCAL」「M3」等工程词（开发 banner 除外）。  
 5. `go test ./internal/fiscal/...` + 本里程碑 regression 脚本全绿。

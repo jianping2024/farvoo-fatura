@@ -5,8 +5,8 @@
 
 ## 现状
 
-- **店员路径（目标）：** 按 [`docs/fiscal-admin-ui-prototype/README.md`](../../../docs/fiscal-admin-ui-prototype/README.md) v2 落地 **M2.6** 正式 Admin。  
-- **当前入口：** bootstrap 嵌入的 `admin_html.go`（M1 设置 + §7 待开票账单调试 + §6–8 商品/客户/手动 FT）；**含工程用语，待替换**。  
+- **店员路径：** 按 [`docs/fiscal-admin-ui-prototype/README.md`](../../../docs/fiscal-admin-ui-prototype/README.md) v2（**方案 A 用语**）落地正式 Admin。  
+- **当前入口：** bootstrap 嵌入的 `admin/index.html`（工作台 / 手工开票 / 收银账单 / 发票 / 商品 / 客户 / 设置）。  
 - **本目录：** 可选静态 React 构建；与 bootstrap 嵌入二选一，以 [`fiscal-dev-plan.zh.md`](../../../docs/fiscal-dev-plan.zh.md) M2.6 验收为准。
 
 ## P0 屏幕（与 v2 原型一致）
@@ -15,8 +15,8 @@
 |---|------|------|------|--------|
 | 1 | 登录（业态 + PIN 占位） | ✓ | ✓ | M2.6 |
 | 2 | 工作台 | ✓ | ✓ | M2.6 |
-| 3 | 订单列表 / 新建 / 四步进度 | ✓ | ✓ | M2.6 |
-| 4 | 待开票账单 → 转订单 | ✓ | — | M2.6（API：M2.5） |
+| 3 | 手工开票列表 / 新建开票 / 四步进度 | ✓ | ✓ | M2.6 |
+| 4 | 收银账单 → 进入开票 | ✓ | — | M2.6（API：M2.5） |
 | 5 | 开票（购方、付款、签发 FT） | ✓ | ✓ | M2.6 |
 | 6 | 发票列表 / 详情 / 重打 | ✓ | ✓ | M2.6b–e |
 | 7 | 商品维护 | ✓ | ✓ | M2.6a ✓ |
@@ -33,4 +33,5 @@
 
 ## 用语
 
-界面禁止「草稿、LOCAL、§7、bill-draft」等；对照表见 [`fiscal-bill-draft-workbench.zh.md`](../../../docs/fiscal-bill-draft-workbench.zh.md) §0。
+界面禁止「草稿、LOCAL、§7、bill-draft」等；侧栏主名禁止「订单」「待开票账单」。  
+对照表见 [`fiscal-admin-ui-prototype/README.md`](../../../docs/fiscal-admin-ui-prototype/README.md)「业务用语」与 [`fiscal-bill-draft-workbench.zh.md`](../../../docs/fiscal-bill-draft-workbench.zh.md) §0。

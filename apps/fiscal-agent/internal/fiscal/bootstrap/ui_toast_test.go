@@ -71,6 +71,45 @@ func TestAdminHTMLBillListAndCustomerNifHelpers(t *testing.T) {
 	}
 }
 
+func TestAdminHTMLSchemeACopyUnique(t *testing.T) {
+	// Scheme A: source-based labels; forbid old primary nav/CTA names.
+	forbidden := []string{
+		">订单<small>",
+		">待开票账单",
+		"＋ 新建订单",
+		"处理待开票账单",
+		"新建订单",
+		"有新的待开票账单",
+		"暂无待开票账单",
+		"创建订单",
+		"确认订单",
+	}
+	for _, s := range forbidden {
+		if strings.Contains(adminHTML, s) {
+			t.Fatalf("scheme A forbids leftover UI copy %q", s)
+		}
+	}
+	requiredOnce := []string{
+		">手工开票<small>本机新建</small>",
+		">收银账单<small>待开票 · 来自收银</small>",
+		"＋ 新建开票",
+		"处理收银账单",
+		"有新的收银账单",
+		"暂无收银账单",
+	}
+	for _, s := range requiredOnce {
+		if n := strings.Count(adminHTML, s); n != 1 {
+			t.Fatalf("scheme A unique copy %q must appear exactly once, got %d", s, n)
+		}
+	}
+	if n := strings.Count(adminHTML, "创建开票"); n != 2 {
+		t.Fatalf("创建开票 must appear twice (two flow bars), got %d", n)
+	}
+	if strings.Count(adminHTML, "新建开票") < 2 {
+		t.Fatal("新建开票 must appear on CTA and order surfaces")
+	}
+}
+
 func TestAdminHTMLHomeCtaPeerAndFocus(t *testing.T) {
 	if !strings.Contains(adminHTML, `id="ctaNewOrder"`) || !strings.Contains(adminHTML, `id="ctaPendingBills"`) {
 		t.Fatal("home must expose ctaNewOrder and ctaPendingBills")

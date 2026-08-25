@@ -142,7 +142,7 @@
 </head>
 <body class="mode-restaurant">
   <div class="proto-banner">
-    Farvoo 开票 · <strong>v2 流程原型</strong>（假数据）— 业务语言：订单 → 商品 → 开票类型 → 发票 · 不含「草稿/API」等开发词
+    Farvoo 开票 · <strong>v2 流程原型</strong>（假数据）— 业务语言：手工开票 / 收银账单 → 开票 → 发票 · 不含「草稿/API」等开发词
   </div>
 
   <!-- ① 登录 + 选业态 -->
@@ -177,8 +177,8 @@
       <div class="logo">Farvoo 开票</div>
       <div class="mode-tag" id="sidebarMode">餐馆模式</div>
       <button type="button" class="nav-btn active" data-nav="home">工作台<small>今日概览</small></button>
-      <button type="button" class="nav-btn" data-nav="orders">订单<small>进行中 / 待开票</small></button>
-      <button type="button" class="nav-btn rest-only" data-nav="bills">待开票账单<small>来自收银系统</small></button>
+      <button type="button" class="nav-btn" data-nav="orders">手工开票<small>本机新建</small></button>
+      <button type="button" class="nav-btn rest-only" data-nav="bills">收银账单<small>待开票 · 来自收银</small></button>
       <button type="button" class="nav-btn" data-nav="invoices">发票<small>查询 / 重打</small></button>
       <button type="button" class="nav-btn" data-nav="products">商品<small>本店商品维护</small></button>
       <button type="button" class="nav-btn" data-nav="customers">客户<small>常用购方</small></button>
@@ -195,37 +195,37 @@
         <div class="topbar">
           <div>
             <h1>工作台</h1>
-            <p class="hint" id="homeSubtitle">餐馆 · 先订单，后发票</p>
+            <p class="hint" id="homeSubtitle">餐馆 · 先建单，后发票</p>
           </div>
         </div>
         <div class="stat-row">
-          <div class="stat"><div class="k">待开票订单</div><div class="v">2</div></div>
+          <div class="stat"><div class="k">手工待开</div><div class="v">2</div></div>
           <div class="stat"><div class="k">今日已开发票</div><div class="v">12</div></div>
-          <div class="stat rest-only"><div class="k">待开票账单</div><div class="v">1</div></div>
+          <div class="stat rest-only"><div class="k">收银账单</div><div class="v">1</div></div>
           <div class="stat retail-only"><div class="k">今日营业额</div><div class="v">€842</div></div>
         </div>
         <button type="button" class="cta-big" data-goto="order-new" id="ctaNewOrder">
-          <strong>＋ 新建订单</strong>
-          <span>添加商品 → 确认订单 → 选择开票类型 → 签发发票</span>
+          <strong>＋ 新建开票</strong>
+          <span>添加商品 → 确认 → 选择开票类型 → 签发发票</span>
         </button>
         <button type="button" class="cta-big rest-only" data-nav="bills" id="ctaPendingBills">
-          <strong>处理待开票账单</strong>
+          <strong>处理收银账单</strong>
           <span>收银已结账、尚未开票的桌台账单（餐馆）</span>
         </button>
       </section>
 
-      <!-- 订单列表 -->
+      <!-- 手工开票列表 -->
       <section class="view hidden" id="view-orders">
         <div class="topbar">
           <div>
-            <h1>订单</h1>
-            <p class="hint">订单未开票前可改商品；开票后生成发票，订单只读。</p>
+            <h1>手工开票</h1>
+            <p class="hint">未开票前可改商品；开票后生成发票，本单只读。</p>
           </div>
-          <button type="button" data-goto="order-new">新建订单</button>
+          <button type="button" data-goto="order-new">新建开票</button>
         </div>
         <div class="panel">
           <table>
-            <thead><tr><th>订单号</th><th>来源</th><th>金额</th><th>状态</th><th></th></tr></thead>
+            <thead><tr><th>单号</th><th>来源</th><th>金额</th><th>状态</th><th></th></tr></thead>
             <tbody>
               <tr class="clickable" data-open-order="ORD-1008">
                 <td><strong>ORD-1008</strong></td>
@@ -247,18 +247,18 @@
         </div>
       </section>
 
-      <!-- 新建/编辑订单：步骤 1–2 加商品 -->
+      <!-- 新建开票：步骤 1–2 加商品 -->
       <section class="view hidden" id="view-order-new">
         <div class="flow-bar" id="flowBarNew">
-          <div class="flow-step active" data-step="1"><span class="num">1</span>创建订单</div>
+          <div class="flow-step active" data-step="1"><span class="num">1</span>创建开票</div>
           <div class="flow-step" data-step="2"><span class="num">2</span>添加商品</div>
-          <div class="flow-step" data-step="3"><span class="num">3</span>确认订单</div>
+          <div class="flow-step" data-step="3"><span class="num">3</span>确认</div>
           <div class="flow-step" data-step="4"><span class="num">4</span>开票</div>
         </div>
         <div class="topbar">
           <div>
-            <h1>新建订单</h1>
-            <p class="hint">先完成订单，再进入开票步骤。</p>
+            <h1>新建开票</h1>
+            <p class="hint">先完成本单，再进入开票步骤。</p>
           </div>
           <button type="button" class="secondary" data-nav="orders">返回列表</button>
         </div>
@@ -274,7 +274,7 @@
         </div>
         <div class="split">
           <div class="panel">
-            <h2>订单明细</h2>
+            <h2>本单明细</h2>
             <table>
               <thead><tr><th>商品</th><th>数量</th><th>单价</th><th>小计</th><th></th></tr></thead>
               <tbody id="orderLines">
@@ -286,33 +286,33 @@
             </div>
           </div>
           <div class="panel">
-            <h2>订单合计</h2>
+            <h2>本单合计</h2>
             <p style="font-family:var(--display);font-size:1.6rem;margin:0.5rem 0">€28.30</p>
             <p class="hint">含 IVA · 未开票</p>
             <div class="actions" style="margin-top:1.5rem">
-              <button type="button" id="btnConfirmOrder">确认订单，去开票</button>
+              <button type="button" id="btnConfirmOrder">确认，去开票</button>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- 订单详情 → 步骤 3–4 开票 -->
+      <!-- 开票步骤 3–4 -->
       <section class="view hidden" id="view-order-invoice">
         <div class="flow-bar">
-          <div class="flow-step done"><span class="num">✓</span>创建订单</div>
+          <div class="flow-step done"><span class="num">✓</span>创建开票</div>
           <div class="flow-step done"><span class="num">✓</span>添加商品</div>
-          <div class="flow-step done"><span class="num">✓</span>确认订单</div>
+          <div class="flow-step done"><span class="num">✓</span>确认</div>
           <div class="flow-step active"><span class="num">4</span>开票</div>
         </div>
         <div class="topbar">
           <div>
             <h1>开票 · <span id="invOrderNo">ORD-1008</span></h1>
-            <p class="hint">订单已确认，选择发票类型与购方信息后签发。</p>
+            <p class="hint">本单已确认，选择发票类型与购方信息后签发。</p>
           </div>
         </div>
         <div class="split">
           <div class="panel">
-            <h2>订单摘要</h2>
+            <h2>本单摘要</h2>
             <table>
               <tbody>
                 <tr><td>Buffet livre</td><td>1 × 19.95</td><td>19.95</td></tr>
@@ -354,12 +354,12 @@
         </div>
       </section>
 
-      <!-- 餐馆：待开票账单（来自收银，不叫草稿） -->
+      <!-- 餐馆：收银账单（来自收银） -->
       <section class="view hidden rest-only" id="view-bills">
         <div class="topbar">
           <div>
-            <h1>待开票账单</h1>
-            <p class="hint">收银系统已同步的结账记录；转为订单后再开票。整桌或按人（餐馆）。</p>
+            <h1>收银账单</h1>
+            <p class="hint">收银系统已同步的结账记录；确认后开票。整桌或按人（餐馆）。</p>
           </div>
         </div>
         <div class="panel">
@@ -371,7 +371,7 @@
                 <td>整桌</td>
                 <td>€28.30</td>
                 <td>21:44</td>
-                <td><button type="button" class="secondary" data-bill-open="018">转为订单并开票</button></td>
+                <td><button type="button" class="secondary" data-bill-open="018">进入开票</button></td>
               </tr>
               <tr class="clickable" data-bill="A05">
                 <td><strong>A-05</strong></td>
@@ -387,7 +387,7 @@
           <h2>桌 <span id="billTable">018</span> · 整桌</h2>
           <div class="field"><label>购方 NIF（可选）</label><input placeholder="空 = 散客" /></div>
           <div class="actions">
-            <button type="button" id="btnBillToInvoice">生成订单并开票</button>
+            <button type="button" id="btnBillToInvoice">进入开票</button>
             <button type="button" class="secondary" id="btnBillBack">返回</button>
           </div>
         </div>
@@ -403,7 +403,7 @@
         </div>
         <div class="panel">
           <table>
-            <thead><tr><th>票号</th><th>订单</th><th>时间</th><th>金额</th><th></th></tr></thead>
+            <thead><tr><th>票号</th><th>来源</th><th>时间</th><th>金额</th><th></th></tr></thead>
             <tbody>
               <tr class="clickable" data-inv="8">
                 <td>FT …/8</td><td>ORD-1008</td><td>21/08 21:44</td><td>€28.30</td>
@@ -417,7 +417,7 @@
       <!-- 商品 -->
       <section class="view hidden" id="view-products">
         <div class="topbar">
-          <div><h1>商品</h1><p class="hint">本店可售商品；开票时从订单选用。</p></div>
+          <div><h1>商品</h1><p class="hint">本店可售商品；开票时从本店商品选用。</p></div>
           <button type="button" id="btnNewProd">新建商品</button>
         </div>
         <div class="panel">
@@ -487,8 +487,8 @@
       document.body.classList.toggle('mode-retail', mode === 'retail');
       $('#sidebarMode').textContent = mode === 'restaurant' ? '餐馆模式' : '商超模式';
       $('#homeSubtitle').textContent = mode === 'restaurant'
-        ? '餐馆 · 桌台账单 → 订单 → 发票'
-        : '商超 · 收银订单 → 发票';
+        ? '餐馆 · 收银账单 → 开票 → 发票'
+        : '商超 · 新建开票 → 发票';
     }
 
     function enterApp() {
@@ -533,7 +533,7 @@
 
     $('#btnConfirmOrder').onclick = () => {
       showView('order-invoice');
-      toast('订单已确认 · 请选择发票类型');
+      toast('已确认 · 请选择发票类型');
     };
     $$('[data-open-order]').forEach(r => r.addEventListener('click', () => {
       $('#invOrderNo').textContent = r.dataset.openOrder;
@@ -550,7 +550,7 @@
     }));
     $('#btnBillBack').onclick = () => $('#billDetail').classList.add('hidden');
     $('#btnBillToInvoice').onclick = () => {
-      toast('已生成订单 · 进入开票');
+      toast('已进入开票');
       showView('order-invoice');
       $('#invOrderNo').textContent = 'ORD-' + Date.now().toString().slice(-4);
     };
