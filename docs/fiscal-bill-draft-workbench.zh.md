@@ -214,7 +214,8 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 - **店员路径（M2.6）：** 正式 Admin，流程见 [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)。餐馆侧栏 **待开票账单** → **转订单** → 四步进度条 → **签发发票**。  
 - **工程调试：** 本机 `http://127.0.0.1:17880` Admin §7 保留至 M2.6 正式页替代；**不对店员暴露** § 编号与「草稿」字样。  
 - **不做** Farvoo 云端开票页。  
-- 列表：桌号、`source_sale_id`、同步时间、整桌/分单、未开/已开人数。  
+- **工作台双 CTA（P0）：** 与 [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)「工作台双 CTA」一致：`新建订单` 与 `处理待开票账单` **同级视觉**；有 open 待开票账单时后者 **优先焦点**。禁止灰边弱化待开票入口。  
+- 列表：桌号、金额、同步时间、整桌/分单、未开/已开人数。  
 - 详情：行项目；split 时每人一块「签发」；整桌一个「整桌签发」。  
 - **NIF：** 整桌开票前一个输入框；按人则**每个人一块独立输入**（默认空=散客）；不得把 A 的 NIF 默认填给 B。  
 - 成功：展示 `InvoiceNo`、ATCUD；按人刷新已开标记；整桌或全员开完后待开票账单从列表消失（若 `cleanup_pending` 则提示稍后清理，票号仍展示）。
@@ -298,3 +299,4 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 | 2026-08-21 | 首版定稿：整桌/按人工作台、API、清草稿 |
 | 2026-08-21 | NIF/客户名编辑升为 **P0**；签票成功与清草稿失败解耦；明确 §13 归 M4 非本刀；按人 `request_id` 须含 `scope_id` |
 | 2026-08-22 | 增补 §0 业务用语；UI 指向 M2.6 + v2 原型；「待开票账单」替代界面「草稿」 |
+| 2026-08-25 | §9：工作台双 CTA 同级 + 有待开票时优先焦点（挂原型 README） |

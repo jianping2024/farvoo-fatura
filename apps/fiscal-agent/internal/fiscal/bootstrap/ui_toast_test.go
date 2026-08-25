@@ -55,3 +55,28 @@ func TestAdminHTMLBillListAndCustomerNifHelpers(t *testing.T) {
 		t.Fatal("bill list must not hardcode amount column to em dash")
 	}
 }
+
+func TestAdminHTMLHomeCtaPeerAndFocus(t *testing.T) {
+	if !strings.Contains(adminHTML, `id="ctaNewOrder"`) || !strings.Contains(adminHTML, `id="ctaPendingBills"`) {
+		t.Fatal("home must expose ctaNewOrder and ctaPendingBills")
+	}
+	if !strings.Contains(adminHTML, "function focusHomePrimaryCta") {
+		t.Fatal("admin must define focusHomePrimaryCta once")
+	}
+	idx := strings.Index(adminHTML, `id="ctaPendingBills"`)
+	if idx < 0 {
+		t.Fatal("missing ctaPendingBills")
+	}
+	start := idx - 80
+	if start < 0 {
+		start = 0
+	}
+	end := idx + 120
+	if end > len(adminHTML) {
+		end = len(adminHTML)
+	}
+	snippet := adminHTML[start:end]
+	if strings.Contains(snippet, "secondary") || strings.Contains(snippet, "border-color:var(--line)") {
+		t.Fatalf("pending bills CTA must not be demoted: %s", snippet)
+	}
+}

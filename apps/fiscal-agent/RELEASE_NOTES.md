@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.3
+
+**Admin 工作台双 CTA + FT 票号加粗**
+
+- 餐馆工作台：`新建订单` 与 `处理待开票账单` 同级 `.cta-big`；有 open 待开票时 `focusHomePrimaryCta` 优先后者。
+- FT 票面：`Fatura No.` 整行 `ESC E` 加粗（不倍高）；唯一写在 `RenderESCPOS`。
+
 ## 0.4.2
 
 **Admin：待开票账单列表金额 + NIF 体验**

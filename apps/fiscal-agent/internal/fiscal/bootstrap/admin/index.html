@@ -119,6 +119,7 @@
       background: #fff; border: 2px solid var(--mode); border-radius: 14px;
       color: var(--ink); margin-bottom: 0.75rem;
     }
+    .cta-big:focus { outline: 3px solid var(--mode); outline-offset: 2px; }
     .cta-big strong { display: block; font-size: 1.05rem; margin-bottom: 0.25rem; }
     .cta-big span { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
     .retail-only, .rest-only { display: none; }
@@ -201,11 +202,11 @@
           <div class="stat rest-only"><div class="k">待开票账单</div><div class="v" id="statPendingBills">0</div></div>
           <div class="stat retail-only"><div class="k">今日营业额</div><div class="v" id="statTodaySales">€0</div></div>
         </div>
-        <button type="button" class="cta-big" data-goto="order-new">
+        <button type="button" class="cta-big" id="ctaNewOrder" data-goto="order-new">
           <strong>＋ 新建订单</strong>
           <span>添加商品 → 确认订单 → 选择开票类型 → 签发发票</span>
         </button>
-        <button type="button" class="cta-big rest-only secondary" data-nav="bills" style="border-color:var(--line)">
+        <button type="button" class="cta-big rest-only" id="ctaPendingBills" data-nav="bills">
           <strong>处理待开票账单</strong>
           <span>收银已结账、尚未开票的桌台账单（餐馆）</span>
         </button>
@@ -953,6 +954,19 @@
     return list;
   }
 
+  /** ONLY home CTA focus: pending bills when open drafts exist; else new order. */
+  function focusHomePrimaryCta(openBillCount) {
+    const bills = $('#ctaPendingBills');
+    const neu = $('#ctaNewOrder');
+    if (mode === 'restaurant' && openBillCount > 0 && bills) {
+      try { bills.focus(); } catch (_) { /* ignore */ }
+      return;
+    }
+    if (neu) {
+      try { neu.focus(); } catch (_) { /* ignore */ }
+    }
+  }
+
   async function refreshBills() {
     if (mode !== 'restaurant') return;
     const data = await j('GET', '/local/v1/bill-drafts');
@@ -961,18 +975,21 @@
     const tbody = $('#billsTbody');
     if (!drafts.length) {
       tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无待开票账单</td></tr>';
-      return;
+    } else {
+      tbody.innerHTML = drafts.map(d => {
+        const scope = billScopeLabel(d.scope_type || 'whole_table');
+        const amt = formatBillSyncAmount(d.gross_total || '');
+        return '<tr class="clickable" data-bill-id="' + d.id + '">' +
+          '<td><strong>' + (d.table_display_name || '—') + '</strong></td>' +
+          '<td>' + scope + '</td>' +
+          '<td>' + amt + '</td>' +
+          '<td>' + fmtTimeShort(d.updated_at) + '</td>' +
+          '<td><button type="button" class="secondary" data-bill-open="' + d.id + '">选择开票</button></td></tr>';
+      }).join('');
     }
-    tbody.innerHTML = drafts.map(d => {
-      const scope = billScopeLabel(d.scope_type || 'whole_table');
-      const amt = formatBillSyncAmount(d.gross_total || '');
-      return '<tr class="clickable" data-bill-id="' + d.id + '">' +
-        '<td><strong>' + (d.table_display_name || '—') + '</strong></td>' +
-        '<td>' + scope + '</td>' +
-        '<td>' + amt + '</td>' +
-        '<td>' + fmtTimeShort(d.updated_at) + '</td>' +
-        '<td><button type="button" class="secondary" data-bill-open="' + d.id + '">选择开票</button></td></tr>';
-    }).join('');
+    if (!$('#view-home').classList.contains('hidden')) {
+      focusHomePrimaryCta(drafts.length);
+    }
   }
 
   async function openBillDetail(draftId) {
@@ -1082,7 +1099,11 @@
     if (el) el.classList.remove('hidden');
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
     if (name === 'orders') renderOrdersList();
-    if (name === 'home') refreshInvoices().catch(() => renderHomeStats([]));
+    if (name === 'home') {
+      refreshInvoices().catch(() => renderHomeStats([]));
+      if (mode === 'restaurant') refreshBills().catch(() => focusHomePrimaryCta(0));
+      else focusHomePrimaryCta(0);
+    }
     if (name === 'products') refreshProducts().catch(e => toast(errText(e), 'error'));
     if (name === 'customers') refreshCustomers().catch(e => toast(errText(e), 'error'));
     if (name === 'invoices') refreshInvoices().catch(e => toast(errText(e), 'error'));
@@ -1101,9 +1122,7 @@
     $('#app-shell').classList.add('on');
     showView('home');
     refreshPrinters().catch(() => {});
-    refreshInvoices().catch(() => {});
     ensureCustomerCatalog().catch(() => {});
-    if (mode === 'restaurant') refreshBills().catch(() => {});
     toast(mode === 'restaurant' ? '已进入 · 餐馆模式' : '已进入 · 商超模式', 'success');
   }
 

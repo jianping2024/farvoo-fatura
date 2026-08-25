@@ -21,7 +21,7 @@
 
 | # | 定法 | 依据 |
 |---|------|------|
-| 1 | 票号：`Fatura No.: ` + `invoice_no` | VOZ：`Fatura No.: …` |
+| 1 | 票号：`Fatura No.: ` + `invoice_no`；**整行加粗**（`ESC E`）；日期/联次普通 | VOZ / 店内样票：票号行粗；对齐真机观感 |
 | 2 | 认证句：`{QRHashChars}-` + `Processado por… n. {证号}/AT`（票面无 `º`）；**禁止** `Hash:` 行 | VOZ `/IJ6 -- Processado…`；Pingo `XLM/-Processado…` |
 | 3 | 顺序：认证 → ATCUD → QR → 留白切；QR 下无业务字 | 样票 QR 垫底；0.3.92 Hash 被横切 |
 | 4 | ATCUD + QR **居中**；QR module **6** | VOZ 居中大 QR |
@@ -39,7 +39,7 @@
 
 ```text
 ① 抬头（居中）：店名 1×2 加粗 → 空一行 → 地址/NIF（1×1）
-② Fatura No. / 日期 / 联次（左）
+② **Fatura No.（加粗）** / 日期 / 联次（左）
 ③ 客户（左）
 ④ 明细表：虚线 → 列头 → 虚线 → 单行明细（上下虚线与列头紧贴、不插空行）
 ⑤ Liquido / IVA（普通）→ **TOTAL（加粗倍高）** → 付款 → Resumo IVA
@@ -68,7 +68,25 @@
 ## 5. 验收
 
 1. 输出含 `Fatura No.:`；无独立 `Hash:`  
-2. 认证在 ATCUD/QR 之前；含四字 + `Processado`  
-3. QR 后至 cut 无业务 ASCII 行  
-4. `rg 'func RenderESCPOS'`=1；`Hash:` 拼接在 Render 中不存在  
-5. `receiptWidth=48`；虚线与 `moneyRow` 行宽均为 48  
+2. **`Fatura No.` 行前后有 `ESC E` 开/关加粗**；日期与联次行无加粗  
+3. 认证在 ATCUD/QR 之前；含四字 + `Processado`  
+4. QR 后至 cut 无业务 ASCII 行  
+5. `rg 'func RenderESCPOS'`=1；`Hash:` 拼接在 Render 中不存在  
+6. `receiptWidth=48`；虚线与 `moneyRow` 行宽均为 48  
+
+---
+
+## 6. 实现状态
+
+| 定法 | 代码 |
+|------|------|
+| 店名加粗倍高、TOTAL 加粗倍高 | 已落地 |
+| **Fatura No. 整行加粗** | **已落地**（`RenderESCPOS`：`ESC E` 包 `formatFaturaNoLine`） |
+
+## 修订记录
+
+| 日期 | 变更 |
+|------|------|
+| （既有） | 定稿：48 列、店名/TOTAL、认证→ATCUD→QR |
+| 2026-08-25 | P0 #1：`Fatura No.` **整行加粗**（仅 `ESC E`，不倍高）；日期/联次普通；对齐店内样票观感 |
+| 2026-08-25 | 实现落地：`RenderESCPOS` + `TestRenderESCPOS_FaturaNoBoldOnly` |

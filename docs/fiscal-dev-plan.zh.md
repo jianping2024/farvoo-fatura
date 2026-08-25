@@ -245,6 +245,7 @@ M2（主进程 + 开票可用）；账单同步入草稿（已有）。宜在 **
 | 界面用语 | 见 [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md) §0；禁止把 `bill_sync_drafts`、LOCAL、M3 等暴露给店员 |
 | 业态 | `restaurant` \| `retail` 登录时选定；餐馆显示「待开票账单」；商超不显示 |
 | 订单四步 | 手动与「待开票账单 → 转订单」共用同一套进度条与开票页 |
+| 工作台双 CTA | 餐馆：`新建订单` 与 `处理待开票账单` **同级**；有 open 待开票时后者 **优先焦点**（定法见 [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)） |
 | 重打 | 克隆 ORIGINAL `payload_json`，`print_purpose=REPRINT`，新 `local_print_jobs` 行；**禁止**重签 |
 | 签发 | 仍唯一 `service.IssueDocument` → `store.IssueFT`（及既有 `IssueFromBillDraft` / manual 入口） |
 
@@ -449,3 +450,4 @@ M1–M5 主路径稳定。
 | 2026-08-21 | **M2.5 完成**：按人/NIF/`discard`/详情已开标记 + 回归全绿；VERSION 0.3.87 |
 | 2026-08-22 | 增补 **M2.6**（正式 Admin + FT 收口）；UI 对齐 [`fiscal-admin-ui-prototype`](fiscal-admin-ui-prototype/README.md) v2；M3 降为 M2.6 之后 |
 | 2026-08-22 | **M2.6 完成**（0.4.0）：重打 API + 正式 Admin v2 + `fiscal-reprint-regression.mjs` |
+| 2026-08-25 | 工作台双 CTA **同级** + 有待开票时优先焦点：写入 M2.6 P0；权威见原型 README |

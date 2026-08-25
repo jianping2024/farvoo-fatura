@@ -155,6 +155,48 @@ func TestFormatFaturaNoLine(t *testing.T) {
 	}
 }
 
+func TestRenderESCPOS_FaturaNoBoldOnly(t *testing.T) {
+	p := &Payload{
+		InvoiceNo: "FT FT2026DEMO01/3",
+		PrintPurpose: "ORIGINAL",
+		IssuedAt:     "2026-08-21T18:26:25",
+		Merchant: MerchantBlock{
+			LegalName: "Farvoo Demo Lda", Address: "Rua Demo 1",
+			TaxRegistrationNumber: "517535009",
+		},
+		Customer: CustomerBlock{TaxID: "999999990", CompanyName: "Consumidor Final"},
+		Totals:   TotalsBlock{NetTotal: "1.00", TaxPayable: "0.00", GrossTotal: "1.00"},
+		Compliance: ComplianceBlock{
+			ATCUD: "X-1", QR: QRBlock{Content: "A:1"}, HashControlChars: "ABCD",
+			CertificationLine: "Processado por programa certificado n. 0/AT",
+		},
+	}
+	raw := RenderESCPOS(p)
+	fatura := escposenc.Windows1252("Fatura No.: FT FT2026DEMO01/3")
+	date := escposenc.Windows1252("21/08/2026 18:26")
+	fi := bytes.Index(raw, fatura)
+	di := bytes.Index(raw, date)
+	if fi < 0 || di <= fi {
+		t.Fatal("fatura/date order")
+	}
+	before := raw[:fi]
+	if !bytes.HasSuffix(before, []byte{0x1B, 0x45, 0x01}) {
+		tail := before
+		if len(tail) > 8 {
+			tail = tail[len(tail)-8:]
+		}
+		t.Fatalf("Fatura No. must end with ESC E 1 before text, tail %x", tail)
+	}
+	between := raw[fi+len(fatura) : di]
+	// After fatura text: LF, ESC E 0, then date (no GS ! size change on fatura)
+	if !bytes.HasPrefix(between, []byte{'\n', 0x1B, 0x45, 0x00}) {
+		t.Fatalf("after Fatura want LF + ESC E 0, got %x", between)
+	}
+	if bytes.Contains(between, []byte{0x1D, 0x21}) {
+		t.Fatal("Fatura No. must not use GS ! double-height")
+	}
+}
+
 func TestFormatItemLine_SingleRow(t *testing.T) {
 	got := formatItemLine("2.00", "19.95", "0.23", "Guarana Antarctica", "39.90", receiptWidth)
 	if utf8.RuneCountInString(got) != receiptWidth {

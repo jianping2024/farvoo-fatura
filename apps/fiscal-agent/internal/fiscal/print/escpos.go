@@ -65,8 +65,10 @@ func RenderESCPOS(p *Payload) []byte {
 	}
 	align(0)
 
-	// ② document identity
+	// ② document identity — Fatura No. bold only (layout P0 #1); date/via regular
+	bold(true)
 	w(formatFaturaNoLine(p.InvoiceNo))
+	bold(false)
 	if dt := formatIssuedAt(p.IssuedAt); dt != "" {
 		w(dt)
 	}
