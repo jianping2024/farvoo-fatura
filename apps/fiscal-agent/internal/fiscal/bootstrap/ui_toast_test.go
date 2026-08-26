@@ -185,6 +185,12 @@ func TestAdminHTMLBillDraftEventsUnique(t *testing.T) {
 		"function renderBillSplitWorkbench",
 		"function saveSplitAllocation",
 		"function issueBill",
+		"function localRemainingMap",
+		"function paintSplitPoolAndHint",
+		"function splitOverAllocMessages",
+		"function assertSplitNotOverAllocated",
+		"function onSplitQtyEdited",
+		"function syncCurrentSharesFromDom",
 	} {
 		if n := strings.Count(adminHTML, fn); n != 1 {
 			t.Fatalf("%s must appear exactly once, got %d", fn, n)
@@ -208,10 +214,16 @@ func TestAdminHTMLBillDraftEventsUnique(t *testing.T) {
 	if strings.Count(adminHTML, `id="view-bill-split"`) != 1 {
 		t.Fatal("bill split must be dedicated main view view-bill-split")
 	}
+	if strings.Count(adminHTML, `id="splitAllocHint"`) != 1 {
+		t.Fatal("over-alloc live hint splitAllocHint must exist exactly once")
+	}
 	if strings.Contains(adminHTML, `id="billDetail"`) {
 		t.Fatal("legacy billDetail under list must be removed")
 	}
 	if !strings.Contains(adminHTML, "/allocation") || !strings.Contains(adminHTML, "allocation_revision") {
 		t.Fatal("split workbench must save allocation and pass allocation_revision on person issue")
+	}
+	if strings.Contains(adminHTML, "function remainingMap") {
+		t.Fatal("remove remainingMap; localRemainingMap is the ONLY pool calculator")
 	}
 }

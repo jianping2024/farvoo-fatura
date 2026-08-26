@@ -379,6 +379,7 @@
           </div>
         </div>
         <p class="hint" id="splitProgress">—</p>
+        <p class="hint" id="splitAllocHint" style="display:none;color:#b00020"></p>
         <div class="person-chips" id="splitPersonChips"></div>
         <div class="split bill-split-grid">
           <div class="panel">
@@ -1264,8 +1265,139 @@
     return snap.source_lines || snap.SourceLines || [];
   }
 
-  function remainingMap(detail) {
-    return detail.remaining || {};
+  /** ONLY rational qty helpers for bill-split UI (aligned with server billsync). */
+  function gcdInt(a, b) {
+    a = Math.abs(a); b = Math.abs(b);
+    while (b) { const t = b; b = a % b; a = t; }
+    return a || 1;
+  }
+  function normRat(q) {
+    let n = Number(q && q.num), d = Number(q && q.den);
+    if (!Number.isFinite(n) || !Number.isFinite(d) || d === 0) return { num: 0, den: 1 };
+    const sign = (n < 0) !== (d < 0) ? -1 : 1;
+    n = Math.abs(n); d = Math.abs(d);
+    const g = gcdInt(n, d);
+    return { num: sign * (n / g), den: d / g };
+  }
+  function addRat(a, b) {
+    a = normRat(a); b = normRat(b);
+    return normRat({ num: a.num * b.den + b.num * a.den, den: a.den * b.den });
+  }
+  function subRat(a, b) {
+    a = normRat(a); b = normRat(b);
+    return normRat({ num: a.num * b.den - b.num * a.den, den: a.den * b.den });
+  }
+  function parseQtyLabel(raw) {
+    const s = String(raw == null ? '' : raw).trim();
+    if (!s) return { num: 1, den: 1 };
+    let m = /^(\d+)\s+(\d+)\s*\/\s*(\d+)$/.exec(s);
+    if (m) return normRat({ num: (+m[1]) * (+m[3]) + (+m[2]), den: +m[3] });
+    m = /^(\d+)\s*\/\s*(\d+)$/.exec(s);
+    if (m) return normRat({ num: +m[1], den: +m[2] });
+    m = /^(\d+)$/.exec(s);
+    if (m) return { num: +m[1], den: 1 };
+    const f = parseFloat(s);
+    if (Number.isFinite(f) && f >= 0) {
+      const den = 10000;
+      return normRat({ num: Math.round(f * den), den });
+    }
+    return { num: 0, den: 1 };
+  }
+  function formatRat(q) {
+    q = normRat(q);
+    if (q.num === 0) return '0';
+    if (q.den === 1) return String(q.num);
+    const sign = q.num < 0 ? '-' : '';
+    const n = Math.abs(q.num);
+    const whole = Math.floor(n / q.den);
+    const rem = n % q.den;
+    if (whole > 0 && rem > 0) return sign + whole + ' ' + rem + '/' + q.den;
+    if (whole > 0) return sign + String(whole);
+    return sign + rem + '/' + q.den;
+  }
+  function ratPositive(q) {
+    return normRat(q).num > 0;
+  }
+  function ratNegative(q) {
+    return normRat(q).num < 0;
+  }
+
+  /** Live remaining = source_lines − sum(local allocation shares). ONLY pool / over-alloc source for UI. */
+  function localRemainingMap(detail, people) {
+    const lines = sourceLinesOf(detail);
+    const out = {};
+    lines.forEach(ln => {
+      out[ln.line_key] = parseQtyLabel(ln.qty || '1');
+    });
+    (people || []).forEach(p => {
+      (p.shares || []).forEach(sh => {
+        if (!Object.prototype.hasOwnProperty.call(out, sh.line_key)) return;
+        out[sh.line_key] = subRat(out[sh.line_key], sh.qty || { num: 0, den: 1 });
+      });
+    });
+    const labels = {};
+    Object.keys(out).forEach(k => { labels[k] = formatRat(out[k]); });
+    return { qty: out, labels };
+  }
+
+  /** ONLY over-alloc reporter: allocated + remaining must equal source; rem&lt;0 → over. */
+  function splitOverAllocMessages(detail, people) {
+    const lines = sourceLinesOf(detail);
+    const live = localRemainingMap(detail, people);
+    const msgs = [];
+    lines.forEach(ln => {
+      const rem = live.qty[ln.line_key] || { num: 0, den: 1 };
+      if (!ratNegative(rem)) return;
+      const src = parseQtyLabel(ln.qty || '1');
+      const allocated = subRat(src, rem);
+      msgs.push(
+        '「' + (ln.name || ln.item_code) + '」超分：总量 ' + formatRat(src) +
+        '，已分 ' + formatRat(allocated) + '（超出 ' + formatRat({ num: -normRat(rem).num, den: normRat(rem).den }) + '）'
+      );
+    });
+    return msgs;
+  }
+
+  /** Paint left pool + progress + over hint without rebuilding right-side inputs (live edit). */
+  function paintSplitPoolAndHint() {
+    const detail = currentBillDetail;
+    if (!detail) return;
+    const issued = issuedSet(detail.issued_scopes);
+    const lines = sourceLinesOf(detail);
+    const live = localRemainingMap(detail, splitState.people);
+    const overs = splitOverAllocMessages(detail, splitState.people);
+    let remHint = Object.keys(live.qty).filter(k => ratPositive(live.qty[k])).length;
+    $('#splitProgress').textContent =
+      '进度：已开 ' + Object.keys(issued).length + ' 人 · 剩余行 ' + remHint +
+      ' · 分单版本 ' + splitState.revision;
+    const hint = $('#splitAllocHint');
+    if (hint) {
+      if (overs.length) {
+        hint.style.display = '';
+        hint.textContent = overs.join('；');
+        const key = overs.join('|');
+        if (splitState._overKey !== key) {
+          splitState._overKey = key;
+          toast(overs[0], 'error');
+        }
+      } else {
+        hint.style.display = 'none';
+        hint.textContent = '';
+        splitState._overKey = '';
+      }
+    }
+    const pool = $('#splitPoolBody');
+    if (!pool) return;
+    pool.innerHTML = '';
+    lines.forEach(ln => {
+      const key = ln.line_key;
+      const leftQ = live.qty[key] || { num: 0, den: 1 };
+      if (!ratPositive(leftQ)) return;
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + (ln.name || ln.item_code) + '</td><td>' + formatRat(leftQ) + '</td>' +
+        '<td><button type="button" data-add-share="' + key + '">加入当前人</button></td>';
+      pool.appendChild(tr);
+    });
   }
 
   function renderBillSplitWorkbench() {
@@ -1276,12 +1408,7 @@
     $('#splitTable').textContent = snap.table_display_name || draft.source_sale_id || '—';
     splitState.revision = detail.allocation_revision || 0;
     const issued = issuedSet(detail.issued_scopes);
-    const rem = remainingMap(detail);
     const lines = sourceLinesOf(detail);
-    let remHint = Object.keys(rem).filter(k => rem[k] && rem[k] !== '0').length;
-    $('#splitProgress').textContent =
-      '进度：已开 ' + Object.keys(issued).length + ' 人 · 剩余行 ' + remHint +
-      ' · 分单版本 ' + splitState.revision;
     const chips = $('#splitPersonChips');
     chips.innerHTML = '';
     splitState.people.forEach(p => {
@@ -1293,23 +1420,15 @@
       b.disabled = !!done;
       b.onclick = () => {
         if (done) return;
+        const cur = splitState.people.find(x => x.scope_id === splitState.currentScopeId);
+        if (cur) readSharesFromDom(cur);
         splitState.currentScopeId = p.scope_id;
         $('#splitPersonName').value = p.name || '';
         renderBillSplitWorkbench();
       };
       chips.appendChild(b);
     });
-    const pool = $('#splitPoolBody');
-    pool.innerHTML = '';
-    lines.forEach(ln => {
-      const key = ln.line_key;
-      const left = rem[key] != null ? rem[key] : (ln.qty || '1');
-      if (!left || left === '0') return;
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td>' + (ln.name || ln.item_code) + '</td><td>' + left + '</td>' +
-        '<td><button type="button" data-add-share="' + key + '">加入当前人</button></td>';
-      pool.appendChild(tr);
-    });
+    paintSplitPoolAndHint();
     const cur = splitState.people.find(p => p.scope_id === splitState.currentScopeId);
     $('#splitCurrentName').textContent = cur ? (cur.name || '—') : '（请添加或选择）';
     const shareBody = $('#splitShareBody');
@@ -1317,9 +1436,9 @@
     if (cur) {
       (cur.shares || []).forEach((sh, idx) => {
         const ln = lines.find(x => x.line_key === sh.line_key) || {};
-        const q = sh.qty || { num: 1, den: 1 };
-        const whole = q.den === 1 ? String(q.num) : String(Math.floor(q.num / q.den) || '');
-        const num = q.den === 1 ? '' : String(q.num % q.den);
+        const q = normRat(sh.qty || { num: 1, den: 1 });
+        const whole = q.den === 1 ? String(q.num) : String(Math.floor(Math.abs(q.num) / q.den) || '');
+        const num = q.den === 1 ? '' : String(Math.abs(q.num) % q.den);
         const den = q.den === 1 ? '' : String(q.den);
         const tr = document.createElement('tr');
         tr.innerHTML =
@@ -1335,6 +1454,20 @@
     const wholeAct = $('#splitWholeActions');
     if (wholeAct) {
       wholeAct.classList.toggle('hidden', hasPersonIssued || (splitState.people || []).length > 0);
+    }
+  }
+
+  function syncCurrentSharesFromDom() {
+    const cur = splitState.people.find(p => p.scope_id === splitState.currentScopeId);
+    if (cur) readSharesFromDom(cur);
+    return cur;
+  }
+
+  function assertSplitNotOverAllocated() {
+    const msgs = splitOverAllocMessages(currentBillDetail, splitState.people);
+    if (msgs.length) {
+      toast(msgs[0], 'error');
+      throw new Error(msgs[0]);
     }
   }
 
@@ -1400,6 +1533,7 @@
       if (names[k]) throw new Error('禁止重名');
       names[k] = true;
     }
+    assertSplitNotOverAllocated();
     const detail = await j('PUT', '/local/v1/bill-drafts/' + encodeURIComponent(currentBill) + '/allocation', {
       expected_revision: splitState.revision,
       allocation: { people: splitState.people }
@@ -1735,8 +1869,14 @@
     if (!cur) { toast('请先添加用餐人', 'error'); return; }
     readSharesFromDom(cur);
     if ((cur.shares || []).some(s => s.line_key === key)) { toast('此人已有该菜', 'error'); return; }
+    const live = localRemainingMap(currentBillDetail, splitState.people);
+    const leftQ = live.qty[key];
+    if (!leftQ || !ratPositive(leftQ)) { toast('该菜已分完', 'error'); return; }
+    // Default: take all remaining if ≤1, else 1.
+    const one = { num: 1, den: 1 };
+    const take = (leftQ.num * one.den <= one.num * leftQ.den) ? normRat(leftQ) : one;
     cur.shares = cur.shares || [];
-    cur.shares.push({ line_key: key, qty: { num: 1, den: 1 } });
+    cur.shares.push({ line_key: key, qty: take });
     renderBillSplitWorkbench();
   });
 
@@ -1749,6 +1889,22 @@
     cur.shares.splice(parseInt(btn.dataset.rmShare, 10), 1);
     renderBillSplitWorkbench();
   });
+
+  /** Qty edits: sync shares → refresh left pool live (do NOT rebuild inputs). ONLY live-edit path. */
+  function onSplitQtyEdited() {
+    syncCurrentSharesFromDom();
+    paintSplitPoolAndHint();
+  }
+  ['input', 'change'].forEach(ev => {
+    $('#splitShareBody').addEventListener(ev, e => {
+      if (!e.target.closest('[data-sh-whole],[data-sh-num],[data-sh-den]')) return;
+      onSplitQtyEdited();
+    });
+  });
+  $('#splitShareBody').addEventListener('blur', e => {
+    if (!e.target.closest('[data-sh-whole],[data-sh-num],[data-sh-den]')) return;
+    onSplitQtyEdited();
+  }, true);
 
   $('#btnRefreshBills').onclick = () => withBusy($('#btnRefreshBills'), '刷新中…', async () => {
     try { await refreshBills(); toast('已刷新', 'success'); }

@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.9
+
+**分单左右数量守恒 + 超分实时提示**
+
+- 左边剩余 = 源行 − 本机全部分配（`localRemainingMap` 唯一）；改右边整/分子/分母即时刷新左边（`onSplitQtyEdited` → `paintSplitPoolAndHint`，不重建输入框）。
+- 超分：红字 `#splitAllocHint` + toast；保存/开票前 `assertSplitNotOverAllocated` 阻断。
+- 分完（剩余≤0）不再出现在左边。
+
 ## 0.4.8
 
 **收银账单本机按菜分单工作台**
