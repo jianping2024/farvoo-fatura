@@ -371,7 +371,7 @@
         <div class="topbar">
           <div>
             <h1>分单开票 · 桌 <span id="splitTable">—</span></h1>
-            <p class="hint">左：剩余菜品 · 右：当前人份额 · 开票条签发。已开部分从总池消去。</p>
+            <p class="hint">顶：分单人（可点；已开 ✓ 只读）· 中：标记名+份额 · 右：购方开票。签发即提交；切人丢未保存改动。</p>
           </div>
           <div class="actions">
             <button type="button" class="secondary" id="btnSplitBack">返回列表</button>
@@ -394,11 +394,7 @@
           </div>
           <div class="panel">
             <h2>当前人 · <span id="splitCurrentName">—</span></h2>
-            <div class="field"><label>姓名</label><input id="splitPersonName" placeholder="例如 Maria" /></div>
-            <div class="actions">
-              <button type="button" id="btnSplitAddPerson">添加用餐人</button>
-              <button type="button" class="secondary" id="btnSplitSaveAlloc">保存分单</button>
-            </div>
+            <div class="field"><label>分单标记名</label><input id="splitPersonName" placeholder="输入姓名即建人 / 可改未开人" /></div>
             <table>
               <thead><tr><th>菜品</th><th>整</th><th>分子</th><th>分母</th><th></th></tr></thead>
               <tbody id="splitShareBody"></tbody>
@@ -407,7 +403,7 @@
           <div class="panel" id="splitIssueRail">
             <h2>开票</h2>
             <div class="field"><label>购方 NIF</label><input id="splitNif" placeholder="空 = 散客" list="customerNifList" /></div>
-            <div class="field"><label>购方名称</label><input id="splitName" placeholder="Consumidor Final" /></div>
+            <div class="field"><label>购方名称</label><input id="splitName" placeholder="Consumidor Final（票面购方）" /></div>
             <div class="actions">
               <button type="button" id="btnSplitPersonIssue">签发此人发票</button>
             </div>
@@ -1246,7 +1242,8 @@
     billEventsSource = null;
   }
 
-  let splitState = { people: [], currentScopeId: '', revision: 0 };
+  /** Split workbench: committed = last server allocation; live may diverge until issue or discard-on-switch. */
+  let splitState = { people: [], committedPeople: [], currentScopeId: '', revision: 0, _overKey: '' };
 
   function uuid4() {
     if (crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -1263,6 +1260,50 @@
   function sourceLinesOf(detail) {
     const snap = detail.payload || {};
     return snap.source_lines || snap.SourceLines || [];
+  }
+
+  /** ONLY mapper: allocation JSON people → UI people (deep copy). */
+  function mapAllocPeople(people) {
+    return (people || []).map(p => ({
+      scope_id: p.scope_id,
+      name: p.name || '',
+      shares: (p.shares || []).map(s => ({
+        line_key: s.line_key,
+        qty: s.qty ? { num: Number(s.qty.num), den: Number(s.qty.den) || 1 } : { num: 1, den: 1 }
+      }))
+    }));
+  }
+
+  function clearSplitBuyerFields() {
+    $('#splitNif').value = '';
+    $('#splitName').value = '';
+  }
+
+  function splitIssuedMap(detail) {
+    return issuedSet((detail || currentBillDetail || {}).issued_scopes);
+  }
+
+  function isSplitPersonIssued(scopeId, issued) {
+    const m = issued || splitIssuedMap();
+    return !!m['person:' + String(scopeId || '')];
+  }
+
+  function currentSplitPerson() {
+    return splitState.people.find(p => p.scope_id === splitState.currentScopeId) || null;
+  }
+
+  /** Restore live people from last committed snapshot (discard uncommitted). ONLY discard path. */
+  function discardSplitLocalEdits() {
+    splitState.people = mapAllocPeople(splitState.committedPeople);
+  }
+
+  /** Apply detail payload into committed + live + revision. ONLY load-from-server path. */
+  function applySplitDetailAllocation(detail) {
+    currentBillDetail = detail;
+    const people = mapAllocPeople((detail.allocation && detail.allocation.people) || []);
+    splitState.committedPeople = mapAllocPeople(people);
+    splitState.people = mapAllocPeople(people);
+    splitState.revision = detail.allocation_revision || 0;
   }
 
   /** ONLY rational qty helpers for bill-split UI (aligned with server billsync). */
@@ -1340,7 +1381,7 @@
     return { qty: out, labels };
   }
 
-  /** ONLY over-alloc reporter: allocated + remaining must equal source; rem&lt;0 → over. */
+  /** ONLY over-alloc reporter. */
   function splitOverAllocMessages(detail, people) {
     const lines = sourceLinesOf(detail);
     const live = localRemainingMap(detail, people);
@@ -1358,11 +1399,11 @@
     return msgs;
   }
 
-  /** Paint left pool + progress + over hint without rebuilding right-side inputs (live edit). */
+  /** Paint left pool + progress + over hint without rebuilding right-side inputs. */
   function paintSplitPoolAndHint() {
     const detail = currentBillDetail;
     if (!detail) return;
-    const issued = issuedSet(detail.issued_scopes);
+    const issued = splitIssuedMap(detail);
     const lines = sourceLinesOf(detail);
     const live = localRemainingMap(detail, splitState.people);
     const overs = splitOverAllocMessages(detail, splitState.people);
@@ -1388,6 +1429,7 @@
     }
     const pool = $('#splitPoolBody');
     if (!pool) return;
+    const readonly = isSplitPersonIssued(splitState.currentScopeId, issued);
     pool.innerHTML = '';
     lines.forEach(ln => {
       const key = ln.line_key;
@@ -1395,9 +1437,54 @@
       if (!ratPositive(leftQ)) return;
       const tr = document.createElement('tr');
       tr.innerHTML = '<td>' + (ln.name || ln.item_code) + '</td><td>' + formatRat(leftQ) + '</td>' +
-        '<td><button type="button" data-add-share="' + key + '">加入当前人</button></td>';
+        '<td>' + (readonly ? '' : '<button type="button" data-add-share="' + key + '">加入当前人</button>') + '</td>';
       pool.appendChild(tr);
     });
+  }
+
+  /** ONLY chip / current-person switch (discards uncommitted; clears buyer). */
+  function selectSplitPerson(scopeId) {
+    const sid = String(scopeId || '');
+    if (!sid) return;
+    if (sid !== splitState.currentScopeId) {
+      discardSplitLocalEdits();
+      clearSplitBuyerFields();
+    }
+    splitState.currentScopeId = sid;
+    const p = splitState.people.find(x => x.scope_id === sid);
+    $('#splitPersonName').value = p ? (p.name || '') : '';
+    renderBillSplitWorkbench();
+  }
+
+  /**
+   * ONLY create/rename via marker name field.
+   * Empty slot + name → new person; existing unissued → rename; issued → no-op.
+   */
+  function applySplitMarkerNameFromInput() {
+    if (isSplitPersonIssued(splitState.currentScopeId)) return;
+    const name = $('#splitPersonName').value.trim();
+    if (!name) return;
+    const cur = currentSplitPerson();
+    if (cur && !isSplitPersonIssued(cur.scope_id)) {
+      if (personKey(cur.name) === personKey(name)) return;
+      if (splitState.people.some(p => p.scope_id !== cur.scope_id && personKey(p.name) === personKey(name))) {
+        toast('禁止重名', 'error');
+        $('#splitPersonName').value = cur.name || '';
+        return;
+      }
+      cur.name = name;
+      renderBillSplitWorkbench();
+      return;
+    }
+    if (splitState.people.some(p => personKey(p.name) === personKey(name))) {
+      toast('禁止重名', 'error');
+      return;
+    }
+    const id = uuid4();
+    splitState.people.push({ scope_id: id, name, shares: [] });
+    splitState.currentScopeId = id;
+    clearSplitBuyerFields();
+    renderBillSplitWorkbench();
   }
 
   function renderBillSplitWorkbench() {
@@ -1407,30 +1494,28 @@
     const draft = detail.draft || {};
     $('#splitTable').textContent = snap.table_display_name || draft.source_sale_id || '—';
     splitState.revision = detail.allocation_revision || 0;
-    const issued = issuedSet(detail.issued_scopes);
+    const issued = splitIssuedMap(detail);
     const lines = sourceLinesOf(detail);
     const chips = $('#splitPersonChips');
     chips.innerHTML = '';
     splitState.people.forEach(p => {
-      const done = issued['person:' + p.scope_id];
+      const done = isSplitPersonIssued(p.scope_id, issued);
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = (p.name || '未命名') + (done ? ' ✓' : '');
       b.classList.toggle('active', p.scope_id === splitState.currentScopeId);
-      b.disabled = !!done;
-      b.onclick = () => {
-        if (done) return;
-        const cur = splitState.people.find(x => x.scope_id === splitState.currentScopeId);
-        if (cur) readSharesFromDom(cur);
-        splitState.currentScopeId = p.scope_id;
-        $('#splitPersonName').value = p.name || '';
-        renderBillSplitWorkbench();
-      };
+      b.onclick = () => selectSplitPerson(p.scope_id);
       chips.appendChild(b);
     });
     paintSplitPoolAndHint();
-    const cur = splitState.people.find(p => p.scope_id === splitState.currentScopeId);
-    $('#splitCurrentName').textContent = cur ? (cur.name || '—') : '（请添加或选择）';
+    const cur = currentSplitPerson();
+    const readonly = !!(cur && isSplitPersonIssued(cur.scope_id, issued));
+    $('#splitCurrentName').textContent = cur ? (cur.name || '—') : '（输入标记名建人）';
+    $('#splitPersonName').disabled = readonly;
+    $('#splitNif').disabled = readonly;
+    $('#splitName').disabled = readonly;
+    const issueBtn = $('#btnSplitPersonIssue');
+    if (issueBtn) issueBtn.disabled = readonly || !cur;
     const shareBody = $('#splitShareBody');
     shareBody.innerHTML = '';
     if (cur) {
@@ -1441,12 +1526,18 @@
         const num = q.den === 1 ? '' : String(Math.abs(q.num) % q.den);
         const den = q.den === 1 ? '' : String(q.den);
         const tr = document.createElement('tr');
-        tr.innerHTML =
-          '<td>' + (ln.name || sh.line_key) + '</td>' +
-          '<td><input data-sh-whole="' + idx + '" value="' + whole + '" style="width:3rem" /></td>' +
-          '<td><input data-sh-num="' + idx + '" value="' + num + '" style="width:3rem" /></td>' +
-          '<td><input data-sh-den="' + idx + '" value="' + den + '" style="width:3rem" /></td>' +
-          '<td><button type="button" class="secondary" data-rm-share="' + idx + '">移除</button></td>';
+        if (readonly) {
+          tr.innerHTML =
+            '<td>' + (ln.name || sh.line_key) + '</td>' +
+            '<td>' + whole + '</td><td>' + num + '</td><td>' + den + '</td><td></td>';
+        } else {
+          tr.innerHTML =
+            '<td>' + (ln.name || sh.line_key) + '</td>' +
+            '<td><input data-sh-whole="' + idx + '" value="' + whole + '" style="width:3rem" /></td>' +
+            '<td><input data-sh-num="' + idx + '" value="' + num + '" style="width:3rem" /></td>' +
+            '<td><input data-sh-den="' + idx + '" value="' + den + '" style="width:3rem" /></td>' +
+            '<td><button type="button" class="secondary" data-rm-share="' + idx + '">移除</button></td>';
+        }
         shareBody.appendChild(tr);
       });
     }
@@ -1458,13 +1549,14 @@
   }
 
   function syncCurrentSharesFromDom() {
-    const cur = splitState.people.find(p => p.scope_id === splitState.currentScopeId);
+    if (isSplitPersonIssued(splitState.currentScopeId)) return null;
+    const cur = currentSplitPerson();
     if (cur) readSharesFromDom(cur);
     return cur;
   }
 
-  function assertSplitNotOverAllocated() {
-    const msgs = splitOverAllocMessages(currentBillDetail, splitState.people);
+  function assertSplitNotOverAllocated(people) {
+    const msgs = splitOverAllocMessages(currentBillDetail, people || splitState.people);
     if (msgs.length) {
       toast(msgs[0], 'error');
       throw new Error(msgs[0]);
@@ -1495,54 +1587,69 @@
     person.shares = shares;
   }
 
-  async function openBillDetail(draftId) {
-    currentBill = draftId;
-    const detail = await j('GET', '/local/v1/bill-drafts/' + encodeURIComponent(draftId));
-    currentBillDetail = detail;
-    const alloc = detail.allocation || { people: [] };
-    splitState.people = (alloc.people || []).map(p => ({
-      scope_id: p.scope_id,
-      name: p.name || '',
-      shares: (p.shares || []).map(s => ({
-        line_key: s.line_key,
-        qty: s.qty || { num: 1, den: 1 }
-      }))
-    }));
-    splitState.revision = detail.allocation_revision || 0;
-    const issued = issuedSet(detail.issued_scopes);
-    const firstOpen = splitState.people.find(p => !issued['person:' + p.scope_id]);
-    splitState.currentScopeId = firstOpen ? firstOpen.scope_id : (splitState.people[0] && splitState.people[0].scope_id) || '';
-    $('#splitNif').value = '';
-    $('#splitName').value = '';
-    $('#splitPersonName').value = firstOpen ? (firstOpen.name || '') : '';
-    showView('bill-split');
-    renderBillSplitWorkbench();
-    bindCustomerNifAutofill($('#splitNif'), $('#splitName'));
-  }
-
-  async function saveSplitAllocation() {
-    const cur = splitState.people.find(p => p.scope_id === splitState.currentScopeId);
-    if (cur) {
-      readSharesFromDom(cur);
-      cur.name = $('#splitPersonName').value.trim() || cur.name;
-    }
+  /**
+   * Build PUT allocation: issued people MUST be exact committed copies;
+   * only unissued live edits merge. ONLY commit payload builder.
+   */
+  function buildAllocationForCommit() {
+    const issued = splitIssuedMap();
+    syncCurrentSharesFromDom();
+    applySplitMarkerNameFromInput();
+    const liveById = {};
+    splitState.people.forEach(p => { liveById[p.scope_id] = p; });
+    const out = [];
+    const seen = {};
+    splitState.committedPeople.forEach(p => {
+      const sid = p.scope_id;
+      seen[sid] = true;
+      if (isSplitPersonIssued(sid, issued)) {
+        out.push(mapAllocPeople([p])[0]);
+        return;
+      }
+      const live = liveById[sid];
+      out.push(mapAllocPeople([live || p])[0]);
+    });
+    splitState.people.forEach(p => {
+      if (seen[p.scope_id]) return;
+      if (isSplitPersonIssued(p.scope_id, issued)) return;
+      out.push(mapAllocPeople([p])[0]);
+    });
+    // Over-alloc check must use the commit payload, not stale live-only view.
+    assertSplitNotOverAllocated(out);
     const names = {};
-    for (const p of splitState.people) {
+    for (const p of out) {
       const k = personKey(p.name);
-      if (!k) throw new Error('人名不能为空');
+      if (!k) throw new Error('分单标记名不能为空');
       if (names[k]) throw new Error('禁止重名');
       names[k] = true;
     }
-    assertSplitNotOverAllocated();
+    return { people: out };
+  }
+
+  /** ONLY allocation writer used by person issue (no standalone save button). */
+  async function commitSplitAllocationForIssue() {
+    const allocation = buildAllocationForCommit();
     const detail = await j('PUT', '/local/v1/bill-drafts/' + encodeURIComponent(currentBill) + '/allocation', {
       expected_revision: splitState.revision,
-      allocation: { people: splitState.people }
+      allocation
     });
-    currentBillDetail = detail;
-    splitState.revision = detail.allocation_revision || 0;
-    splitState.people = (detail.allocation && detail.allocation.people) || splitState.people;
+    applySplitDetailAllocation(detail);
+    return detail;
+  }
+
+  async function openBillDetail(draftId) {
+    currentBill = draftId;
+    const detail = await j('GET', '/local/v1/bill-drafts/' + encodeURIComponent(draftId));
+    applySplitDetailAllocation(detail);
+    const issued = splitIssuedMap(detail);
+    const firstOpen = splitState.people.find(p => !isSplitPersonIssued(p.scope_id, issued));
+    splitState.currentScopeId = firstOpen ? firstOpen.scope_id : (splitState.people[0] && splitState.people[0].scope_id) || '';
+    clearSplitBuyerFields();
+    const cur = currentSplitPerson();
+    $('#splitPersonName').value = firstOpen ? (firstOpen.name || '') : (cur ? (cur.name || '') : '');
+    showView('bill-split');
     renderBillSplitWorkbench();
-    toast('分单已保存', 'success');
+    bindCustomerNifAutofill($('#splitNif'), $('#splitName'));
   }
 
   async function issueCurrentOrder() {
@@ -1827,23 +1934,15 @@
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnSplitAddPerson').onclick = () => {
-    const name = $('#splitPersonName').value.trim();
-    if (!name) { toast('请输入姓名', 'error'); return; }
-    if (splitState.people.some(p => personKey(p.name) === personKey(name))) {
-      toast('禁止重名', 'error'); return;
-    }
-    const cur = splitState.people.find(p => p.scope_id === splitState.currentScopeId);
-    if (cur) readSharesFromDom(cur);
-    const id = uuid4();
-    splitState.people.push({ scope_id: id, name, shares: [] });
-    splitState.currentScopeId = id;
-    renderBillSplitWorkbench();
-  };
-
-  $('#btnSplitSaveAlloc').onclick = () => withBusy($('#btnSplitSaveAlloc'), '保存中…', async () => {
-    try { await saveSplitAllocation(); }
-    catch (er) { toast(errText(er), 'error'); throw er; }
+  $('#splitPersonName').addEventListener('blur', () => {
+    try { applySplitMarkerNameFromInput(); }
+    catch (er) { toast(errText(er), 'error'); }
+  });
+  $('#splitPersonName').addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    try { applySplitMarkerNameFromInput(); }
+    catch (er) { toast(errText(er), 'error'); }
   });
 
   $('#btnSplitWholeIssue').onclick = () => withBusy($('#btnSplitWholeIssue'), '开票中…', async () => {
@@ -1853,8 +1952,13 @@
 
   $('#btnSplitPersonIssue').onclick = () => withBusy($('#btnSplitPersonIssue'), '开票中…', async () => {
     try {
-      await saveSplitAllocation();
-      if (!splitState.currentScopeId) { toast('请先选择用餐人', 'error'); return; }
+      syncCurrentSharesFromDom();
+      applySplitMarkerNameFromInput();
+      if (!splitState.currentScopeId) { toast('请先输入分单标记名', 'error'); return; }
+      if (isSplitPersonIssued(splitState.currentScopeId)) { toast('此人已开票', 'error'); return; }
+      const ready = currentSplitPerson();
+      if (!ready || !(ready.shares || []).length) { toast('请先为当前人分配菜品', 'error'); return; }
+      await commitSplitAllocationForIssue();
       await issueBill('person', splitState.currentScopeId, {
         nif: $('#splitNif').value, name: $('#splitName').value
       });
@@ -1864,15 +1968,16 @@
   $('#splitPoolBody').addEventListener('click', e => {
     const btn = e.target.closest('[data-add-share]');
     if (!btn) return;
-    const key = btn.dataset.addShare;
-    let cur = splitState.people.find(p => p.scope_id === splitState.currentScopeId);
-    if (!cur) { toast('请先添加用餐人', 'error'); return; }
+    if (isSplitPersonIssued(splitState.currentScopeId)) return;
+    applySplitMarkerNameFromInput();
+    let cur = currentSplitPerson();
+    if (!cur) { toast('请先输入分单标记名', 'error'); return; }
     readSharesFromDom(cur);
+    const key = btn.dataset.addShare;
     if ((cur.shares || []).some(s => s.line_key === key)) { toast('此人已有该菜', 'error'); return; }
     const live = localRemainingMap(currentBillDetail, splitState.people);
     const leftQ = live.qty[key];
     if (!leftQ || !ratPositive(leftQ)) { toast('该菜已分完', 'error'); return; }
-    // Default: take all remaining if ≤1, else 1.
     const one = { num: 1, den: 1 };
     const take = (leftQ.num * one.den <= one.num * leftQ.den) ? normRat(leftQ) : one;
     cur.shares = cur.shares || [];
@@ -1883,7 +1988,8 @@
   $('#splitShareBody').addEventListener('click', e => {
     const btn = e.target.closest('[data-rm-share]');
     if (!btn) return;
-    const cur = splitState.people.find(p => p.scope_id === splitState.currentScopeId);
+    if (isSplitPersonIssued(splitState.currentScopeId)) return;
+    const cur = currentSplitPerson();
     if (!cur) return;
     readSharesFromDom(cur);
     cur.shares.splice(parseInt(btn.dataset.rmShare, 10), 1);

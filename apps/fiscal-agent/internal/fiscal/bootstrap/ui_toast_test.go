@@ -183,7 +183,13 @@ func TestAdminHTMLBillDraftEventsUnique(t *testing.T) {
 		"function validatePortugueseNif",
 		"function openBillDetail",
 		"function renderBillSplitWorkbench",
-		"function saveSplitAllocation",
+		"function mapAllocPeople",
+		"function selectSplitPerson",
+		"function applySplitMarkerNameFromInput",
+		"function buildAllocationForCommit",
+		"function commitSplitAllocationForIssue",
+		"function discardSplitLocalEdits",
+		"function applySplitDetailAllocation",
 		"function issueBill",
 		"function localRemainingMap",
 		"function paintSplitPoolAndHint",
@@ -220,10 +226,19 @@ func TestAdminHTMLBillDraftEventsUnique(t *testing.T) {
 	if strings.Contains(adminHTML, `id="billDetail"`) {
 		t.Fatal("legacy billDetail under list must be removed")
 	}
+	if strings.Contains(adminHTML, `id="btnSplitAddPerson"`) || strings.Contains(adminHTML, `id="btnSplitSaveAlloc"`) {
+		t.Fatal("remove Add/Save split buttons; marker name + issue-commit only")
+	}
+	if strings.Contains(adminHTML, "function saveSplitAllocation") {
+		t.Fatal("saveSplitAllocation removed; commitSplitAllocationForIssue is the ONLY allocation PUT")
+	}
 	if !strings.Contains(adminHTML, "/allocation") || !strings.Contains(adminHTML, "allocation_revision") {
-		t.Fatal("split workbench must save allocation and pass allocation_revision on person issue")
+		t.Fatal("split workbench must commit allocation and pass allocation_revision on person issue")
 	}
 	if strings.Contains(adminHTML, "function remainingMap") {
 		t.Fatal("remove remainingMap; localRemainingMap is the ONLY pool calculator")
+	}
+	if strings.Count(adminHTML, "b.disabled = !!done") != 0 {
+		t.Fatal("issued chips must stay clickable (read-only); do not disable")
 	}
 }

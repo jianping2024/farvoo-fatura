@@ -386,6 +386,74 @@ func TestIssueFromBillDraft_PersonOnWholeTableViaAllocation(t *testing.T) {
 	}
 }
 
+func TestSaveAllocation_AfterPersonA_AllowsEditBOnly(t *testing.T) {
+	dir := t.TempDir()
+	db, svc := seedFiscal(t, dir)
+	defer db.Close()
+	payload, _ := json.Marshal(billsync.Snapshot{
+		RequestID: "r-edit-b", SourceSaleID: "s-edit-b", ScopeType: "whole_table", GrossTotal: "6.00",
+		Lines: []billsync.Line{{ItemCode: "A", Name: "X", Qty: "2", UnitPriceGross: "3.00", LineGross: "6.00", VATRate: "23.00"}},
+	})
+	d, err := billsync.IngestCloudJob(db, billsync.CloudJob{ID: "j-edit-b", Payload: payload})
+	if err != nil {
+		t.Fatal(err)
+	}
+	detail, err := svc.GetBillDraftDetail(d.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lineKey := detail.Payload.SourceLines[0].LineKey
+	scopeA := "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+	scopeB := "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+	alloc := billsync.Allocation{People: []billsync.AllocPerson{
+		{ScopeID: scopeA, Name: "Joe", Shares: []billsync.AllocShare{{LineKey: lineKey, Qty: billsync.Rational{Num: 1, Den: 1}}}},
+		{ScopeID: scopeB, Name: "Marria", Shares: []billsync.AllocShare{{LineKey: lineKey, Qty: billsync.Rational{Num: 1, Den: 2}}}},
+	}}
+	saved, err := svc.SaveBillDraftAllocation(service.SaveBillDraftAllocationInput{
+		DraftID: d.ID, ExpectedRevision: 0, Allocation: alloc,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rev := saved.AllocationRevision
+	if _, err := svc.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
+		DraftID: d.ID, StationID: "st-uat", OperatorID: "op-demo-cashier", Mode: "person", ScopeID: scopeA,
+		AllocationRevision: &rev,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Change only B's shares (still within source); A must remain byte-equal lock.
+	alloc2 := billsync.Allocation{People: []billsync.AllocPerson{
+		{ScopeID: scopeA, Name: "Joe", Shares: []billsync.AllocShare{{LineKey: lineKey, Qty: billsync.Rational{Num: 1, Den: 1}}}},
+		{ScopeID: scopeB, Name: "Marria", Shares: []billsync.AllocShare{{LineKey: lineKey, Qty: billsync.Rational{Num: 1, Den: 1}}}},
+	}}
+	detail2, err := svc.GetBillDraftDetail(d.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.SaveBillDraftAllocation(service.SaveBillDraftAllocationInput{
+		DraftID: d.ID, ExpectedRevision: detail2.AllocationRevision, Allocation: alloc2,
+	}); err != nil {
+		t.Fatalf("editing unissued B after A issued must succeed: %v", err)
+	}
+	// Mutating issued A must fail.
+	allocBad := billsync.Allocation{People: []billsync.AllocPerson{
+		{ScopeID: scopeA, Name: "Joe", Shares: []billsync.AllocShare{{LineKey: lineKey, Qty: billsync.Rational{Num: 1, Den: 2}}}},
+		{ScopeID: scopeB, Name: "Marria", Shares: []billsync.AllocShare{{LineKey: lineKey, Qty: billsync.Rational{Num: 1, Den: 1}}}},
+	}}
+	detail3, _ := svc.GetBillDraftDetail(d.ID)
+	_, err = svc.SaveBillDraftAllocation(service.SaveBillDraftAllocationInput{
+		DraftID: d.ID, ExpectedRevision: detail3.AllocationRevision, Allocation: allocBad,
+	})
+	if err == nil {
+		t.Fatal("expected cannot edit issued person allocation")
+	}
+	var ce *service.CodedError
+	if !errors.As(err, &ce) || ce.Code != "validation_failed" {
+		t.Fatalf("want validation_failed, got %T %v", err, err)
+	}
+}
+
 func TestDiscardBillDrafts_KeepsInvoices(t *testing.T) {
 	dir := t.TempDir()
 	db, svc := seedFiscal(t, dir)

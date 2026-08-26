@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.10
+
+**分单：付一张清一张（单人槽 + 人条进度）**
+
+- 顶上人条可点切换；已开 ✓ 可点只读；中间+开票永远只服务当前一人。
+- 中间名为分单标记（不进票面购方）；开票条 NIF/名称为唯一购方；跨票无身份约束。
+- 去掉「添加用餐人 / 保存分单」；标记名失焦/回车建人；**签发 = 唯一 allocation PUT**（`commitSplitAllocationForIssue`）。
+- 切人丢弃未提交改动并清空开票条；提交时已开人份额强制用 committed 副本，避免误改已开人。
+
 ## 0.4.9
 
 **分单左右数量守恒 + 超分实时提示**
