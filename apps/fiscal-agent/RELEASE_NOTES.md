@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.11
+
+**开票成功后清空当前槽**
+
+- 有下一未开人 → 自动选中；否则中间/开票槽清空（禁止 fallback 到已开人当 current）。
+- 已开人仅保留顶上 chip（✓，可点只读）。
+
 ## 0.4.10
 
 **分单：付一张清一张（单人槽 + 人条进度）**

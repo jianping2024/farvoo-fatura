@@ -1642,11 +1642,11 @@
     const detail = await j('GET', '/local/v1/bill-drafts/' + encodeURIComponent(draftId));
     applySplitDetailAllocation(detail);
     const issued = splitIssuedMap(detail);
+    // Pay-one-clear-one: land on next unissued person, or empty slot (never keep issued as "current").
     const firstOpen = splitState.people.find(p => !isSplitPersonIssued(p.scope_id, issued));
-    splitState.currentScopeId = firstOpen ? firstOpen.scope_id : (splitState.people[0] && splitState.people[0].scope_id) || '';
+    splitState.currentScopeId = firstOpen ? firstOpen.scope_id : '';
     clearSplitBuyerFields();
-    const cur = currentSplitPerson();
-    $('#splitPersonName').value = firstOpen ? (firstOpen.name || '') : (cur ? (cur.name || '') : '');
+    $('#splitPersonName').value = firstOpen ? (firstOpen.name || '') : '';
     showView('bill-split');
     renderBillSplitWorkbench();
     bindCustomerNifAutofill($('#splitNif'), $('#splitName'));
