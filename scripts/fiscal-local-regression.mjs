@@ -192,6 +192,29 @@ async function main() {
     record('get-by-request', false, String(e));
   }
 
+  try {
+    const raw = await uatCmd('req', 'GET', '/local/v1/fiscal-documents?limit=10');
+    const j = JSON.parse(raw);
+    const row = (j.invoices || []).find((x) => x.document_id === issue.document_id);
+    const ok =
+      !!row &&
+      !!row.system_entry_date &&
+      !!row.hash &&
+      row.customer_tax_id === '999999990' &&
+      !!row.atcud &&
+      row.document_status === 'SIGNED' &&
+      row.invoice_date === undefined;
+    record(
+      'list-invoices-hash-customer',
+      ok,
+      row
+        ? `sed=${!!row.system_entry_date} hash=${!!row.hash} nif=${row.customer_tax_id}`
+        : 'row missing',
+    );
+  } catch (e) {
+    record('list-invoices-hash-customer', false, String(e));
+  }
+
   child.kill('SIGTERM');
   const failed = results.filter((r) => r.status === 'fail');
   console.log('\n=== SUMMARY ===');

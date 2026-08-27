@@ -94,6 +94,10 @@
       padding: 1rem 1.1rem; box-shadow: var(--shadow); margin-bottom: 1rem;
     }
     .panel h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+    .table-scroll { overflow-x: auto; }
+    .invoices-table { min-width: 1100px; }
+    .invoices-table th, .invoices-table td { white-space: nowrap; font-size: 0.82rem; }
+    .hash-cell { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
     .flow-bar {
       display: flex; gap: 0; margin-bottom: 1.25rem; border: 1px solid var(--line);
       border-radius: 12px; overflow: hidden; background: #fff;
@@ -415,13 +419,28 @@
         <div class="topbar">
           <div>
             <h1>发票</h1>
-            <p class="hint">已签发发票 · 可重打副本（2ª Via）</p>
+            <p class="hint">已签发发票 · Hash 入参可见 · 可重打副本（2ª Via）</p>
           </div>
           <button type="button" class="secondary" id="btnRefreshInvoices">刷新</button>
         </div>
-        <div class="panel">
-          <table>
-            <thead><tr><th>票号</th><th>来源</th><th>时间</th><th>金额</th><th></th></tr></thead>
+        <div class="panel table-scroll">
+          <table class="invoices-table">
+            <thead>
+              <tr>
+                <th>签发时刻</th>
+                <th>票号</th>
+                <th>金额</th>
+                <th>上张 Hash</th>
+                <th>Hash</th>
+                <th>ATCUD</th>
+                <th>类型</th>
+                <th>单据状态</th>
+                <th>购方 NIF</th>
+                <th>购方名称</th>
+                <th>来源</th>
+                <th></th>
+              </tr>
+            </thead>
             <tbody id="invoicesTbody"></tbody>
           </table>
         </div>
@@ -640,6 +659,14 @@
     if (isNaN(d)) return iso;
     return d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }) + ' ' +
       d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  /** ONLY Hash display truncator for invoice list (前 8 … 后 4). */
+  function truncateHash(h) {
+    const s = String(h || '').trim();
+    if (!s) return '—';
+    if (s.length <= 14) return s;
+    return s.slice(0, 8) + '…' + s.slice(-4);
   }
 
   function fmtTimeShort(iso) {
@@ -1142,16 +1169,24 @@
     const list = data.invoices || [];
     const tbody = $('#invoicesTbody');
     if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无发票</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="12" class="hint">暂无发票</td></tr>';
     } else {
-      tbody.innerHTML = list.map(inv =>
-        '<tr class="clickable" data-inv="' + inv.document_id + '">' +
-        '<td>' + (inv.invoice_no || inv.document_type) + '</td>' +
-        '<td>' + (inv.order_label || '—') + '</td>' +
-        '<td>' + fmtTime(inv.issued_at) + '</td>' +
-        '<td>' + fmtMoney(inv.gross_total) + '</td>' +
-        '<td><button type="button" class="secondary" data-reprint="' + inv.document_id + '">重打</button></td></tr>'
-      ).join('');
+      tbody.innerHTML = list.map(inv => {
+        const when = inv.system_entry_date || inv.issued_at || '';
+        return '<tr class="clickable" data-inv="' + inv.document_id + '">' +
+          '<td>' + fmtTime(when) + '</td>' +
+          '<td>' + (inv.invoice_no || inv.document_type || '—') + '</td>' +
+          '<td>' + fmtMoney(inv.gross_total) + '</td>' +
+          '<td class="hash-cell" title="' + (inv.previous_hash || '') + '">' + truncateHash(inv.previous_hash) + '</td>' +
+          '<td class="hash-cell" title="' + (inv.hash || '') + '">' + truncateHash(inv.hash) + '</td>' +
+          '<td>' + (inv.atcud || '—') + '</td>' +
+          '<td>' + (inv.document_type || '—') + '</td>' +
+          '<td>' + (inv.document_status || '—') + '</td>' +
+          '<td>' + (inv.customer_tax_id || '—') + '</td>' +
+          '<td>' + (inv.customer_name || '—') + '</td>' +
+          '<td>' + (inv.order_label || '—') + '</td>' +
+          '<td><button type="button" class="secondary" data-reprint="' + inv.document_id + '">重打</button></td></tr>';
+      }).join('');
     }
     renderHomeStats(list);
     return list;

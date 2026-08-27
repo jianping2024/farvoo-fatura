@@ -242,3 +242,51 @@ func TestAdminHTMLBillDraftEventsUnique(t *testing.T) {
 		t.Fatal("issued chips must stay clickable (read-only); do not disable")
 	}
 }
+
+func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
+	start := strings.Index(adminHTML, `id="view-invoices"`)
+	if start < 0 {
+		t.Fatal("missing view-invoices")
+	}
+	end := strings.Index(adminHTML[start:], `id="view-products"`)
+	if end < 0 {
+		t.Fatal("cannot bound view-invoices section")
+	}
+	section := adminHTML[start : start+end]
+
+	requiredHeaders := []string{
+		"<th>签发时刻</th>",
+		"<th>票号</th>",
+		"<th>金额</th>",
+		"<th>上张 Hash</th>",
+		"<th>Hash</th>",
+		"<th>ATCUD</th>",
+		"<th>类型</th>",
+		"<th>单据状态</th>",
+		"<th>购方 NIF</th>",
+		"<th>购方名称</th>",
+		"<th>来源</th>",
+	}
+	for _, h := range requiredHeaders {
+		if n := strings.Count(section, h); n != 1 {
+			t.Fatalf("invoice list header %q must appear exactly once in view-invoices, got %d", h, n)
+		}
+	}
+	for _, forbidden := range []string{"<th>发票日</th>", "<th>打印状态</th>", ">时间</th>"} {
+		if strings.Contains(section, forbidden) {
+			t.Fatalf("invoice list must not include %q", forbidden)
+		}
+	}
+	if n := strings.Count(adminHTML, "function truncateHash"); n != 1 {
+		t.Fatalf("truncateHash must be the ONLY hash truncator, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "async function refreshInvoices"); n != 1 {
+		t.Fatalf("refreshInvoices must be the ONLY invoice list renderer, got %d", n)
+	}
+	if !strings.Contains(adminHTML, "inv.system_entry_date") {
+		t.Fatal("invoice list must display system_entry_date as 签发时刻")
+	}
+	if strings.Contains(adminHTML, "inv.invoice_date") || strings.Contains(adminHTML, "inv.print_status") {
+		t.Fatal("invoice list must not render invoice_date or print_status columns")
+	}
+}

@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.12
+
+**发票列表：Hash 入参可见列（无发票日/打印状态）**
+
+- 列：签发时刻、票号、金额、上张 Hash、Hash、ATCUD、类型、单据状态、购方 NIF/名称、来源、重打。
+- `ListInvoices` 唯一列表读：JOIN 客户快照；`truncateHash` / `refreshInvoices` 各一份。
+- 来源优先桌号 `display_meta`（`orderLabelFromMeta` 唯一）。
+
 ## 0.4.11
 
 **开票成功后清空当前槽**
