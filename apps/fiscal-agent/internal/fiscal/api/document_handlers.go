@@ -5,9 +5,11 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"farvoo-fiscal-agent/internal/fiscal/service"
+	"farvoo-fiscal-agent/internal/fiscal/store"
 )
 
 func handleListFiscalDocuments(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
@@ -21,12 +23,41 @@ func handleListFiscalDocuments(w http.ResponseWriter, r *http.Request, deps Hand
 			limit = n
 		}
 	}
-	list, err := deps.Fiscal.ListInvoices(limit)
+	from := strings.TrimSpace(r.URL.Query().Get("from"))
+	to := strings.TrimSpace(r.URL.Query().Get("to"))
+	if from != "" && !validDateYMD(from) {
+		writeErr(w, http.StatusBadRequest, "invalid_from", "from must be YYYY-MM-DD")
+		return
+	}
+	if to != "" && !validDateYMD(to) {
+		writeErr(w, http.StatusBadRequest, "invalid_to", "to must be YYYY-MM-DD")
+		return
+	}
+	list, err := deps.Fiscal.ListInvoices(store.InvoiceListQuery{
+		Limit: limit,
+		From:  from,
+		To:    to,
+		Q:     strings.TrimSpace(r.URL.Query().Get("q")),
+	})
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "list_failed", err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"invoices": list})
+	if list == nil {
+		list = []store.InvoiceListItem{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"invoices": list,
+		"from":     from,
+		"to":       to,
+		"q":        strings.TrimSpace(r.URL.Query().Get("q")),
+		"count":    len(list),
+	})
+}
+
+func validDateYMD(s string) bool {
+	_, err := time.Parse("2006-01-02", s)
+	return err == nil
 }
 
 func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {

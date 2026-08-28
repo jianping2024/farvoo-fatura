@@ -1,0 +1,70 @@
+/* FiscalUI date range — preset segmented control + native date inputs (shared across Admin). */
+.fiscal-date-range {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: min(100%, 520px);
+}
+
+.fiscal-date-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.fiscal-date-presets button {
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--fiscal-date-ink, #14201b);
+  border: 1px solid var(--fiscal-date-line, #ddd4c4);
+}
+
+.fiscal-date-presets button:hover {
+  filter: none;
+  background: #f7f3ea;
+}
+
+.fiscal-date-presets button.active {
+  background: var(--fiscal-date-accent, #0b3d2e);
+  color: #fff;
+  border-color: var(--fiscal-date-accent, #0b3d2e);
+}
+
+.fiscal-date-custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.65rem;
+}
+
+.fiscal-date-custom.hidden {
+  display: none;
+}
+
+.fiscal-date-custom .field {
+  margin: 0;
+  min-width: 9rem;
+}
+
+.fiscal-date-custom label {
+  margin-bottom: 0.25rem;
+}
+
+.fiscal-date-custom input[type="date"] {
+  padding: 0.5rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.fiscal-date-custom .fiscal-date-apply {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.82rem;
+}
+
+.fiscal-date-error {
+  font-size: 0.78rem;
+  color: #b42318;
+  margin: 0;
+}

@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.14
+
+**发票列表 Phase 2：日期预设 + 搜索**
+
+- 共享 `FiscalUI.createDateRangeFilter`（今天/昨天/近7天/本月/自定义 + 原生 date 起止）。
+- `GET /local/v1/fiscal-documents` 支持 `from`/`to`（`invoice_date`）与 `q`（票号/NIF/桌号）。
+- 发票页搜索框；空态区分「该时段暂无」/「未找到匹配」；工作台今日统计走 `refreshHomeStats` 唯一路径。
+
 ## 0.4.13
 
 **发票列表 Phase 1：主表瘦身 + 详情抽屉**

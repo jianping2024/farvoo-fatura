@@ -26,9 +26,12 @@ func (s *FiscalService) ReprintDocument(_ context.Context, documentID, operatorI
 	return res, nil
 }
 
-// ListInvoices returns recent invoices for Admin.
-func (s *FiscalService) ListInvoices(limit int) ([]store.InvoiceListItem, error) {
-	return s.db.ListInvoices(s.storeID, limit)
+// ListInvoices returns invoices for Admin with optional date/search filters.
+func (s *FiscalService) ListInvoices(q store.InvoiceListQuery) ([]store.InvoiceListItem, error) {
+	if q.StoreID == "" {
+		q.StoreID = s.storeID
+	}
+	return s.db.ListInvoices(q)
 }
 
 // GetInvoiceDetail returns one invoice.

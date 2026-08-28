@@ -3,10 +3,11 @@ package store
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 )
 
 // InvoiceListItem is a row for GET /local/v1/fiscal-documents.
-// List columns (Admin): Hash inputs (minus invoice_date) + hash + ops fields; print_status kept in JSON only.
+// List columns (Admin): clerk fields; technical fields in detail drawer only.
 type InvoiceListItem struct {
 	DocumentID       string `json:"document_id"`
 	InvoiceNo        string `json:"invoice_no"`
@@ -25,6 +26,15 @@ type InvoiceListItem struct {
 	OrderLabel       string `json:"order_label,omitempty"`
 }
 
+// InvoiceListQuery filters GET /local/v1/fiscal-documents (invoice_date + search).
+type InvoiceListQuery struct {
+	StoreID string
+	Limit   int
+	From    string // invoice_date YYYY-MM-DD inclusive
+	To      string // invoice_date YYYY-MM-DD inclusive
+	Q       string // invoice_no, customer, source
+}
+
 // InvoiceDetail extends IssueRecord with totals for GET /local/v1/fiscal-documents/{id}.
 type InvoiceDetail struct {
 	IssueRecord
@@ -35,25 +45,47 @@ type InvoiceDetail struct {
 	OrderLabel   string `json:"order_label,omitempty"`
 }
 
-// ListInvoices returns recent invoices newest first.
+// ListInvoices returns invoices newest first.
 // ONLY list reader for Admin invoice table (joins customer snapshot once here).
-func (d *DB) ListInvoices(storeID string, limit int) ([]InvoiceListItem, error) {
+func (d *DB) ListInvoices(q InvoiceListQuery) ([]InvoiceListItem, error) {
+	limit := q.Limit
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
+	storeID := q.StoreID
 	if storeID == "" {
 		storeID = "store-demo-001"
 	}
-	rows, err := d.SQL.Query(`
+	query := `
 		SELECT i.id, i.invoice_no, i.atcud, i.document_type, i.document_status, i.print_status,
 			i.gross_total, i.system_entry_date, i.hash, IFNULL(i.previous_hash,''),
 			IFNULL(cs.customer_tax_id,''), IFNULL(cs.company_name,''),
 			IFNULL(i.source_sale_id,''), IFNULL(i.display_meta_json,'')
 		FROM invoices i
 		LEFT JOIN invoice_customer_snapshots cs ON cs.invoice_id = i.id
-		WHERE i.store_id = ?
-		ORDER BY i.created_at DESC
-		LIMIT ?`, storeID, limit)
+		WHERE i.store_id = ?`
+	args := []any{storeID}
+	if strings.TrimSpace(q.From) != "" {
+		query += ` AND i.invoice_date >= ?`
+		args = append(args, strings.TrimSpace(q.From))
+	}
+	if strings.TrimSpace(q.To) != "" {
+		query += ` AND i.invoice_date <= ?`
+		args = append(args, strings.TrimSpace(q.To))
+	}
+	if term := strings.TrimSpace(q.Q); term != "" {
+		like := "%" + escapeLike(term) + "%"
+		query += ` AND (i.invoice_no LIKE ? ESCAPE '\'
+			OR cs.customer_tax_id LIKE ? ESCAPE '\'
+			OR cs.company_name LIKE ? ESCAPE '\'
+			OR IFNULL(i.display_meta_json,'') LIKE ? ESCAPE '\'
+			OR IFNULL(i.source_sale_id,'') LIKE ? ESCAPE '\')`
+		args = append(args, like, like, like, like, like)
+	}
+	query += ` ORDER BY i.created_at DESC LIMIT ?`
+	args = append(args, limit)
+
+	rows, err := d.SQL.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -125,4 +157,11 @@ func orderLabelFromMeta(sourceSaleID, displayMetaJSON string) string {
 		return "sale " + suffix
 	}
 	return ""
+}
+
+func escapeLike(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `%`, `\%`)
+	s = strings.ReplaceAll(s, `_`, `\_`)
+	return s
 }

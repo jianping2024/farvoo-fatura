@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Farvoo 开票</title>
   <link rel="stylesheet" href="/fiscal-ui/toast.css"/>
+  <link rel="stylesheet" href="/fiscal-ui/date-range.css"/>
   <style>
     :root {
       --ink: #14201b; --muted: #5c6b64; --paper: #f3efe6; --panel: #fffcf7;
@@ -99,6 +100,9 @@
     .buyer-cell { display: flex; flex-direction: column; gap: 0.1rem; line-height: 1.3; }
     .buyer-cell .buyer-nif { font-weight: 600; }
     .buyer-cell .buyer-name { font-size: 0.78rem; }
+    #view-invoices { --fiscal-date-ink: var(--ink); --fiscal-date-line: var(--line); --fiscal-date-accent: var(--mode); }
+    .invoice-filter-row { display: flex; flex-wrap: wrap; gap: 1rem 1.25rem; align-items: flex-end; }
+    .invoice-search-field { flex: 1; min-width: 12rem; margin: 0; }
     .invoice-detail-modal { max-width: 560px; }
     .detail-grid { margin: 0; }
     .detail-row { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.5rem 0.75rem; padding: 0.45rem 0; border-bottom: 1px solid var(--line); align-items: start; }
@@ -432,6 +436,16 @@
           </div>
           <button type="button" class="secondary" id="btnRefreshInvoices">刷新</button>
         </div>
+        <div class="panel">
+          <div class="invoice-filter-row">
+            <div id="invoiceDateFilter"></div>
+            <div class="field invoice-search-field">
+              <label for="invoiceSearch">搜索</label>
+              <input id="invoiceSearch" placeholder="票号 / NIF / 桌号" autocomplete="off" />
+            </div>
+          </div>
+          <p class="hint" id="invoiceListMeta"></p>
+        </div>
         <div class="panel table-scroll">
           <table class="invoices-table">
             <thead>
@@ -583,6 +597,7 @@
   </div>
 
   <script src="/fiscal-ui/toast.js"></script>
+  <script src="/fiscal-ui/date-range.js"></script>
   <script>
 (function () {
   'use strict';
@@ -593,6 +608,7 @@
   const errText = FiscalUI.formatError;
   const STATION_LS = 'fiscal_admin_station_id';
   const OPERATOR_ID = 'op-demo-cashier';
+  const INVOICE_TZ = 'Europe/Lisbon';
   const y = new Date().getFullYear();
 
   let pin = '';
@@ -679,6 +695,10 @@
 
   /** last GET /local/v1/fiscal-documents list — ONLY invoice row source for detail drawer. */
   let invoiceListCache = [];
+  /** ONLY date-range control for invoice list (FiscalUI.createDateRangeFilter). */
+  let invoiceDateFilterCtrl = null;
+  let invoiceSearchDebounce = null;
+  let invoiceFiltersReady = false;
 
   /** ONLY Hash display truncator (detail drawer preview: 前 8 … 后 4). */
   function truncateHash(h) {
@@ -1268,13 +1288,72 @@
     await pollPrintJob(res.print_job_id, '重打已提交');
   }
 
+  /** ONLY query builder for invoice list + home today stats. */
+  function buildInvoicesQueryPath(range, q) {
+    const params = new URLSearchParams();
+    params.set('limit', '200');
+    if (range && range.from) params.set('from', range.from);
+    if (range && range.to) params.set('to', range.to);
+    const term = String(q || '').trim();
+    if (term) params.set('q', term);
+    return '/local/v1/fiscal-documents?' + params.toString();
+  }
+
+  function paintInvoiceListMeta(list, range, q) {
+    const meta = $('#invoiceListMeta');
+    if (!meta) return;
+    const n = (list || []).length;
+    let label = '共 ' + n + ' 张';
+    if (range && range.from) {
+      label += ' · ' + range.from;
+      if (range.to && range.to !== range.from) label += ' 至 ' + range.to;
+    }
+    const term = String(q || '').trim();
+    if (term) label += ' · 搜索「' + term + '」';
+    meta.textContent = label;
+  }
+
+  /** ONLY invoice filter initializer (date presets + search). */
+  function initInvoiceFilters() {
+    if (invoiceFiltersReady) return;
+    invoiceDateFilterCtrl = FiscalUI.createDateRangeFilter('#invoiceDateFilter', {
+      storageKey: 'fiscal_invoice_date_range',
+      timezone: INVOICE_TZ,
+      defaultPreset: 'today',
+      onChange: () => refreshInvoices().catch(e => toast(errText(e), 'error')),
+    });
+    $('#invoiceSearch').addEventListener('input', () => {
+      clearTimeout(invoiceSearchDebounce);
+      invoiceSearchDebounce = setTimeout(() => {
+        refreshInvoices().catch(e => toast(errText(e), 'error'));
+      }, 300);
+    });
+    invoiceFiltersReady = true;
+  }
+
+  /** ONLY home today-invoice stats fetch (not filtered by invoice-page search). */
+  async function refreshHomeStats() {
+    const today = FiscalUI.dateRangePresetToDates('today', INVOICE_TZ);
+    const data = await j('GET', buildInvoicesQueryPath(today, ''));
+    renderHomeStats(data.invoices || []);
+  }
+
   async function refreshInvoices() {
-    const data = await j('GET', '/local/v1/fiscal-documents');
+    const tbody = $('#invoicesTbody');
+    tbody.innerHTML = '<tr><td colspan="6" class="hint">加载中…</td></tr>';
+    if (!invoiceDateFilterCtrl) {
+      initInvoiceFilters();
+    }
+    const range = invoiceDateFilterCtrl.getRange();
+    const q = ($('#invoiceSearch') && $('#invoiceSearch').value) || '';
+    const data = await j('GET', buildInvoicesQueryPath(range, q));
     const list = data.invoices || [];
     invoiceListCache = list;
-    const tbody = $('#invoicesTbody');
+    paintInvoiceListMeta(list, range, q);
     if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="hint">暂无发票</td></tr>';
+      const term = String(q || '').trim();
+      tbody.innerHTML = '<tr><td colspan="6" class="hint">' +
+        (term ? '未找到匹配的发票' : '该时段暂无发票') + '</td></tr>';
     } else {
       tbody.innerHTML = list.map(inv => {
         const when = inv.system_entry_date || inv.issued_at || '';
@@ -1287,7 +1366,6 @@
           '<td><button type="button" class="secondary" data-reprint="' + inv.document_id + '">重打</button></td></tr>';
       }).join('');
     }
-    renderHomeStats(list);
     return list;
   }
 
@@ -1824,6 +1902,7 @@
     upsertOrder(currentOrder);
     await pollPrintJob(res.print_job_id, '已签发 ' + (res.invoice_no || 'FT'));
     showView('invoices');
+    await refreshHomeStats();
     await refreshInvoices();
     renderOrdersList();
   }
@@ -1861,7 +1940,7 @@
       showView('bills');
       await refreshBills();
     }
-    await refreshInvoices();
+    await refreshHomeStats();
   }
 
   function showView(name) {
@@ -1872,13 +1951,16 @@
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.nav === navName));
     if (name === 'orders') renderOrdersList();
     if (name === 'home') {
-      refreshInvoices().catch(() => renderHomeStats([]));
+      refreshHomeStats().catch(() => renderHomeStats([]));
       if (mode === 'restaurant') refreshBills().catch(() => focusHomePrimaryCta(0));
       else focusHomePrimaryCta(0);
     }
     if (name === 'products') refreshProducts().catch(e => toast(errText(e), 'error'));
     if (name === 'customers') refreshCustomers().catch(e => toast(errText(e), 'error'));
-    if (name === 'invoices') refreshInvoices().catch(e => toast(errText(e), 'error'));
+    if (name === 'invoices') {
+      initInvoiceFilters();
+      refreshInvoices().catch(e => toast(errText(e), 'error'));
+    }
     if (name === 'bills') refreshBills().catch(e => toast(errText(e), 'error'));
     if (name === 'settings') {
       refreshSetupStatus().catch(e => toast(errText(e), 'error'));

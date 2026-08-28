@@ -215,6 +215,36 @@ async function main() {
     record('list-invoices-hash-customer', false, String(e));
   }
 
+  try {
+    const raw = await uatCmd(
+      'req',
+      'GET',
+      `/local/v1/fiscal-documents?q=${encodeURIComponent('FT2026')}`,
+    );
+    const j = JSON.parse(raw);
+    const found = (j.invoices || []).some((x) => x.document_id === issue.document_id);
+    record('list-invoices-search', found, issue.invoice_no);
+  } catch (e) {
+    record('list-invoices-search', false, String(e));
+  }
+
+  try {
+    const raw = await uatCmd('req', 'GET', '/local/v1/fiscal-documents?from=2020-01-01&to=2020-01-02');
+    const j = JSON.parse(raw);
+    record('list-invoices-date-empty', (j.count === 0 || (j.invoices || []).length === 0) && j.from === '2020-01-01');
+  } catch (e) {
+    record('list-invoices-date-empty', false, String(e));
+  }
+
+  try {
+    const raw = await uatCmd('req', 'GET', '/local/v1/fiscal-documents?from=2026-01-01&to=2099-12-31');
+    const j = JSON.parse(raw);
+    const found = (j.invoices || []).some((x) => x.document_id === issue.document_id);
+    record('list-invoices-date-range', found, 'wide-range');
+  } catch (e) {
+    record('list-invoices-date-range', false, String(e));
+  }
+
   child.kill('SIGTERM');
   const failed = results.filter((r) => r.status === 'fail');
   console.log('\n=== SUMMARY ===');
