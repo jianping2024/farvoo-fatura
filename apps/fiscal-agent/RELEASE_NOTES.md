@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.16
+
+**打印机档口下拉：显示档口名称**
+
+- `GET /local/v1/printers` 合并云端 `print_stations`，返回 `label` / `sort_order`。
+- Admin「默认打印档口」与开票「打印机」下拉显示 **`档口名 · 打印机`**（如 `厨房 · 172.20.10.3:9100`），不再只有打印机地址 + UUID 片段。
+- 唯一格式化：`FiscalUI.formatPrinterStationOption`（`bootstrap/ui/printer-station.js`）。
+
 ## 0.4.15
 
 **发票列表：翻页 + 单卡片查询区（对齐 restaurant ListPaginationBar）**
