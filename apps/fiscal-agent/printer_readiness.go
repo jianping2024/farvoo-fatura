@@ -33,8 +33,7 @@ func preparePrint(target printerTarget) error {
 func targetCheckReady(t printerTarget) error {
 	switch t.Scheme {
 	case schemeTCP:
-		// Single TCP session per job: readiness is verified by dial in tcpPrint only.
-		// A separate preflight dial makes some LAN firmware print +EVENT=SOCKA_* on paper.
+		// LAN readiness + print share one persistent tcpPrintPool socket per host:port.
 		if strings.TrimSpace(t.TCPHostPort) == "" {
 			return fmt.Errorf("empty tcp host:port")
 		}

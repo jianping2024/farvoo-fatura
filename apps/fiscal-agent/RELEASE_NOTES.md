@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.18
+
+**打印：LAN 连接复用，避免每张票 SOCKA 事件**
+
+- `tcp:9100` 按 host:port **保持一条长连接**，多张票（厨打 + 税票）复用同一 socket，不再每 job connect/disconnect。
+- 写失败时自动重连；Agent 重启后首次打单仍可能见 1 对 `+EVENT=SOCKA_*`（固件限制）。
+
 ## 0.4.17
 
 **打印：TCP 单次连接 + 中文标题画布居中**
