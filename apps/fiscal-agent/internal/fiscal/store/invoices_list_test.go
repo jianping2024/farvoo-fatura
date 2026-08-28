@@ -59,14 +59,14 @@ func TestListInvoicesIncludesHashCustomerAndSource(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	list, err := db.ListInvoices(store.InvoiceListQuery{StoreID: "store-demo-001", Limit: 10})
+	page, err := db.ListInvoices(store.InvoiceListQuery{StoreID: "store-demo-001", Page: 1, PageSize: 10})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(list) != 1 {
-		t.Fatalf("want 1 invoice, got %d", len(list))
+	if page.Total != 1 || len(page.Items) != 1 {
+		t.Fatalf("want 1 invoice, got total=%d items=%d", page.Total, len(page.Items))
 	}
-	it := list[0]
+	it := page.Items[0]
 	if it.DocumentID != rec.DocumentID {
 		t.Fatalf("document_id: got %s want %s", it.DocumentID, rec.DocumentID)
 	}
@@ -84,6 +84,9 @@ func TestListInvoicesIncludesHashCustomerAndSource(t *testing.T) {
 	}
 	if it.ATCUD == "" || it.InvoiceNo == "" {
 		t.Fatalf("atcud/invoice_no empty: %+v", it)
+	}
+	if page.GrossTotalSum != "10.00" {
+		t.Fatalf("gross_total_sum: got %q", page.GrossTotalSum)
 	}
 }
 
@@ -140,32 +143,109 @@ func TestListInvoicesFilterByInvoiceDateAndSearch(t *testing.T) {
 	issue("req-b", time.Date(2026, 8, 28, 10, 0, 0, 0, time.UTC), "A-01", "999999990")
 
 	only27, err := db.ListInvoices(store.InvoiceListQuery{
-		StoreID: "store-demo-001", Limit: 10, From: "2026-08-27", To: "2026-08-27",
+		StoreID: "store-demo-001", Page: 1, PageSize: 10, From: "2026-08-27", To: "2026-08-27",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(only27) != 1 || only27[0].CustomerTaxID != "502757191" {
+	if only27.Total != 1 || len(only27.Items) != 1 || only27.Items[0].CustomerTaxID != "502757191" {
 		t.Fatalf("date filter: got %+v", only27)
 	}
 
 	byTable, err := db.ListInvoices(store.InvoiceListQuery{
-		StoreID: "store-demo-001", Limit: 10, Q: "A-01",
+		StoreID: "store-demo-001", Page: 1, PageSize: 10, Q: "A-01",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(byTable) != 1 || byTable[0].OrderLabel != "桌 A-01" {
+	if byTable.Total != 1 || len(byTable.Items) != 1 || byTable.Items[0].OrderLabel != "桌 A-01" {
 		t.Fatalf("search: got %+v", byTable)
 	}
 
 	empty, err := db.ListInvoices(store.InvoiceListQuery{
-		StoreID: "store-demo-001", Limit: 10, From: "2020-01-01", To: "2020-01-02",
+		StoreID: "store-demo-001", Page: 1, PageSize: 10, From: "2020-01-01", To: "2020-01-02",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(empty) != 0 {
-		t.Fatalf("expected empty range, got %d", len(empty))
+	if empty.Total != 0 || len(empty.Items) != 0 {
+		t.Fatalf("expected empty range, got total=%d items=%d", empty.Total, len(empty.Items))
+	}
+}
+
+func TestListInvoicesPagination(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "fiscal.db")
+	keyPath := filepath.Join("..", "testdata", "dev_signing_key.pem")
+	db, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	sig, err := signer.LoadPEMFile(keyPath, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pub, err := sig.PublicKeyPEM()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.SeedDemoFromKeyFile(store.SeedDemoParams{
+		StoreID: "store-demo-001", TaxpayerNIF: "517535009", LegalName: "Demo Lda",
+		Address: "Rua 1", City: "Lisboa", PostalCode: "1000-001", Timezone: "Europe/Lisbon",
+		SoftwareCertificateNumber: "0", SeriesCode: "FT2026DEMO01", ValidationCode: "CSDF7T5H",
+		FiscalYear: 2026, OperatorID: "op-demo-cashier", OperatorName: "Cashier",
+		SigningKeyVersion: 1, InstallationID: "inst-1", DeviceID: "dev-1", DevicePublicKey: "x",
+	}, keyPath, pub); err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 12; i++ {
+		reqID := "req-page-" + string(rune('a'+i))
+		_, err := db.IssueFT(context.Background(), sig, store.IssueParams{
+			StoreID: "store-demo-001", RequestID: reqID, DocType: domain.DocumentFT,
+			OperatorID: "op-demo-cashier",
+			NowUTC:     time.Date(2026, 8, 27, 10, i, 0, 0, time.UTC),
+			Snapshot: domain.SaleSnapshot{
+				SourceSystem: "farvoo", SourceSaleID: "sale-" + reqID, ScopeType: "session", ScopeID: "s1", FiscalPurpose: "sale",
+				Lines: []domain.SaleLine{{
+					ProductCode: "P1", DisplayName: "Prato", SaftName: "Prato", Quantity: "1",
+					UnitPriceGross: "10.00", VATRate: "0.23", ProductType: "P", UnitOfMeasure: "UN",
+				}},
+				Customer: domain.CustomerInput{TaxID: "999999990", CompanyName: "Buyer", Country: "PT"},
+				Payments: []domain.PaymentInput{{Method: "CASH", Amount: "10.00"}},
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	page1, err := db.ListInvoices(store.InvoiceListQuery{StoreID: "store-demo-001", Page: 1, PageSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page1.Total != 12 || len(page1.Items) != 10 || page1.Page != 1 {
+		t.Fatalf("page1: total=%d items=%d page=%d", page1.Total, len(page1.Items), page1.Page)
+	}
+	if page1.GrossTotalSum != "120.00" {
+		t.Fatalf("gross_total_sum: got %q", page1.GrossTotalSum)
+	}
+
+	page2, err := db.ListInvoices(store.InvoiceListQuery{StoreID: "store-demo-001", Page: 2, PageSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page2.Total != 12 || len(page2.Items) != 2 || page2.Page != 2 {
+		t.Fatalf("page2: total=%d items=%d page=%d", page2.Total, len(page2.Items), page2.Page)
+	}
+
+	page20, err := db.ListInvoices(store.InvoiceListQuery{StoreID: "store-demo-001", Page: 1, PageSize: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page20.Total != 12 || len(page20.Items) != 12 || page20.PageSize != 20 {
+		t.Fatalf("page_size 20: total=%d items=%d pageSize=%d", page20.Total, len(page20.Items), page20.PageSize)
 	}
 }

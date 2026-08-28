@@ -1,0 +1,80 @@
+.fiscal-list-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem 1rem;
+  padding: 0.75rem 0 0;
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--fiscal-page-line, var(--line, #ddd4c4));
+}
+
+.fiscal-list-pagination__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+.fiscal-list-pagination__info {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted, #5c6b64);
+}
+
+.fiscal-list-pagination__size {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--muted, #5c6b64);
+  margin: 0;
+}
+
+.fiscal-list-pagination__size span {
+  white-space: nowrap;
+}
+
+.fiscal-list-pagination__size select {
+  width: auto;
+  min-width: 3.5rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.fiscal-list-pagination__nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fiscal-list-pagination__nav button {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.fiscal-list-pagination__nav button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.invoice-list-panel {
+  padding-bottom: 0.85rem;
+}
+
+.invoice-list-panel .invoice-filter-row {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.invoice-list-panel .table-scroll {
+  margin: 0 -0.1rem;
+}
+
+.invoice-search-field label {
+  margin-bottom: 0.25rem;
+}
+
+.invoice-search-field input {
+  padding: 0.5rem 0.65rem;
+}

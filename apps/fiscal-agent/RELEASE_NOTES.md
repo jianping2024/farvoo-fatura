@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.15
+
+**发票列表：翻页 + 单卡片查询区（对齐 restaurant ListPaginationBar）**
+
+- 共享 `FiscalUI.createListPaginationBar`（第 N / M 页 · 共 X 张、每页 10/20、上一页/下一页）。
+- `GET /local/v1/fiscal-documents` 支持 `page` / `page_size`，返回 `total` / `gross_total_sum`；移除 `limit`。
+- 发票页合并为单 panel：筛选 + 表 + 底栏；去掉 topbar hint 与 `#invoiceListMeta`。
+- 筛选变更回第 1 页；`buildInvoicesQueryPath` / `refreshInvoices` / `refreshHomeStats` 各唯一一份。
+
 ## 0.4.14
 
 **发票列表 Phase 2：日期预设 + 搜索**

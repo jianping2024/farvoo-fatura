@@ -193,7 +193,7 @@ async function main() {
   }
 
   try {
-    const raw = await uatCmd('req', 'GET', '/local/v1/fiscal-documents?limit=10');
+    const raw = await uatCmd('req', 'GET', '/local/v1/fiscal-documents?page=1&page_size=10');
     const j = JSON.parse(raw);
     const row = (j.invoices || []).find((x) => x.document_id === issue.document_id);
     const ok =
@@ -203,12 +203,15 @@ async function main() {
       row.customer_tax_id === '999999990' &&
       !!row.atcud &&
       row.document_status === 'SIGNED' &&
-      row.invoice_date === undefined;
+      row.invoice_date === undefined &&
+      j.total >= 1 &&
+      j.page === 1 &&
+      j.page_size === 10;
     record(
       'list-invoices-hash-customer',
       ok,
       row
-        ? `sed=${!!row.system_entry_date} hash=${!!row.hash} nif=${row.customer_tax_id}`
+        ? `sed=${!!row.system_entry_date} hash=${!!row.hash} nif=${row.customer_tax_id} total=${j.total}`
         : 'row missing',
     );
   } catch (e) {
@@ -229,20 +232,48 @@ async function main() {
   }
 
   try {
-    const raw = await uatCmd('req', 'GET', '/local/v1/fiscal-documents?from=2020-01-01&to=2020-01-02');
+    const raw = await uatCmd('req', 'GET', '/local/v1/fiscal-documents?from=2020-01-01&to=2020-01-02&page=1&page_size=10');
     const j = JSON.parse(raw);
-    record('list-invoices-date-empty', (j.count === 0 || (j.invoices || []).length === 0) && j.from === '2020-01-01');
+    record(
+      'list-invoices-date-empty',
+      j.total === 0 && (j.invoices || []).length === 0 && j.from === '2020-01-01',
+    );
   } catch (e) {
     record('list-invoices-date-empty', false, String(e));
   }
 
   try {
-    const raw = await uatCmd('req', 'GET', '/local/v1/fiscal-documents?from=2026-01-01&to=2099-12-31');
+    const raw = await uatCmd('req', 'GET', '/local/v1/fiscal-documents?from=2026-01-01&to=2099-12-31&page=1&page_size=10');
     const j = JSON.parse(raw);
     const found = (j.invoices || []).some((x) => x.document_id === issue.document_id);
-    record('list-invoices-date-range', found, 'wide-range');
+    record('list-invoices-date-range', found && j.total >= 1, 'wide-range');
   } catch (e) {
     record('list-invoices-date-range', false, String(e));
+  }
+
+  try {
+    const raw = await uatCmd('req', 'GET', '/local/v1/fiscal-documents?page=2&page_size=10');
+    const j = JSON.parse(raw);
+    record(
+      'list-invoices-pagination-clamp',
+      j.page === 1 && j.page_size === 10 && j.total === 1 && (j.invoices || []).length === 1,
+      `page=${j.page} items=${(j.invoices || []).length} total=${j.total}`,
+    );
+  } catch (e) {
+    record('list-invoices-pagination-clamp', false, String(e));
+  }
+
+  try {
+    const raw = await uatCmd('req', 'GET', '/local/v1/fiscal-documents?page=1&page_size=20');
+    const j = JSON.parse(raw);
+    const found = (j.invoices || []).some((x) => x.document_id === issue.document_id);
+    record(
+      'list-invoices-pagination-page-size-20',
+      j.page_size === 20 && found && (j.invoices || []).length <= 20,
+      `page_size=${j.page_size}`,
+    );
+  } catch (e) {
+    record('list-invoices-pagination-page-size-20', false, String(e));
   }
 
   child.kill('SIGTERM');

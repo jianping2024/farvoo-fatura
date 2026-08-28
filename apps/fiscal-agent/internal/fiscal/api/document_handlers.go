@@ -17,10 +17,16 @@ func handleListFiscalDocuments(w http.ResponseWriter, r *http.Request, deps Hand
 		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
 		return
 	}
-	limit := 100
-	if q := r.URL.Query().Get("limit"); q != "" {
+	page := 1
+	if q := r.URL.Query().Get("page"); q != "" {
+		if n, err := strconv.Atoi(q); err == nil && n > 0 {
+			page = n
+		}
+	}
+	pageSize := 10
+	if q := r.URL.Query().Get("page_size"); q != "" {
 		if n, err := strconv.Atoi(q); err == nil {
-			limit = n
+			pageSize = n
 		}
 	}
 	from := strings.TrimSpace(r.URL.Query().Get("from"))
@@ -33,25 +39,30 @@ func handleListFiscalDocuments(w http.ResponseWriter, r *http.Request, deps Hand
 		writeErr(w, http.StatusBadRequest, "invalid_to", "to must be YYYY-MM-DD")
 		return
 	}
-	list, err := deps.Fiscal.ListInvoices(store.InvoiceListQuery{
-		Limit: limit,
-		From:  from,
-		To:    to,
-		Q:     strings.TrimSpace(r.URL.Query().Get("q")),
+	result, err := deps.Fiscal.ListInvoices(store.InvoiceListQuery{
+		Page:     page,
+		PageSize: pageSize,
+		From:     from,
+		To:       to,
+		Q:        strings.TrimSpace(r.URL.Query().Get("q")),
 	})
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "list_failed", err.Error())
 		return
 	}
-	if list == nil {
-		list = []store.InvoiceListItem{}
+	invoices := result.Items
+	if invoices == nil {
+		invoices = []store.InvoiceListItem{}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"invoices": list,
-		"from":     from,
-		"to":       to,
-		"q":        strings.TrimSpace(r.URL.Query().Get("q")),
-		"count":    len(list),
+		"invoices":        invoices,
+		"page":            result.Page,
+		"page_size":       result.PageSize,
+		"total":           result.Total,
+		"gross_total_sum": result.GrossTotalSum,
+		"from":            from,
+		"to":              to,
+		"q":               strings.TrimSpace(r.URL.Query().Get("q")),
 	})
 }
 

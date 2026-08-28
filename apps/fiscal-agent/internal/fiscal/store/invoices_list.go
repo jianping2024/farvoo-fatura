@@ -3,36 +3,48 @@ package store
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"math"
 	"strings"
 )
 
 // InvoiceListItem is a row for GET /local/v1/fiscal-documents.
 // List columns (Admin): clerk fields; technical fields in detail drawer only.
 type InvoiceListItem struct {
-	DocumentID       string `json:"document_id"`
-	InvoiceNo        string `json:"invoice_no"`
-	ATCUD            string `json:"atcud"`
-	DocumentType     string `json:"document_type"`
-	DocumentStatus   string `json:"document_status"`
-	PrintStatus      string `json:"print_status"`
-	GrossTotal       string `json:"gross_total"`
-	SystemEntryDate  string `json:"system_entry_date"`
-	IssuedAt         string `json:"issued_at"` // same as system_entry_date for home "today" filter
-	Hash             string `json:"hash"`
-	PreviousHash     string `json:"previous_hash"`
-	CustomerTaxID    string `json:"customer_tax_id,omitempty"`
-	CustomerName     string `json:"customer_name,omitempty"`
-	SourceSaleID     string `json:"source_sale_id,omitempty"`
-	OrderLabel       string `json:"order_label,omitempty"`
+	DocumentID      string `json:"document_id"`
+	InvoiceNo       string `json:"invoice_no"`
+	ATCUD           string `json:"atcud"`
+	DocumentType    string `json:"document_type"`
+	DocumentStatus  string `json:"document_status"`
+	PrintStatus     string `json:"print_status"`
+	GrossTotal      string `json:"gross_total"`
+	SystemEntryDate string `json:"system_entry_date"`
+	IssuedAt        string `json:"issued_at"` // same as system_entry_date for home "today" filter
+	Hash            string `json:"hash"`
+	PreviousHash    string `json:"previous_hash"`
+	CustomerTaxID   string `json:"customer_tax_id,omitempty"`
+	CustomerName    string `json:"customer_name,omitempty"`
+	SourceSaleID    string `json:"source_sale_id,omitempty"`
+	OrderLabel      string `json:"order_label,omitempty"`
 }
 
-// InvoiceListQuery filters GET /local/v1/fiscal-documents (invoice_date + search).
+// InvoiceListQuery filters GET /local/v1/fiscal-documents (invoice_date + search + pagination).
 type InvoiceListQuery struct {
-	StoreID string
-	Limit   int
-	From    string // invoice_date YYYY-MM-DD inclusive
-	To      string // invoice_date YYYY-MM-DD inclusive
-	Q       string // invoice_no, customer, source
+	StoreID  string
+	Page     int
+	PageSize int
+	From     string // invoice_date YYYY-MM-DD inclusive
+	To       string // invoice_date YYYY-MM-DD inclusive
+	Q        string // invoice_no, customer, source
+}
+
+// InvoiceListResult is the ONLY paginated invoice list payload from store.
+type InvoiceListResult struct {
+	Items         []InvoiceListItem
+	Total         int
+	Page          int
+	PageSize      int
+	GrossTotalSum string
 }
 
 // InvoiceDetail extends IssueRecord with totals for GET /local/v1/fiscal-documents/{id}.
@@ -45,36 +57,47 @@ type InvoiceDetail struct {
 	OrderLabel   string `json:"order_label,omitempty"`
 }
 
-// ListInvoices returns invoices newest first.
-// ONLY list reader for Admin invoice table (joins customer snapshot once here).
-func (d *DB) ListInvoices(q InvoiceListQuery) ([]InvoiceListItem, error) {
-	limit := q.Limit
-	if limit <= 0 || limit > 500 {
-		limit = 100
-	}
+var allowedInvoicePageSizes = map[int]bool{10: true, 20: true}
+
+func normalizeInvoiceListQuery(q InvoiceListQuery) (InvoiceListQuery, int, int) {
 	storeID := q.StoreID
 	if storeID == "" {
 		storeID = "store-demo-001"
 	}
+	page := q.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := q.PageSize
+	if !allowedInvoicePageSizes[pageSize] {
+		pageSize = 10
+	}
+	return InvoiceListQuery{
+		StoreID:  storeID,
+		Page:     page,
+		PageSize: pageSize,
+		From:     strings.TrimSpace(q.From),
+		To:       strings.TrimSpace(q.To),
+		Q:        strings.TrimSpace(q.Q),
+	}, page, pageSize
+}
+
+func invoiceListWhere(q InvoiceListQuery) (string, []any) {
 	query := `
-		SELECT i.id, i.invoice_no, i.atcud, i.document_type, i.document_status, i.print_status,
-			i.gross_total, i.system_entry_date, i.hash, IFNULL(i.previous_hash,''),
-			IFNULL(cs.customer_tax_id,''), IFNULL(cs.company_name,''),
-			IFNULL(i.source_sale_id,''), IFNULL(i.display_meta_json,'')
 		FROM invoices i
 		LEFT JOIN invoice_customer_snapshots cs ON cs.invoice_id = i.id
 		WHERE i.store_id = ?`
-	args := []any{storeID}
-	if strings.TrimSpace(q.From) != "" {
+	args := []any{q.StoreID}
+	if q.From != "" {
 		query += ` AND i.invoice_date >= ?`
-		args = append(args, strings.TrimSpace(q.From))
+		args = append(args, q.From)
 	}
-	if strings.TrimSpace(q.To) != "" {
+	if q.To != "" {
 		query += ` AND i.invoice_date <= ?`
-		args = append(args, strings.TrimSpace(q.To))
+		args = append(args, q.To)
 	}
-	if term := strings.TrimSpace(q.Q); term != "" {
-		like := "%" + escapeLike(term) + "%"
+	if q.Q != "" {
+		like := "%" + escapeLike(q.Q) + "%"
 		query += ` AND (i.invoice_no LIKE ? ESCAPE '\'
 			OR cs.customer_tax_id LIKE ? ESCAPE '\'
 			OR cs.company_name LIKE ? ESCAPE '\'
@@ -82,15 +105,43 @@ func (d *DB) ListInvoices(q InvoiceListQuery) ([]InvoiceListItem, error) {
 			OR IFNULL(i.source_sale_id,'') LIKE ? ESCAPE '\')`
 		args = append(args, like, like, like, like, like)
 	}
-	query += ` ORDER BY i.created_at DESC LIMIT ?`
-	args = append(args, limit)
+	return query, args
+}
 
-	rows, err := d.SQL.Query(query, args...)
+// ListInvoices returns invoices newest first with server-side pagination.
+// ONLY list reader for Admin invoice table (joins customer snapshot once here).
+func (d *DB) ListInvoices(q InvoiceListQuery) (*InvoiceListResult, error) {
+	q, page, pageSize := normalizeInvoiceListQuery(q)
+	where, args := invoiceListWhere(q)
+
+	var total int
+	var grossSum float64
+	countQuery := `SELECT COUNT(*), COALESCE(SUM(CAST(i.gross_total AS REAL)), 0)` + where
+	if err := d.SQL.QueryRow(countQuery, args...).Scan(&total, &grossSum); err != nil {
+		return nil, err
+	}
+
+	totalPages := int(math.Max(1, math.Ceil(float64(total)/float64(pageSize))))
+	if page > totalPages {
+		page = totalPages
+	}
+	offset := (page - 1) * pageSize
+
+	selectQuery := `
+		SELECT i.id, i.invoice_no, i.atcud, i.document_type, i.document_status, i.print_status,
+			i.gross_total, i.system_entry_date, i.hash, IFNULL(i.previous_hash,''),
+			IFNULL(cs.customer_tax_id,''), IFNULL(cs.company_name,''),
+			IFNULL(i.source_sale_id,''), IFNULL(i.display_meta_json,'')` + where +
+		` ORDER BY i.created_at DESC LIMIT ? OFFSET ?`
+	selectArgs := append(append([]any{}, args...), pageSize, offset)
+
+	rows, err := d.SQL.Query(selectQuery, selectArgs...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []InvoiceListItem
+
+	items := []InvoiceListItem{}
 	for rows.Next() {
 		var it InvoiceListItem
 		var displayMeta string
@@ -104,9 +155,19 @@ func (d *DB) ListInvoices(q InvoiceListQuery) ([]InvoiceListItem, error) {
 		}
 		it.IssuedAt = it.SystemEntryDate
 		it.OrderLabel = orderLabelFromMeta(it.SourceSaleID, displayMeta)
-		out = append(out, it)
+		items = append(items, it)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &InvoiceListResult{
+		Items:         items,
+		Total:         total,
+		Page:          page,
+		PageSize:      pageSize,
+		GrossTotalSum: fmt.Sprintf("%.2f", grossSum),
+	}, nil
 }
 
 // GetInvoiceDetail loads one invoice by id.

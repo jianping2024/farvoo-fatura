@@ -26,8 +26,8 @@ func (s *FiscalService) ReprintDocument(_ context.Context, documentID, operatorI
 	return res, nil
 }
 
-// ListInvoices returns invoices for Admin with optional date/search filters.
-func (s *FiscalService) ListInvoices(q store.InvoiceListQuery) ([]store.InvoiceListItem, error) {
+// ListInvoices returns paginated invoices for Admin with optional date/search filters.
+func (s *FiscalService) ListInvoices(q store.InvoiceListQuery) (*store.InvoiceListResult, error) {
 	if q.StoreID == "" {
 		q.StoreID = s.storeID
 	}

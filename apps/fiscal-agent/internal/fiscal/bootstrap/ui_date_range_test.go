@@ -33,6 +33,7 @@ func TestAdminHTMLInvoiceFiltersUnique(t *testing.T) {
 	for _, fn := range []string{
 		"function buildInvoicesQueryPath",
 		"function initInvoiceFilters",
+		"function resetInvoiceListPage",
 		"async function refreshHomeStats",
 	} {
 		if n := strings.Count(adminHTML, fn); n != 1 {
