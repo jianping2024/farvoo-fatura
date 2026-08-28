@@ -3,6 +3,7 @@
 package main
 
 import (
+	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -42,13 +43,15 @@ var (
 	procTextOutW           = gdi32.NewProc("TextOutW")
 )
 
-// renderBitmapText draws s at fontPx (clamped). Caller must wrap to bitmapMaxDisplayCols;
-// this function does not truncateDisplay. DoubleH/DoubleW do not change font size
-// (ESC/POS GS ! remains separate for Latin).
+// renderBitmapText draws s on the full POS-80 canvas with alignment baked in (576 dots).
+// Caller must wrap to bitmapMaxDisplayCols; this function does not truncateDisplay.
 func renderBitmapText(s string, style bitmapTextStyle, fontPx int) bitmapTextImage {
+	canvasW := bitmapTextMaxWidthPx
+	s = strings.TrimRight(s, "\r\n")
 	if s == "" {
 		return bitmapTextImage{}
 	}
+
 	dc, _, _ := procCreateCompatibleDC.Call(0)
 	if dc == 0 {
 		return bitmapTextImage{}
@@ -76,23 +79,19 @@ func renderBitmapText(s string, style bitmapTextStyle, fontPx int) bitmapTextIma
 	if len(utf16) <= 1 {
 		return bitmapTextImage{}
 	}
-	chars := uintptr(len(utf16) - 1)
-	var size gdiSize
-	procGetTextExtentPoint.Call(dc, uintptr(unsafe.Pointer(&utf16[0])), chars, uintptr(unsafe.Pointer(&size)))
-	width := int(size.CX) + 2
-	height := int(size.CY) + hanBitmapHeightPad
-	if width <= 0 || height <= 0 {
-		return bitmapTextImage{}
+
+	textW := textWidthPx(dc, s) + 2
+	height := textLineHeightPx(dc, s, fontPx)
+	if height <= 0 {
+		height = fontPx + hanBitmapHeightPad
 	}
-	if width > bitmapTextMaxWidthPx {
-		width = bitmapTextMaxWidthPx
-	}
+	leftPx := hanBitmapAlignStartPx(textW, style.Align)
 
 	var bits unsafe.Pointer
-	stride := ((width*32 + 31) / 32) * 4
+	stride := ((canvasW*32 + 31) / 32) * 4
 	bi := gdiBitmapInfo{}
 	bi.Header.Size = uint32(unsafe.Sizeof(bi.Header))
-	bi.Header.Width = int32(width)
+	bi.Header.Width = int32(canvasW)
 	bi.Header.Height = -int32(height)
 	bi.Header.Planes = 1
 	bi.Header.BitCount = 32
@@ -105,7 +104,6 @@ func renderBitmapText(s string, style bitmapTextStyle, fontPx int) bitmapTextIma
 	defer procSelectObject.Call(dc, oldBitmap)
 
 	raw := unsafe.Slice((*byte)(bits), stride*height)
-	// DIB starts uninitialized — clear to white *before* TextOutW.
 	for i := range raw {
 		raw[i] = 0xff
 	}
@@ -113,18 +111,29 @@ func renderBitmapText(s string, style bitmapTextStyle, fontPx int) bitmapTextIma
 	procSetBkColor.Call(dc, 0x00ffffff)
 	procSetTextColor.Call(dc, 0x00000000)
 	procSetBkMode.Call(dc, 2)
-	procTextOutW.Call(dc, hanBitmapPadY, hanBitmapPadY, uintptr(unsafe.Pointer(&utf16[0])), chars)
+	drawTextOutW(dc, leftPx, hanBitmapPadY, s)
 
-	pixels := make([]byte, width*height)
+	pixels := make([]byte, canvasW*height)
 	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
+		for x := 0; x < canvasW; x++ {
 			off := y*stride + x*4
 			if raw[off] < 128 || raw[off+1] < 128 || raw[off+2] < 128 {
-				pixels[y*width+x] = 1
+				pixels[y*canvasW+x] = 1
 			}
 		}
 	}
-	return bitmapTextImage{Width: width, Height: height, Pixels: pixels}
+	return bitmapTextImage{Width: canvasW, Height: height, Pixels: pixels}
+}
+
+func textWidthPx(dc uintptr, s string) int {
+	utf16, _ := syscall.UTF16FromString(s)
+	if len(utf16) <= 1 {
+		return 0
+	}
+	chars := uintptr(len(utf16) - 1)
+	var size gdiSize
+	procGetTextExtentPoint.Call(dc, uintptr(unsafe.Pointer(&utf16[0])), chars, uintptr(unsafe.Pointer(&size)))
+	return int(size.CX)
 }
 
 func boolToUintptr(v bool) uintptr {

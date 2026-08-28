@@ -7,8 +7,11 @@ import (
 
 func TestRenderBitmapTextHasInkForHan(t *testing.T) {
 	img := renderBitmapText("打印测试", bitmapTextStyle{Align: 1, Bold: true, DoubleW: true, DoubleH: true}, bitmapTextDefaultFontPx)
-	if img.Width <= 0 || img.Height <= 0 {
-		t.Fatalf("expected image, got %dx%d", img.Width, img.Height)
+	if img.Width != bitmapTextMaxWidthPx {
+		t.Fatalf("Han line canvas width %d want %d (full POS-80)", img.Width, bitmapTextMaxWidthPx)
+	}
+	if img.Height <= 0 {
+		t.Fatalf("expected image height, got %dx%d", img.Width, img.Height)
 	}
 	// DoubleH must not enlarge Han font — size is fontPx (+padding).
 	if img.Height > bitmapTextDefaultFontPx+16 {
@@ -23,9 +26,21 @@ func TestRenderBitmapTextHasInkForHan(t *testing.T) {
 	if ink == 0 {
 		t.Fatal("Han bitmap must contain ink pixels")
 	}
+	minX, maxX := bitmapInkMinX(img), bitmapInkMaxX(img)
+	if minX < 0 || maxX < 0 {
+		t.Fatal("expected ink bounds")
+	}
+	center := (minX + maxX) / 2
+	paperCenter := bitmapTextMaxWidthPx / 2
+	if center < paperCenter-48 || center > paperCenter+48 {
+		t.Fatalf("centered Han ink center %d far from paper center %d (min=%d max=%d)", center, paperCenter, minX, maxX)
+	}
 	raw := escposBitmapText("打印测试", bitmapTextStyle{Align: 1}, bitmapTextDefaultFontPx)
 	if rasterInkBits(raw) == 0 {
 		t.Fatal("escposBitmapText must emit non-blank GS v 0 payload")
+	}
+	if bytes.Contains(raw, []byte{0x1B, 0x61, 1}) {
+		t.Fatal("full-width Han raster must not rely on ESC a center")
 	}
 	if bytes.HasSuffix(raw, []byte{'\n'}) {
 		t.Fatal("GS v 0 raster must not trailing LF (double line feed wastes paper)")

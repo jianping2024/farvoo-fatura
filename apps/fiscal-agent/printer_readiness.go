@@ -5,9 +5,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net"
 	"strings"
-	"time"
 )
 
 // errPrinterNotReady — preparePrint failed; keep job pending and retry later.
@@ -35,23 +33,15 @@ func preparePrint(target printerTarget) error {
 func targetCheckReady(t printerTarget) error {
 	switch t.Scheme {
 	case schemeTCP:
-		return tcpCheckReady(t.TCPHostPort)
+		// Single TCP session per job: readiness is verified by dial in tcpPrint only.
+		// A separate preflight dial makes some LAN firmware print +EVENT=SOCKA_* on paper.
+		if strings.TrimSpace(t.TCPHostPort) == "" {
+			return fmt.Errorf("empty tcp host:port")
+		}
+		return nil
 	case schemeWinspool:
 		return winspoolCheckReady(t.WinspoolName)
 	default:
 		return fmt.Errorf("unknown printer scheme %q", t.Scheme)
 	}
-}
-
-func tcpCheckReady(hostPort string) error {
-	hostPort = strings.TrimSpace(hostPort)
-	if hostPort == "" {
-		return fmt.Errorf("empty tcp host:port")
-	}
-	c, err := net.DialTimeout("tcp", hostPort, 2*time.Second)
-	if err != nil {
-		return fmt.Errorf("tcp printer %q not reachable: %w", hostPort, err)
-	}
-	_ = c.Close()
-	return nil
 }

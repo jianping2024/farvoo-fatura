@@ -91,5 +91,6 @@ func escposBitmapTextOne(s string, style bitmapTextStyle, fontPx int) []byte {
 	if img.Width <= 0 || img.Height <= 0 || len(img.Pixels) != img.Width*img.Height {
 		return encodeWindows1252(s)
 	}
+	// escposBitmapRaster clears ESC a for full-width canvas (alignment baked in pixels).
 	return escposBitmapRaster(img, style.Align)
 }

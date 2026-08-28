@@ -2,8 +2,7 @@
 
 package main
 
-// renderBitmapText draws a stub glyph grid (tests on non-Windows). Never truncateDisplay.
-// Height tracks fontPx; DoubleH/DoubleW do not enlarge it.
+// renderBitmapText draws on the full POS-80 canvas with alignment baked in (stub for tests).
 func renderBitmapText(s string, style bitmapTextStyle, fontPx int) bitmapTextImage {
 	if s == "" {
 		return bitmapTextImage{}
@@ -14,12 +13,12 @@ func renderBitmapText(s string, style bitmapTextStyle, fontPx int) bitmapTextIma
 		charW = 1
 	}
 	charH := fontPx
-	width := displayWidth(s)*charW + 2
-	if width > bitmapTextMaxWidthPx {
-		width = bitmapTextMaxWidthPx
-	}
+	inkW := displayWidth(s)*charW + 2
+	canvasW := bitmapTextMaxWidthPx
 	height := charH + 2
-	pixels := make([]byte, width*height)
+	leftPx := hanBitmapAlignStartPx(inkW, style.Align)
+
+	pixels := make([]byte, canvasW*height)
 	col := 0
 	for _, r := range s {
 		span := displayCols(r)
@@ -27,18 +26,21 @@ func renderBitmapText(s string, style bitmapTextStyle, fontPx int) bitmapTextIma
 			col += span
 			continue
 		}
-		x0 := col*charW + 1
+		x0 := leftPx + col*charW + 1
 		x1 := x0 + span*charW
 		for y := 1; y < height-1; y++ {
-			for x := x0; x < x1-1 && x < width-1; x++ {
+			for x := x0; x < x1-1 && x < canvasW-1; x++ {
+				if x < 0 {
+					continue
+				}
 				border := x == x0 || x == x1-2 || y == 1 || y == height-2
 				stroke := (x+y+int(r))%7 == 0
 				if border || stroke || style.Bold && (x+y+int(r))%5 == 0 {
-					pixels[y*width+x] = 1
+					pixels[y*canvasW+x] = 1
 				}
 			}
 		}
 		col += span
 	}
-	return bitmapTextImage{Width: width, Height: height, Pixels: pixels}
+	return bitmapTextImage{Width: canvasW, Height: height, Pixels: pixels}
 }

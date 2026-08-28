@@ -23,3 +23,14 @@ func TestPreparePrintUnknownScheme(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func TestPreparePrintTCPNoDial(t *testing.T) {
+	err := preparePrint(printerTarget{Scheme: schemeTCP, TCPHostPort: "127.0.0.1:1", Display: "tcp:test"})
+	if err != nil {
+		t.Fatalf("tcp preflight must not dial: %v", err)
+	}
+	err = preparePrint(printerTarget{Scheme: schemeTCP, TCPHostPort: "  ", Display: "tcp:empty"})
+	if err == nil {
+		t.Fatal("expected empty host:port error")
+	}
+}

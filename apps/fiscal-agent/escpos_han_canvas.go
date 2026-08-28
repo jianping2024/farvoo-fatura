@@ -38,6 +38,29 @@ func hanFontPxForRole(basePx int, role hanFontRole) int {
 	return px
 }
 
+// hanBitmapAlignStartPx — sole X anchor for Han lines on the 576px canvas (ESC a must not center GS v 0).
+func hanBitmapAlignStartPx(textWidthPx int, align byte) int {
+	if textWidthPx < 0 {
+		textWidthPx = 0
+	}
+	switch align {
+	case 1:
+		x := (bitmapTextMaxWidthPx - textWidthPx) / 2
+		if x < 0 {
+			return 0
+		}
+		return x
+	case 2:
+		x := bitmapTextMaxWidthPx - textWidthPx - hanBitmapPadY
+		if x < 0 {
+			return 0
+		}
+		return x
+	default:
+		return hanBitmapPadY
+	}
+}
+
 // escposDisplayColToPx maps Font A display columns to POS-80 576-dot canvas (12 dots/col).
 func escposDisplayColToPx(col int) int {
 	if col <= 0 {
@@ -235,6 +258,10 @@ func escposBitmapRaster(img bitmapTextImage, align byte) []byte {
 	if img.Width <= 0 || img.Height <= 0 || len(img.Pixels) != img.Width*img.Height {
 		return nil
 	}
+	// Full POS-80 canvas: alignment is baked into pixel layout; ESC a on GS v 0 is unreliable.
+	if img.Width >= bitmapTextMaxWidthPx {
+		align = 0
+	}
 	widthBytes := (img.Width + 7) / 8
 	data := make([]byte, widthBytes*img.Height)
 	for y := 0; y < img.Height; y++ {
@@ -303,4 +330,19 @@ func bitmapInkMaxX(img bitmapTextImage) int {
 		}
 	}
 	return maxX
+}
+
+func bitmapInkMinX(img bitmapTextImage) int {
+	minX := img.Width
+	for y := 0; y < img.Height; y++ {
+		for x := 0; x < img.Width; x++ {
+			if img.Pixels[y*img.Width+x] != 0 && x < minX {
+				minX = x
+			}
+		}
+	}
+	if minX >= img.Width {
+		return -1
+	}
+	return minX
 }
