@@ -20,13 +20,8 @@ type HandlerDeps struct {
 	Fiscal            *service.FiscalService
 	StoreID           string
 	StationPrintersFn func() map[string]string // live Agent station_printers; may be nil
+	StationMetaFn     func() []StationMeta     // cloud print_stations; may be nil
 	UIEvents          *uievents.Hub            // Admin SSE; may be nil in unit tests
-}
-
-// PrinterStation is one mapped station for GET /local/v1/printers.
-type PrinterStation struct {
-	ID      string `json:"id"`
-	Printer string `json:"printer"`
 }
 
 // Mount registers fiscal local routes. Prefix: /local/v1
@@ -142,16 +137,17 @@ func handleDevBillSyncPull(w http.ResponseWriter, r *http.Request, deps HandlerD
 }
 
 func handleListPrinters(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
-	stations := []PrinterStation{}
+	mapped := map[string]string{}
 	if deps.StationPrintersFn != nil {
-		for id, raw := range deps.StationPrintersFn() {
-			id = strings.TrimSpace(id)
-			raw = strings.TrimSpace(raw)
-			if id == "" || raw == "" {
-				continue
-			}
-			stations = append(stations, PrinterStation{ID: id, Printer: raw})
-		}
+		mapped = deps.StationPrintersFn()
+	}
+	var meta []StationMeta
+	if deps.StationMetaFn != nil {
+		meta = deps.StationMetaFn()
+	}
+	stations := BuildPrinterStationList(mapped, meta)
+	if stations == nil {
+		stations = []PrinterStation{}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"stations": stations})
 }

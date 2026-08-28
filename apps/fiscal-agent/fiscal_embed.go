@@ -123,6 +123,7 @@ func startEmbeddedFiscal(cfg *config) error {
 		BindAddr:          bind,
 		StoreID:           storeID,
 		StationPrintersFn: stationsFn,
+		StationMetaFn:     stationMetaFnForConfigPath(configPath),
 		PrintBytesFn:      printBytes,
 		Seed:              os.Getenv("FISCAL_SEED") == "1",
 	}

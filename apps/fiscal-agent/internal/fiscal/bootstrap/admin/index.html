@@ -599,6 +599,7 @@
   <script src="/fiscal-ui/toast.js"></script>
   <script src="/fiscal-ui/date-range.js"></script>
   <script src="/fiscal-ui/list-pagination.js"></script>
+  <script src="/fiscal-ui/printer-station.js"></script>
   <script>
 (function () {
   'use strict';
@@ -950,7 +951,7 @@
       stations.forEach(s => {
         const o = document.createElement('option');
         o.value = s.id;
-        o.textContent = (s.printer || s.id) + ' [' + s.id.slice(0, 8) + '…]';
+        o.textContent = FiscalUI.formatPrinterStationOption(s);
         sel.appendChild(o);
       });
     });

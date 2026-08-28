@@ -64,6 +64,14 @@ async function main() {
     FISCAL_SEED: '1',
     FISCAL_ALLOW_DEV_KEY: '1',
     FISCAL_AT_ENV: 'mock',
+    FISCAL_STATION_PRINTERS_JSON: JSON.stringify({
+      '2951b0b2-aaaa-bbbb-cccc-ddddeeeeffff': 'tcp:172.20.10.3:9100',
+      '7e8facc6-1111-2222-3333-444455556666': 'tcp:172.20.10.3:9100',
+    }),
+    FISCAL_STATION_META_JSON: JSON.stringify([
+      { id: '2951b0b2-aaaa-bbbb-cccc-ddddeeeeffff', name_zh: '厨房', sort_order: 0 },
+      { id: '7e8facc6-1111-2222-3333-444455556666', name_zh: '吧台', sort_order: 1 },
+    ]),
   });
 
   const child = spawn(
@@ -274,6 +282,30 @@ async function main() {
     );
   } catch (e) {
     record('list-invoices-pagination-page-size-20', false, String(e));
+  }
+
+  try {
+    const raw = await uatCmd('req', 'GET', '/local/v1/printers');
+    const j = JSON.parse(raw);
+    const stations = j.stations || [];
+    const kitchen = stations.find((s) => s.id === '2951b0b2-aaaa-bbbb-cccc-ddddeeeeffff');
+    const bar = stations.find((s) => s.id === '7e8facc6-1111-2222-3333-444455556666');
+    const ok =
+      stations.length === 2 &&
+      kitchen &&
+      kitchen.label === '厨房' &&
+      kitchen.printer === 'tcp:172.20.10.3:9100' &&
+      bar &&
+      bar.label === '吧台' &&
+      stations[0].label === '厨房' &&
+      stations[1].label === '吧台';
+    record(
+      'list-printers-station-labels',
+      ok,
+      ok ? `${stations[0].label} · ${stations[1].label}` : JSON.stringify(stations),
+    );
+  } catch (e) {
+    record('list-printers-station-labels', false, String(e));
   }
 
   child.kill('SIGTERM');

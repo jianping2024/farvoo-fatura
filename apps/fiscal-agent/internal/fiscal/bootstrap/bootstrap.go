@@ -29,6 +29,7 @@ type Options struct {
 	PrintSink                 worker.Sink // Memory UAT / fiscal-local; Agent uses PrintBytesFn
 	ATClient                  at.Client
 	StationPrintersFn         worker.StationPrintersFn // live config.station_printers
+	StationMetaFn             func() []api.StationMeta // cloud print_stations labels; may be nil
 	PrintBytesFn              worker.PrintBytesFn      // Agent: parsePrinterTarget+printToTarget ONLY
 }
 
@@ -129,6 +130,7 @@ func StartCore(opts Options) (*Runtime, error) {
 	MountRoutes(mux, api.HandlerDeps{
 		Fiscal: svc, StoreID: opts.StoreID,
 		StationPrintersFn: opts.StationPrintersFn,
+		StationMetaFn:     opts.StationMetaFn,
 		UIEvents:          hub,
 	})
 
