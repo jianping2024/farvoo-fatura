@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.17
+
+**打印：TCP 单次连接 + 中文标题画布居中**
+
+- LAN `tcp:9100` 预检不再单独 dial，避免部分网口机把 `+EVENT=SOCKA_*` 打到小票顶栏。
+- Han 位图（`GS v 0`）在 576px 画布内对齐；满宽光栅不再依赖 `ESC a` 居中（兼容新型号热敏机）。
+
 ## 0.4.16
 
 **打印机档口下拉：显示档口名称**
