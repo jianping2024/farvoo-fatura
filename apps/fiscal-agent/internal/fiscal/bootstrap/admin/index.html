@@ -95,9 +95,18 @@
     }
     .panel h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
     .table-scroll { overflow-x: auto; }
-    .invoices-table { min-width: 1100px; }
-    .invoices-table th, .invoices-table td { white-space: nowrap; font-size: 0.82rem; }
-    .hash-cell { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
+    .invoices-table th, .invoices-table td { font-size: 0.85rem; }
+    .buyer-cell { display: flex; flex-direction: column; gap: 0.1rem; line-height: 1.3; }
+    .buyer-cell .buyer-nif { font-weight: 600; }
+    .buyer-cell .buyer-name { font-size: 0.78rem; }
+    .invoice-detail-modal { max-width: 560px; }
+    .detail-grid { margin: 0; }
+    .detail-row { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.5rem 0.75rem; padding: 0.45rem 0; border-bottom: 1px solid var(--line); align-items: start; }
+    .detail-row dt { margin: 0; font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+    .detail-row dd { margin: 0; font-size: 0.88rem; word-break: break-all; }
+    .hash-detail { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
+    .hash-detail-row dd { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .hash-detail-row .hash-preview { flex: 1 1 12rem; }
     .flow-bar {
       display: flex; gap: 0; margin-bottom: 1.25rem; border: 1px solid var(--line);
       border-radius: 12px; overflow: hidden; background: #fff;
@@ -419,7 +428,7 @@
         <div class="topbar">
           <div>
             <h1>发票</h1>
-            <p class="hint">已签发发票 · Hash 入参可见 · 可重打副本（2ª Via）</p>
+            <p class="hint">已签发发票，可查询与重打副本（2ª Via）</p>
           </div>
           <button type="button" class="secondary" id="btnRefreshInvoices">刷新</button>
         </div>
@@ -430,13 +439,7 @@
                 <th>签发时刻</th>
                 <th>票号</th>
                 <th>金额</th>
-                <th>上张 Hash</th>
-                <th>Hash</th>
-                <th>ATCUD</th>
-                <th>类型</th>
-                <th>单据状态</th>
-                <th>购方 NIF</th>
-                <th>购方名称</th>
+                <th>购方</th>
                 <th>来源</th>
                 <th></th>
               </tr>
@@ -537,6 +540,19 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="invoiceDetailModal" class="modal-backdrop hidden">
+    <div class="modal invoice-detail-modal">
+      <div class="topbar" style="margin-bottom:0.5rem">
+        <h2 id="invoiceDetailTitle" style="margin:0;font-size:1.15rem">发票详情</h2>
+        <button type="button" class="secondary" id="btnCloseInvoiceDetail">关闭</button>
+      </div>
+      <dl class="detail-grid" id="invoiceDetailBody"></dl>
+      <div class="actions">
+        <button type="button" class="secondary" id="btnInvoiceDetailReprint">重打</button>
+      </div>
+    </div>
   </div>
 
   <div id="productPicker" class="modal-backdrop hidden">
@@ -661,12 +677,90 @@
       d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
   }
 
-  /** ONLY Hash display truncator for invoice list (前 8 … 后 4). */
+  /** last GET /local/v1/fiscal-documents list — ONLY invoice row source for detail drawer. */
+  let invoiceListCache = [];
+
+  /** ONLY Hash display truncator (detail drawer preview: 前 8 … 后 4). */
   function truncateHash(h) {
     const s = String(h || '').trim();
     if (!s) return '—';
     if (s.length <= 14) return s;
     return s.slice(0, 8) + '…' + s.slice(-4);
+  }
+
+  /** ONLY buyer cell formatter for invoice list table. */
+  function formatInvoiceBuyerCell(inv) {
+    const nif = String(inv.customer_tax_id || '').trim();
+    const name = String(inv.customer_name || '').trim();
+    if (nif && name) {
+      return '<div class="buyer-cell"><span class="buyer-nif">' + nif + '</span>' +
+        '<span class="buyer-name hint">' + name + '</span></div>';
+    }
+    if (name) return name;
+    if (nif) return nif;
+    return '—';
+  }
+
+  function invoiceDetailRow(label, value) {
+    return '<div class="detail-row"><dt>' + label + '</dt><dd>' + (value || '—') + '</dd></div>';
+  }
+
+  function invoiceDetailHashRow(label, hash, copyKey) {
+    const full = String(hash || '').trim();
+    if (!full) return invoiceDetailRow(label, '—');
+    return '<div class="detail-row hash-detail-row"><dt>' + label + '</dt><dd>' +
+      '<span class="hash-preview hash-detail">' + truncateHash(full) + '</span>' +
+      '<button type="button" class="secondary" data-copy-hash="' + copyKey + '">复制全文</button>' +
+      '</dd></div>';
+  }
+
+  /** ONLY invoice detail drawer renderer (technical fields live here, not in list). */
+  function renderInvoiceDetailModal(inv) {
+    const when = inv.system_entry_date || inv.issued_at || '';
+    $('#invoiceDetailTitle').textContent = inv.invoice_no || '发票详情';
+    $('#invoiceDetailBody').innerHTML =
+      invoiceDetailRow('签发时刻', fmtTime(when)) +
+      invoiceDetailRow('票号', inv.invoice_no) +
+      invoiceDetailRow('金额', fmtMoney(inv.gross_total)) +
+      invoiceDetailRow('购方 NIF', inv.customer_tax_id) +
+      invoiceDetailRow('购方名称', inv.customer_name) +
+      invoiceDetailRow('来源', inv.order_label) +
+      invoiceDetailRow('ATCUD', inv.atcud) +
+      invoiceDetailRow('类型', inv.document_type) +
+      invoiceDetailRow('单据状态', inv.document_status) +
+      invoiceDetailRow('打印状态', inv.print_status) +
+      invoiceDetailHashRow('上张 Hash', inv.previous_hash, 'previous_hash') +
+      invoiceDetailHashRow('Hash', inv.hash, 'hash');
+    const btn = $('#btnInvoiceDetailReprint');
+    btn.dataset.reprint = inv.document_id;
+    btn._invoiceCopy = { hash: inv.hash || '', previous_hash: inv.previous_hash || '' };
+  }
+
+  function openInvoiceDetail(documentId) {
+    const inv = invoiceListCache.find(i => i.document_id === documentId);
+    if (!inv) {
+      toast('找不到该发票', 'error');
+      return;
+    }
+    renderInvoiceDetailModal(inv);
+    $('#invoiceDetailModal').classList.remove('hidden');
+  }
+
+  function closeInvoiceDetail() {
+    $('#invoiceDetailModal').classList.add('hidden');
+    $('#invoiceDetailBody').innerHTML = '';
+  }
+
+  async function copyInvoiceHash(copyKey) {
+    const btn = $('#btnInvoiceDetailReprint');
+    const text = (btn._invoiceCopy && btn._invoiceCopy[copyKey]) || '';
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('已复制', 'success');
+    } catch (_) {
+      toast('复制失败', 'error');
+    }
   }
 
   function fmtTimeShort(iso) {
@@ -1164,12 +1258,23 @@
     ).join('');
   }
 
+  /** ONLY reprint path for invoice list + detail drawer. */
+  async function reprintInvoice(documentId) {
+    const sid = requireStation($('#invStationSel').options.length ? $('#invStationSel') : $('#stationSel'));
+    const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/reprints', {
+      operator_id: OPERATOR_ID,
+      station_id: sid
+    });
+    await pollPrintJob(res.print_job_id, '重打已提交');
+  }
+
   async function refreshInvoices() {
     const data = await j('GET', '/local/v1/fiscal-documents');
     const list = data.invoices || [];
+    invoiceListCache = list;
     const tbody = $('#invoicesTbody');
     if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="12" class="hint">暂无发票</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="hint">暂无发票</td></tr>';
     } else {
       tbody.innerHTML = list.map(inv => {
         const when = inv.system_entry_date || inv.issued_at || '';
@@ -1177,13 +1282,7 @@
           '<td>' + fmtTime(when) + '</td>' +
           '<td>' + (inv.invoice_no || inv.document_type || '—') + '</td>' +
           '<td>' + fmtMoney(inv.gross_total) + '</td>' +
-          '<td class="hash-cell" title="' + (inv.previous_hash || '') + '">' + truncateHash(inv.previous_hash) + '</td>' +
-          '<td class="hash-cell" title="' + (inv.hash || '') + '">' + truncateHash(inv.hash) + '</td>' +
-          '<td>' + (inv.atcud || '—') + '</td>' +
-          '<td>' + (inv.document_type || '—') + '</td>' +
-          '<td>' + (inv.document_status || '—') + '</td>' +
-          '<td>' + (inv.customer_tax_id || '—') + '</td>' +
-          '<td>' + (inv.customer_name || '—') + '</td>' +
+          '<td>' + formatInvoiceBuyerCell(inv) + '</td>' +
           '<td>' + (inv.order_label || '—') + '</td>' +
           '<td><button type="button" class="secondary" data-reprint="' + inv.document_id + '">重打</button></td></tr>';
       }).join('');
@@ -1865,15 +1964,14 @@
     if (reprint) {
       e.stopPropagation();
       withBusy(reprint, '重打中…', async () => {
-        try {
-          const sid = requireStation($('#invStationSel').options.length ? $('#invStationSel') : $('#stationSel'));
-          const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(reprint.dataset.reprint) + '/reprints', {
-            operator_id: OPERATOR_ID,
-            station_id: sid
-          });
-          await pollPrintJob(res.print_job_id, '重打已提交');
-        } catch (er) { toast(errText(er), 'error'); throw er; }
+        try { await reprintInvoice(reprint.dataset.reprint); }
+        catch (er) { toast(errText(er), 'error'); throw er; }
       });
+      return;
+    }
+    const invRow = e.target.closest('tr[data-inv]');
+    if (invRow && !e.target.closest('button')) {
+      openInvoiceDetail(invRow.dataset.inv);
       return;
     }
     const editProd = e.target.closest('[data-edit-prod]');
@@ -1929,6 +2027,24 @@
   });
 
   $('#btnClosePicker').onclick = () => closeProductWorkbench();
+
+  $('#btnCloseInvoiceDetail').onclick = () => closeInvoiceDetail();
+  $('#invoiceDetailModal').addEventListener('click', e => {
+    if (e.target.id === 'invoiceDetailModal') closeInvoiceDetail();
+  });
+  $('#invoiceDetailBody').addEventListener('click', e => {
+    const copyBtn = e.target.closest('[data-copy-hash]');
+    if (copyBtn) {
+      e.preventDefault();
+      copyInvoiceHash(copyBtn.dataset.copyHash);
+    }
+  });
+  $('#btnInvoiceDetailReprint').onclick = () => withBusy($('#btnInvoiceDetailReprint'), '重打中…', async () => {
+    const id = $('#btnInvoiceDetailReprint').dataset.reprint;
+    if (!id) return;
+    try { await reprintInvoice(id); }
+    catch (er) { toast(errText(er), 'error'); throw er; }
+  });
 
   $('#btnConfirmOrder').onclick = () => withBusy($('#btnConfirmOrder'), '确认中…', async () => {
     if (!currentOrder) return;

@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.13
+
+**发票列表 Phase 1：主表瘦身 + 详情抽屉**
+
+- 主表 6 列：签发时刻、票号、金额、购方（NIF+名称合并）、来源、重打。
+- Hash / ATCUD / 类型 / 状态 / 打印状态移入点行详情；Hash 仅详情内截断预览 +「复制全文」。
+- `refreshInvoices` / `renderInvoiceDetailModal` / `reprintInvoice` / `formatInvoiceBuyerCell` 各唯一一份。
+
 ## 0.4.12
 
 **发票列表：Hash 入参可见列（无发票日/打印状态）**

@@ -258,13 +258,7 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 		"<th>签发时刻</th>",
 		"<th>票号</th>",
 		"<th>金额</th>",
-		"<th>上张 Hash</th>",
-		"<th>Hash</th>",
-		"<th>ATCUD</th>",
-		"<th>类型</th>",
-		"<th>单据状态</th>",
-		"<th>购方 NIF</th>",
-		"<th>购方名称</th>",
+		"<th>购方</th>",
 		"<th>来源</th>",
 	}
 	for _, h := range requiredHeaders {
@@ -272,21 +266,55 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 			t.Fatalf("invoice list header %q must appear exactly once in view-invoices, got %d", h, n)
 		}
 	}
-	for _, forbidden := range []string{"<th>发票日</th>", "<th>打印状态</th>", ">时间</th>"} {
+	for _, forbidden := range []string{
+		"<th>发票日</th>", "<th>打印状态</th>", ">时间</th>",
+		"<th>上张 Hash</th>", "<th>Hash</th>", "<th>ATCUD</th>",
+		"<th>类型</th>", "<th>单据状态</th>", "<th>购方 NIF</th>", "<th>购方名称</th>",
+		"Hash 入参可见",
+	} {
 		if strings.Contains(section, forbidden) {
-			t.Fatalf("invoice list must not include %q", forbidden)
+			t.Fatalf("invoice list must not include %q in main table", forbidden)
 		}
 	}
-	if n := strings.Count(adminHTML, "function truncateHash"); n != 1 {
-		t.Fatalf("truncateHash must be the ONLY hash truncator, got %d", n)
+	for _, fn := range []string{
+		"function truncateHash",
+		"function formatInvoiceBuyerCell",
+		"function renderInvoiceDetailModal",
+		"function openInvoiceDetail",
+		"async function refreshInvoices",
+		"async function reprintInvoice",
+	} {
+		if n := strings.Count(adminHTML, fn); n != 1 {
+			t.Fatalf("%s must appear exactly once, got %d", fn, n)
+		}
 	}
-	if n := strings.Count(adminHTML, "async function refreshInvoices"); n != 1 {
-		t.Fatalf("refreshInvoices must be the ONLY invoice list renderer, got %d", n)
+	if strings.Count(adminHTML, `id="invoiceDetailModal"`) != 1 {
+		t.Fatal("invoiceDetailModal must exist exactly once")
+	}
+	if !strings.Contains(adminHTML, "formatInvoiceBuyerCell(inv)") {
+		t.Fatal("invoice list must render buyer via formatInvoiceBuyerCell only")
+	}
+	if strings.Contains(adminHTML, "truncateHash(inv.") || strings.Contains(adminHTML, `title="' + (inv.hash`) {
+		t.Fatal("invoice list must not show hash columns or title tooltips")
+	}
+	if !strings.Contains(adminHTML, "invoiceDetailHashRow") {
+		t.Fatal("hash fields must render in invoice detail drawer only")
+	}
+	if strings.Contains(adminHTML, "inv.print_status") && strings.Contains(adminHTML, "refreshInvoices") {
+		// print_status only in detail modal renderer, not list row template
+		idx := strings.Index(adminHTML, "async function refreshInvoices")
+		endFn := strings.Index(adminHTML[idx:], "async function refreshBills")
+		if endFn < 0 {
+			endFn = strings.Index(adminHTML[idx:], "function renderHomeStats")
+		}
+		if endFn > 0 && strings.Contains(adminHTML[idx:idx+endFn], "inv.print_status") {
+			t.Fatal("invoice list must not render print_status column")
+		}
 	}
 	if !strings.Contains(adminHTML, "inv.system_entry_date") {
 		t.Fatal("invoice list must display system_entry_date as 签发时刻")
 	}
-	if strings.Contains(adminHTML, "inv.invoice_date") || strings.Contains(adminHTML, "inv.print_status") {
-		t.Fatal("invoice list must not render invoice_date or print_status columns")
+	if strings.Contains(adminHTML, "inv.invoice_date") {
+		t.Fatal("invoice list must not render invoice_date")
 	}
 }
