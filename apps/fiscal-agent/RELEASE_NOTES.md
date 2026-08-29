@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.21
+
+**M4 扫尾：Local API 契约 + §13 P0 + sync_outbox**
+
+- 契约：`docs/fiscal-local-api.zh.md`（签发 / 鉴权 / outbox）。
+- §13 P0：`FISCAL_AUTH_MODE=loopback_trust|required`；非本机或 required 时须终端凭证 + `operator_token`；唯一入口 `auth.AuthenticateIssue`。
+- 开票终端表 `issue_terminals`（`005_issue_terminals.sql`）；`PUT /local/v1/setup/issue-terminal`。
+- 签发同事务入队 `sync_outbox`（`EnqueueInvoiceIssuedTx` 仅 `IssueFT`）；`sync.Worker` 推送 Farvoo stub；未配置 FARVOO 时保持 PENDING。
+- 回归：`scripts/fiscal-m4-regression.mjs`（401 / 签发 / PENDING→SENT / 幂等无双出队）。
+
 ## 0.4.20
 
 **分单开票：同菜累加 + 本票预估金额**

@@ -13,6 +13,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/service"
 	"farvoo-fiscal-agent/internal/fiscal/signer"
 	"farvoo-fiscal-agent/internal/fiscal/store"
+	fiscalsync "farvoo-fiscal-agent/internal/fiscal/sync"
 	"farvoo-fiscal-agent/internal/fiscal/uievents"
 	"farvoo-fiscal-agent/internal/fiscal/worker"
 )
@@ -35,15 +36,16 @@ type Options struct {
 
 // Runtime is a started fiscal stack (HTTP optional).
 type Runtime struct {
-	DB      *store.DB
-	Service *service.FiscalService
-	Worker  *worker.Worker
-	Sink    *worker.MemorySink
-	Server  *http.Server
-	Mux     *http.ServeMux
-	DataDir string
-	StoreID string
-	cancel  context.CancelFunc
+	DB         *store.DB
+	Service    *service.FiscalService
+	Worker     *worker.Worker
+	SyncWorker *fiscalsync.Worker
+	Sink       *worker.MemorySink
+	Server     *http.Server
+	Mux        *http.ServeMux
+	DataDir    string
+	StoreID    string
+	cancel     context.CancelFunc
 }
 
 // StartCore opens DB, optional seed, starts print worker — no Listen.
@@ -118,6 +120,9 @@ func StartCore(opts Options) (*Runtime, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	go w.Loop(ctx, 200*time.Millisecond)
 
+	sw := &fiscalsync.Worker{DB: db, Pusher: fiscalsync.NewHTTPPusherFromEnv()}
+	go sw.Loop(ctx, 500*time.Millisecond)
+
 	mux := http.NewServeMux()
 	hub := uievents.NewHub()
 	db.OnBillDraftsChanged = func(openCount int, tableHint, kind string) {
@@ -128,14 +133,14 @@ func StartCore(opts Options) (*Runtime, error) {
 		})
 	}
 	MountRoutes(mux, api.HandlerDeps{
-		Fiscal: svc, StoreID: opts.StoreID,
+		Fiscal: svc, Store: db, StoreID: opts.StoreID,
 		StationPrintersFn: opts.StationPrintersFn,
 		StationMetaFn:     opts.StationMetaFn,
 		UIEvents:          hub,
 	})
 
 	return &Runtime{
-		DB: db, Service: svc, Worker: w, Sink: mem, Mux: mux,
+		DB: db, Service: svc, Worker: w, SyncWorker: sw, Sink: mem, Mux: mux,
 		DataDir: opts.DataDir, StoreID: opts.StoreID, cancel: cancel,
 	}, nil
 }

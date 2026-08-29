@@ -2,7 +2,7 @@
 
 > **状态：定稿**  
 > **权威：是**（库表设计；与 DDL 冲突时以 DDL 为准并回改本文）  
-> **对应实现：** `apps/fiscal-agent/internal/fiscal/store/migrations/001_init.sql` + `002_bill_sync_drafts.sql`  
+> **对应实现：** `apps/fiscal-agent/internal/fiscal/store/migrations/001_init.sql` + `002`–`005`  
 > **写作规范：** [`docs/design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 > 权威库：门店本机 Agent 唯一 SQLite。  
@@ -11,8 +11,9 @@
 
 配套：
 
-- 实现迁移：`apps/fiscal-agent/internal/fiscal/store/migrations/001_init.sql`、`002_bill_sync_drafts.sql`
+- 实现迁移：`apps/fiscal-agent/internal/fiscal/store/migrations/001_init.sql` … `005_issue_terminals.sql`
 - 包内摘要：`apps/fiscal-agent/internal/fiscal/store/SCHEMA.md`
+- Local API 契约：[`fiscal-local-api.zh.md`](fiscal-local-api.zh.md)
 
 ---
 
@@ -144,6 +145,7 @@
   signing_keys
   agent_installations
   operators
+  issue_terminals
 
 主档（可改；不影响已签发票）
   customers
@@ -306,6 +308,21 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | synced_at | TEXT | 否 | |
 | created_at | TEXT | 是 | UTC |
 | updated_at | TEXT | 是 | UTC |
+
+### 6.5a `issue_terminals`（开票终端 · M4 §13 P0）
+
+| 列 | 类型 | 必填 | 说明 |
+|----|------|------|------|
+| id | TEXT PK | 是 | 终端 id（请求头 `X-Fiscal-Terminal-Id`） |
+| store_id | TEXT | 是 | |
+| display_name | TEXT | 是 | 默认 `''` |
+| secret_hash | TEXT | 是 | SHA-256 hex；禁止存明文 |
+| station_id | TEXT | 否 | 可选默认打印档口 |
+| active | INTEGER | 是 | 默认 1 |
+| created_at | TEXT | 是 | UTC |
+| updated_at | TEXT | 是 | UTC |
+
+**唯一写路径：** `store.UpsertIssueTerminal`。**唯一校验：** `store.VerifyIssueTerminal`。
 
 ### 6.6 `customers`
 
@@ -630,10 +647,10 @@ Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `Ing
 4. 插入 `invoices` + `invoice_lines` + `invoice_customer_snapshots` + `invoice_payments`（NC 另写 `invoice_line_references`）  
 5. 插入 `local_print_jobs`（ORIGINAL + 完整 payload）  
 6. 写 `idempotency_keys.invoice_id`  
-7. （可选）`sync_outbox`  
+7. 写 `sync_outbox`（`INVOICE_ISSUED`；仅新签发，幂等命中不写）  
 8. `COMMIT`  
 
-之后 Print Worker 认领出纸；失败只改 `print_status` / job，**不删税务行**。
+之后 Print Worker 认领出纸；Sync Worker 冲刷 outbox；失败只改 print/outbox 状态，**不删税务行**。
 
 ---
 

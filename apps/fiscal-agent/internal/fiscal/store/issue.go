@@ -283,6 +283,26 @@ func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueR
 		return nil, fmt.Errorf("store: idempotency: %w", err)
 	}
 
+	// sync_outbox: ONLY enqueue path for signed invoices (same txn; failure must abort issue).
+	if err := EnqueueInvoiceIssuedTx(tx, p.StoreID, InvoiceIssuedPayload{
+		DocumentID:     docID,
+		InvoiceNo:      invoiceNo,
+		ATCUD:          atcud,
+		DocumentStatus: string(domain.DocumentSigned),
+		StoreID:        p.StoreID,
+		SourceSystem:   p.Snapshot.SourceSystem,
+		SourceSaleID:   p.Snapshot.SourceSaleID,
+		ScopeType:      p.Snapshot.ScopeType,
+		ScopeID:        p.Snapshot.ScopeID,
+		FiscalPurpose:  p.Snapshot.FiscalPurpose,
+		GrossTotal:     grossStr,
+		IssuedAt:       p.NowUTC.UTC().Format(time.RFC3339),
+		PrintJobID:     printJobID,
+		PrintStatus:    string(domain.PrintPending),
+	}, p.NowUTC); err != nil {
+		return nil, err
+	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}

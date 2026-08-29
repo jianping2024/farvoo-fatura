@@ -44,11 +44,11 @@ git push origin fiscal-agent-v0.3.86
 
 里程碑与每步交付物（权威）：[`docs/fiscal-dev-plan.zh.md`](docs/fiscal-dev-plan.zh.md)
 
-当前：**M0 + M1 + M2 已完成**；下一刀 **M3**（NC 冲销）。
+当前：**M0–M2.6 + M4 已完成**。下一刀 **M3**（NC 冲销）。
 
 ## 当前阶段
 
-**M2**：Fiscal Core 嵌入主 Agent（`-fiscal-standalone` / 托盘）；税务小票经 `ResolveFiscalPrinterTCP` → `TCPSink`（可配 `FISCAL_PRINTER_TCP` / `fiscal_receipt_printer`）。
+**M4 已关闭**：正式 Admin（0.4.x）+ Farvoo cloud 联调（白云）+ Local API 契约 / §13 P0 / `sync_outbox`（见 [`docs/fiscal-local-api.zh.md`](docs/fiscal-local-api.zh.md)、[`docs/fiscal-m4-farvoo-uat.zh.md`](docs/fiscal-m4-farvoo-uat.zh.md)）。
 
 ```bash
 cd apps/fiscal-agent
@@ -57,12 +57,15 @@ FISCAL_ALLOW_LOCAL_PROVISION=1 FISCAL_AT_ENV=mock go run . -fiscal-standalone
 # 回归（SQLite 断言；本仓无 Supabase / npm run dev）
 node scripts/fiscal-m1-regression.mjs
 node scripts/fiscal-m2-print-smoke.mjs          # Agent + fake TCP :9100
+node scripts/fiscal-m4-regression.mjs           # §13 + outbox
 FISCAL_SEED=1 node scripts/fiscal-local-regression.mjs  # M0 兼容
 ```
 
 - Setup API：`/local/v1/setup/*`（见 `docs/fiscal-m1-identity-series.zh.md`）
 - 签发：`POST /local/v1/fiscal-documents`（唯一）
 - Admin：`http://127.0.0.1:17880/`（`FISCAL_BIND`）
+- Local API 契约：`docs/fiscal-local-api.zh.md`
+- 联调 UAT：`docs/fiscal-m4-farvoo-uat.zh.md`
 - 配置边界：`docs/fiscal-config-boundary.zh.md`
 - DB 断言：SQLite（`assert-db`；本仓无 Supabase）
 

@@ -2,7 +2,7 @@
 
 > **状态：定稿**（实现已落地，见 Agent `IssueFromBillDraft` / 正式 Admin）  
 > **权威：是**（本仓「从同步账单开票 / 分单补票」以本文为准；**库表/API 内部名不变**）  
-> **对应实现：** 已落地（`mode`/`scope_id`/NIF/`discard`/详情已开标记）；§13 仍归 M4  
+> **对应实现：** 已落地（`mode`/`scope_id`/NIF/`discard`/详情已开标记）；§13 P0 见 M4 / [`fiscal-local-api.zh.md`](fiscal-local-api.zh.md)  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)  
 > **库表权威：** [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §6.21  
 > **只读依据（不改对方仓文档）：** restaurant-ordering `farvoo-fiscal-agent-integration.zh.md` §3.1（整桌/按人互斥、`scope_id` 稳定 UUID）；挂单载荷见同仓 `farvoo-fiscal-bill-sync-api.zh.md` §5  

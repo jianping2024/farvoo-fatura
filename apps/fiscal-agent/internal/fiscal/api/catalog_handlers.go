@@ -119,6 +119,7 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 	if body.OperatorID == "" {
 		body.OperatorID = "op-demo-cashier"
 	}
+	body.OperatorID = operatorFromAuthOrBody(r, body.OperatorID)
 	res, err := deps.Fiscal.IssueManualFT(r.Context(), catalog.ManualIssueInput{
 		RequestID: body.RequestID, CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
 		PaymentMethod: body.PaymentMethod, TableDisplayName: body.TableDisplayName, Lines: body.Lines,

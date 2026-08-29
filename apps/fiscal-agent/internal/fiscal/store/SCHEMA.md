@@ -1,7 +1,7 @@
 # Fiscal Agent SQLite Schema（P0）速查
 
 > **完整字段与规则**：[`docs/fiscal-sqlite-schema.zh.md`](../../../../../../docs/fiscal-sqlite-schema.zh.md)  
-> **DDL**：[`migrations/001_init.sql`](migrations/001_init.sql)、[`migrations/002_bill_sync_drafts.sql`](migrations/002_bill_sync_drafts.sql)、[`migrations/003_print_job_station.sql`](migrations/003_print_job_station.sql)
+> **DDL**：[`migrations/001_init.sql`](migrations/001_init.sql)、[`migrations/002_bill_sync_drafts.sql`](migrations/002_bill_sync_drafts.sql)、[`migrations/003_print_job_station.sql`](migrations/003_print_job_station.sql)、[`migrations/004_bill_draft_allocation.sql`](migrations/004_bill_draft_allocation.sql)、[`migrations/005_issue_terminals.sql`](migrations/005_issue_terminals.sql)
 
 ## 原则
 
@@ -17,7 +17,7 @@
 ## 表分组
 
 ```text
-taxpayer_settings, at_credentials, signing_keys, agent_installations, operators
+taxpayer_settings, at_credentials, signing_keys, agent_installations, operators, issue_terminals
 customers, fiscal_product_categories, fiscal_products
 series, invoices, invoice_lines, invoice_customer_snapshots,
   invoice_payments, invoice_line_references
@@ -28,10 +28,16 @@ bill_sync_drafts
 
 ## 签发同事务
 
-idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL local_print_job → COMMIT  
-打印失败不回滚税务行。
+idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL local_print_job → **sync_outbox INVOICE_ISSUED** → COMMIT  
+打印失败不回滚税务行；outbox 推送失败不回滚税务行。
 
 **唯一写路径：** `store.IssueFT`（经 `service.IssueDocument` / `POST /local/v1/fiscal-documents`）。禁止第二套插票逻辑。
+
+**sync_outbox 入队唯一路径：** `store.EnqueueInvoiceIssuedTx`（仅 `IssueFT` 成功签发事务内）。冲刷唯一：`sync.Worker` → `ClaimNextOutbox` → `PushInvoiceCopy` → `MarkOutboxSent` / `MarkOutboxRetry`。
+
+**§13 开票鉴权唯一路径：** `api.withIssueAuth` → `auth.AuthenticateIssue`（终端 `VerifyIssueTerminal` + `VerifyOperatorToken` + `EnsureOperatorFromMesa`）。覆盖 `fiscal-documents` / `manual` / `bill-drafts/.../issue`。
+
+**开票终端唯一写路径：** `store.UpsertIssueTerminal`（`PUT /local/v1/setup/issue-terminal`）。
 
 **账单同步唯一写路径：** `billsync.PullAndIngest` → `IngestCloudJob` → `UpsertBillDraftOpen` + `UpsertFiscalProductByCode`。Realtime/Polling 只门铃/补偿，禁止第二套 HTTP/WS。
 
