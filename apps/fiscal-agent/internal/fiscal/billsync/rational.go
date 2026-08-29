@@ -3,6 +3,7 @@ package billsync
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 )
 
@@ -79,34 +80,47 @@ func CompareRationals(a, b Rational) int {
 
 func RationalLTE(a, b Rational) bool { return CompareRationals(a, b) <= 0 }
 
-// ParseQtyString parses "2", "1/2", "2 1/3" (restaurant-aligned subset).
+// ParseQtyString is the ONLY qty-string → Rational parser for bill-sync.
+// Accepts: "" (→1), integers, fractions ("1/2"), mixed ("2 1/3"), and
+// contract decimal strings ("0.33", "1.00", "2.50"). Full-string only —
+// never fmt.Sscanf("%d") (stops at '.' → "0.33" becomes 0 → share qty must be positive).
 func ParseQtyString(raw string) (Rational, error) {
 	s := strings.TrimSpace(raw)
 	if s == "" {
 		return RationalFromInt(1), nil
 	}
-	var whole, num, den int64
-	if _, err := fmt.Sscanf(s, "%d %d/%d", &whole, &num, &den); err == nil && den > 0 {
-		return NormalizeRational(Rational{Num: whole*den + num, Den: den}), nil
-	}
-	if _, err := fmt.Sscanf(s, "%d/%d", &num, &den); err == nil && den > 0 {
-		return NormalizeRational(Rational{Num: num, Den: den}), nil
-	}
-	if _, err := fmt.Sscanf(s, "%d", &whole); err == nil {
-		return RationalFromInt(whole), nil
-	}
-	// decimal fallback e.g. 0.5
-	var f float64
-	if _, err := fmt.Sscanf(s, "%f", &f); err == nil && f >= 0 {
-		r := new(big.Rat).SetFloat64(f)
-		if r == nil {
+	if wholeStr, frac, cut := strings.Cut(s, " "); cut {
+		whole, err := strconv.ParseInt(wholeStr, 10, 64)
+		if err != nil || whole < 0 {
 			return Rational{}, ingestErr(CodeValidationFailed, "invalid qty "+s)
 		}
-		num64 := r.Num().Int64()
-		den64 := r.Denom().Int64()
-		return NormalizeRational(Rational{Num: num64, Den: den64}), nil
+		frac = strings.TrimSpace(frac)
+		// Mixed form is only "N n/d" (FormatRational); bare "1 2" is invalid.
+		if frac == "" || !strings.Contains(frac, "/") || strings.ContainsAny(frac, " \t") {
+			return Rational{}, ingestErr(CodeValidationFailed, "invalid qty "+s)
+		}
+		fr, ok := new(big.Rat).SetString(frac)
+		if !ok || fr.Sign() < 0 {
+			return Rational{}, ingestErr(CodeValidationFailed, "invalid qty "+s)
+		}
+		return rationalFromBigRat(new(big.Rat).Add(big.NewRat(whole, 1), fr), s)
 	}
-	return Rational{}, ingestErr(CodeValidationFailed, "invalid qty "+s)
+	r, ok := new(big.Rat).SetString(s)
+	if !ok || r.Sign() < 0 {
+		return Rational{}, ingestErr(CodeValidationFailed, "invalid qty "+s)
+	}
+	return rationalFromBigRat(r, s)
+}
+
+func rationalFromBigRat(r *big.Rat, raw string) (Rational, error) {
+	if r == nil {
+		return Rational{}, ingestErr(CodeValidationFailed, "invalid qty "+raw)
+	}
+	num, den := r.Num(), r.Denom()
+	if !num.IsInt64() || !den.IsInt64() {
+		return Rational{}, ingestErr(CodeValidationFailed, "invalid qty "+raw)
+	}
+	return NormalizeRational(Rational{Num: num.Int64(), Den: den.Int64()}), nil
 }
 
 func FormatRational(r Rational) string {

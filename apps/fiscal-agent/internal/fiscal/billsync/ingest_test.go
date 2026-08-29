@@ -496,6 +496,54 @@ func TestDiscardBillDrafts_KeepsInvoices(t *testing.T) {
 	}
 }
 
+// Restaurant bill-sync sends by_item share qtys as money decimals ("0.33").
+// Regression: must not parse "0.33" as 0 → "share qty must be positive".
+func TestIngestCloudJob_SplitDecimalShareQty(t *testing.T) {
+	db, err := store.Open(filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	scopeA := "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+	scopeB := "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+	scopeC := "cccccccc-cccc-cccc-cccc-cccccccccccc"
+	line := func(qty, gross string) billsync.Line {
+		return billsync.Line{
+			ItemCode: "ATUM", Name: "Rolo de Atum", Qty: qty,
+			UnitPriceGross: "6.00", LineGross: gross, VATRate: "23.00",
+		}
+	}
+	payload, _ := json.Marshal(billsync.Snapshot{
+		RequestID: "req-frac", SourceSystem: "farvoo", SourceSaleID: "sale-frac",
+		TableDisplayName: "A-01", ScopeType: "split",
+		Splits: []billsync.SplitPart{
+			{ScopeID: scopeA, Name: "Ani", GrossTotal: "2.00", Lines: []billsync.Line{line("0.33", "2.00")}},
+			{ScopeID: scopeB, Name: "John", GrossTotal: "2.00", Lines: []billsync.Line{line("0.34", "2.00")}},
+			{ScopeID: scopeC, Name: "Tom", GrossTotal: "2.00", Lines: []billsync.Line{line("0.33", "2.00")}},
+		},
+	})
+	draft, err := billsync.IngestCloudJob(db, billsync.CloudJob{ID: "job-frac", Payload: payload})
+	if err != nil {
+		t.Fatalf("ingest split decimal shares: %v", err)
+	}
+	if draft == nil || draft.Status != store.BillDraftOpen {
+		t.Fatalf("draft %+v", draft)
+	}
+	alloc, err := billsync.ParseAllocationJSON(draft.AllocationJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(alloc.People) != 3 {
+		t.Fatalf("people=%d", len(alloc.People))
+	}
+	for _, p := range alloc.People {
+		if len(p.Shares) != 1 || p.Shares[0].Qty.Num <= 0 {
+			t.Fatalf("person %q shares %+v", p.Name, p.Shares)
+		}
+	}
+}
+
 func seedFiscal(t *testing.T, dir string) (*store.DB, *service.FiscalService) {
 	t.Helper()
 	dbPath := filepath.Join(dir, "fiscal.db")
@@ -522,4 +570,21 @@ func seedFiscal(t *testing.T, dir string) (*store.DB, *service.FiscalService) {
 		t.Fatal(err)
 	}
 	return db, service.New(db, sig, nil, dir, "store-demo-001")
+}
+
+// Live A-06 by_item job from supabase-local (qty "0.50" shares — old ParseQtyString → share qty must be positive).
+func TestIngestCloudJob_LiveLocalByItemHalfQty(t *testing.T) {
+	db, err := store.Open(filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	payload := []byte(`{"splits": [{"name": "Ani", "lines": [{"qty": "0.50", "name": "Brandy Macieira 5cl", "vat_rate": "23.00", "item_code": "815", "line_gross": "2.45", "unit_price_gross": "4.90"}], "scope_id": "38c510db-59d2-532f-931f-b50b22252356", "gross_total": "2.45"}, {"name": "John", "lines": [{"qty": "1.00", "name": "Buffet livre", "vat_rate": "23.00", "item_code": "BF6B5606FCA", "line_gross": "19.95", "unit_price_gross": "19.95"}, {"qty": "0.50", "name": "Brandy Macieira 5cl", "vat_rate": "23.00", "item_code": "815", "line_gross": "2.45", "unit_price_gross": "4.90"}], "scope_id": "9fecd655-7e77-5a26-bfab-3ba42902c4c3", "gross_total": "22.40"}], "request_id": "df83d005-d0f0-43a0-b539-9eff9db7dedf", "scope_type": "split", "source_system": "farvoo", "source_sale_id": "bfd9fedb-807f-47a5-b8b5-a163370e3dd4", "table_display_name": "A-06"}`)
+	draft, err := billsync.IngestCloudJob(db, billsync.CloudJob{ID: "uat-live-a06", Payload: payload})
+	if err != nil {
+		t.Fatalf("live Restaurant by_item 0.50 shares: %v", err)
+	}
+	if draft.Status != store.BillDraftOpen {
+		t.Fatalf("%+v", draft)
+	}
 }

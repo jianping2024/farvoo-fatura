@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.19
+
+**账单同步：按菜小数份额 qty 不再误判为 0**
+
+- `ParseQtyString` 唯一解析入口改为整串 `big.Rat.SetString`（+ `"N n/d"` 混合形）；去掉 `fmt.Sscanf("%d")` 半截匹配。
+- 修复 Restaurant 契约十进制份额（如 `"0.33"`）被读成 `0` → ack `share qty must be positive`、同步关台失败。
+
 ## 0.4.18
 
 **打印：LAN 连接复用，避免每张票 SOCKA 事件**
