@@ -197,10 +197,23 @@ func TestAdminHTMLBillDraftEventsUnique(t *testing.T) {
 		"function assertSplitNotOverAllocated",
 		"function onSplitQtyEdited",
 		"function syncCurrentSharesFromDom",
+		"function coalescePersonShares",
+		"function upsertPersonShare",
+		"function shareLineGrossAmount",
+		"function personGrossPreview",
 	} {
 		if n := strings.Count(adminHTML, fn); n != 1 {
 			t.Fatalf("%s must appear exactly once, got %d", fn, n)
 		}
+	}
+	if strings.Contains(adminHTML, "此人已有该菜") {
+		t.Fatal("reject-on-duplicate share must be removed; upsertPersonShare merges qty")
+	}
+	if strings.Count(adminHTML, `id="splitPersonTotal"`) != 1 {
+		t.Fatal("splitPersonTotal must exist exactly once")
+	}
+	if strings.Contains(adminHTML, "cur.shares.push({ line_key: key") {
+		t.Fatal("pool add must not push duplicate shares; use upsertPersonShare only")
 	}
 	if strings.Count(adminHTML, "new EventSource('/local/v1/events')") != 1 {
 		t.Fatal("Admin must open EventSource /local/v1/events exactly once")

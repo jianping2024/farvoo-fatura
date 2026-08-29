@@ -46,6 +46,46 @@ func PersonKey(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
 }
 
+// NormalizeAllocation is the ONLY coalescer for duplicate line_key shares within each person.
+// Call on every parse / persist / issue input so allocation never carries redundant rows.
+func NormalizeAllocation(alloc *Allocation) {
+	if alloc == nil {
+		return
+	}
+	for i := range alloc.People {
+		alloc.People[i].Shares = coalescePersonShares(alloc.People[i].Shares)
+	}
+}
+
+func coalescePersonShares(shares []AllocShare) []AllocShare {
+	if len(shares) == 0 {
+		return shares
+	}
+	order := make([]string, 0, len(shares))
+	byKey := map[string]Rational{}
+	for _, sh := range shares {
+		key := strings.TrimSpace(sh.LineKey)
+		if key == "" {
+			continue
+		}
+		q := NormalizeRational(sh.Qty)
+		if q.Num <= 0 {
+			continue
+		}
+		if _, ok := byKey[key]; !ok {
+			order = append(order, key)
+			byKey[key] = q
+			continue
+		}
+		byKey[key] = AddRationals(byKey[key], q)
+	}
+	out := make([]AllocShare, 0, len(order))
+	for _, key := range order {
+		out = append(out, AllocShare{LineKey: key, Qty: byKey[key]})
+	}
+	return out
+}
+
 // FreezeSourceLines sets snap.SourceLines from commercial lines (ingest ONLY path helper).
 // Mutates snap; does not write DB. No-op if already frozen.
 // whole_table: one frozen row per payload line. split: aggregate split lines by identity + sum qty.
@@ -336,11 +376,13 @@ func ParseAllocationJSON(raw string) (Allocation, error) {
 	if err := json.Unmarshal([]byte(raw), &a); err != nil {
 		return Allocation{}, ingestErr(CodeValidationFailed, "allocation_json: "+err.Error())
 	}
+	NormalizeAllocation(&a)
 	return a, nil
 }
 
 // DraftPersonFromAllocation is the ONLY person SaleSnapshot builder (source_lines + allocation).
 func DraftPersonFromAllocation(snap Snapshot, alloc Allocation, scopeID string) (domain.SaleSnapshot, error) {
+	NormalizeAllocation(&alloc)
 	saleID := strings.TrimSpace(snap.SourceSaleID)
 	if saleID == "" {
 		return domain.SaleSnapshot{}, ingestErr(CodeValidationFailed, "source_sale_id required")

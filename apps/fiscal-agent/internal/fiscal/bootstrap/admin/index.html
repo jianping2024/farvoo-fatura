@@ -414,9 +414,10 @@
             <h2>当前人 · <span id="splitCurrentName">—</span></h2>
             <div class="field"><label>分单标记名</label><input id="splitPersonName" placeholder="输入姓名即建人 / 可改未开人" /></div>
             <table>
-              <thead><tr><th>菜品</th><th>整</th><th>分子</th><th>分母</th><th></th></tr></thead>
+              <thead><tr><th>菜品</th><th>整</th><th>分子</th><th>分母</th><th>小计</th><th></th></tr></thead>
               <tbody id="splitShareBody"></tbody>
             </table>
+            <p class="hint" id="splitPersonTotal">本票预估 —</p>
           </div>
           <div class="panel" id="splitIssueRail">
             <h2>开票</h2>
@@ -1494,16 +1495,84 @@
     return snap.source_lines || snap.SourceLines || [];
   }
 
-  /** ONLY mapper: allocation JSON people → UI people (deep copy). */
+  /** ONLY coalesce of duplicate line_key shares for one person (load + upsert). */
+  function coalescePersonShares(shares) {
+    const order = [];
+    const byKey = {};
+    (shares || []).forEach(s => {
+      const key = String(s.line_key || '');
+      if (!key) return;
+      const q = normRat(s.qty || { num: 0, den: 1 });
+      if (q.num <= 0) return;
+      if (!Object.prototype.hasOwnProperty.call(byKey, key)) {
+        order.push(key);
+        byKey[key] = q;
+        return;
+      }
+      byKey[key] = addRat(byKey[key], q);
+    });
+    return order.map(k => ({ line_key: k, qty: byKey[k] }));
+  }
+
+  /** ONLY mapper: allocation JSON people → UI people (deep copy; coalesced). */
   function mapAllocPeople(people) {
     return (people || []).map(p => ({
       scope_id: p.scope_id,
       name: p.name || '',
-      shares: (p.shares || []).map(s => ({
+      shares: coalescePersonShares((p.shares || []).map(s => ({
         line_key: s.line_key,
         qty: s.qty ? { num: Number(s.qty.num), den: Number(s.qty.den) || 1 } : { num: 1, den: 1 }
-      }))
+      })))
     }));
+  }
+
+  /**
+   * ONLY add-from-pool path: merge take into existing line_key (never push a second row).
+   */
+  function upsertPersonShare(person, lineKey, take) {
+    if (!person) return;
+    const key = String(lineKey || '');
+    if (!key) return;
+    const add = normRat(take || { num: 0, den: 1 });
+    if (add.num <= 0) return;
+    person.shares = coalescePersonShares(person.shares || []);
+    const hit = person.shares.find(s => s.line_key === key);
+    if (hit) hit.qty = addRat(hit.qty, add);
+    else person.shares.push({ line_key: key, qty: add });
+  }
+
+  /**
+   * ONLY share money preview; same ratio as DraftPersonFromAllocation (line_gross × share/src).
+   */
+  function shareLineGrossAmount(srcLine, shareQty) {
+    const q = normRat(shareQty || { num: 0, den: 1 });
+    if (q.num <= 0) return 0;
+    const srcQ = parseQtyLabel((srcLine && srcLine.qty) || '1');
+    const lg = String((srcLine && (srcLine.line_gross || srcLine.LineGross)) || '').trim();
+    if (lg && srcQ.num > 0) {
+      const v = parseFloat(lg);
+      if (Number.isFinite(v) && srcQ.num > 0) {
+        const srcF = srcQ.num / srcQ.den;
+        const shareF = q.num / q.den;
+        return Math.round(v * (shareF / srcF) * 100) / 100;
+      }
+    }
+    const price = parseFloat((srcLine && (srcLine.unit_price_gross || srcLine.UnitPriceGross)) || 0);
+    if (!Number.isFinite(price)) return 0;
+    return Math.round((q.num / q.den) * price * 100) / 100;
+  }
+
+  /** ONLY person ticket estimate from current shares + source_lines. */
+  function personGrossPreview(detail, person) {
+    if (!person) return { rows: 0, gross: 0 };
+    const lines = sourceLinesOf(detail || {});
+    let gross = 0;
+    const shares = coalescePersonShares(person.shares || []);
+    shares.forEach(sh => {
+      const ln = lines.find(x => x.line_key === sh.line_key) || {};
+      gross += shareLineGrossAmount(ln, sh.qty);
+    });
+    return { rows: shares.length, gross: Math.round(gross * 100) / 100 };
   }
 
   function clearSplitBuyerFields() {
@@ -1751,27 +1820,40 @@
     const shareBody = $('#splitShareBody');
     shareBody.innerHTML = '';
     if (cur) {
+      cur.shares = coalescePersonShares(cur.shares || []);
       (cur.shares || []).forEach((sh, idx) => {
         const ln = lines.find(x => x.line_key === sh.line_key) || {};
         const q = normRat(sh.qty || { num: 1, den: 1 });
         const whole = q.den === 1 ? String(q.num) : String(Math.floor(Math.abs(q.num) / q.den) || '');
         const num = q.den === 1 ? '' : String(Math.abs(q.num) % q.den);
         const den = q.den === 1 ? '' : String(q.den);
+        const lineAmt = shareLineGrossAmount(ln, q);
         const tr = document.createElement('tr');
         if (readonly) {
           tr.innerHTML =
             '<td>' + (ln.name || sh.line_key) + '</td>' +
-            '<td>' + whole + '</td><td>' + num + '</td><td>' + den + '</td><td></td>';
+            '<td>' + whole + '</td><td>' + num + '</td><td>' + den + '</td>' +
+            '<td>' + fmtMoney(lineAmt) + '</td><td></td>';
         } else {
           tr.innerHTML =
             '<td>' + (ln.name || sh.line_key) + '</td>' +
             '<td><input data-sh-whole="' + idx + '" value="' + whole + '" style="width:3rem" /></td>' +
             '<td><input data-sh-num="' + idx + '" value="' + num + '" style="width:3rem" /></td>' +
             '<td><input data-sh-den="' + idx + '" value="' + den + '" style="width:3rem" /></td>' +
+            '<td>' + fmtMoney(lineAmt) + '</td>' +
             '<td><button type="button" class="secondary" data-rm-share="' + idx + '">移除</button></td>';
         }
         shareBody.appendChild(tr);
       });
+    }
+    const totEl = $('#splitPersonTotal');
+    if (totEl) {
+      if (!cur) {
+        totEl.textContent = '本票预估 —';
+      } else {
+        const prev = personGrossPreview(detail, cur);
+        totEl.textContent = '本票预估 · ' + prev.rows + ' 行 · ' + fmtMoney(prev.gross);
+      }
     }
     const hasPersonIssued = Object.keys(issued).some(k => k.indexOf('person:') === 0);
     const wholeAct = $('#splitWholeActions');
@@ -1807,15 +1889,18 @@
       if (!prev) return;
       let qty;
       if (String(num).trim() && String(den).trim()) {
-        const w = parseInt(whole, 10) || 0;
+        const w = parseInt(whole, 10);
         const n = parseInt(num, 10) || 0;
         const d = parseInt(den, 10) || 1;
-        qty = { num: w * d + n, den: d };
+        const wholeN = Number.isFinite(w) ? w : 0;
+        qty = { num: wholeN * d + n, den: d };
       } else {
-        qty = { num: parseInt(whole, 10) || 1, den: 1 };
+        const w = parseInt(String(whole).trim(), 10);
+        qty = { num: Number.isFinite(w) ? w : 0, den: 1 };
       }
-      shares.push({ line_key: prev.line_key, qty });
+      shares.push({ line_key: prev.line_key, qty: normRat(qty) });
     });
+    // Keep row count aligned with DOM while editing; coalescePersonShares drops ≤0 on load/upsert/commit.
     person.shares = shares;
   }
 
@@ -1828,7 +1913,13 @@
     syncCurrentSharesFromDom();
     applySplitMarkerNameFromInput();
     const liveById = {};
-    splitState.people.forEach(p => { liveById[p.scope_id] = p; });
+    splitState.people.forEach(p => {
+      liveById[p.scope_id] = {
+        scope_id: p.scope_id,
+        name: p.name || '',
+        shares: coalescePersonShares(p.shares || [])
+      };
+    });
     const out = [];
     const seen = {};
     splitState.committedPeople.forEach(p => {
@@ -1844,7 +1935,7 @@
     splitState.people.forEach(p => {
       if (seen[p.scope_id]) return;
       if (isSplitPersonIssued(p.scope_id, issued)) return;
-      out.push(mapAllocPeople([p])[0]);
+      out.push(mapAllocPeople([liveById[p.scope_id] || p])[0]);
     });
     // Over-alloc check must use the commit payload, not stale live-only view.
     assertSplitNotOverAllocated(out);
@@ -2227,14 +2318,12 @@
     if (!cur) { toast('请先输入分单标记名', 'error'); return; }
     readSharesFromDom(cur);
     const key = btn.dataset.addShare;
-    if ((cur.shares || []).some(s => s.line_key === key)) { toast('此人已有该菜', 'error'); return; }
     const live = localRemainingMap(currentBillDetail, splitState.people);
     const leftQ = live.qty[key];
     if (!leftQ || !ratPositive(leftQ)) { toast('该菜已分完', 'error'); return; }
     const one = { num: 1, den: 1 };
     const take = (leftQ.num * one.den <= one.num * leftQ.den) ? normRat(leftQ) : one;
-    cur.shares = cur.shares || [];
-    cur.shares.push({ line_key: key, qty: take });
+    upsertPersonShare(cur, key, take);
     renderBillSplitWorkbench();
   });
 
@@ -2249,10 +2338,30 @@
     renderBillSplitWorkbench();
   });
 
-  /** Qty edits: sync shares → refresh left pool live (do NOT rebuild inputs). ONLY live-edit path. */
+  /** Qty edits: sync shares → refresh left pool + person total live (do NOT rebuild inputs). ONLY live-edit path. */
   function onSplitQtyEdited() {
     syncCurrentSharesFromDom();
     paintSplitPoolAndHint();
+    const cur = currentSplitPerson();
+    const totEl = $('#splitPersonTotal');
+    if (totEl) {
+      if (!cur) {
+        totEl.textContent = '本票预估 —';
+      } else {
+        const prev = personGrossPreview(currentBillDetail, cur);
+        totEl.textContent = '本票预估 · ' + prev.rows + ' 行 · ' + fmtMoney(prev.gross);
+      }
+    }
+    if (!cur || !currentBillDetail) return;
+    const lines = sourceLinesOf(currentBillDetail);
+    $$('#splitShareBody tr').forEach((tr, idx) => {
+      const sh = (cur.shares || [])[idx];
+      if (!sh) return;
+      const td = tr.children[4];
+      if (!td) return;
+      const ln = lines.find(x => x.line_key === sh.line_key) || {};
+      td.textContent = fmtMoney(shareLineGrossAmount(ln, sh.qty));
+    });
   }
   ['input', 'change'].forEach(ev => {
     $('#splitShareBody').addEventListener(ev, e => {

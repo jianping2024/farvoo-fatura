@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Prep fiscal-local + one split bill-sync draft for Admin UI browser UAT.
- * Leaves fiscal-local running on 17880. Mock Farvoo on 17993.
+ * Prep fiscal-local + whole_table draft with qty≥2 for Admin split merge/amount UAT.
+ * Leaves fiscal-local on 17880. Mock Farvoo on 17993.
  */
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -16,44 +16,34 @@ const dbPath = join(agent, 'data', 'fiscal-admin-split-ui.db');
 const mockPort = 17993;
 const base = 'http://127.0.0.1:17880';
 
-const scopeA = '11111111-1111-1111-1111-111111111111';
-const scopeB = '22222222-2222-2222-2222-222222222222';
-
-const splitJob = {
-  id: 'job-split-ui',
+const wholeJob = {
+  id: 'job-split-merge-ui',
   status: 'pending',
   payload: {
-    request_id: 'req-split-ui',
+    request_id: 'req-split-merge-ui',
     source_system: 'farvoo',
-    source_sale_id: 'sale-split-ui',
-    table_display_name: 'A-05',
-    scope_type: 'split',
-    lines: [],
-    splits: [
+    source_sale_id: 'sale-split-merge-ui',
+    table_display_name: 'A-01',
+    scope_type: 'whole_table',
+    gross_total: '44.90',
+    lines: [
       {
-        scope_id: scopeA,
-        name: 'Ana',
-        lines: [{
-          item_code: 'TEA-01', name: 'Tea', qty: '1', unit_price_gross: '4.50',
-          line_gross: '4.50', vat_rate: '13.00',
-        }],
-        gross_total: '4.50',
+        item_code: 'BF1', name: 'Buffet livre', qty: '2',
+        unit_price_gross: '19.95', line_gross: '39.90', vat_rate: '23.00',
       },
       {
-        scope_id: scopeB,
-        name: 'Bruno',
-        lines: [{
-          item_code: '006', name: 'Beer', qty: '1', unit_price_gross: '2.25',
-          line_gross: '2.25', vat_rate: '23.00',
-        }],
-        gross_total: '2.25',
+        item_code: 'W1', name: 'Água 500ml', qty: '1',
+        unit_price_gross: '1.50', line_gross: '1.50', vat_rate: '13.00',
+      },
+      {
+        item_code: 'V1', name: 'Vitalis 750ml', qty: '1',
+        unit_price_gross: '3.50', line_gross: '3.50', vat_rate: '13.00',
       },
     ],
   },
 };
 
-let pending = [splitJob];
-const acks = [];
+let pending = [wholeJob];
 
 const mock = createServer((req, res) => {
   const url = new URL(req.url, 'http://127.0.0.1');
@@ -68,7 +58,6 @@ const mock = createServer((req, res) => {
     let body = '';
     req.on('data', (c) => (body += c));
     req.on('end', () => {
-      acks.push(JSON.parse(body || '{}'));
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true }));
     });
@@ -103,6 +92,12 @@ async function main() {
     FISCAL_SEED: '1',
     FISCAL_ALLOW_DEV_KEY: '1',
     FISCAL_AT_ENV: 'mock',
+    FISCAL_STATION_PRINTERS_JSON: JSON.stringify({
+      '2951b0b2-aaaa-bbbb-cccc-ddddeeeeffff': 'tcp:127.0.0.1:9100',
+    }),
+    FISCAL_STATION_META_JSON: JSON.stringify([
+      { id: '2951b0b2-aaaa-bbbb-cccc-ddddeeeeffff', name_zh: '厨房', sort_order: 0 },
+    ]),
   };
 
   const child = spawn('go', ['run', './cmd/fiscal-local'], {
@@ -126,8 +121,11 @@ async function main() {
     env: { ...childEnv, FARVOO_API: `http://127.0.0.1:${mockPort}`, FARVOO_JWT: 'test-jwt' },
   });
 
-  console.log('split draft ingested; fiscal-local at', base);
-  console.log('Admin: 餐馆模式 → 待开票账单 → A-05 按人 → 应见 Ana / Bruno');
+  const list = await fetch(base + '/local/v1/bill-drafts').then((r) => r.json());
+  const draft = (list.drafts || list || []).find?.(Boolean) || list?.[0];
+  console.log('whole_table draft ready; fiscal-local at', base);
+  console.log('Admin: 餐馆模式 → 待开票账单 → A-01 → 分单；Buffet×2 测累加 + 本票预估');
+  if (draft?.id) console.log('draft_id', draft.id);
   process.on('SIGINT', () => { child.kill('SIGTERM'); mock.close(); process.exit(0); });
 }
 

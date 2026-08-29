@@ -203,6 +203,7 @@ func IngestCloudJob(db *store.DB, job CloudJob) (*store.BillSyncDraft, error) {
 		if err != nil {
 			return nil, err
 		}
+		NormalizeAllocation(&alloc)
 		if err := ValidateAllocation(snap, alloc); err != nil {
 			return nil, err
 		}

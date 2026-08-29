@@ -423,6 +423,7 @@ func (s *FiscalService) SaveBillDraftAllocation(in SaveBillDraftAllocationInput)
 	if err != nil {
 		return nil, err
 	}
+	billsync.NormalizeAllocation(&in.Allocation)
 	prevByScope := map[string]billsync.AllocPerson{}
 	for _, p := range prev.People {
 		prevByScope[strings.TrimSpace(p.ScopeID)] = p
