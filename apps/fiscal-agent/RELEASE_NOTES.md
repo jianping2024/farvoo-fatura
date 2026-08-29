@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.20
+
+**分单开票：同菜累加 + 本票预估金额**
+
+- 「加入当前人」对同一 `line_key` **有理数累加**（如 `1/2+1/2→1`），不再报「已有该菜」。
+- 服务端 `NormalizeAllocation` 当场合并重复份额（Parse / Save / Issue / ingest）；签发不会出现同菜多行。
+- 当前人表增加只读 **小计** 与底部 **本票预估**（口径对齐 `line_gross` 比例）。
+
 ## 0.4.19
 
 **账单同步：按菜小数份额 qty 不再误判为 0**
