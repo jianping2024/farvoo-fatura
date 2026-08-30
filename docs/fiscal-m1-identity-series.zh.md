@@ -93,7 +93,8 @@
 | `taxpayer_missing` | 无纳税人 |
 | `at_credentials_missing` | 无 AT 凭证 |
 | `series_inactive` / `series_missing` | 无 ACTIVE 系列或无验证码 |
-| `signer_not_ready` | 未激活 / 无法解封产品钥 |
+| `signer_not_ready` | 本机未激活 / 无法解封产品钥 |
+| `ops_activate_pending` | 已上报 B'，等待 Ops「激活开票」后再同步 |
 | `at_soap_failed` | AT/mock 业务失败 |
 | `idempotency_conflict` | 同 request_id 不同 payload |
 

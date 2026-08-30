@@ -37,6 +37,14 @@
     label { display: block; font-size: 0.82rem; color: var(--muted); margin: 0 0 0.35rem; font-weight: 600; }
     .field { margin: 0 0 0.85rem; }
     .hint { color: var(--muted); font-size: 0.85rem; line-height: 1.5; }
+    .sync-status {
+      margin-top: 0.75rem; padding: 0.65rem 0.75rem; border-radius: 10px;
+      font-size: 0.9rem; font-weight: 600; line-height: 1.4; border: 1px solid var(--line);
+      background: #f7f2e8; color: var(--muted);
+    }
+    .sync-status.ok { background: #dff3e7; border-color: #b7e0c6; color: #1f7a4c; }
+    .sync-status.wait { background: #fff1d6; border-color: #f0d59a; color: #9a6700; }
+    .sync-status.fail { background: #fde8e8; border-color: #f0b4b4; color: #a33b3b; }
     .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; background: #e7efe9; color: var(--mode); }
     .badge.wait { background: #fff1d6; color: #9a6700; }
     .badge.done { background: #dff3e7; color: #1f7a4c; }
@@ -536,6 +544,7 @@
           <h2>4. 激活开票</h2>
           <p class="hint" id="actCloudHint">由运营后台「激活开票」后，点下方同步领取封装私钥（无需粘贴 PEM）。</p>
           <button type="button" id="btnActCloud">从运营同步开票授权</button>
+          <div id="actCloudStatus" class="sync-status" role="status">尚未同步 · 点上方按钮从运营领取</div>
           <div id="localPemBlock" class="hidden" style="margin-top:1rem">
             <p class="hint">开发/UAT：允许粘贴产品 RSA 私钥 PEM。</p>
             <div class="field"><textarea id="pem" rows="4" placeholder="-----BEGIN … PRIVATE KEY-----"></textarea></div>
@@ -1012,6 +1021,28 @@
     return m;
   }
 
+  function setActCloudStatus(kind, text) {
+    const el = $('#actCloudStatus');
+    if (!el) return;
+    el.className = 'sync-status' + (kind ? ' ' + kind : '');
+    el.textContent = text;
+  }
+
+  function cloudSyncFailText(er) {
+    const code = er && er.error ? String(er.error) : '';
+    const msg = er && er.message ? String(er.message) : '';
+    if (code === 'ops_activate_pending') {
+      return '等待运营激活 · 设备已上报，请在 Ops 点「激活开票」后再同步';
+    }
+    if (code === 'taxpayer_missing') return '失败 · 请先保存门店纳税人信息';
+    if (code === 'unauthorized' || /pairing|not configured|JWT/i.test(msg)) {
+      return '失败 · 未配对云端，请先完成打印助手配对';
+    }
+    if (code === 'network') return '失败 · 网络异常，请检查本机与 Farvoo 连通';
+    if (code === 'signer_not_ready') return '失败 · 本机签名钥未就绪';
+    return '失败 · ' + (msg || code || '未知错误');
+  }
+
   function renderSetupChecklist(st) {
     const el = $('#setupChecklist');
     if (!st) { el.innerHTML = '<li class="no">无法读取状态</li>'; return; }
@@ -1026,6 +1057,9 @@
     el.innerHTML = items.map(([label, ok]) =>
       '<li class="' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : '○') + ' ' + label + '</li>'
     ).join('');
+    if (st.activated_ok) {
+      setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
+    }
   }
 
   async function refreshSetupStatus() {
@@ -2487,11 +2521,24 @@
   });
 
   $('#btnActCloud').onclick = () => withBusy($('#btnActCloud'), '同步中…', async () => {
+    setActCloudStatus('', '同步中…');
     try {
       await j('POST', '/local/v1/setup/activate-from-cloud', {});
       await refreshSetupStatus();
+      setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
       toast('开票授权已从运营同步', 'success');
-    } catch (er) { toast(errText(er), 'error'); throw er; }
+    } catch (er) {
+      const code = er && er.error ? String(er.error) : '';
+      const text = cloudSyncFailText(er);
+      if (code === 'ops_activate_pending') {
+        setActCloudStatus('wait', text);
+        toast('设备已上报，等待运营在 Ops 点击「激活开票」', 'info');
+      } else {
+        setActCloudStatus('fail', text);
+        toast(text, 'error');
+      }
+      throw er;
+    }
   });
 
   $('#btnAct').onclick = () => withBusy($('#btnAct'), '激活中…', async () => {
@@ -2499,6 +2546,7 @@
       if (!$('#pem').value.trim()) throw { error: 'validation_failed', message: '请先粘贴产品私钥 PEM' };
       await j('POST', '/local/v1/setup/activate', { product_private_key_pem: $('#pem').value });
       await refreshSetupStatus();
+      setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
       toast('开票已激活', 'success');
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });

@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.23
+
+**同步开票授权：一眼可见的结果态**
+
+- Admin「从运营同步」下方固定状态条：已同步（绿）/ 等待运营激活（黄）/ 失败（红）。
+- Ops 未激活改为独立错误码 `ops_activate_pending`（info，不再当硬失败）。
+
 ## 0.4.22
 
 **Ops 激活开票 → Agent 自动领取封装签名钥**

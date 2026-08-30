@@ -23,11 +23,12 @@ import (
 
 // API error codes (stable).
 const (
-	ErrCodeTaxpayerMissing = "taxpayer_missing"
-	ErrCodeATCredsMissing  = "at_credentials_missing"
-	ErrCodeSeriesMissing   = "series_missing"
-	ErrCodeSignerNotReady  = "signer_not_ready"
-	ErrCodeATSOAPFailed    = "at_soap_failed"
+	ErrCodeTaxpayerMissing   = "taxpayer_missing"
+	ErrCodeATCredsMissing    = "at_credentials_missing"
+	ErrCodeSeriesMissing     = "series_missing"
+	ErrCodeSignerNotReady    = "signer_not_ready"
+	ErrCodeOpsActivatePending = "ops_activate_pending"
+	ErrCodeATSOAPFailed      = "at_soap_failed"
 )
 
 // CodedError carries a stable error code for HTTP.
@@ -279,7 +280,7 @@ func (s *FiscalService) ActivateFromCloud(ctx context.Context, storeID string) (
 	bundle, err := cli.PullProvision(ctx)
 	if err != nil {
 		if errors.Is(err, fiscalsigning.ErrNotActive) {
-			return nil, coded(ErrCodeSignerNotReady, "waiting for Ops fiscal-signing activate")
+			return nil, coded(ErrCodeOpsActivatePending, "ops has not activated fiscal signing yet")
 		}
 		return nil, err
 	}

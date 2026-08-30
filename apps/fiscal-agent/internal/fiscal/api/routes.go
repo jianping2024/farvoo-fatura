@@ -512,7 +512,7 @@ func writeCoded(w http.ResponseWriter, err error) {
 		switch ce.Code {
 		case service.ErrCodeATSOAPFailed:
 			status = http.StatusBadGateway
-		case service.ErrCodeSignerNotReady, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing:
+		case service.ErrCodeSignerNotReady, service.ErrCodeOpsActivatePending, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing:
 			status = http.StatusConflict
 		case "scope_mutex", "allocation_conflict", "draft_not_open", "already_invoiced":
 			status = http.StatusConflict
