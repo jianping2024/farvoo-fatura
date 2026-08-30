@@ -1,2 +1,0 @@
-Trigger one-shot workflow to delete fiscal-agent-v0.4.21 release artifacts.
-Remove this file and delete-release-0.4.21-once.yml after the run succeeds.
