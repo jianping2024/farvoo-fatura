@@ -10,8 +10,8 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 const agent = join(root, 'apps', 'fiscal-agent');
-const base = process.env.FISCAL_UAT_BASE || 'http://127.0.0.1:17882';
 const bind = '127.0.0.1:17882';
+const base = `http://${bind}`;
 const dbPath = join(agent, 'data', 'fiscal-m3.db');
 const dataDir = join(agent, 'data', 'fiscal-m3-secure');
 const uat = join(root, 'scripts', 'fiscal-local-uat.mjs');
@@ -404,6 +404,18 @@ async function main() {
     record('nc-print-payload-fields', true);
   } catch (e) {
     record('nc-print-payload-fields', false, String(e));
+  }
+
+  try {
+    const ncDetail = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${nc.document_id}`);
+    record('nc-detail-original-ref',
+      ncDetail.original_invoice_id === ft.document_id &&
+      ncDetail.original_invoice_no === ft.invoice_no &&
+      ncDetail.credit_reason === 'Devolucao total M3');
+    record('nc-detail-no-credit-remaining', ncDetail.remaining_gross_total == null && ncDetail.credited_gross_total == null);
+  } catch (e) {
+    record('nc-detail-original-ref', false, String(e));
+    record('nc-detail-no-credit-remaining', false, String(e));
   }
 
   child.kill('SIGTERM');

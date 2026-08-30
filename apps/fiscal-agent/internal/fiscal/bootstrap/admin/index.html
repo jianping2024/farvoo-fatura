@@ -34,6 +34,16 @@
       width: 100%; border: 1px solid var(--line); border-radius: 10px;
       padding: 0.65rem 0.75rem; background: #fff;
     }
+    input[type="checkbox"] {
+      width: 1rem; height: 1rem; padding: 0; margin: 0; flex: 0 0 auto;
+      accent-color: var(--mode); cursor: pointer;
+    }
+    .check-row {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      margin-top: 0.75rem; font-size: 0.9rem; font-weight: 600;
+      color: var(--ink); cursor: pointer; user-select: none;
+    }
+    .check-row span { font-weight: 600; color: var(--ink); }
     label { display: block; font-size: 0.82rem; color: var(--muted); margin: 0 0 0.35rem; font-weight: 600; }
     .field { margin: 0 0 0.85rem; }
     .hint { color: var(--muted); font-size: 0.85rem; line-height: 1.5; }
@@ -562,9 +572,11 @@
         <div class="panel">
           <h2>5. 操作员</h2>
           <button type="button" id="btnOp">确保收银操作员</button>
-          <label class="hint" style="display:flex;align-items:center;gap:0.5rem;margin-top:0.75rem">
-            <input type="checkbox" id="chkCanIssueNC" /> 允许冲销 NC
+          <label class="check-row" for="chkCanIssueNC">
+            <input type="checkbox" id="chkCanIssueNC" />
+            <span>允许冲销 NC</span>
           </label>
+          <p class="hint" style="margin:0.35rem 0 0">收银员默认不可冲销；勾选后当前操作员可在发票详情签发 NC。</p>
         </div>
         <div class="panel">
           <h2>6. 打印机</h2>
@@ -805,6 +817,14 @@
       '</dd></div>';
   }
 
+  function invoiceDetailOriginalRow(inv) {
+    const id = inv.original_invoice_id;
+    if (!id) return '';
+    const label = inv.original_invoice_no || id;
+    return '<div class="detail-row"><dt>原票</dt><dd>' +
+      '<button type="button" class="secondary" data-open-original="' + id + '">' + label + '</button></dd></div>';
+  }
+
   /** ONLY invoice detail drawer renderer (technical fields live here, not in list). */
   function renderInvoiceDetailModal(inv) {
     const when = inv.system_entry_date || inv.issued_at || '';
@@ -820,7 +840,11 @@
       invoiceDetailRow('类型', inv.document_type) +
       invoiceDetailRow('单据状态', inv.document_status) +
       invoiceDetailRow('打印状态', inv.print_status);
-    if (inv.remaining_gross_total != null) {
+    if (inv.document_type === 'NC') {
+      body += invoiceDetailOriginalRow(inv);
+      if (inv.credit_reason) body += invoiceDetailRow('冲销原因', inv.credit_reason);
+    }
+    if (inv.document_type === 'FT' && inv.remaining_gross_total != null) {
       body += invoiceDetailRow('已冲金额', fmtMoney(inv.credited_gross_total)) +
         invoiceDetailRow('剩余可冲', fmtMoney(inv.remaining_gross_total));
     }
@@ -2453,6 +2477,12 @@
     if (e.target.id === 'invoiceDetailModal') closeInvoiceDetail();
   });
   $('#invoiceDetailBody').addEventListener('click', e => {
+    const origBtn = e.target.closest('[data-open-original]');
+    if (origBtn) {
+      e.preventDefault();
+      openInvoiceDetail(origBtn.dataset.openOriginal).catch(er => toast(errText(er), 'error'));
+      return;
+    }
     const copyBtn = e.target.closest('[data-copy-hash]');
     if (copyBtn) {
       e.preventDefault();

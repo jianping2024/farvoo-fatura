@@ -1,8 +1,8 @@
 # M3：NC（冲销 / Nota de Crédito）
 
-> **状态：定稿**（M3 内核 + Admin P0；**§16 M3.1** 为已定增量，尚未落地）  
+> **状态：定稿**（M3 内核 + Admin；**§16 M3.1** 已落地 0.4.26；开票员身份见 **M3.2** [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)）  
 > **权威：是**（M3 行为与 API；库列仍以 `fiscal-sqlite-schema.zh.md` + `migrations/001_init.sql` 为准）  
-> **对应实现：** M3 已落地（`store.IssueNC`、`service.IssueCreditNote`、Admin 全额冲销、`scripts/fiscal-m3-regression.mjs`）；M3.1 见 §16  
+> **对应实现：** M3 已落地（`store.IssueNC`、`service.IssueCreditNote`、Admin 全额冲销、`scripts/fiscal-m3-regression.mjs`）；M3.1 见 §16；**§16.10 NC 详情原票回链** 已落地 0.4.27  
 > **计划：** [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) M3 / M3.1  
 > **边界：** 餐馆 Farvoo 不开 NC；[`farvoo-fiscal-agent-integration.zh.md`](../../restaurant-ordering/docs/technical/farvoo-fiscal-agent-integration.zh.md) §4、§7  
 > **票库：** 全部已签发票仅本地 SQLite 权威；**不对云同步**；对外合规见 M5 SAF-T 月导（[`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §1.1）
@@ -267,7 +267,7 @@ M3 **不新增 migration**；使用现有表。
 |----|------|
 | FS/FR 产品化签发 | M6；NC 内核已支持原票类型白名单 |
 | SAF-T 导出含 NC | M5（本地月导；**非**云同步） |
-| Admin PIN 真鉴权 | 独立里程碑；M3.1 仍用现有 4 位 PIN 进门 |
+| Admin PIN 真鉴权 | **M3.2** [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)；Agent 本地创建 + PIN |
 | Local API HTTP 鉴权 | 本机信任边界；非 M3.1 |
 
 ## 15. 参考
@@ -279,7 +279,7 @@ M3 **不新增 migration**；使用现有表。
 | [`farvoo-fiscal-agent-integration.zh.md`](../../restaurant-ordering/docs/technical/farvoo-fiscal-agent-integration.zh.md) §7 | 状态机、NC 规则 |
 | [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) M3 | 里程碑 |
 
-## 16. M3.1：Admin 补强（定稿，尚未落地）
+## 16. M3.1：Admin 补强（定稿，已落地 0.4.26）
 
 在 **不改动** §5 唯一写路径（仍 `IssueCreditNote` → `IssueNC`）前提下，补齐 Setup 可见性、部分冲销 UI、`can_issue_nc` enforcement 与回归。
 
@@ -318,7 +318,7 @@ M3 **不新增 migration**；使用现有表。
 | 确认框 | 提交前 modal：原票号、本 NC 合计 gross、勾选行摘要、文案「签发后不可撤销」 |
 | `can_issue_nc` | `IssueCreditNote` 内查 `operators.can_issue_nc`；`0` → **`credit_not_allowed`**（HTTP 409，message：`operator cannot issue credit notes`） |
 | Owner 默认 | `UpsertOperator` 时 `role=owner` → **`can_issue_nc=1`**；`cashier` 默认 **0**（与 schema 默认一致） |
-| Admin 开权限 | **设置 §5 操作员** 增加 checkbox「允许冲销 NC」→ 更新 `operators.can_issue_nc`（仅改此列，唯一 UPDATE 路径：`store.SetOperatorCanIssueNC`） |
+| Admin 开权限 | **设置 §5 操作员**（M3.1 临时单用户 checkbox；**M3.2** 改为按人列表）→ `operators.can_issue_nc`（唯一 UPDATE：`store.SetOperatorCanIssueNC`） |
 | Admin 冲销按钮可见 | **`document_type = FT`** 且状态 §3 可冲；**FS/FR 不显示**（内核/API 仍允许，供 M6 前集成测） |
 | 幂等 UX | 响应 `idempotent_hit: true` 时 toast：**「已存在相同冲销，未新开」**（同 `business_key` 或同 `request_id`） |
 | `reason` | 仍必填；trim 后长度 **1–200**（超长 → `validation_failed`） |
@@ -345,7 +345,23 @@ M3 **不新增 migration**；使用现有表。
 | line_gross | string | 原行 gross |
 | remaining_line_gross | string | §6.2 公式；已全额冲完的行为 **0.00** |
 
-**唯一聚合实现：** `store.CreditRemainingForInvoice(invoiceID)`（或等价私有函数，仅被 GetInvoiceDetail 与单测调用）；禁止 Admin 前端自行 JOIN `invoice_line_references`。
+**唯一聚合实现：** `store.CreditRemainingForInvoice(invoiceID)`（仅当 `document_type ∈ {FT,FS,FR}` 时调用；禁止对 NC 调用）；禁止 Admin 前端自行 JOIN `invoice_line_references`。
+
+### 16.4.1 读模型：NC 详情原票回链（0.4.27）
+
+同一 `GET /local/v1/fiscal-documents/{documentId}`；当 `document_type = NC` 时返回：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| original_invoice_id | string | 被冲原票 `invoices.id` |
+| original_invoice_no | string | 完整 InvoiceNo 快照（与 `invoice_line_references.original_invoice_no` 一致） |
+| credit_reason | string | 冲销原因（与 `invoice_line_references.reason` 一致；整单同一 reason） |
+
+**不返回** §16.4 的 `credited_gross_total` / `remaining_gross_total` / `lines`（那些仅属原票）。
+
+**唯一聚合实现：** `store.CreditOriginalForNC(ncInvoiceID)`（仅被 `GetInvoiceDetail` 与单测调用）。
+
+**Admin：** NC 详情抽屉显示 **原票**（可点击打开原 FT 详情）与 **冲销原因**；仍经 **唯一** `renderInvoiceDetailModal`。
 
 ### 16.5 Admin UI（M3.1）
 
@@ -364,6 +380,7 @@ M3 **不新增 migration**；使用现有表。
 | NC 系列注册 UI | 复用 `RegisterSeries`（与 FT 按钮同 handler 模式） | 第二套 AT 调用 |
 | 操作员 `can_issue_nc` | `store.SetOperatorCanIssueNC` | handler 直写 SQL |
 | 行剩余额 | `store.CreditRemainingForInvoice` | Admin 内联聚合 |
+| NC 原票回链 | `store.CreditOriginalForNC` | handler / Admin JOIN `invoice_line_references` |
 | 冲销提交 | 仍 `creditInvoice` → `POST .../credit-notes` | 新函数 `partialCreditInvoice` 等第二入口 |
 | 权限校验 | `IssueCreditNote` 开头 | 仅在 UI 隐藏按钮 |
 

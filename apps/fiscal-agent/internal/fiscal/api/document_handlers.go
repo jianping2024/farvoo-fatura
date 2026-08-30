@@ -103,12 +103,17 @@ func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps Handle
 		"issued_at":       detail.IssuedAt.UTC().Format(time.RFC3339),
 		"hash":            detail.Hash,
 	}
-	if detail.CreditedGrossTotal != "" {
+	if store.IsCreditableOriginalDocumentType(detail.DocumentType) && detail.CreditedGrossTotal != "" {
 		out["credited_gross_total"] = detail.CreditedGrossTotal
 		out["remaining_gross_total"] = detail.RemainingGrossTotal
 	}
 	if len(detail.Lines) > 0 {
 		out["lines"] = detail.Lines
+	}
+	if detail.OriginalInvoiceID != "" {
+		out["original_invoice_id"] = detail.OriginalInvoiceID
+		out["original_invoice_no"] = detail.OriginalInvoiceNo
+		out["credit_reason"] = detail.CreditReason
 	}
 	writeJSON(w, http.StatusOK, out)
 }

@@ -58,6 +58,9 @@ type InvoiceDetail struct {
 	CreditedGrossTotal  string                `json:"credited_gross_total,omitempty"`
 	RemainingGrossTotal string                `json:"remaining_gross_total,omitempty"`
 	Lines               []CreditLineRemaining `json:"lines,omitempty"`
+	OriginalInvoiceID   string                `json:"original_invoice_id,omitempty"`
+	OriginalInvoiceNo   string                `json:"original_invoice_no,omitempty"`
+	CreditReason        string                `json:"credit_reason,omitempty"`
 }
 
 var allowedInvoicePageSizes = map[int]bool{10: true, 20: true}

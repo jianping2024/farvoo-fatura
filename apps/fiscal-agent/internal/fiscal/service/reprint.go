@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/store"
 )
 
@@ -34,7 +35,7 @@ func (s *FiscalService) ListInvoices(q store.InvoiceListQuery) (*store.InvoiceLi
 	return s.db.ListInvoices(q)
 }
 
-// GetInvoiceDetail returns one invoice with credit remaining (M3.1).
+// GetInvoiceDetail returns one invoice with credit remaining (original FT/FS/FR) or NC original ref.
 func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetail, error) {
 	d, err := s.db.GetInvoiceDetail(documentID)
 	if errors.Is(err, store.ErrNotFound) {
@@ -43,14 +44,27 @@ func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetai
 	if err != nil {
 		return nil, err
 	}
-	rem, err := s.db.CreditRemainingForInvoice(documentID)
-	if err != nil {
-		return d, err
-	}
-	if rem != nil {
-		d.CreditedGrossTotal = rem.CreditedGrossTotal
-		d.RemainingGrossTotal = rem.RemainingGrossTotal
-		d.Lines = rem.Lines
+	switch {
+	case store.IsCreditableOriginalDocumentType(d.DocumentType):
+		rem, err := s.db.CreditRemainingForInvoice(documentID)
+		if err != nil {
+			return d, err
+		}
+		if rem != nil {
+			d.CreditedGrossTotal = rem.CreditedGrossTotal
+			d.RemainingGrossTotal = rem.RemainingGrossTotal
+			d.Lines = rem.Lines
+		}
+	case d.DocumentType == domain.DocumentNC:
+		orig, err := s.db.CreditOriginalForNC(documentID)
+		if err != nil {
+			return d, err
+		}
+		if orig != nil {
+			d.OriginalInvoiceID = orig.OriginalInvoiceID
+			d.OriginalInvoiceNo = orig.OriginalInvoiceNo
+			d.CreditReason = orig.CreditReason
+		}
 	}
 	return d, nil
 }

@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.27
+
+**M3.1b：NC 详情原票回链（读模型收口）**
+
+- `GET /local/v1/fiscal-documents/{id}`：NC 返回 `original_invoice_id`、`original_invoice_no`、`credit_reason`（唯一读 `CreditOriginalForNC`）；原票仍走 `CreditRemainingForInvoice`；NC 不再误返 `remaining_gross_total`。
+- Admin NC 详情：原票按钮跳转原 FT 详情；显示冲销原因。
+- 回归：`fiscal-m3-regression.mjs` 增加 `nc-detail-original-ref`、`nc-detail-no-credit-remaining`。
+
 ## 0.4.26
 
 **M3.1：Admin NC 补强（部分冲销 + 权限 + Setup 可见性）**
