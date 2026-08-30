@@ -21,24 +21,20 @@ const BASE = (process.env.FISCAL_UAT_BASE || 'http://127.0.0.1:17880').replace(/
 function usage(exit = 1) {
   console.error(`fiscal-local-uat:
   stack-health
-  req METHOD PATH [--body JSON] [--header 'K: V']... [--expect-status N]
+  req METHOD PATH [--body JSON]
   wait-json METHOD PATH --path a.b [--equals v] [--timeout-ms N]
   assert-db --db PATH --sql 'SELECT ...' [--expect-count N]`);
   process.exit(exit);
 }
 
 function parseArgs(argv) {
-  const out = { _: [], header: [] };
+  const out = { _: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a.startsWith('--')) {
       const key = a.slice(2);
       const next = argv[i + 1];
-      if (key === 'header') {
-        if (!next || next.startsWith('--')) usage();
-        out.header.push(next);
-        i++;
-      } else if (!next || next.startsWith('--')) out[key] = true;
+      if (!next || next.startsWith('--')) out[key] = true;
       else {
         out[key] = next;
         i++;
@@ -48,16 +44,6 @@ function parseArgs(argv) {
   return out;
 }
 
-function parseHeaders(list) {
-  const h = {};
-  for (const raw of list || []) {
-    const i = raw.indexOf(':');
-    if (i < 0) continue;
-    h[raw.slice(0, i).trim()] = raw.slice(i + 1).trim();
-  }
-  return h;
-}
-
 function getPath(obj, path) {
   return String(path || '')
     .split('.')
@@ -65,13 +51,10 @@ function getPath(obj, path) {
     .reduce((o, k) => (o == null ? undefined : o[k]), obj);
 }
 
-async function req(method, path, body, headers) {
-  const h = {};
-  if (body) h['Content-Type'] = 'application/json';
-  if (headers) Object.assign(h, headers);
+async function req(method, path, body) {
   const r = await fetch(BASE + path, {
     method,
-    headers: Object.keys(h).length ? h : undefined,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
     body: body || undefined,
   });
   const text = await r.text();
@@ -156,15 +139,9 @@ else if (cmd === 'req') {
   const method = args._[1];
   const path = args._[2];
   if (!method || !path) usage();
-  const r = await req(method, path, args.body, parseHeaders(args.header));
+  const r = await req(method, path, args.body);
   console.log(JSON.stringify(r.json));
-  const expect = args['expect-status'] != null ? Number(args['expect-status']) : null;
-  if (expect != null) {
-    if (r.status !== expect) {
-      console.error('expect-status', expect, 'got', r.status);
-      process.exit(1);
-    }
-  } else if (r.status >= 400) process.exit(1);
+  if (r.status >= 400) process.exit(1);
 } else if (cmd === 'wait-json') {
   const method = args._[1];
   const path = args._[2];

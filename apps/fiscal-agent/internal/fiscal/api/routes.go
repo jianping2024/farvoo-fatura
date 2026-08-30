@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"farvoo-fiscal-agent/internal/fiscal/auth"
 	"farvoo-fiscal-agent/internal/fiscal/billsync"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/service"
@@ -19,7 +18,6 @@ import (
 // HandlerDeps groups dependencies for HTTP handlers.
 type HandlerDeps struct {
 	Fiscal            *service.FiscalService
-	Store             *store.DB // §13 terminal/operator verify; may be nil in unit tests that skip auth
 	StoreID           string
 	StationPrintersFn func() map[string]string // live Agent station_printers; may be nil
 	StationMetaFn     func() []StationMeta     // cloud print_stations; may be nil
@@ -49,11 +47,12 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("PUT /local/v1/setup/operator", func(w http.ResponseWriter, r *http.Request) {
 		handleOperator(w, r, deps)
 	})
-	mux.HandleFunc("PUT /local/v1/setup/issue-terminal", func(w http.ResponseWriter, r *http.Request) {
-		handleUpsertIssueTerminal(w, r, deps)
+	mux.HandleFunc("POST /local/v1/fiscal-documents", func(w http.ResponseWriter, r *http.Request) {
+		handleIssue(w, r, deps)
 	})
-	mux.HandleFunc("POST /local/v1/fiscal-documents", withIssueAuth(deps, handleIssue))
-	mux.HandleFunc("POST /local/v1/fiscal-documents/manual", withIssueAuth(deps, handleIssueManualFT))
+	mux.HandleFunc("POST /local/v1/fiscal-documents/manual", func(w http.ResponseWriter, r *http.Request) {
+		handleIssueManualFT(w, r, deps)
+	})
 	mux.HandleFunc("GET /local/v1/products", func(w http.ResponseWriter, r *http.Request) {
 		handleListProducts(w, r, deps)
 	})
@@ -90,7 +89,9 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("GET /local/v1/bill-drafts/{id}", func(w http.ResponseWriter, r *http.Request) {
 		handleGetBillDraft(w, r, deps)
 	})
-	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/issue", withIssueAuth(deps, handleIssueBillDraft))
+	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/issue", func(w http.ResponseWriter, r *http.Request) {
+		handleIssueBillDraft(w, r, deps)
+	})
 	mux.HandleFunc("PUT /local/v1/bill-drafts/{id}/allocation", func(w http.ResponseWriter, r *http.Request) {
 		handleSaveBillDraftAllocation(w, r, deps)
 	})
@@ -257,26 +258,6 @@ func handleOperator(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	writeJSON(w, http.StatusOK, st)
 }
 
-func handleUpsertIssueTerminal(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
-	if deps.Store == nil {
-		writeErr(w, http.StatusServiceUnavailable, "store_unavailable", "store not configured")
-		return
-	}
-	var body store.IssueTerminalInput
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
-		return
-	}
-	if body.StoreID == "" {
-		body.StoreID = deps.StoreID
-	}
-	if err := deps.Store.UpsertIssueTerminal(body); err != nil {
-		writeErr(w, http.StatusBadRequest, "terminal_upsert_failed", err.Error())
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "id": body.ID})
-}
-
 type issueBody struct {
 	StoreID    string              `json:"store_id"`
 	RequestID  string              `json:"request_id"`
@@ -284,25 +265,6 @@ type issueBody struct {
 	StationID  string              `json:"station_id"`
 	DocType    string              `json:"document_type"`
 	Snapshot   domain.SaleSnapshot `json:"snapshot"`
-}
-
-// withIssueAuth is the ONLY HTTP wrapper for §13 on issue routes.
-func withIssueAuth(deps HandlerDeps, next func(http.ResponseWriter, *http.Request, HandlerDeps)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := auth.AuthenticateIssue(r, deps.Store, deps.StoreID)
-		if err != nil {
-			auth.WriteAuthError(w, err)
-			return
-		}
-		next(w, r.WithContext(auth.WithIdentity(r.Context(), id)), deps)
-	}
-}
-
-func operatorFromAuthOrBody(r *http.Request, bodyOperator string) string {
-	if id := auth.IdentityFrom(r.Context()); id != nil && !id.Trusted && id.OperatorID != "" {
-		return id.OperatorID
-	}
-	return bodyOperator
 }
 
 func handleIssue(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
@@ -323,7 +285,7 @@ func handleIssue(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		docType = domain.DocumentFT
 	}
 	res, err := deps.Fiscal.IssueDocument(r.Context(), domain.IssueRequest{
-		StoreID: body.StoreID, RequestID: body.RequestID, OperatorID: operatorFromAuthOrBody(r, body.OperatorID),
+		StoreID: body.StoreID, RequestID: body.RequestID, OperatorID: body.OperatorID,
 		StationID: body.StationID, Snapshot: body.Snapshot,
 	}, docType)
 	if errors.Is(err, store.ErrConflict) {
@@ -473,7 +435,6 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 	if body.OperatorID == "" {
 		body.OperatorID = "op-demo-cashier"
 	}
-	body.OperatorID = operatorFromAuthOrBody(r, body.OperatorID)
 	if body.Mode == "" {
 		body.Mode = "whole_table"
 	}

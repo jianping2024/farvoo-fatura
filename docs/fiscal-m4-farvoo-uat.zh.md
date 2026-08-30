@@ -1,9 +1,9 @@
 # M4 餐馆联调 UAT — 白云饭店（cloud）
 
-> **状态：已通过**（联调执行记录；工程扫尾见 0.4.21）  
-> **权威：否** — 手测清单；契约见 [`fiscal-local-api.zh.md`](fiscal-local-api.zh.md) / [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md)  
+> **状态：草稿**（联调执行记录）  
+> **权威：否** — 手测清单；契约见 [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md)  
 > **环境：** Farvoo **cloud** · 门店 **白云饭店**  
-> **Agent：** 托盘主进程（非 `fiscal-local` seed）；Admin 0.4.x 餐馆模式（联调时约 0.4.20；扫尾 0.4.21）
+> **Agent：** 托盘主进程（非 `fiscal-local` seed）；Admin 0.4.x 餐馆模式
 
 ## 1. 范围
 
@@ -16,11 +16,11 @@
 
 | # | 检查项 | 通过 |
 |---|--------|------|
-| P1 | Cloud 该店 fiscal / bill_sync 已开 | ✓ |
-| P2 | Agent 已配对 store，Realtime 收到 `bill_sync_jobs` | ✓ |
-| P3 | 本机 M1：纳税人 / 系列 / 激活（非 seed demo） | ✓ |
-| P4 | 打印机档口已绑（17892/configure） | ✓ |
-| P5 | Admin 登录 **餐馆模式** → 可见「收银账单」 | ✓ |
+| P1 | Cloud 该店 fiscal / bill_sync 已开 | |
+| P2 | Agent 已配对 store，Realtime 收到 `bill_sync_jobs` | |
+| P3 | 本机 M1：纳税人 / 系列 / 激活（非 seed demo） | |
+| P4 | 打印机档口已绑（17892/configure） | |
+| P5 | Admin 登录 **餐馆模式** → 可见「收银账单」 | |
 
 ## 3. 整桌用例
 
@@ -33,10 +33,10 @@ Farvoo 结账 → 同步账单
 
 | 步骤 | 预期 | 结果 |
 |------|------|------|
-| T1 同步 | cloud job succeeded | ✓ |
-| T2 本地列表 | 桌号、整桌、金额正确 | ✓ |
-| T3 开票 | FT 票号 + ATCUD；print PRINTED | ✓ |
-| T4 重打 | 发票页「重打」成功（2ª Via） | ✓ |
+| T1 同步 | cloud job succeeded | |
+| T2 本地列表 | 桌号、整桌、金额正确 | |
+| T3 开票 | FT 票号 + ATCUD；print PRINTED | |
+| T4 重打 | 发票页「重打」成功（2ª Via） | |
 
 ## 4. 按人用例
 
@@ -51,29 +51,28 @@ Cloud 下发 scope_type=split（含 scope_id UUID 的 splits[]）
 
 | 步骤 | 预期 | 结果 |
 |------|------|------|
-| S1 同步 split 载荷 | 本地 open 草稿含 splits | ✓ |
-| S2 Admin UI | 显示按人选择（非误走整桌） | ✓ |
-| S3 开 A | FT-A；草稿仍在 | ✓ |
-| S4 开 B | FT-B；草稿删除 | ✓ |
-| S5 互斥 | 已有按人票后整桌 issue 拒绝 | ✓ |
+| S1 同步 split 载荷 | 本地 open 草稿含 splits | |
+| S2 Admin UI | 显示按人选择（非误走整桌） | |
+| S3 开 A | FT-A；草稿仍在 | |
+| S4 开 B | FT-B；草稿删除 | |
+| S5 互斥 | 已有按人票后整桌 issue 拒绝 | |
 
-## 5. 已知缺口（不挡联调；工程扫尾状态）
+## 5. 已知缺口（不挡联调但需记录）
 
 | 项 | 说明 |
 |----|------|
-| sync_outbox | **0.4.21 已落地**（IssueFT 同事务入队 + worker；云端副本接口可 stub） |
-| §13 鉴权 | **0.4.21 P0 已落地**（loopback trust / required + 终端 + operator_token）；离线 PIN 登录 UI 仍属后续 |
-| Cloud by_item | 联调以整桌 / 按人（split）为主；本机 by-item 分单工作台另轨 |
+| sync_outbox | 本地开票成功；cloud 票副本 M4 刀 3 |
+| §13 鉴权 | 本机 127.0.0.1 信任；LAN 暴露前须 M4 刀 4 |
+| Cloud by_item | 若 cloud 只发 whole_table，按人用例阻塞在 cloud 侧 |
 
 ## 6. 执行记录
 
 | 日期 | 执行人 | 整桌 | 按人 | 备注 |
 |------|--------|------|------|------|
-| 2026-08-29 | Will | 通过 | 通过 | 白云饭店 cloud；Agent ~0.4.20；D4.5 关闭 |
+| | | | | |
 
 ## 修订记录
 
 | 日期 | 变更 |
 |------|------|
 | 2026-08-22 | 首版：白云饭店 cloud 联调清单；整桌+按人 |
-| 2026-08-29 | **联调通过**：前置与整桌/按人步骤标 ✓；D4.5 关闭 |

@@ -2,7 +2,7 @@
 
 > **状态：定稿**（里程碑顺序与每步交付物；排期日期未定）  
 > **权威：是**（本仓工程推进顺序以本文为准）  
-> **对应实现：** 按里程碑落地；**M2.6 已完成**（0.4.0）；**M4 已完成**（联调 D4.5 + 工程扫尾 D4.1/D4.2/D4.4/D4.6，0.4.21）；**下一步 M3（NC）**  
+> **对应实现：** 按里程碑落地；**M2.5 已完成**；**M2.6 已完成**（0.4.0）；**下一步 M3（NC）** / **M4（Farvoo + §13）**  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 ## 依据（只读，不替代本文交付定义）
@@ -43,8 +43,8 @@
 | **M2** | 并入主 Agent + 真机税务打印 | **已完成** |
 | **M2.5** | 待开票账单 / 分单开票（整桌/按人/NIF） | **已完成**（回归见 `fiscal-bill-sync-regression.mjs`） |
 | **M2.6** | 正式 Admin + FT 日常收口 | **已完成**（0.4.0；`fiscal-reprint-regression.mjs`） |
-| **M3** | NC（冲销） | 未开始（**下一步**） |
-| **M4** | Farvoo Local API 联调（含 §13 鉴权子集） | **已完成**（D4.5 联调 + D4.1/2/4/6 扫尾，0.4.21） |
+| **M3** | NC（冲销） | 未开始（**非日常 urgent**；M2.6 FT 收口后再做） |
+| **M4** | Farvoo Local API 联调（含 §13 鉴权子集） | 未开始 |
 | **M5** | SAF-T 月报导出 | 未开始 |
 | **M6** | FS/FR/ND + 加固（认证扫尾） | 未开始（可与认证窗口并行细化） |
 
@@ -52,10 +52,10 @@
 M0 开 FT（seed）
  └─► M1 真系列/真钥
       └─► M2 托盘进程 + 真打印机
-           ├─► M2.5 待开票账单 / 分单（整桌/按人）
-           ├─► M2.6 正式 Admin + 重打 + 商品/客户/手动 FT 收口
-           ├─► M4 Farvoo 收银联调 + §13/outbox/契约 ← 已完成
-           ├─► M3 NC（冲销）← 当前下一步
+           ├─► M2.5 待开票账单 / 分单（整桌/按人）← M4 前置体验
+           ├─► M2.6 正式 Admin + 重打 + 商品/客户/手动 FT 收口 ← 当前
+           ├─► M3 NC（冲销）
+           ├─► M4 Farvoo 收银 + §13
            └─► M5 SAF-T
                 └─► M6 其余单据类型 / 认证材料
 ```
@@ -324,8 +324,6 @@ M1（NC 系列也要 validation_code）；M2 建议已完成以便真打 NC；**
 
 ## M4 — Farvoo Local API 联调
 
-> **状态：已完成**（D4.5 白云联调 2026-08-29；D4.1/D4.2/D4.4/D4.6 工程扫尾 0.4.21）
-
 ### 目标
 
 Farvoo 桌台「打印发票」经 Agent Local API 只开 FT；业务幂等键与对接说明一致；`sync_outbox` 异步副本（云不可用时不阻断开票）。
@@ -336,14 +334,14 @@ Farvoo 桌台「打印发票」经 Agent Local API 只开 FT；业务幂等键�
 
 ### 交付物
 
-| # | 交付物 | 定义「完成」 | 状态 |
-|---|--------|----------------|------|
-| D4.1 | **契约冻结** | 请求/响应 JSON 示例落入 `docs/fiscal-local-api.zh.md`（与 v0.17 / 对接说明字段对齐） | **已完成** |
-| D4.2 | **鉴权（§13 子集）** | Local API：本机默认可保留开发；LAN / 正式收银路径：开票终端凭证 + 操作员（`operator_token` / PIN，按对接说明 P0 子集）；**含**工作台 `/bill-drafts/.../issue` 与 `fiscal-documents` | **已完成**（P0：loopback trust / required + 终端 + HS256 JWT） |
-| D4.3 | **业务幂等** | `store_id+source_system+source_sale_id+scope_*+fiscal_purpose` 已实现并有测试 | 已有（M2.5 路径） |
-| D4.4 | **sync_outbox** | 签发成功写 outbox；worker 推送（可先 stub Farvoo endpoint + 重试字段） | **已完成** |
-| D4.5 | **联调记录** | `docs/fiscal-m4-farvoo-uat.zh.md`：用 mesa/Farvoo 测账号打一单 FT 的步骤与结果 | **已通过**（整桌+按人） |
-| D4.6 | **回归** | 扩展 UAT：模拟 Farvoo body → 开 FT → outbox `PENDING`→（mock）`SENT` | **已完成**（`scripts/fiscal-m4-regression.mjs`） |
+| # | 交付物 | 定义「完成」 |
+|---|--------|----------------|
+| D4.1 | **契约冻结** | 请求/响应 JSON 示例落入 `docs/fiscal-local-api.zh.md`（与 v0.17 / 对接说明字段对齐） |
+| D4.2 | **鉴权（§13 子集）** | Local API：本机默认可保留开发；LAN / 正式收银路径：开票终端凭证 + 操作员（`operator_token` / PIN，按对接说明 P0 子集）；**含**工作台 `/bill-drafts/.../issue` 与 `fiscal-documents` |
+| D4.3 | **业务幂等** | `store_id+source_system+source_sale_id+scope_*+fiscal_purpose` 已实现并有测试 |
+| D4.4 | **sync_outbox** | 签发成功写 outbox；worker 推送（可先 stub Farvoo endpoint + 重试字段） |
+| D4.5 | **联调记录** | `docs/fiscal-m4-farvoo-uat.zh.md`：用 mesa/Farvoo 测账号打一单 FT 的步骤与结果 |
+| D4.6 | **回归** | 扩展 UAT：模拟 Farvoo body → 开 FT → outbox `PENDING`→（mock）`SENT` |
 
 ### 验收清单
 
@@ -454,5 +452,3 @@ M1–M5 主路径稳定。
 | 2026-08-22 | 增补 **M2.6**（正式 Admin + FT 收口）；UI 对齐 [`fiscal-admin-ui-prototype`](fiscal-admin-ui-prototype/README.md) v2；M3 降为 M2.6 之后 |
 | 2026-08-22 | **M2.6 完成**（0.4.0）：重打 API + 正式 Admin v2 + `fiscal-reprint-regression.mjs` |
 | 2026-08-25 | 工作台双 CTA **同级** + 有待开票时优先焦点：写入 M2.6 P0；权威见原型 README |
-| 2026-08-29 | **M4 D4.5 联调通过**（白云饭店）；进度头/表改为联调已过；余 §13/outbox/契约/回归 |
-| 2026-08-29 | **M4 整单完成**（0.4.21）：D4.1 契约、D4.2 §13 P0、D4.4 outbox、D4.6 `fiscal-m4-regression.mjs`；下一步 M3 |
