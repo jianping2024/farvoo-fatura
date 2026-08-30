@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.26
+
+**M3.1：Admin NC 补强（部分冲销 + 权限 + Setup 可见性）**
+
+- Setup：`nc_series_ok`、`ready_to_credit`；Admin §3「注册 NC 系列」；checklist 显示 NC / 可冲销。
+- 发票详情扩展：`credited_gross_total`、`remaining_gross_total`、行级 `remaining_line_gross`（唯一读 `CreditRemainingForInvoice`）。
+- Admin 冲销 modal：全额 / 按行（仅 `line_gross`）、确认框、幂等 toast；**仅 FT** 显示冲销按钮。
+- `can_issue_nc` enforce（API 409）；设置 §5 checkbox；owner 默认 1、cashier 默认 0。
+- 回归：`scripts/fiscal-m3-regression.mjs` 扩展 partial + permission；设计 `docs/fiscal-m3-nc.zh.md` §16。
+
 ## 0.4.25
 
 **M3：NC 冲销（全额 P0）**
