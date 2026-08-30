@@ -13,6 +13,7 @@ import (
 
 	"farvoo-fiscal-agent/internal/fiscal/bootstrap"
 	"farvoo-fiscal-agent/internal/fiscal/billsync"
+	"farvoo-fiscal-agent/internal/fiscal/service"
 )
 
 // embeddedFiscal is the single Agent-side fiscal runtime (tray / run / fiscal-standalone).
@@ -39,7 +40,7 @@ func fiscalBillSyncPuller(cfg *config) *billsync.Puller {
 // ONLY agent-side applicator; env already set wins (regression scripts / ops override).
 func applyFiscalRuntimeFromConfig(cfg *config) {
 	if strings.TrimSpace(os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION")) == "" {
-		allow := true
+		allow := false
 		if cfg != nil && cfg.FiscalAllowLocalProvision != nil {
 			allow = *cfg.FiscalAllowLocalProvision
 		}
@@ -138,6 +139,14 @@ func startEmbeddedFiscal(cfg *config) error {
 	rt, err := bootstrap.Start(opts)
 	if err != nil {
 		return err
+	}
+	if cfg != nil {
+		rt.Service.SetCloudProvision(service.CloudProvision{
+			APIBase:  strings.TrimSpace(cfg.APIBase),
+			JWT:      strings.TrimSpace(cfg.AgentJWT),
+			DeviceID: strings.TrimSpace(cfg.DeviceID),
+		})
+		go rt.Service.TryPullCloudProvisionIfNeeded(context.Background())
 	}
 	embeddedFiscal = rt
 	embeddedFiscalURL = "http://" + bind

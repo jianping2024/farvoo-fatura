@@ -6,14 +6,14 @@ import (
 	"testing"
 )
 
-func TestApplyFiscalRuntimeFromConfig_DefaultsAllowProvision(t *testing.T) {
+func TestApplyFiscalRuntimeFromConfig_DefaultsDenyLocalProvision(t *testing.T) {
 	t.Setenv("FISCAL_ALLOW_LOCAL_PROVISION", "")
 	t.Setenv("FISCAL_AT_ENV", "")
 	_ = os.Unsetenv("FISCAL_ALLOW_LOCAL_PROVISION")
 	_ = os.Unsetenv("FISCAL_AT_ENV")
 
 	applyFiscalRuntimeFromConfig(nil)
-	if os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION") != "1" {
+	if os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION") != "0" {
 		t.Fatalf("default provision: %q", os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION"))
 	}
 	if os.Getenv("FISCAL_AT_ENV") != "mock" {
@@ -21,19 +21,19 @@ func TestApplyFiscalRuntimeFromConfig_DefaultsAllowProvision(t *testing.T) {
 	}
 }
 
-func TestApplyFiscalRuntimeFromConfig_ConfigCanDisable(t *testing.T) {
+func TestApplyFiscalRuntimeFromConfig_ConfigCanEnable(t *testing.T) {
 	t.Setenv("FISCAL_ALLOW_LOCAL_PROVISION", "")
 	t.Setenv("FISCAL_AT_ENV", "")
 	_ = os.Unsetenv("FISCAL_ALLOW_LOCAL_PROVISION")
 	_ = os.Unsetenv("FISCAL_AT_ENV")
 
-	off := false
+	on := true
 	applyFiscalRuntimeFromConfig(&config{
-		FiscalAllowLocalProvision: &off,
+		FiscalAllowLocalProvision: &on,
 		FiscalATEnv:               "test",
 	})
-	if os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION") != "0" {
-		t.Fatalf("disabled: %q", os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION"))
+	if os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION") != "1" {
+		t.Fatalf("enabled: %q", os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION"))
 	}
 	if os.Getenv("FISCAL_AT_ENV") != "test" {
 		t.Fatalf("at env: %q", os.Getenv("FISCAL_AT_ENV"))

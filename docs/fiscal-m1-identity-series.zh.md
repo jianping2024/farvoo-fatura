@@ -104,7 +104,7 @@
 | `FISCAL_AT_ENV` | `mock` | AT 环境 |
 | `FISCAL_SEED` | 未设置=关 | `1` 时允许 SeedDemo（仅 M0 兼容） |
 | `FISCAL_ALLOW_DEV_KEY` | 关 | 允许 `DEV_PLAIN:` wrapped（禁止默认开票路径） |
-| `FISCAL_ALLOW_LOCAL_PROVISION` | **Agent 默认开**（未设 env 时由 `config.json` / 缺省 true） | 允许 activate 明文产品 PEM；设 `0` 可关 |
+| `FISCAL_ALLOW_LOCAL_PROVISION` | **默认关**（未设 env 时由 `config.json` / 缺省 false） | 允许 activate 明文产品 PEM；生产走 Ops 云端激活 |
 | `FISCAL_MOCK_VALIDATION_CODE` | `CSDF7T5H` | mock 系列验证码 |
 
 **装机不用再设系统环境变量。** 托盘 Agent 启动时 `applyFiscalRuntimeFromConfig`：未设 env 则默认 `FISCAL_ALLOW_LOCAL_PROVISION=1`、`FISCAL_AT_ENV=mock`；也可在 `config.json` 写：

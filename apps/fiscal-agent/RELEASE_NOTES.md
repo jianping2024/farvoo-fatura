@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.22
+
+**Ops 激活开票 → Agent 自动领取封装签名钥**
+
+- 生产默认关闭本地粘贴 PEM；主路径 `POST /local/v1/setup/activate-from-cloud`（register B' + pull C → `SaveActivation`）。
+- 配对后自动尝试向云端注册设备公钥；Ops「激活开票」后可同步领钥。
+- UAT/回归仍可用 `FISCAL_ALLOW_LOCAL_PROVISION=1` 粘贴 PEM。
+
 ## 0.4.20
 
 **分单开票：同菜累加 + 本票预估金额**

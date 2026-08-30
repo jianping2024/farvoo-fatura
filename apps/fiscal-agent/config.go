@@ -34,8 +34,8 @@ type config struct {
 	ValidUntil string `json:"valid_until,omitempty"`
 	// TextEncoding: auto | utf8 | latin — Chinese auto mode renders raster bitmaps; legacy gbk normalizes to auto.
 	TextEncoding string `json:"text_encoding,omitempty"`
-	// FiscalAllowLocalProvision: allow Admin activate with pasted product PEM.
-	// nil / omitted → default true (until cloud provision lands). Explicit false disables.
+	// FiscalAllowLocalProvision: allow Admin activate with pasted product PEM (UAT only).
+	// nil / omitted → default false (Ops cloud provision). Explicit true enables.
 	// Env FISCAL_ALLOW_LOCAL_PROVISION wins when set (CI / forced override).
 	FiscalAllowLocalProvision *bool `json:"fiscal_allow_local_provision,omitempty"`
 	// FiscalATEnv: mock | test | prod. Empty → mock. Env FISCAL_AT_ENV wins when set.

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -213,14 +214,15 @@ func (d *DB) ActiveSigningKey() (wrapped string, pub string, version int, err er
 
 // SetupStatus is GET /setup/status payload source.
 type SetupStatus struct {
-	TaxpayerOK   bool   `json:"taxpayer_ok"`
-	ATCredsOK    bool   `json:"at_credentials_ok"`
-	SeriesOK     bool   `json:"series_ok"`
-	ActivatedOK  bool   `json:"activated_ok"`
-	OperatorOK   bool   `json:"operator_ok"`
-	SeriesCode   string `json:"series_code,omitempty"`
-	Validation   string `json:"validation_code,omitempty"`
-	ReadyToIssue bool   `json:"ready_to_issue"`
+	TaxpayerOK            bool   `json:"taxpayer_ok"`
+	ATCredsOK             bool   `json:"at_credentials_ok"`
+	SeriesOK              bool   `json:"series_ok"`
+	ActivatedOK           bool   `json:"activated_ok"`
+	OperatorOK            bool   `json:"operator_ok"`
+	SeriesCode            string `json:"series_code,omitempty"`
+	Validation            string `json:"validation_code,omitempty"`
+	ReadyToIssue          bool   `json:"ready_to_issue"`
+	LocalProvisionAllowed bool   `json:"local_provision_allowed"`
 }
 
 // GetSetupStatus summarizes readiness for storeID.
@@ -244,6 +246,7 @@ func (d *DB) GetSetupStatus(storeID string) (*SetupStatus, error) {
 	s.ActivatedOK = n > 0
 	_ = d.SQL.QueryRow(`SELECT COUNT(1) FROM operators WHERE store_id=? AND active=1`, storeID).Scan(&n)
 	s.OperatorOK = n > 0
+	s.LocalProvisionAllowed = os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION") == "1"
 	s.ReadyToIssue = s.TaxpayerOK && s.SeriesOK && s.ActivatedOK && s.OperatorOK
 	return s, nil
 }

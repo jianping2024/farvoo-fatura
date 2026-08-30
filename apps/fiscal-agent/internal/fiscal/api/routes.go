@@ -44,6 +44,9 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/setup/activate", func(w http.ResponseWriter, r *http.Request) {
 		handleActivate(w, r, deps)
 	})
+	mux.HandleFunc("POST /local/v1/setup/activate-from-cloud", func(w http.ResponseWriter, r *http.Request) {
+		handleActivateFromCloud(w, r, deps)
+	})
 	mux.HandleFunc("PUT /local/v1/setup/operator", func(w http.ResponseWriter, r *http.Request) {
 		handleOperator(w, r, deps)
 	})
@@ -232,6 +235,19 @@ func handleActivate(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		return
 	}
 	st, err := deps.Fiscal.ActivateFiscal(body.StoreID, body.ProductPrivateKeyPEM)
+	if err != nil {
+		writeCoded(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, st)
+}
+
+func handleActivateFromCloud(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	var body struct {
+		StoreID string `json:"store_id"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	st, err := deps.Fiscal.ActivateFromCloud(r.Context(), body.StoreID)
 	if err != nil {
 		writeCoded(w, err)
 		return

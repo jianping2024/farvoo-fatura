@@ -13,6 +13,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/at"
 	"farvoo-fiscal-agent/internal/fiscal/billsync"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
+	"farvoo-fiscal-agent/internal/fiscal/fiscalsigning"
 	"farvoo-fiscal-agent/internal/fiscal/protect"
 	"farvoo-fiscal-agent/internal/fiscal/signer"
 	"farvoo-fiscal-agent/internal/fiscal/store"
@@ -46,6 +47,14 @@ type FiscalService struct {
 	at      at.Client
 	dataDir string
 	storeID string
+	cloud   CloudProvision
+}
+
+// CloudProvision is Farvoo API identity for Ops-wrapped product key pull.
+type CloudProvision struct {
+	APIBase  string
+	JWT      string
+	DeviceID string
 }
 
 // New returns a FiscalService. signer may be nil until Activate; IssueDocument loads from DB if nil.
@@ -54,6 +63,14 @@ func New(db *store.DB, sig store.Signer, atClient at.Client, dataDir, storeID st
 		atClient = at.NewFromEnv()
 	}
 	return &FiscalService{db: db, signer: sig, at: atClient, dataDir: dataDir, storeID: storeID}
+}
+
+// SetCloudProvision configures Agent→Farvoo fiscal-signing client (ONLY cloud provision config entry).
+func (s *FiscalService) SetCloudProvision(c CloudProvision) {
+	if s == nil {
+		return
+	}
+	s.cloud = c
 }
 
 // SetSigner replaces the in-memory signer after activation.
@@ -164,13 +181,13 @@ func (s *FiscalService) RegisterSeries(ctx context.Context, storeID, seriesCode,
 	return s.db.GetSetupStatus(storeID)
 }
 
-// ActivateFiscal provisions device key + wraps product PEM — ONLY activation entry.
+// ActivateFiscal provisions device key + wraps product PEM — ONLY local-PEM activation entry (UAT).
 func (s *FiscalService) ActivateFiscal(storeID, productPEM string) (*store.SetupStatus, error) {
 	if storeID == "" {
 		storeID = s.storeID
 	}
 	if os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION") != "1" {
-		return nil, fmt.Errorf("fiscal: local provision disabled (set FISCAL_ALLOW_LOCAL_PROVISION=1 for M1)")
+		return nil, fmt.Errorf("fiscal: local provision disabled (use Ops activate + activate-from-cloud)")
 	}
 	productPEM = strings.TrimSpace(productPEM)
 	if productPEM == "" {
@@ -182,11 +199,8 @@ func (s *FiscalService) ActivateFiscal(storeID, productPEM string) (*store.Setup
 		return nil, coded(ErrCodeTaxpayerMissing, "configure taxpayer first")
 	}
 
-	dev, err := signer.GenerateDeviceKey()
+	dev, err := s.ensureDeviceKey()
 	if err != nil {
-		return nil, err
-	}
-	if err := signer.SaveDeviceKey(s.dataDir, dev); err != nil {
 		return nil, err
 	}
 	wrapped, err := signer.WrapProductPEM(&dev.Private.PublicKey, []byte(productPEM))
@@ -201,11 +215,15 @@ func (s *FiscalService) ActivateFiscal(storeID, productPEM string) (*store.Setup
 	if err != nil {
 		return nil, err
 	}
+	deviceID := strings.TrimSpace(s.cloud.DeviceID)
+	if deviceID == "" {
+		deviceID = "device-local"
+	}
 	if err := s.db.SaveActivation(store.ActivationInput{
 		InstallationID:     "inst-" + uuid.NewString(),
 		StoreID:            storeID,
 		TaxpayerNIF:        nif,
-		DeviceID:           "device-local",
+		DeviceID:           deviceID,
 		DevicePublicKey:    dev.PublicPEM,
 		KeyProtectionLevel: "SOFTWARE",
 		KeyVersion:         1,
@@ -220,6 +238,101 @@ func (s *FiscalService) ActivateFiscal(storeID, productPEM string) (*store.Setup
 	}
 	s.signer = sig
 	return s.db.GetSetupStatus(storeID)
+}
+
+// RegisterCloudDevice ensures B' and POSTs register — ONLY device-register orchestration.
+func (s *FiscalService) RegisterCloudDevice(ctx context.Context) error {
+	if s == nil {
+		return fmt.Errorf("fiscal: service nil")
+	}
+	if strings.TrimSpace(s.cloud.APIBase) == "" || strings.TrimSpace(s.cloud.JWT) == "" || strings.TrimSpace(s.cloud.DeviceID) == "" {
+		return fmt.Errorf("fiscal: cloud register requires pairing")
+	}
+	dev, err := s.ensureDeviceKey()
+	if err != nil {
+		return err
+	}
+	cli := &fiscalsigning.Client{APIBase: s.cloud.APIBase, JWT: s.cloud.JWT}
+	_, _, err = cli.RegisterDevicePublicKey(ctx, dev.PublicPEM)
+	return err
+}
+
+// ActivateFromCloud registers B' and pulls Ops-wrapped C — ONLY cloud activation entry.
+func (s *FiscalService) ActivateFromCloud(ctx context.Context, storeID string) (*store.SetupStatus, error) {
+	if storeID == "" {
+		storeID = s.storeID
+	}
+	if err := s.RegisterCloudDevice(ctx); err != nil {
+		return nil, err
+	}
+	var nif string
+	err := s.db.SQL.QueryRow(`SELECT tax_registration_number FROM taxpayer_settings WHERE store_id=?`, storeID).Scan(&nif)
+	if err != nil {
+		return nil, coded(ErrCodeTaxpayerMissing, "configure taxpayer first")
+	}
+
+	dev, err := s.ensureDeviceKey()
+	if err != nil {
+		return nil, err
+	}
+	cli := &fiscalsigning.Client{APIBase: s.cloud.APIBase, JWT: s.cloud.JWT}
+	bundle, err := cli.PullProvision(ctx)
+	if err != nil {
+		if errors.Is(err, fiscalsigning.ErrNotActive) {
+			return nil, coded(ErrCodeSignerNotReady, "waiting for Ops fiscal-signing activate")
+		}
+		return nil, err
+	}
+	if err := s.db.SaveActivation(store.ActivationInput{
+		InstallationID:     bundle.InstallationID,
+		StoreID:            storeID,
+		TaxpayerNIF:        nif,
+		DeviceID:           s.cloud.DeviceID,
+		DevicePublicKey:    dev.PublicPEM,
+		KeyProtectionLevel: "SOFTWARE",
+		KeyVersion:         bundle.SigningKeyVersion,
+		PublicKeyPEM:       bundle.ProductPublicKeyPEM,
+		WrappedPrivateKey:  bundle.WrappedPrivateKey,
+	}); err != nil {
+		return nil, err
+	}
+	sig, err := signer.NewUnwrappingSigner(s.dataDir, bundle.WrappedPrivateKey, bundle.SigningKeyVersion)
+	if err != nil {
+		return nil, err
+	}
+	s.signer = sig
+	return s.db.GetSetupStatus(storeID)
+}
+
+// ensureDeviceKey loads or creates the local device keypair — ONLY device-key ensure path.
+func (s *FiscalService) ensureDeviceKey() (*signer.DeviceBundle, error) {
+	if dev, err := signer.LoadDeviceKey(s.dataDir); err == nil {
+		return dev, nil
+	}
+	dev, err := signer.GenerateDeviceKey()
+	if err != nil {
+		return nil, err
+	}
+	if err := signer.SaveDeviceKey(s.dataDir, dev); err != nil {
+		return nil, err
+	}
+	return dev, nil
+}
+
+// TryPullCloudProvisionIfNeeded registers device and applies cloud C when Ops already activated.
+func (s *FiscalService) TryPullCloudProvisionIfNeeded(ctx context.Context) {
+	if s == nil || s.db == nil {
+		return
+	}
+	if strings.TrimSpace(s.cloud.APIBase) == "" || strings.TrimSpace(s.cloud.JWT) == "" {
+		return
+	}
+	_ = s.RegisterCloudDevice(ctx)
+	st, err := s.db.GetSetupStatus(s.storeID)
+	if err != nil || st.ActivatedOK || !st.TaxpayerOK {
+		return
+	}
+	_, _ = s.ActivateFromCloud(ctx, s.storeID)
 }
 
 // UpsertOperator is the ONLY operator setup entry for M1.

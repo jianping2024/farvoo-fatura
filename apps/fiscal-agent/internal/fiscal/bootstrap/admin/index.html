@@ -534,9 +534,13 @@
         </div>
         <div class="panel">
           <h2>4. 激活开票</h2>
-          <p class="hint">粘贴产品 RSA 私钥 PEM（须含 BEGIN/END）。</p>
-          <div class="field"><textarea id="pem" rows="4" placeholder="-----BEGIN … PRIVATE KEY-----"></textarea></div>
-          <button type="button" id="btnAct">激活</button>
+          <p class="hint" id="actCloudHint">由运营后台「激活开票」后，点下方同步领取封装私钥（无需粘贴 PEM）。</p>
+          <button type="button" id="btnActCloud">从运营同步开票授权</button>
+          <div id="localPemBlock" class="hidden" style="margin-top:1rem">
+            <p class="hint">开发/UAT：允许粘贴产品 RSA 私钥 PEM。</p>
+            <div class="field"><textarea id="pem" rows="4" placeholder="-----BEGIN … PRIVATE KEY-----"></textarea></div>
+            <button type="button" id="btnAct">本地 PEM 激活</button>
+          </div>
         </div>
         <div class="panel">
           <h2>5. 操作员</h2>
@@ -1027,6 +1031,8 @@
   async function refreshSetupStatus() {
     const st = await j('GET', '/local/v1/setup/status');
     renderSetupChecklist(st);
+    const pemBlock = $('#localPemBlock');
+    if (pemBlock) pemBlock.classList.toggle('hidden', !st.local_provision_allowed);
     return st;
   }
 
@@ -2477,6 +2483,14 @@
       });
       await refreshSetupStatus();
       toast('系列注册成功', 'success');
+    } catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+
+  $('#btnActCloud').onclick = () => withBusy($('#btnActCloud'), '同步中…', async () => {
+    try {
+      await j('POST', '/local/v1/setup/activate-from-cloud', {});
+      await refreshSetupStatus();
+      toast('开票授权已从运营同步', 'success');
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
