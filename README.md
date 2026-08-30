@@ -44,11 +44,11 @@ git push origin fiscal-agent-v0.3.86
 
 里程碑与每步交付物（权威）：[`docs/fiscal-dev-plan.zh.md`](docs/fiscal-dev-plan.zh.md)
 
-当前：**M0 + M1 + M2 已完成**；下一刀 **M3**（NC 冲销）。
+当前：**M0–M2 + M4（白云 bill-sync 联调）已完成**；下一刀 **M3**（NC 冲销）。权威安装包：**v0.4.20**（勿用已撤下的 0.4.21）。
 
 ## 当前阶段
 
-**M2**：Fiscal Core 嵌入主 Agent（`-fiscal-standalone` / 托盘）；税务小票经 `ResolveFiscalPrinterTCP` → `TCPSink`（可配 `FISCAL_PRINTER_TCP` / `fiscal_receipt_printer`）。
+**M4（bill-sync）**：Farvoo 同步关台 → `bill_sync_jobs` ingest → Admin 收银账单开票 → FT 签发/打印（**不做桌台直连 Local API**）。Fiscal Core 仍内嵌主 Agent（`-fiscal-standalone` / 托盘）。
 
 ```bash
 cd apps/fiscal-agent

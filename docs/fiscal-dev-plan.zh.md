@@ -2,7 +2,7 @@
 
 > **状态：定稿**（里程碑顺序与每步交付物；排期日期未定）  
 > **权威：是**（本仓工程推进顺序以本文为准）  
-> **对应实现：** 按里程碑落地；**M2.5 已完成**；**M2.6 已完成**（0.4.0）；**下一步 M3（NC）** / **M4（Farvoo + §13）**  
+> **对应实现：** 按里程碑落地；**M2.6 已完成**（0.4.0）；**M4 联调已完成**（账单同步 → Admin 开票，0.4.20）；**下一步 M3（NC）**  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 ## 依据（只读，不替代本文交付定义）
@@ -15,7 +15,8 @@
 | [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md) | 正式 Admin **流程与导航**对齐稿（v2 已定稿） |
 | [`fiscal-ft-receipt-layout.zh.md`](fiscal-ft-receipt-layout.zh.md) | FT 热敏票面版式（定稿；RenderESCPOS；48 列满宽） |
 | 需求 v0.17（`document/`，本仓 gitignore） | 业务/合规规则 |
-| restaurant-ordering `docs/technical/farvoo-fiscal-agent-integration.zh.md` | Farvoo ↔ Agent 对接（只读） |
+| restaurant-ordering `docs/technical/farvoo-fiscal-bill-sync-api.zh.md` | **餐馆 Farvoo ↔ Agent 账单同步**（M4 产品权威） |
+| restaurant-ordering `docs/technical/farvoo-fiscal-agent-integration.zh.md` | 总览（只读；**餐馆开票路径以 bill-sync-api 为准**，见 M4 §P0） |
 | [`print-agent-lessons.zh.md`](print-agent-lessons.zh.md) | 打印/安装器踩坑 |
 
 冲突时：DDL / schema 定列；需求定业务规则；**谁先做哪一刀以本文为准**。
@@ -43,8 +44,8 @@
 | **M2** | 并入主 Agent + 真机税务打印 | **已完成** |
 | **M2.5** | 待开票账单 / 分单开票（整桌/按人/NIF） | **已完成**（回归见 `fiscal-bill-sync-regression.mjs`） |
 | **M2.6** | 正式 Admin + FT 日常收口 | **已完成**（0.4.0；`fiscal-reprint-regression.mjs`） |
-| **M3** | NC（冲销） | 未开始（**非日常 urgent**；M2.6 FT 收口后再做） |
-| **M4** | Farvoo Local API 联调（含 §13 鉴权子集） | 未开始 |
+| **M3** | NC（冲销） | 未开始（**下一步**） |
+| **M4** | Farvoo 账单同步联调（同步关台 → 收银账单 → Admin 开票） | **已完成**（D4.5 白云 UAT；0.4.20） |
 | **M5** | SAF-T 月报导出 | 未开始 |
 | **M6** | FS/FR/ND + 加固（认证扫尾） | 未开始（可与认证窗口并行细化） |
 
@@ -52,10 +53,10 @@
 M0 开 FT（seed）
  └─► M1 真系列/真钥
       └─► M2 托盘进程 + 真打印机
-           ├─► M2.5 待开票账单 / 分单（整桌/按人）← M4 前置体验
-           ├─► M2.6 正式 Admin + 重打 + 商品/客户/手动 FT 收口 ← 当前
-           ├─► M3 NC（冲销）
-           ├─► M4 Farvoo 收银 + §13
+           ├─► M2.5 待开票账单 / 分单（整桌/按人）
+           ├─► M2.6 正式 Admin + 重打 + 商品/客户/手动 FT 收口
+           ├─► M4 账单同步联调 ← 已完成（白云）
+           ├─► M3 NC（冲销）← 当前下一步
            └─► M5 SAF-T
                 └─► M6 其余单据类型 / 认证材料
 ```
@@ -322,37 +323,65 @@ M1（NC 系列也要 validation_code）；M2 建议已完成以便真打 NC；**
 
 ---
 
-## M4 — Farvoo Local API 联调
+## M4 — Farvoo 账单同步联调
+
+> **状态：已完成**（D4.5，白云饭店 cloud，2026-08-29；制品 **0.4.20**）  
+> **产品权威：** restaurant-ordering [`farvoo-fiscal-bill-sync-api.zh.md`](../../restaurant-ordering/docs/technical/farvoo-fiscal-bill-sync-api.zh.md)  
+> **Agent 侧：** [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md)、[`fiscal-m4-farvoo-uat.zh.md`](fiscal-m4-farvoo-uat.zh.md)
+
+### P0 定法（餐馆 · 必须遵守）
+
+| 项 | 定法 |
+|----|------|
+| Restaurant 侧 | 仅 **「同步关台」** → 云端 `bill_sync_jobs`；**不做** Farvoo 桌台「打印发票」按钮、**不做** 浏览器直 POST Agent |
+| Agent 侧 | `PullAndIngest` → **收银账单** → Admin **`/bill-drafts/{id}/issue`**（或手工开票四步）→ `IssueDocument` → 出纸 |
+| 开票人 | **打票本机 Admin 登录**；≠ 在 Farvoo 点同步的人 |
+| 幂等 | `store_id+source_system+source_sale_id+scope_*+fiscal_purpose`（**M2.5 已实现**，非 M4 新刀） |
+
+**不在 M4 / 餐馆路径：** Farvoo 桌台经 Local API 直连签发、§13 `operator_token` 多收银机鉴权、`sync_outbox` 云端票副本推送。旧总览 [`farvoo-fiscal-agent-integration.zh.md`](../../restaurant-ordering/docs/technical/farvoo-fiscal-agent-integration.zh.md) 中「桌台打印发票 → Local API」**不适用于餐馆产品**；勿再作为 M4 交付或实现依据。
 
 ### 目标
 
-Farvoo 桌台「打印发票」经 Agent Local API 只开 FT；业务幂等键与对接说明一致；`sync_outbox` 异步副本（云不可用时不阻断开票）。
+Farvoo cloud 结账 **同步账单** 到 Agent；店员在 **正式 Admin 收银账单** 整桌/按人签发 FT；热敏出纸；再同步挡重（`already_invoiced`）。
 
 ### 非目标
 
-手机/PWA 直连 Agent；云端分配发票号；收款自动开票。
+- Farvoo 桌台 / 浏览器 **直接** 调 `POST /local/v1/fiscal-documents` 开票  
+- `sync_outbox` 向云端回传票副本（另里程碑，若 ever）  
+- §13 开票终端 + LAN `operator_token`（餐馆不做桌台 API 则不需要）  
+- 手机/PWA 直连 Agent；云端分配 InvoiceNo；收款自动开票  
 
 ### 交付物
 
-| # | 交付物 | 定义「完成」 |
-|---|--------|----------------|
-| D4.1 | **契约冻结** | 请求/响应 JSON 示例落入 `docs/fiscal-local-api.zh.md`（与 v0.17 / 对接说明字段对齐） |
-| D4.2 | **鉴权（§13 子集）** | Local API：本机默认可保留开发；LAN / 正式收银路径：开票终端凭证 + 操作员（`operator_token` / PIN，按对接说明 P0 子集）；**含**工作台 `/bill-drafts/.../issue` 与 `fiscal-documents` |
-| D4.3 | **业务幂等** | `store_id+source_system+source_sale_id+scope_*+fiscal_purpose` 已实现并有测试 |
-| D4.4 | **sync_outbox** | 签发成功写 outbox；worker 推送（可先 stub Farvoo endpoint + 重试字段） |
-| D4.5 | **联调记录** | `docs/fiscal-m4-farvoo-uat.zh.md`：用 mesa/Farvoo 测账号打一单 FT 的步骤与结果 |
-| D4.6 | **回归** | 扩展 UAT：模拟 Farvoo body → 开 FT → outbox `PENDING`→（mock）`SENT` |
+| # | 交付物 | 定义「完成」 | 状态 |
+|---|--------|----------------|------|
+| D4.1 | **账单同步 ingest** | `billsync.PullAndIngest` → `UpsertBillDraftOpen`；与 bill-sync-api 载荷一致 | **已完成**（M2.5 刀） |
+| D4.2 | **Admin 开票** | 收银账单 → `IssueFromBillDraft` → 打印；整桌/按人/NIF/互斥 | **已完成**（M2.5 + M2.6） |
+| D4.3 | **业务幂等** | 同 M2.5；`fiscal-bill-sync-regression.mjs` | **已完成** |
+| D4.4 | **联调记录** | [`fiscal-m4-farvoo-uat.zh.md`](fiscal-m4-farvoo-uat.zh.md) 白云整桌+按人 | **已通过** |
+| D4.5 | **回归** | `scripts/fiscal-bill-sync-regression.mjs` 全绿 | **已完成** |
 
 ### 验收清单
 
-1. 前端不传 InvoiceNo/Hash/ATCUD 仍能开票。  
-2. 同业务键不同 `request_id` 返回原票。  
-3. 断网（mock 推送失败）本地仍 `SIGNED` + 可打印。  
-4. Farvoo 侧能看到约定副本字段（若云端尚未就绪：本里程碑以 Agent 契约 + mock 收口，并在 D4.5 标明阻塞项）。
+1. Farvoo 同步关台 → Agent 收银账单 open → Admin 签发 FT → `PRINTED`。  
+2. 整桌与按人（split）与 workbench §5.2 互斥一致。  
+3. 已开票 sale 再同步 → `already_invoiced`（查税务库，非草稿状态）。  
+4. **无** Farvoo 桌台直连接口验收项。
 
 ### 依赖
 
-M2（收银打本机 Agent）；M1。
+M2.5、M2.6、M1（系列）；Farvoo cloud `bill_sync_jobs` 已开。
+
+### 已废弃条目（勿再实现为 M4）
+
+以下曾写在旧版 M4 / integration 总览，**与餐馆 P0 冲突**，已从里程碑移除：
+
+| 原编号 | 内容 | 原因 |
+|--------|------|------|
+| （旧 D4.1） | `fiscal-local-api.zh.md` 对外契约 | 餐馆不暴露 Farvoo→Agent 开票 API |
+| （旧 D4.2） | §13 终端 + `operator_token` | 无桌台直连 API |
+| （旧 D4.4） | `sync_outbox` 推送云端副本 | 非当前产品要求 |
+| （旧 D4.6） | outbox 回归 | 同上 |
 
 ---
 
@@ -452,3 +481,5 @@ M1–M5 主路径稳定。
 | 2026-08-22 | 增补 **M2.6**（正式 Admin + FT 收口）；UI 对齐 [`fiscal-admin-ui-prototype`](fiscal-admin-ui-prototype/README.md) v2；M3 降为 M2.6 之后 |
 | 2026-08-22 | **M2.6 完成**（0.4.0）：重打 API + 正式 Admin v2 + `fiscal-reprint-regression.mjs` |
 | 2026-08-25 | 工作台双 CTA **同级** + 有待开票时优先焦点：写入 M2.6 P0；权威见原型 README |
+| 2026-08-29 | **M4 D4.5 联调通过**（白云饭店）；M4 目标改为账单同步→Admin，废弃桌台 Local API / §13 / outbox 条目 |
+| 2026-08-30 | 回滚误做的 M4 工程扫尾（0.4.21）；文档与 **0.4.20** 代码对齐 |
