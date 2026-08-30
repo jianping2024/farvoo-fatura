@@ -77,6 +77,9 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/reprints", func(w http.ResponseWriter, r *http.Request) {
 		handleReprint(w, r, deps)
 	})
+	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/credit-notes", func(w http.ResponseWriter, r *http.Request) {
+		handleCreditNote(w, r, deps)
+	})
 	mux.HandleFunc("GET /local/v1/fiscal-documents/by-request/{requestId}", func(w http.ResponseWriter, r *http.Request) {
 		handleGetByRequest(w, r, deps)
 	})
@@ -512,7 +515,8 @@ func writeCoded(w http.ResponseWriter, err error) {
 		switch ce.Code {
 		case service.ErrCodeATSOAPFailed:
 			status = http.StatusBadGateway
-		case service.ErrCodeSignerNotReady, service.ErrCodeOpsActivatePending, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing:
+		case service.ErrCodeSignerNotReady, service.ErrCodeOpsActivatePending, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing,
+			service.ErrCodeCreditNotAllowed, service.ErrCodeCreditAmountExceeded, service.ErrCodeIdempotencyConflict:
 			status = http.StatusConflict
 		case "scope_mutex", "allocation_conflict", "draft_not_open", "already_invoiced":
 			status = http.StatusConflict

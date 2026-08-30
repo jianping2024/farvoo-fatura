@@ -84,6 +84,25 @@ type PaymentInput struct {
 	Amount string `json:"amount"`
 }
 
+// CreditLineRequest is one partial credit line for IssueCreditNote.
+type CreditLineRequest struct {
+	OriginalLineNumber int    `json:"original_line_number"`
+	Quantity           string `json:"quantity,omitempty"`
+	LineGross          string `json:"line_gross,omitempty"`
+}
+
+// CreditNoteRequest wraps NC issuance input.
+type CreditNoteRequest struct {
+	StoreID           string
+	RequestID         string
+	OriginalInvoiceID string
+	OperatorID        string
+	StationID         string
+	Reason            string
+	CreditFull        bool
+	Lines             []CreditLineRequest
+}
+
 // IssueRequest wraps a sale snapshot with idempotency keys.
 type IssueRequest struct {
 	StoreID    string

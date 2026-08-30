@@ -578,6 +578,7 @@
       </div>
       <dl class="detail-grid" id="invoiceDetailBody"></dl>
       <div class="actions">
+        <button type="button" class="secondary hidden" id="btnInvoiceDetailCredit">冲销</button>
         <button type="button" class="secondary" id="btnInvoiceDetailReprint">重打</button>
       </div>
     </div>
@@ -774,6 +775,11 @@
     const btn = $('#btnInvoiceDetailReprint');
     btn.dataset.reprint = inv.document_id;
     btn._invoiceCopy = { hash: inv.hash || '', previous_hash: inv.previous_hash || '' };
+    const creditBtn = $('#btnInvoiceDetailCredit');
+    const canCredit = ['FT', 'FS', 'FR'].includes(inv.document_type) &&
+      ['SIGNED', 'CREDITED_PARTIAL'].includes(inv.document_status);
+    creditBtn.classList.toggle('hidden', !canCredit);
+    creditBtn.dataset.credit = canCredit ? inv.document_id : '';
   }
 
   function openInvoiceDetail(documentId) {
@@ -1330,6 +1336,23 @@
       station_id: sid
     });
     await pollPrintJob(res.print_job_id, '重打已提交');
+  }
+
+  /** ONLY credit-note path for invoice detail drawer (P0: full credit). */
+  async function creditInvoice(documentId, reason) {
+    const sid = requireStation($('#invStationSel').options.length ? $('#invStationSel') : $('#stationSel'));
+    const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/credit-notes', {
+      request_id: 'admin-credit-' + Date.now(),
+      operator_id: OPERATOR_ID,
+      station_id: sid,
+      reason: reason,
+      credit_full: true
+    });
+    await pollPrintJob(res.print_job_id, '冲销已提交');
+    await refreshInvoices();
+    const inv = invoiceListCache.find(i => i.document_id === documentId);
+    if (inv) renderInvoiceDetailModal(inv);
+    return res;
   }
 
   /** ONLY query builder for invoice list + home today stats. */
@@ -2277,6 +2300,17 @@
     if (!id) return;
     try { await reprintInvoice(id); }
     catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+  $('#btnInvoiceDetailCredit').onclick = () => withBusy($('#btnInvoiceDetailCredit'), '冲销中…', async () => {
+    const id = $('#btnInvoiceDetailCredit').dataset.credit;
+    if (!id) return;
+    const reason = window.prompt('冲销原因（必填）', 'Devolucao');
+    if (reason == null) return;
+    if (!String(reason).trim()) { toast('请填写冲销原因', 'error'); return; }
+    try {
+      await creditInvoice(id, String(reason).trim());
+      toast('冲销成功', 'success');
+    } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
   $('#btnConfirmOrder').onclick = () => withBusy($('#btnConfirmOrder'), '确认中…', async () => {

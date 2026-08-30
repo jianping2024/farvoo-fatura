@@ -184,6 +184,41 @@ func TestFormatMesaLine(t *testing.T) {
 	}
 }
 
+func TestRenderESCPOS_NCOriginalReference(t *testing.T) {
+	p := &Payload{
+		DocumentType: "NC",
+		InvoiceNo:    "NC NC2026DEMO01/1",
+		PrintPurpose: "ORIGINAL",
+		IssuedAt:     "2026-08-21T18:26:25",
+		Merchant: MerchantBlock{
+			LegalName: "Farvoo Demo Lda", TaxRegistrationNumber: "517535009",
+		},
+		Customer: CustomerBlock{CompanyName: "Consumidor Final"},
+		Lines: []LineBlock{{
+			DisplayName: "Item", Quantity: "1", UnitPriceGross: "12.50",
+			VATRate: "0.23", LineGross: "12.50",
+		}},
+		Totals: TotalsBlock{NetTotal: "10.16", TaxPayable: "2.34", GrossTotal: "12.50"},
+		Payments: []PaymentBlock{{Method: "CASH", Amount: "12.50"}},
+		Compliance: ComplianceBlock{
+			OriginalInvoiceNo: "FT FT2026DEMO01/1",
+			CreditReason:      "Devolucao",
+			ATCUD:             "NCVAL-1",
+			CertificationLine: "Processado por programa certificado n. 0/AT",
+		},
+	}
+	plain := decodeTicketText(RenderESCPOS(p))
+	for _, want := range []string{
+		"Documento original: FT FT2026DEMO01/1",
+		"Motivo: Devolucao",
+		"Fatura No.: NC NC2026DEMO01/1",
+	} {
+		if !strings.Contains(plain, want) {
+			t.Fatalf("missing %q in:\n%s", want, plain)
+		}
+	}
+}
+
 func TestFormatFaturaNoLine(t *testing.T) {
 	if formatFaturaNoLine("FT FT2026DEMO01/1") != "Fatura No.: FT FT2026DEMO01/1" {
 		t.Fatal(formatFaturaNoLine("FT FT2026DEMO01/1"))

@@ -73,6 +73,12 @@ func RenderESCPOS(p *Payload) []byte {
 		w(dt)
 	}
 	w(formatViaLine(p.PrintPurpose))
+	if orig := strings.TrimSpace(p.Compliance.OriginalInvoiceNo); orig != "" {
+		w("Documento original: " + orig)
+	}
+	if reason := strings.TrimSpace(p.Compliance.CreditReason); reason != "" {
+		w("Motivo: " + reason)
+	}
 	if mesa := formatMesaLine(p.TableDisplayName); mesa != "" {
 		w(mesa)
 	}

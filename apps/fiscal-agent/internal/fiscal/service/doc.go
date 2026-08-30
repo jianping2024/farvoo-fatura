@@ -1,2 +1,2 @@
-// Package service orchestrates fiscal issuance (single write path via store.IssueFT).
+// Package service orchestrates fiscal issuance (FT via store.IssueFT; NC via store.IssueNC).
 package service

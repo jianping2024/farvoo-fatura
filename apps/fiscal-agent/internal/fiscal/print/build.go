@@ -37,6 +37,8 @@ type BuildInput struct {
 	QRContent                 string
 	Hash                      string
 	HashControl               int
+	OriginalInvoiceNo         string
+	CreditReason              string
 }
 
 // LineAmounts is frozen line money for the print payload.
@@ -128,6 +130,8 @@ func BuildPayload(in BuildInput) (*Payload, string, error) {
 			QR:                QRBlock{Content: in.QRContent},
 			HashControlChars:  qChars,
 			CertificationLine: fmt.Sprintf("Processado por programa certificado n. %s/AT", in.SoftwareCertificateNumber),
+			OriginalInvoiceNo: strings.TrimSpace(in.OriginalInvoiceNo),
+			CreditReason:      strings.TrimSpace(in.CreditReason),
 		},
 	}
 	raw, err := json.Marshal(p)

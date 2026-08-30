@@ -31,7 +31,9 @@ bill_sync_drafts
 idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL local_print_job → COMMIT  
 打印失败不回滚税务行。
 
-**唯一写路径：** `store.IssueFT`（经 `service.IssueDocument` / `POST /local/v1/fiscal-documents`）。禁止第二套插票逻辑。
+**唯一写路径：** `store.IssueFT`（经 `service.IssueDocument` / `POST /local/v1/fiscal-documents`）。禁止第二套插 FT 逻辑。
+
+**NC 冲销唯一路径：** `service.IssueCreditNote` → `store.IssueNC`（API `POST /local/v1/fiscal-documents/{id}/credit-notes`）。原票仅 UPDATE `credited_gross_total`/`document_status`；禁止经 `IssueFT` 开 NC。
 
 **账单同步唯一写路径：** `billsync.PullAndIngest` → `IngestCloudJob` → `UpsertBillDraftOpen` + `UpsertFiscalProductByCode`。Realtime/Polling 只门铃/补偿，禁止第二套 HTTP/WS。
 
@@ -53,8 +55,9 @@ idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL
 
 | 聚合 / 模块 | 表 | 唯一入口 |
 |-------------|-----|----------|
-| Series | `series` | 仅 `IssueFT` 更新 `last_number`/`last_hash` |
-| Invoice（签后不可变） | `invoices` + lines/snapshot/payments | 仅 `IssueFT` INSERT |
+| Series (FT) | `series` | 仅 `IssueFT` 更新 FT 系列 `last_number`/`last_hash` |
+| Series (NC) | `series` | 仅 `IssueNC` 更新 NC 系列 `last_number`/`last_hash` |
+| Invoice（签后不可变） | `invoices` + lines/snapshot/payments | FT：`IssueFT` INSERT；NC：`IssueNC` INSERT + 原票两列 UPDATE |
 | Fiscal Print Job | `local_print_jobs` + `print_attempts` | 签发插入（含 `station_id`）；`worker.Worker` 认领；物理出纸仅注入 `PrintBytesFn`→`printToTarget` |
 | Bill sync draft | `bill_sync_drafts` | 写入仅 `UpsertBillDraftOpen`；allocation 仅 `SaveBillDraftAllocation`；开票后清仅 `DeleteBillDraftsBySale` |
 | 序号字符串 | — | 仅 `compliance.FormatSequence` / `FormatInvoiceNo` / `FormatATCUD` |

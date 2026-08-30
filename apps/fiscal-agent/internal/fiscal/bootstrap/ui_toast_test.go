@@ -296,6 +296,7 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 		"function openInvoiceDetail",
 		"async function refreshInvoices",
 		"async function reprintInvoice",
+		"async function creditInvoice",
 	} {
 		if n := strings.Count(adminHTML, fn); n != 1 {
 			t.Fatalf("%s must appear exactly once, got %d", fn, n)

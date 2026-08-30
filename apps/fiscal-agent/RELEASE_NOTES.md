@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.25
+
+**M3：NC 冲销（全额 P0）**
+
+- 唯一写路径：`service.IssueCreditNote` → `store.IssueNC`；API `POST /local/v1/fiscal-documents/{id}/credit-notes`。
+- 独立 NC 系列；原票更新 `credited_gross_total` / `document_status`；`invoice_line_references` 行级引用。
+- Admin 发票详情「冲销」（P0 全额）；ESC/POS 打印原票号与原因。
+- 回归：`scripts/fiscal-m3-regression.mjs`；设计定稿 `docs/fiscal-m3-nc.zh.md`。
+
 ## 0.4.24
 
 **吊销后重启同步：清本机开票授权**

@@ -664,6 +664,6 @@ Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `Ing
 
 已完成：迁移嵌入、seed（M0 开发用）、series 锁 + invoice insert、compliance Hash、service 签发（**M0**）；身份 / AT mock 系列 / 激活（**M1**）；主 Agent 嵌入 + TCP 税务打印（**M2**）。
 
-下一刀：**M3** NC（冲销）。
+下一刀：**M3** NC（冲销）— 权威 [`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md)。
 
 **变更流程**：改表先改本文 + SQL，再写代码；已签发票列不改语义，只允许加可空列或新表。
