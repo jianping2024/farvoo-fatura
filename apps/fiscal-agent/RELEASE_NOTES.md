@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.24
+
+**吊销后重启同步：清本机开票授权**
+
+- Agent 启动 `TryPullCloudProvisionIfNeeded`：本机已激活且云端 provision=`not_active`（含 Ops 吊销）→ `ClearLocalActivation`（唯一本机废钥路径）。
+- 开票仍不查云；重打不重签，吊销后仍可重打已开票。
+
 ## 0.4.23
 
 **同步开票授权：一眼可见的结果态**

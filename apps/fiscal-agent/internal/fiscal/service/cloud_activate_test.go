@@ -123,3 +123,87 @@ func TestWrapRoundtripRSA(t *testing.T) {
 		t.Fatalf("unwrap mismatch")
 	}
 }
+
+func TestStartupSync_ClearsLocalWhenCloudNotActive(t *testing.T) {
+	dir := t.TempDir()
+	db, err := store.Open(filepath.Join(dir, "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	dataDir := filepath.Join(dir, "secure")
+	storeID := "store-revoke-1"
+	if err := db.UpsertTaxpayer(store.TaxpayerInput{
+		StoreID: storeID, TaxRegistrationNumber: "517535009", LegalName: "Demo",
+		AddressDetail: "Rua 1", City: "Lisboa", PostalCode: "1000-001", Country: "PT", Timezone: "Europe/Lisbon",
+		SoftwareCertificateNumber: "0",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	productPEM, err := os.ReadFile(filepath.Join("..", "testdata", "dev_signing_key.pem"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	inner, err := signer.LoadPEM(productPEM, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pub, err := inner.PublicKeyPEM()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dev, err := signer.GenerateDeviceKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := signer.SaveDeviceKey(dataDir, dev); err != nil {
+		t.Fatal(err)
+	}
+	wrapped, err := signer.WrapProductPEM(&dev.Private.PublicKey, productPEM)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.SaveActivation(store.ActivationInput{
+		InstallationID: "inst-old", StoreID: storeID, TaxpayerNIF: "517535009",
+		DeviceID: "22222222-2222-4222-8222-222222222222", DevicePublicKey: string(dev.PublicPEM),
+		KeyProtectionLevel: "SOFTWARE", KeyVersion: 1, PublicKeyPEM: pub, WrappedPrivateKey: wrapped,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/api/print-agent/fiscal-signing/register":
+			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "installation_id": "inst-new", "status": "registered"})
+		case r.Method == http.MethodGet && r.URL.Path == "/api/print-agent/fiscal-signing/provision":
+			http.Error(w, `{"error":"not_active"}`, http.StatusNotFound)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	svc := service.New(db, nil, nil, dataDir, storeID)
+	svc.SetCloudProvision(service.CloudProvision{
+		APIBase: srv.URL, JWT: "test-jwt", DeviceID: "22222222-2222-4222-8222-222222222222",
+	})
+	svc.TryPullCloudProvisionIfNeeded(context.Background())
+
+	st, err := db.GetSetupStatus(storeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.ActivatedOK {
+		t.Fatal("expected local activation cleared after cloud not_active")
+	}
+	var activeN int
+	_ = db.SQL.QueryRow(`SELECT COUNT(1) FROM signing_keys WHERE status='ACTIVE'`).Scan(&activeN)
+	if activeN != 0 {
+		t.Fatalf("ACTIVE keys: %d", activeN)
+	}
+	var retiredN int
+	_ = db.SQL.QueryRow(`SELECT COUNT(1) FROM signing_keys WHERE status='RETIRED'`).Scan(&retiredN)
+	if retiredN != 1 {
+		t.Fatalf("RETIRED keys: %d", retiredN)
+	}
+}

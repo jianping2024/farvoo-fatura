@@ -189,6 +189,24 @@ func (d *DB) SaveActivation(p ActivationInput) error {
 	return tx.Commit()
 }
 
+// ClearLocalActivation retires ACTIVE signing_keys after cloud revoke/not-active — ONLY local deactivate path.
+func (d *DB) ClearLocalActivation() error {
+	now := time.Now().UTC().Format(time.RFC3339)
+	tx, err := d.SQL.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err = tx.Exec(`UPDATE signing_keys SET status='RETIRED', retired_at=? WHERE status='ACTIVE'`, now); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`UPDATE agent_installations SET revoked_at=? WHERE revoked_at IS NULL`, now); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // ActivationInput is persisted at activate time.
 type ActivationInput struct {
 	InstallationID      string

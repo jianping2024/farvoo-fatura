@@ -62,16 +62,19 @@ Agent Bearer：`agentjwt`。Ops：`requirePlatformAdminRole('admin')`。
 
 ## 6. 本机唯一写路径
 
-云领钥与本地 PEM 激活 **均只** 调用 `store.SaveActivation`。
+云领钥与本地 PEM 激活 **均只** 调用 `store.SaveActivation`。  
+云吊销后本机收敛 **仅** `store.ClearLocalActivation`（Agent **启动** `TryPullCloudProvisionIfNeeded`：本机已激活且 provision=`not_active` 时）。**开票路径不查云。**
 
 | 入口 | 条件 |
 |------|------|
 | `service.ActivateFiscal` | `FISCAL_ALLOW_LOCAL_PROVISION=1` + PEM（UAT/回归） |
 | `service.ActivateFromCloud` | 配对后 register + provision（**生产主路径**） |
+| `store.ClearLocalActivation` | 启动同步发现云端无 `active` C（含 Ops 已吊销） |
 
 生产默认 **关闭** 本地粘贴 PEM（`applyFiscalRuntimeFromConfig` 默认 `0`）。
 
 ## 7. 体感
 
 店：配对 → 税务资料 → 等待 Ops 激活 → Agent 自动/点同步领 C → 开票。  
-Ops：激活开票 / 吊销。
+Ops：激活开票 / 吊销。  
+吊销后：已开票可重打；**新开票**在 Agent **重启同步**后不可（本机钥 RETIRED）。运行中未重启前仍可能开票。

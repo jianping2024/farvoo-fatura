@@ -320,7 +320,9 @@ func (s *FiscalService) ensureDeviceKey() (*signer.DeviceBundle, error) {
 	return dev, nil
 }
 
-// TryPullCloudProvisionIfNeeded registers device and applies cloud C when Ops already activated.
+// TryPullCloudProvisionIfNeeded reconciles cloud signing on Agent start (ONLY startup cloud sync).
+// - Local active + cloud not_active/revoked → ClearLocalActivation (no per-issue cloud check).
+// - Local not active + taxpayer OK → register + pull when Ops already activated.
 func (s *FiscalService) TryPullCloudProvisionIfNeeded(ctx context.Context) {
 	if s == nil || s.db == nil {
 		return
@@ -330,7 +332,20 @@ func (s *FiscalService) TryPullCloudProvisionIfNeeded(ctx context.Context) {
 	}
 	_ = s.RegisterCloudDevice(ctx)
 	st, err := s.db.GetSetupStatus(s.storeID)
-	if err != nil || st.ActivatedOK || !st.TaxpayerOK {
+	if err != nil {
+		return
+	}
+	if st.ActivatedOK {
+		cli := &fiscalsigning.Client{APIBase: s.cloud.APIBase, JWT: s.cloud.JWT}
+		_, pullErr := cli.PullProvision(ctx)
+		if errors.Is(pullErr, fiscalsigning.ErrNotActive) {
+			if clearErr := s.db.ClearLocalActivation(); clearErr == nil {
+				s.signer = nil
+			}
+		}
+		return
+	}
+	if !st.TaxpayerOK {
 		return
 	}
 	_, _ = s.ActivateFromCloud(ctx, s.storeID)
