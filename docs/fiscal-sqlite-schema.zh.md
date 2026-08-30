@@ -5,7 +5,7 @@
 > **对应实现：** `apps/fiscal-agent/internal/fiscal/store/migrations/001_init.sql` + `002_bill_sync_drafts.sql`  
 > **写作规范：** [`docs/design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
-> 权威库：门店本机 Agent 唯一 SQLite。  
+> 权威库：门店本机 Agent **唯一** SQLite（**全部已签发票**的税务权威）。  
 > 范围：纯打发票 + 税务打印队列；业务云端 `print_jobs` 不进本库  
 > 依据：需求 v0.17、Farvoo Fiscal 对接说明、华人零售 POS V0.1（边界对齐、不建库存）
 
@@ -23,8 +23,19 @@
 - 门店唯一税务权威：系列号、InvoiceNo、Hash、ATCUD、QR、签后快照  
 - 签发与 ORIGINAL 打印任务同事务  
 - 手动开票所需薄商品/客户主档  
-- SAF-T 月报导出归档  
+- SAF-T **按月**导出归档（**唯一**对外票证合规出口，见 §1.1）  
 - 操作员本地 PIN（离线开票）与审计  
+
+### 1.1 P0 定法：票库权威与对外出口
+
+| 项 | 定法 |
+|----|------|
+| 票库权威 | **全部**已签单据（FT、NC 及后续 FS/FR 等）以**本机 SQLite** 为唯一权威；查票、重打、冲销、Hash 链、累计冲销额 **只读本地** |
+| 云同步已签发票 | **不做**；`IssueFT`、`IssueNC` 及任何签发路径 **禁止 INSERT** `sync_outbox` |
+| 对外合规出口 | **M5**：按自然月（门店 `timezone` 边界，D5.1 拍板）从本地库生成 SAF-T(PT) 1.04_01；归档 `saft_exports`；**须含**该月内所有本地已签类型（含 NC） |
+| 云 → 本机（非票库） | `bill_sync_drafts`（待开票账单）、Ops **签名钥** provision、打印助手配对等；**不是**已签发票副本 |
+| 云 / Dashboard 看票 | **不要求**；云端无 FT/NC 副本为**产品预期**，不以「云上看不到票」为缺陷 |
+| `sync_outbox` 表 | DDL **保留**；P0 **零写入**；禁止在新里程碑中实现「向云推票副本」 unless 产品另开里程碑并改本文 |
 
 ### 非目标（禁止建表）
 
@@ -34,6 +45,7 @@
 | 条码 / 采购价 / 供应商 | 同上 |
 | Order / Payment 业务主档 / 履约 | Farvoo / POS |
 | 云端 `print_jobs` 权威队列 | Farvoo（仅业务热敏） |
+| 云端已签发票副本 / 票库镜像 | **不在产品范围**；见 §1.1；禁止依赖 `sync_outbox` 推票 |
 
 ---
 
@@ -164,8 +176,10 @@
   print_attempts
   audit_log
 
-导出 / 同步
+导出 / 归档（P0 唯一对外票证出口）
   saft_exports
+
+预留（P0 不写入）
   sync_outbox
 
 账单同步草稿（云端 bill_sync_jobs → 本地；未开票）
@@ -572,6 +586,8 @@ MVP 不进 SAF-T `DocumentTotals/Payment`。
 
 ### 6.20 `sync_outbox`
 
+> **P0 定法：** 表在 DDL 中**保留**，**产品路径不写入**（见 §1.1）。已签 FT/NC **不向云同步**；合规出口仅 **M5 SAF-T 月导**。禁止在 M3/M4/M5 实现中把本表当作交付物。
+
 | 列 | 类型 | 必填 | 说明 |
 |----|------|------|------|
 | id | TEXT PK | 是 | |
@@ -585,7 +601,7 @@ MVP 不进 SAF-T `DocumentTotals/Payment`。
 | created_at | TEXT | 是 | |
 | sent_at | TEXT | 否 | |
 
-云端冲突以 Agent 为准回写；失败不阻断本地开票。
+**备选 / 以后：** 若产品要求云侧票证只读副本，须单独立项改 §1.1 定法后再写本表；默认 **never**。
 
 ### 6.21 `bill_sync_drafts`（账单同步草稿）
 
@@ -630,7 +646,7 @@ Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `Ing
 4. 插入 `invoices` + `invoice_lines` + `invoice_customer_snapshots` + `invoice_payments`（NC 另写 `invoice_line_references`）  
 5. 插入 `local_print_jobs`（ORIGINAL + 完整 payload）  
 6. 写 `idempotency_keys.invoice_id`  
-7. （可选）`sync_outbox`  
+7. **P0 跳过** `sync_outbox`（见 §1.1；禁止签发路径 INSERT）  
 8. `COMMIT`  
 
 之后 Print Worker 认领出纸；失败只改 `print_status` / job，**不删税务行**。
@@ -643,6 +659,7 @@ Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `Ing
 |------|------|
 | `api_base`、`agentjwt`、档口 `station_printers`、Realtime | `config.json`（打印配对） |
 | 商家 NIF、系列、Hash 链、发票、税务打印队列 | **SQLite** |
+| 已签 FT/NC 云端副本 | **无**（§1.1；SAF-T 月导为唯一对外票证出口） |
 | `han_bitmap_font_px`（业务票） | Farvoo 功能设置 → 云端 job payload |
 | 发票小票字号（未来） | 建议写入冻结 `print_payload` 或 `taxpayer_settings`，不依赖云端 job |
 

@@ -1,10 +1,11 @@
 # M3：NC（冲销 / Nota de Crédito）
 
-> **状态：定稿**  
+> **状态：定稿**（M3 内核 + Admin P0；**§16 M3.1** 为已定增量，尚未落地）  
 > **权威：是**（M3 行为与 API；库列仍以 `fiscal-sqlite-schema.zh.md` + `migrations/001_init.sql` 为准）  
-> **对应实现：** M3 已落地（`store.IssueNC`、`service.IssueCreditNote`、Admin 冲销、`scripts/fiscal-m3-regression.mjs`）  
-> **计划：** [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) M3  
-> **边界：** 餐馆 Farvoo 不开 NC；[`farvoo-fiscal-agent-integration.zh.md`](../../restaurant-ordering/docs/technical/farvoo-fiscal-agent-integration.zh.md) §4、§7
+> **对应实现：** M3 已落地（`store.IssueNC`、`service.IssueCreditNote`、Admin 全额冲销、`scripts/fiscal-m3-regression.mjs`）；M3.1 见 §16  
+> **计划：** [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) M3 / M3.1  
+> **边界：** 餐馆 Farvoo 不开 NC；[`farvoo-fiscal-agent-integration.zh.md`](../../restaurant-ordering/docs/technical/farvoo-fiscal-agent-integration.zh.md) §4、§7  
+> **票库：** 全部已签发票仅本地 SQLite 权威；**不对云同步**；对外合规见 M5 SAF-T 月导（[`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §1.1）
 
 ## 1. 目标
 
@@ -18,8 +19,9 @@
 | Farvoo 桌台 / 云 API 开 NC | 须 Agent Admin / Local API |
 | NC 冲 NC | 不做 |
 | 会计对账 UI | 不做 |
-| 独立 `can_issue_nc` 权限表 | P0 与现 Admin 登录同权；见 §8 备选 |
+| 独立 `can_issue_nc` 权限表 | M3 不 enforce（与 Admin 登录同权）；M3.1 enforce 现有 `operators.can_issue_nc` 列，见 §16 |
 | 开票时查云 | 不做；吊销收敛仍仅启动同步（Ops 签名钥，非 M3） |
+| 已签 NC 同步云 | 不做；[`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §1.1 |
 
 ## 3. P0 定法
 
@@ -169,7 +171,7 @@ NC 的 `invoices` 业务键列（`source_system` 等）P0 填：
 12. INSERT `local_print_jobs`（ORIGINAL；payload 含 `original_invoice_no`、`credit_reason`）  
 13. COMMIT  
 
-**不入** `sync_outbox`（M4 范围外，与当前 FT 餐馆路径一致）。
+**不入** `sync_outbox`（[`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §1.1 P0 定法：票库不对云同步；合规出口仅 M5 SAF-T 月导）。
 
 ## 9. 表与列（与 DDL 一致）
 
@@ -259,15 +261,14 @@ M3 **不新增 migration**；使用现有表。
 5. 已 CREDITED_FULL 再冲拒绝。  
 6. Admin 可冲销；Farvoo 无 NC。
 
-## 14. 备选 / 以后
+## 14. 备选 / 以后（M3.1 已吸收项见 §16）
 
 | 项 | 说明 |
 |----|------|
-| Admin 按行部分冲销 UI | API 已支持 `lines[]` |
-| `can_issue_nc` 操作员权限 | 独立列或 role 表 |
 | FS/FR 产品化签发 | M6；NC 内核已支持原票类型白名单 |
-| `sync_outbox` NC 事件 | 云副本推送，非 M3 |
-| SAF-T 导出含 NC | M5 |
+| SAF-T 导出含 NC | M5（本地月导；**非**云同步） |
+| Admin PIN 真鉴权 | 独立里程碑；M3.1 仍用现有 4 位 PIN 进门 |
+| Local API HTTP 鉴权 | 本机信任边界；非 M3.1 |
 
 ## 15. 参考
 
@@ -277,3 +278,125 @@ M3 **不新增 migration**；使用现有表。
 | [`fiscal-m1-identity-series.zh.md`](fiscal-m1-identity-series.zh.md) | 系列注册 |
 | [`farvoo-fiscal-agent-integration.zh.md`](../../restaurant-ordering/docs/technical/farvoo-fiscal-agent-integration.zh.md) §7 | 状态机、NC 规则 |
 | [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) M3 | 里程碑 |
+
+## 16. M3.1：Admin 补强（定稿，尚未落地）
+
+在 **不改动** §5 唯一写路径（仍 `IssueCreditNote` → `IssueNC`）前提下，补齐 Setup 可见性、部分冲销 UI、`can_issue_nc` enforcement 与回归。
+
+### 16.1 目标
+
+| 项 | 定法 |
+|----|------|
+| NC 系列注册 | Admin **设置** 可注册 NC 系列，不必手打 Local API |
+| Setup 可见性 | 店员能一眼看出「NC 系列是否就绪」 |
+| 部分冲销 | Admin 发票详情可按行冲剩余金额（非仅全额） |
+| 权限 | `operators.can_issue_nc = 1` 方可冲销（API + Admin） |
+| 误操作防护 | 提交前确认框；幂等命中须明确提示 |
+
+### 16.2 非目标
+
+| 项 | 说明 |
+|----|------|
+| Farvoo 桌台开 NC | 仍禁止 |
+| FS/FR Admin 冲销按钮 | M6 产品化签发后再开 UI；M3.1 Admin **仅 FT** 显示冲销（FS/FR 仍仅 API/单测） |
+| 行级不同 `reason` | 仍整单一个 `reason` 写入各 `invoice_line_references` |
+| NC 冲 NC | 不做 |
+| 新 migration | 不新增表；只用现有 `operators.can_issue_nc`、`series` |
+
+### 16.3 P0 定法
+
+| 项 | 定法 |
+|----|------|
+| NC 系列注册 UI | **设置 §3** 增加按钮 **「注册 NC 系列」**；默认 `series_code = NC{YYYY}DEMO01`（与 FT 并列输入框，禁止复用 FT 的 code） |
+| 系列注册写路径 | 仍 **唯一** `POST /local/v1/setup/series/register` → `service.RegisterSeries`（`document_type: "NC"`） |
+| Setup 状态扩展 | `GET /local/v1/setup/status` 增加 **`nc_series_ok`**、**`nc_series_code`**、**`nc_validation_code`**（读 ACTIVE NC 系列，规则同 FT 的 `series_ok`） |
+| 可冲销就绪 | 增加 **`ready_to_credit`**：`nc_series_ok && activated_ok && operator_ok`（**不含** FT 的 `series_ok`） |
+| 部分冲销 UI 输入 | **仅 `line_gross`**（两位小数字符串）；**不暴露** `quantity` 输入（避免 UI 与 `ParseQtyString` 精度分叉） |
+| 行选择与展示 | 详情抽屉内表格：原行号、描述、`line_gross`、**`remaining_line_gross`**（服务端计算，UI 禁止自行聚合） |
+| 多行 | 允许一次 NC 勾选多行；每行 `line_gross` 默认填该行 `remaining_line_gross`，可改小不可改大 |
+| 全额入口 | 保留 **「全额冲销」** 快捷（等价 `credit_full: true`），与部分表单二选一 UI 态 |
+| 确认框 | 提交前 modal：原票号、本 NC 合计 gross、勾选行摘要、文案「签发后不可撤销」 |
+| `can_issue_nc` | `IssueCreditNote` 内查 `operators.can_issue_nc`；`0` → **`credit_not_allowed`**（HTTP 409，message：`operator cannot issue credit notes`） |
+| Owner 默认 | `UpsertOperator` 时 `role=owner` → **`can_issue_nc=1`**；`cashier` 默认 **0**（与 schema 默认一致） |
+| Admin 开权限 | **设置 §5 操作员** 增加 checkbox「允许冲销 NC」→ 更新 `operators.can_issue_nc`（仅改此列，唯一 UPDATE 路径：`store.SetOperatorCanIssueNC`） |
+| Admin 冲销按钮可见 | **`document_type = FT`** 且状态 §3 可冲；**FS/FR 不显示**（内核/API 仍允许，供 M6 前集成测） |
+| 幂等 UX | 响应 `idempotent_hit: true` 时 toast：**「已存在相同冲销，未新开」**（同 `business_key` 或同 `request_id`） |
+| `reason` | 仍必填；trim 后长度 **1–200**（超长 → `validation_failed`） |
+
+### 16.4 读模型：原票详情扩展
+
+**唯一读扩展：** `GET /local/v1/fiscal-documents/{documentId}`（不新增第二套 detail API）。
+
+在现有字段外增加：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| credited_gross_total | string | 原票已冲累计（与 `invoices.credited_gross_total` 一致） |
+| remaining_gross_total | string | `gross_total − credited_gross_total`（Money2） |
+| lines | array | 见下表 |
+
+`lines[]`（仅当原票类型可冲且请求方需部分 UI 时使用；实现可始终返回）：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| line_number | integer | 原 `invoice_lines.line_number` |
+| line_id | string | 原行 id |
+| description | string | 展示用（display_name 或 product_description） |
+| line_gross | string | 原行 gross |
+| remaining_line_gross | string | §6.2 公式；已全额冲完的行为 **0.00** |
+
+**唯一聚合实现：** `store.CreditRemainingForInvoice(invoiceID)`（或等价私有函数，仅被 GetInvoiceDetail 与单测调用）；禁止 Admin 前端自行 JOIN `invoice_line_references`。
+
+### 16.5 Admin UI（M3.1）
+
+| 区域 | 行为 |
+|------|------|
+| 设置 §3 | 「注册 FT 系列」不变；新增 **「注册 NC 系列」** + 独立输入框 `#seriesNc`，默认 `NC{YYYY}DEMO01` |
+| 设置 checklist | 增加一行 **「NC 系列」** ← `nc_series_ok`；**「可冲销」** ← `ready_to_credit` |
+| 设置 §5 | 操作员区：**「允许冲销 NC」** checkbox → `can_issue_nc` |
+| 发票详情 | **冲销** 打开 modal：Tab **全额** / **按行**；按行表来自 §16.4；提交仍走 **唯一** `creditInvoice`（扩展 body，禁止第二个 fetch 入口） |
+| 成功后 | 同 M3：toast、刷新列表/详情、关闭 modal |
+
+### 16.6 唯一写路径（增量，禁止重复）
+
+| 层 | M3.1 唯一入口 | 禁止 |
+|----|---------------|------|
+| NC 系列注册 UI | 复用 `RegisterSeries`（与 FT 按钮同 handler 模式） | 第二套 AT 调用 |
+| 操作员 `can_issue_nc` | `store.SetOperatorCanIssueNC` | handler 直写 SQL |
+| 行剩余额 | `store.CreditRemainingForInvoice` | Admin 内联聚合 |
+| 冲销提交 | 仍 `creditInvoice` → `POST .../credit-notes` | 新函数 `partialCreditInvoice` 等第二入口 |
+| 权限校验 | `IssueCreditNote` 开头 | 仅在 UI 隐藏按钮 |
+
+### 16.7 已知限制（非 M3.1 修复）
+
+| 项 | 说明 |
+|----|------|
+| Admin PIN | 仍为进门 UX，**不是** cryptographic 鉴权；本机可访问 Local API 的进程仍可调 API |
+| `business_key` 不含 `reason` | 相同 partial 行集重复提交返回旧 NC；靠 §16.3 幂等 UX 提示 |
+| 云 / Dashboard 看 NC | **不要求**；无云票副本为产品预期（[`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §1.1） |
+| 多条 ACTIVE NC 系列 | `IssueNC` 取 `fiscal_year DESC LIMIT 1`；M3.1 UI 只引导注册 **一条** NC/年 |
+
+### 16.8 交付物与验收（D3.7–D3.10）
+
+| # | 交付物 | 完成定义 |
+|---|--------|----------|
+| D3.7 | Setup：`nc_series_ok` + Admin 注册 NC 按钮 | §16.3–16.5 |
+| D3.8 | `GetInvoiceDetail` 行剩余 + Admin 按行 UI | 部分冲销 2 行 / 超额拒绝 / 第二次部分至 `CREDITED_FULL` |
+| D3.9 | `can_issue_nc` enforce + 设置 checkbox | cashier 默认不可冲；owner 可开；API 409 |
+| D3.10 | `fiscal-m3-regression.mjs` 扩展 | 增加 partial API 场景 +（可选）Admin 路径注释；不得 skip |
+
+**验收清单（M3.1 增量）：**
+
+1. 未注册 NC 系列时 Setup 显示 NC 未就绪；注册后 `ready_to_credit` 为 true（在已 activate + operator 前提下）。  
+2. Admin 按行冲销：两行各冲部分 → 原票 `CREDITED_PARTIAL`；再冲剩余 → `CREDITED_FULL`。  
+3. 某行 `line_gross` 大于 `remaining_line_gross` → `credit_amount_exceeded`。  
+4. `can_issue_nc=0` 的操作员：Admin 无 checkbox 权限时按钮隐藏或提交 409（二者至少其一；**P0：API 必须 409**）。  
+5. 同 partial `lines[]` 再提交 → `idempotent_hit` + 明确 toast，不双开 NC。  
+6. FS/FR 原票在 Admin **不显示**冲销按钮；Local API 仍可按 M3 白名单冲销（回归单测保留）。  
+
+### 16.9 参考（M3.1）
+
+| 文档 | 用途 |
+|------|------|
+| [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §6.4 `operators.can_issue_nc` | 权限列 |
+| [`fiscal-schema-worked-example-identity.zh.md`](fiscal-schema-worked-example-identity.zh.md) | owner/cashier 与 `can_issue_nc` 示例 |

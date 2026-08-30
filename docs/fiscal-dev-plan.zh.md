@@ -2,7 +2,7 @@
 
 > **状态：定稿**（里程碑顺序与每步交付物；排期日期未定）  
 > **权威：是**（本仓工程推进顺序以本文为准）  
-> **对应实现：** 按里程碑落地；**M2.6 已完成**（0.4.0）；**M4 联调已完成**（账单同步 → Admin 开票，0.4.20）；**M3 设计定稿**（[`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md)，待实现）；**下一步：M3 实现**  
+> **对应实现：** 按里程碑落地；**M2.6 已完成**（0.4.0）；**M4 联调已完成**（0.4.20）；**M3 已完成**（0.4.25，[`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §1–13）；**下一步：M3.1**（同文 §16）  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 ## 依据（只读，不替代本文交付定义）
@@ -31,7 +31,8 @@
 4. **本仓回归门禁**：`go test ./internal/fiscal/...` + `node scripts/fiscal-local-regression.mjs`（及里程碑新增脚本）；无 Mesa/`npm run dev` 时以此为准。  
 5. **不做清单**写在各里程碑「非目标」；禁止把非目标偷塞进当刀。  
 6. **界面用业务语言**：产品 UI 不出现「草稿、LOCAL、API、M3」等工程词；内部表名/API 只在代码与本仓设计文出现。用语对照见 [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md) §0、`fiscal-admin-ui-prototype/README.md`。  
-7. **先有订单，后有发票**：手动开票与餐馆同步账单均经 **订单** 四步（创建 → 加商品 → 确认 → 开票）；实现可先 UI 映射现有 API，持久化「订单」见 M2.6 交付物。
+7. **先有订单，后有发票**：手动开票与餐馆同步账单均经 **订单** 四步（创建 → 加商品 → 确认 → 开票）；实现可先 UI 映射现有 API，持久化「订单」见 M2.6 交付物。  
+8. **票库仅本地、不对云同步**：全部已签发票（FT/NC/…）权威在本机 SQLite；**禁止** `sync_outbox` 推票副本；对外合规仅 **M5 SAF-T 按月导出**（见 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §1.1）。
 
 ---
 
@@ -44,7 +45,7 @@
 | **M2** | 并入主 Agent + 真机税务打印 | **已完成** |
 | **M2.5** | 待开票账单 / 分单开票（整桌/按人/NIF） | **已完成**（回归见 `fiscal-bill-sync-regression.mjs`） |
 | **M2.6** | 正式 Admin + FT 日常收口 | **已完成**（0.4.0；`fiscal-reprint-regression.mjs`） |
-| **M3** | NC（冲销） | **设计定稿**（[`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md)）；**下一步：实现** |
+| **M3** | NC（冲销） | **已完成**（0.4.25）；**M3.1 Admin 补强** 见 [`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §16 |
 | **M4** | Farvoo 账单同步联调（同步关台 → 收银账单 → Admin 开票） | **已完成**（D4.5 白云 UAT；0.4.20） |
 | **M5** | SAF-T 月报导出 | 未开始 |
 | **M6** | FS/FR/ND + 加固（认证扫尾） | 未开始（可与认证窗口并行细化） |
@@ -56,8 +57,8 @@ M0 开 FT（seed）
            ├─► M2.5 待开票账单 / 分单（整桌/按人）
            ├─► M2.6 正式 Admin + 重打 + 商品/客户/手动 FT 收口
            ├─► M4 账单同步联调 ← 已完成（白云）
-           ├─► M3 NC（冲销）← 设计定稿；实现中
-           └─► M5 SAF-T
+           ├─► M3 NC（冲销）← **已完成**（0.4.25）
+           └─► M5 SAF-T（本地月导，含 NC）
                 └─► M6 其余单据类型 / 认证材料
 ```
 
@@ -289,8 +290,7 @@ M2.5（待开票账单 issue）；M2（打印）；M1（系列）。**M3 NC 依�
 
 ## M3 — NC（冲销）
 
-> **状态：设计定稿**（[`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md)；实现未开始）  
-> **排期：** M2.6 FT 日常收口完成后再做；**非门店日常 urgent**。
+> **状态：M3 已完成**（0.4.25）；**M3.1 定稿待实现**（[`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §16）  
 
 ### 目标
 
@@ -298,20 +298,31 @@ M2.5（待开票账单 issue）；M2（打印）；M1（系列）。**M3 NC 依�
 
 ### 非目标
 
-ND、FS、FR；自动「NC 冲 NC」产品化；会计完整对账 UI。
+ND、FS、FR 产品化签发；自动「NC 冲 NC」产品化；会计完整对账 UI。
 
-### 交付物
+### 交付物（M3 — 已完成）
 
 | # | 交付物 | 定义「完成」 |
 |---|--------|----------------|
-| D3.1 | **设计补篇** `docs/fiscal-m3-nc.zh.md` | 引用字段、金额规则、系列命名、权限 `can_issue_nc` |
-| D3.2 | **唯一写路径** `store.IssueNC`（或统一 `IssueDocument` 内分支，但仍单一入口） | 写 `invoice_line_references`；更新原票 `document_status` / `credited_gross_total` |
-| D3.3 | **API** | `POST /local/v1/fiscal-documents/{id}/credit-notes` 按对接说明 |
-| D3.4 | **Admin UI** | 发票详情 → 冲销 NC（正式 Admin 导航内；登录/PIN 与 M4 §13 对齐或占位） |
-| D3.5 | **打印** | NC payload 含原 `InvoiceNo`、原因；Render 路径仍唯一 |
-| D3.6 | **回归** | `scripts/fiscal-m3-regression.mjs`：FT→NC→幂等→打印；禁止第二张重复 NC（同业务键） |
+| D3.1 | **设计补篇** `docs/fiscal-m3-nc.zh.md` | 引用字段、金额规则、系列命名 |
+| D3.2 | **`store.IssueNC`** | 写 `invoice_line_references`；更新原票 `document_status` / `credited_gross_total` |
+| D3.3 | **API** | `POST /local/v1/fiscal-documents/{id}/credit-notes` |
+| D3.4 | **Admin UI** | 发票详情 → 全额冲销 |
+| D3.5 | **打印** | NC payload 原票号 + 原因 |
+| D3.6 | **回归** | `scripts/fiscal-m3-regression.mjs` |
 
-### 验收清单
+### 交付物（M3.1 — 下一步）
+
+| # | 交付物 | 定义「完成」 |
+|---|--------|----------------|
+| D3.7 | Setup NC 系列 + `nc_series_ok` | §16.3–16.5 |
+| D3.8 | 详情行剩余 + Admin 按行部分冲销 | §16.4、§16.8 |
+| D3.9 | `can_issue_nc` enforce + 设置 checkbox | §16.3、§16.6 |
+| D3.10 | 回归扩展 | partial + 权限场景 |
+
+（细节以 [`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §13、§16 为准。）
+
+### 验收清单（M3 — 已完成）
 
 1. NC 使用 **独立** `series`（不能蹭 FT 序号）。  
 2. ATCUD/Hash/InvoiceNo 均经 `compliance.Format*` 唯一函数。  
@@ -348,7 +359,7 @@ Farvoo cloud 结账 **同步账单** 到 Agent；店员在 **正式 Admin 收银
 ### 非目标
 
 - Farvoo 桌台 / 浏览器 **直接** 调 `POST /local/v1/fiscal-documents` 开票  
-- `sync_outbox` 向云端回传票副本（另里程碑，若 ever）  
+- `sync_outbox` 向云端回传票副本 — **非产品要求**（§总原则 8、schema §1.1）；DDL 保留、P0 零写入  
 - §13 开票终端 + LAN `operator_token`（餐馆不做桌台 API 则不需要）  
 - 手机/PWA 直连 Agent；云端分配 InvoiceNo；收款自动开票  
 
@@ -388,13 +399,20 @@ M2.5、M2.6、M1（系列）；Farvoo cloud `bill_sync_jobs` 已开。
 
 ## M5 — SAF-T 月报导出
 
+> **P0 定法（与 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §1.1 一致）：** 已签发票**仅**存本机 SQLite；**不**向云同步票副本。门店对外票证合规出口 **只有** 本里程碑：按月从本地库导出 SAF-T(PT)，归档 `saft_exports`。导出须包含该月内所有本地已签类型（**FT + NC**；后续 FS/FR 等本地已有类型同理）。
+
 ### 目标
 
 路线 A：按月生成 SAF-T(PT) 1.04_01 结构文件；归档 `saft_exports`；校验与票面/QR/库一致抽样。
 
 ### 非目标
 
-e-Fatura 逐票实时上报；会计全量 SAF-T（另一套）。
+| 项 | 说明 |
+|----|------|
+| 向云推送已签发票副本 | 禁止；`sync_outbox` P0 不写入 |
+| Dashboard / Ops 票证查询 | 不要求云上有票 |
+| e-Fatura 逐票实时上报 | 不做 |
+| 会计全量 SAF-T（另一套） | 不做 |
 
 ### 交付物
 
@@ -403,14 +421,15 @@ e-Fatura 逐票实时上报；会计全量 SAF-T（另一套）。
 | D5.1 | **设计补篇** `docs/fiscal-m5-saft.zh.md` | 节点映射表、期间边界、时区、与 schema `saft_exports` 列一致 |
 | D5.2 | **导出器** `internal/fiscal/saft/` | 输入 store_id+年月 → XML 文件 + sha256 |
 | D5.3 | **Admin** | 选择期间 → 导出 → 下载/路径展示 → validation_status |
-| D5.4 | **金样/夹具** | 至少 1 张 FT（+可选 NC）导出后 XSD 或结构化断言（无 XSD 工具则固定节点存在性断言） |
+| D5.4 | **金样/夹具** | 至少 1 张 FT **+ 1 张 NC** 导出后 XSD 或结构化断言（无 XSD 工具则固定节点存在性断言） |
 | D5.5 | **回归** | `scripts/fiscal-m5-regression.mjs`：开票→导出→文件存在→关键字段=库 |
 
 ### 验收清单
 
-1. 导出中的 InvoiceNo/ATCUD/Hash/GrossTotal 与库一致。  
-2. 无票月份行为有定法（空文件或拒绝）并文档写明。  
-3. 重复导出不破坏历史 `saft_exports` 行（新行或版本策略在 D5.1 拍板）。
+1. 导出中的 InvoiceNo/ATCUD/Hash/GrossTotal 与**本地库**一致。  
+2. 同月 **FT 与 NC** 均出现在 SAF-T（NC 引用原票字段与 `invoice_line_references` 一致）。  
+3. 无票月份行为有定法（空文件或拒绝）并文档写明。  
+4. 重复导出不破坏历史 `saft_exports` 行（新行或版本策略在 D5.1 拍板）。
 
 ### 依赖
 
