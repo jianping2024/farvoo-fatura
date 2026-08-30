@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * M3 NC regression: FT series + NC series → FT → full NC → idempotency → CREDITED_FULL → print payload.
+ * M3 + M3.1 NC regression: series, permission, partial credit, idempotency, print payload.
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
@@ -39,13 +39,17 @@ async function uatCmd(...args) {
   ).trim();
 }
 
+async function uatJson(...args) {
+  return JSON.parse(await uatCmd(...args));
+}
+
 const results = [];
 function record(name, ok, note) {
   results.push({ name, status: ok ? 'pass' : 'fail', note: note || '' });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${note ? ' — ' + note : ''}`);
 }
 
-async function setupFiscal(childEnv) {
+async function setupFiscal() {
   const pem = readFileSync(pemPath, 'utf8');
   await uatCmd('req', 'PUT', '/local/v1/setup/taxpayer', '--body', JSON.stringify({
     tax_registration_number: '517535009',
@@ -72,6 +76,65 @@ async function setupFiscal(childEnv) {
   await uatCmd('req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
     id: 'op-demo-cashier', role: 'cashier', display_name: 'Demo Cashier',
   }));
+}
+
+async function enableCreditPermission() {
+  await uatCmd('req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
+    id: 'op-demo-cashier', role: 'cashier', display_name: 'Demo Cashier', can_issue_nc: true,
+  }));
+}
+
+async function issueFT(bodyExtra) {
+  const requestId = `m3-ft-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const ftBody = {
+    request_id: requestId,
+    operator_id: 'op-demo-cashier',
+    document_type: 'FT',
+    snapshot: {
+      source_system: 'LOCAL',
+      source_sale_id: `sale-${requestId}`,
+      scope_type: 'session',
+      scope_id: `scope-${requestId}`,
+      fiscal_purpose: 'sale',
+      lines: [{
+        product_code: 'DEMO1', display_name: 'Prato Demo', saft_name: 'Prato Demo',
+        quantity: '1', unit_price_gross: '12.50', vat_rate: '0.23', product_type: 'P', unit_of_measure: 'UN',
+      }],
+      customer: { tax_id: '999999990', company_name: 'Consumidor Final', country: 'PT' },
+      payments: [{ method: 'CASH', amount: '12.50' }],
+    },
+    ...bodyExtra,
+  };
+  return uatJson('req', 'POST', '/local/v1/fiscal-documents', '--body', JSON.stringify(ftBody));
+}
+
+async function issueFTTwoLines() {
+  const requestId = `m3-ft2-${Date.now()}`;
+  const ftBody = {
+    request_id: requestId,
+    operator_id: 'op-demo-cashier',
+    document_type: 'FT',
+    snapshot: {
+      source_system: 'LOCAL',
+      source_sale_id: `sale-${requestId}`,
+      scope_type: 'session',
+      scope_id: `scope-${requestId}`,
+      fiscal_purpose: 'sale',
+      lines: [
+        {
+          product_code: 'DEMO1', display_name: 'Line A', saft_name: 'Line A',
+          quantity: '1', unit_price_gross: '10.00', vat_rate: '0.23', product_type: 'P', unit_of_measure: 'UN',
+        },
+        {
+          product_code: 'DEMO2', display_name: 'Line B', saft_name: 'Line B',
+          quantity: '1', unit_price_gross: '5.00', vat_rate: '0.23', product_type: 'P', unit_of_measure: 'UN',
+        },
+      ],
+      customer: { tax_id: '999999990', company_name: 'Consumidor Final', country: 'PT' },
+      payments: [{ method: 'CASH', amount: '15.00' }],
+    },
+  };
+  return uatJson('req', 'POST', '/local/v1/fiscal-documents', '--body', JSON.stringify(ftBody));
 }
 
 async function main() {
@@ -111,12 +174,21 @@ async function main() {
   if (!healthy) { child.kill('SIGTERM'); process.exit(1); }
 
   try {
-    await setupFiscal(childEnv);
+    await setupFiscal();
     record('setup-ft-nc-series', true);
   } catch (e) {
     record('setup-ft-nc-series', false, String(e));
     child.kill('SIGTERM');
     process.exit(1);
+  }
+
+  try {
+    const st = await uatJson('req', 'GET', '/local/v1/setup/status');
+    record('setup-nc-series-ok', st.nc_series_ok === true && !!st.nc_series_code);
+    record('setup-ready-to-credit', st.ready_to_credit === true);
+  } catch (e) {
+    record('setup-nc-series-ok', false, String(e));
+    record('setup-ready-to-credit', false, String(e));
   }
 
   try {
@@ -128,29 +200,120 @@ async function main() {
     record('sqlite-nc-series', false, String(e));
   }
 
-  const requestId = `m3-ft-${Date.now()}`;
-  const ftBody = {
-    request_id: requestId,
-    operator_id: 'op-demo-cashier',
-    document_type: 'FT',
-    snapshot: {
-      source_system: 'LOCAL',
-      source_sale_id: `sale-${requestId}`,
-      scope_type: 'session',
-      scope_id: `scope-${requestId}`,
-      fiscal_purpose: 'sale',
-      lines: [{
-        product_code: 'DEMO1', display_name: 'Prato Demo', saft_name: 'Prato Demo',
-        quantity: '1', unit_price_gross: '12.50', vat_rate: '0.23', product_type: 'P', unit_of_measure: 'UN',
-      }],
-      customer: { tax_id: '999999990', company_name: 'Consumidor Final', country: 'PT' },
-      payments: [{ method: 'CASH', amount: '12.50' }],
-    },
-  };
+  // M3.1: permission denied before enable
+  let ftPerm;
+  try {
+    ftPerm = await issueFT();
+    await uatCmd('req', 'POST',
+      `/local/v1/fiscal-documents/${ftPerm.document_id}/credit-notes`,
+      '--body', JSON.stringify({
+        request_id: `m3-perm-deny-${Date.now()}`,
+        operator_id: 'op-demo-cashier',
+        reason: 'Should fail',
+        credit_full: true,
+      }));
+    record('operator-permission-denied', false, 'expected credit_not_allowed');
+  } catch (e) {
+    record('operator-permission-denied',
+      String(e).includes('credit_not_allowed') && String(e).includes('operator cannot issue credit notes'),
+      String(e).slice(-140));
+  }
 
+  try {
+    await enableCreditPermission();
+    const st = await uatJson('req', 'GET', '/local/v1/setup/status');
+    record('operator-can-issue-nc', st.operator_can_issue_nc === true);
+  } catch (e) {
+    record('operator-can-issue-nc', false, String(e));
+  }
+
+  // M3.1: partial credit on 2-line FT
+  let ftPartial;
+  try {
+    ftPartial = await issueFTTwoLines();
+    record('issue-ft-two-lines', ftPartial.document_status === 'SIGNED', ftPartial.invoice_no);
+  } catch (e) {
+    record('issue-ft-two-lines', false, String(e));
+    child.kill('SIGTERM');
+    process.exit(1);
+  }
+
+  try {
+    const detail = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${ftPartial.document_id}`);
+    record('detail-line-remaining',
+      Array.isArray(detail.lines) && detail.lines.length === 2 && detail.remaining_gross_total === '15.00');
+  } catch (e) {
+    record('detail-line-remaining', false, String(e));
+  }
+
+  const partialBody1 = {
+    request_id: `m3-partial-1-${Date.now()}`,
+    operator_id: 'op-demo-cashier',
+    reason: 'Partial line 1',
+    credit_full: false,
+    lines: [{ original_line_number: 1, line_gross: '4.00' }],
+  };
+  try {
+    const nc1 = await uatJson('req', 'POST',
+      `/local/v1/fiscal-documents/${ftPartial.document_id}/credit-notes`, '--body', JSON.stringify(partialBody1));
+    record('partial-credit-line1', nc1.document_type === 'NC');
+    await uatCmd('assert-db', '--db', dbPath, '--sql',
+      `SELECT 1 FROM invoices WHERE id='${ftPartial.document_id}' AND document_status='CREDITED_PARTIAL' AND credited_gross_total='4.00';`,
+      '--expect-count', '1');
+    record('original-credited-partial', true);
+  } catch (e) {
+    record('partial-credit-line1', false, String(e));
+    record('original-credited-partial', false, String(e));
+  }
+
+  try {
+    await uatCmd('req', 'POST',
+      `/local/v1/fiscal-documents/${ftPartial.document_id}/credit-notes`,
+      '--body', JSON.stringify({
+        request_id: `m3-over-${Date.now()}`,
+        operator_id: 'op-demo-cashier',
+        reason: 'Too much',
+        credit_full: false,
+        lines: [{ original_line_number: 1, line_gross: '7.00' }],
+      }));
+    record('partial-amount-exceeded', false, 'expected credit_amount_exceeded');
+  } catch (e) {
+    record('partial-amount-exceeded', String(e).includes('credit_amount_exceeded'), String(e).slice(-120));
+  }
+
+  const partialBody2 = {
+    request_id: `m3-partial-2-${Date.now()}`,
+    operator_id: 'op-demo-cashier',
+    reason: 'Finish partial',
+    credit_full: false,
+    lines: [
+      { original_line_number: 1, line_gross: '6.00' },
+      { original_line_number: 2, line_gross: '5.00' },
+    ],
+  };
+  try {
+    await uatJson('req', 'POST',
+      `/local/v1/fiscal-documents/${ftPartial.document_id}/credit-notes`, '--body', JSON.stringify(partialBody2));
+    await uatCmd('assert-db', '--db', dbPath, '--sql',
+      `SELECT 1 FROM invoices WHERE id='${ftPartial.document_id}' AND document_status='CREDITED_FULL' AND credited_gross_total='15.00';`,
+      '--expect-count', '1');
+    record('partial-to-credited-full', true);
+  } catch (e) {
+    record('partial-to-credited-full', false, String(e));
+  }
+
+  try {
+    const again = await uatJson('req', 'POST',
+      `/local/v1/fiscal-documents/${ftPartial.document_id}/credit-notes`, '--body', JSON.stringify(partialBody2));
+    record('partial-idempotent', again.idempotent_hit === true);
+  } catch (e) {
+    record('partial-idempotent', false, String(e));
+  }
+
+  // M3: full credit flow on single-line FT
   let ft;
   try {
-    ft = JSON.parse(await uatCmd('req', 'POST', '/local/v1/fiscal-documents', '--body', JSON.stringify(ftBody)));
+    ft = await issueFT();
     record('issue-ft', ft.document_status === 'SIGNED', ft.invoice_no);
   } catch (e) {
     record('issue-ft', false, String(e));
@@ -160,11 +323,11 @@ async function main() {
 
   try {
     await uatCmd('assert-db', '--db', dbPath, '--sql',
-      `SELECT 1 FROM series WHERE document_type='FT' AND last_number=1 AND document_type='FT';`,
+      `SELECT 1 FROM series WHERE document_type='FT' AND last_number>=1;`,
       '--expect-count', '1');
-    record('ft-series-seq-1', true);
+    record('ft-series-seq', true);
   } catch (e) {
-    record('ft-series-seq-1', false, String(e));
+    record('ft-series-seq', false, String(e));
   }
 
   const ncReqId = `m3-nc-${Date.now()}`;
@@ -176,8 +339,8 @@ async function main() {
   };
   let nc;
   try {
-    nc = JSON.parse(await uatCmd('req', 'POST',
-      `/local/v1/fiscal-documents/${ft.document_id}/credit-notes`, '--body', JSON.stringify(ncBody)));
+    nc = await uatJson('req', 'POST',
+      `/local/v1/fiscal-documents/${ft.document_id}/credit-notes`, '--body', JSON.stringify(ncBody));
     record('issue-nc-full', nc.document_type === 'NC' && String(nc.invoice_no).includes('NC'), nc.invoice_no);
   } catch (e) {
     record('issue-nc-full', false, String(e));
@@ -187,7 +350,7 @@ async function main() {
 
   try {
     await uatCmd('assert-db', '--db', dbPath, '--sql',
-      `SELECT 1 FROM series WHERE document_type='NC' AND last_number=1;`,
+      `SELECT 1 FROM series WHERE document_type='NC' AND last_number>=1;`,
       '--expect-count', '1');
     record('nc-series-independent', true);
   } catch (e) {
@@ -195,8 +358,8 @@ async function main() {
   }
 
   try {
-    const again = JSON.parse(await uatCmd('req', 'POST',
-      `/local/v1/fiscal-documents/${ft.document_id}/credit-notes`, '--body', JSON.stringify(ncBody)));
+    const again = await uatJson('req', 'POST',
+      `/local/v1/fiscal-documents/${ft.document_id}/credit-notes`, '--body', JSON.stringify(ncBody));
     record('nc-idempotent', again.idempotent_hit === true && again.document_id === nc.document_id);
   } catch (e) {
     record('nc-idempotent', false, String(e));
@@ -245,7 +408,7 @@ async function main() {
 
   child.kill('SIGTERM');
   const failed = results.filter((r) => r.status === 'fail');
-  console.log('\n=== M3 SUMMARY ===');
+  console.log('\n=== M3/M3.1 SUMMARY ===');
   for (const r of results) console.log(`${r.status}\t${r.name}\t${r.note}`);
   process.exit(failed.length ? 1 : 0);
 }

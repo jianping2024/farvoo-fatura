@@ -430,28 +430,6 @@ func loadOriginalLines(tx *sql.Tx, invoiceID string) ([]origLineRow, error) {
 	return out, rows.Err()
 }
 
-func loadCreditedGrossByLine(tx *sql.Tx, originalInvoiceID string) (map[string]decimal.Decimal, error) {
-	rows, err := tx.Query(`SELECT r.original_line_id, COALESCE(SUM(CAST(il.line_gross AS REAL)), 0)
-		FROM invoice_line_references r
-		JOIN invoice_lines il ON il.id = r.credit_line_id
-		WHERE r.original_invoice_id = ?
-		GROUP BY r.original_line_id`, originalInvoiceID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	out := map[string]decimal.Decimal{}
-	for rows.Next() {
-		var id string
-		var sum float64
-		if err := rows.Scan(&id, &sum); err != nil {
-			return nil, err
-		}
-		out[id], _ = compliance.ParseDecimal(fmt.Sprintf("%.2f", sum))
-	}
-	return out, rows.Err()
-}
-
 func loadOriginalCustomer(tx *sql.Tx, invoiceID string) (*origCustomerRow, error) {
 	var c origCustomerRow
 	err := tx.QueryRow(`SELECT customer_tax_id, company_name,

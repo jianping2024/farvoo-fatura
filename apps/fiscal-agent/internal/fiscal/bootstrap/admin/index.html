@@ -172,6 +172,12 @@
     .checklist li { padding: 0.35rem 0; font-size: 0.9rem; }
     .checklist li.ok { color: #1f7a4c; }
     .checklist li.no { color: #9a6700; }
+    .credit-tabs { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .credit-tabs button { flex: 1; }
+    .credit-tabs button.active { border-color: var(--mode); font-weight: 600; }
+    .credit-lines-table { width: 100%; font-size: 0.85rem; margin: 0.5rem 0; }
+    .credit-lines-table th, .credit-lines-table td { padding: 0.35rem 0.25rem; text-align: left; }
+    .credit-line-amt { width: 5rem; padding: 0.25rem; }
     .modal-backdrop {
       position: fixed; inset: 0; background: rgba(20,32,27,.45); z-index: 40;
       display: grid; place-items: center; padding: 1rem;
@@ -537,8 +543,10 @@
         </div>
         <div class="panel">
           <h2>3. 注册发票系列</h2>
-          <div class="field"><label>系列编号</label><input id="series" /></div>
+          <div class="field"><label>FT 系列编号</label><input id="series" /></div>
           <button type="button" id="btnSeries">注册 FT 系列</button>
+          <div class="field" style="margin-top:1rem"><label>NC 系列编号</label><input id="seriesNc" /></div>
+          <button type="button" id="btnSeriesNc">注册 NC 系列</button>
         </div>
         <div class="panel">
           <h2>4. 激活开票</h2>
@@ -554,6 +562,9 @@
         <div class="panel">
           <h2>5. 操作员</h2>
           <button type="button" id="btnOp">确保收银操作员</button>
+          <label class="hint" style="display:flex;align-items:center;gap:0.5rem;margin-top:0.75rem">
+            <input type="checkbox" id="chkCanIssueNC" /> 允许冲销 NC
+          </label>
         </div>
         <div class="panel">
           <h2>6. 打印机</h2>
@@ -580,6 +591,42 @@
       <div class="actions">
         <button type="button" class="secondary hidden" id="btnInvoiceDetailCredit">冲销</button>
         <button type="button" class="secondary" id="btnInvoiceDetailReprint">重打</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="creditModal" class="modal-backdrop hidden">
+    <div class="modal" style="max-width:560px">
+      <h2 id="creditModalTitle">冲销发票</h2>
+      <div class="credit-tabs">
+        <button type="button" class="secondary active" id="creditTabFull">全额</button>
+        <button type="button" class="secondary" id="creditTabPartial">按行</button>
+      </div>
+      <div id="creditFullPane">
+        <p class="hint">将对整张发票剩余金额全额冲销。</p>
+      </div>
+      <div id="creditPartialPane" class="hidden">
+        <table class="credit-lines-table">
+          <thead><tr><th></th><th>行</th><th>描述</th><th>原额</th><th>剩余</th><th>本次冲销</th></tr></thead>
+          <tbody id="creditLinesTbody"></tbody>
+        </table>
+      </div>
+      <div class="field"><label>冲销原因</label><input id="creditReason" placeholder="Devolucao" maxlength="200" /></div>
+      <div class="actions">
+        <button type="button" id="btnCreditNext">下一步</button>
+        <button type="button" class="secondary" id="btnCreditCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="creditConfirmModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <h2>确认冲销</h2>
+      <p class="hint">签发后不可撤销。</p>
+      <dl class="detail-grid" id="creditConfirmBody"></dl>
+      <div class="actions">
+        <button type="button" id="btnCreditSubmit">确认签发 NC</button>
+        <button type="button" class="secondary" id="btnCreditConfirmBack">返回</button>
       </div>
     </div>
   </div>
@@ -640,6 +687,9 @@
   /** last known open bill-draft count for toast-on-increase. */
   let lastOpenBillCount = 0;
   let billEventsSource = null;
+  let setupStatusCache = null;
+  let creditTargetDetail = null;
+  let creditMode = 'full';
 
   async function j(method, path, body) {
     let r, t;
@@ -759,7 +809,7 @@
   function renderInvoiceDetailModal(inv) {
     const when = inv.system_entry_date || inv.issued_at || '';
     $('#invoiceDetailTitle').textContent = inv.invoice_no || '发票详情';
-    $('#invoiceDetailBody').innerHTML =
+    let body =
       invoiceDetailRow('签发时刻', fmtTime(when)) +
       invoiceDetailRow('票号', inv.invoice_no) +
       invoiceDetailRow('金额', fmtMoney(inv.gross_total)) +
@@ -769,25 +819,36 @@
       invoiceDetailRow('ATCUD', inv.atcud) +
       invoiceDetailRow('类型', inv.document_type) +
       invoiceDetailRow('单据状态', inv.document_status) +
-      invoiceDetailRow('打印状态', inv.print_status) +
-      invoiceDetailHashRow('上张 Hash', inv.previous_hash, 'previous_hash') +
+      invoiceDetailRow('打印状态', inv.print_status);
+    if (inv.remaining_gross_total != null) {
+      body += invoiceDetailRow('已冲金额', fmtMoney(inv.credited_gross_total)) +
+        invoiceDetailRow('剩余可冲', fmtMoney(inv.remaining_gross_total));
+    }
+    body += invoiceDetailHashRow('上张 Hash', inv.previous_hash, 'previous_hash') +
       invoiceDetailHashRow('Hash', inv.hash, 'hash');
+    $('#invoiceDetailBody').innerHTML = body;
     const btn = $('#btnInvoiceDetailReprint');
     btn.dataset.reprint = inv.document_id;
     btn._invoiceCopy = { hash: inv.hash || '', previous_hash: inv.previous_hash || '' };
     const creditBtn = $('#btnInvoiceDetailCredit');
-    const canCredit = ['FT', 'FS', 'FR'].includes(inv.document_type) &&
-      ['SIGNED', 'CREDITED_PARTIAL'].includes(inv.document_status);
+    const canCredit = inv.document_type === 'FT' &&
+      ['SIGNED', 'CREDITED_PARTIAL'].includes(inv.document_status) &&
+      setupStatusCache && setupStatusCache.operator_can_issue_nc;
     creditBtn.classList.toggle('hidden', !canCredit);
     creditBtn.dataset.credit = canCredit ? inv.document_id : '';
+    if (canCredit) creditBtn._creditDetail = inv;
   }
 
-  function openInvoiceDetail(documentId) {
-    const inv = invoiceListCache.find(i => i.document_id === documentId);
+  async function openInvoiceDetail(documentId) {
+    let inv = invoiceListCache.find(i => i.document_id === documentId);
     if (!inv) {
       toast('找不到该发票', 'error');
       return;
     }
+    try {
+      const detail = await j('GET', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId));
+      inv = Object.assign({}, inv, detail);
+    } catch (_) { /* list cache fallback */ }
     renderInvoiceDetailModal(inv);
     $('#invoiceDetailModal').classList.remove('hidden');
   }
@@ -1056,9 +1117,11 @@
       ['门店信息', st.taxpayer_ok],
       ['税务凭证', st.at_credentials_ok],
       ['发票系列', st.series_ok],
+      ['NC 系列', st.nc_series_ok],
       ['开票授权', st.activated_ok],
       ['操作员', st.operator_ok],
-      ['可开票', st.ready_to_issue]
+      ['可开票', st.ready_to_issue],
+      ['可冲销', st.ready_to_credit]
     ];
     el.innerHTML = items.map(([label, ok]) =>
       '<li class="' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : '○') + ' ' + label + '</li>'
@@ -1070,7 +1133,10 @@
 
   async function refreshSetupStatus() {
     const st = await j('GET', '/local/v1/setup/status');
+    setupStatusCache = st;
     renderSetupChecklist(st);
+    const chk = $('#chkCanIssueNC');
+    if (chk) chk.checked = !!st.operator_can_issue_nc;
     const pemBlock = $('#localPemBlock');
     if (pemBlock) pemBlock.classList.toggle('hidden', !st.local_provision_allowed);
     return st;
@@ -1338,21 +1404,119 @@
     await pollPrintJob(res.print_job_id, '重打已提交');
   }
 
-  /** ONLY credit-note path for invoice detail drawer (P0: full credit). */
-  async function creditInvoice(documentId, reason) {
+  /** ONLY credit-note path for invoice detail drawer (full + partial). */
+  async function creditInvoice(documentId, opts) {
     const sid = requireStation($('#invStationSel').options.length ? $('#invStationSel') : $('#stationSel'));
-    const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/credit-notes', {
+    const reason = typeof opts === 'string' ? opts : opts.reason;
+    const creditFull = typeof opts === 'string' ? true : !!opts.credit_full;
+    const body = {
       request_id: 'admin-credit-' + Date.now(),
       operator_id: OPERATOR_ID,
       station_id: sid,
       reason: reason,
-      credit_full: true
-    });
-    await pollPrintJob(res.print_job_id, '冲销已提交');
+      credit_full: creditFull
+    };
+    if (!creditFull && opts.lines && opts.lines.length) body.lines = opts.lines;
+    const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/credit-notes', body);
+    if (res.idempotent_hit) {
+      toast('已存在相同冲销，未新开', 'info');
+    } else if (res.print_job_id) {
+      await pollPrintJob(res.print_job_id, '冲销已提交');
+    }
     await refreshInvoices();
-    const inv = invoiceListCache.find(i => i.document_id === documentId);
-    if (inv) renderInvoiceDetailModal(inv);
+    try {
+      const detail = await j('GET', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId));
+      renderInvoiceDetailModal(Object.assign({}, invoiceListCache.find(i => i.document_id === documentId) || {}, detail));
+    } catch (_) { /* ignore */ }
     return res;
+  }
+
+  function setCreditTab(mode) {
+    creditMode = mode;
+    $('#creditTabFull').classList.toggle('active', mode === 'full');
+    $('#creditTabPartial').classList.toggle('active', mode === 'partial');
+    $('#creditFullPane').classList.toggle('hidden', mode !== 'full');
+    $('#creditPartialPane').classList.toggle('hidden', mode !== 'partial');
+  }
+
+  function renderCreditLinesTable(detail) {
+    const lines = (detail && detail.lines) || [];
+    const tbody = $('#creditLinesTbody');
+    if (!lines.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="hint">无可用行</td></tr>';
+      return;
+    }
+    tbody.innerHTML = lines.map(ln => {
+      const rem = ln.remaining_line_gross || '0.00';
+      const disabled = parseFloat(rem) <= 0 ? ' disabled' : '';
+      return '<tr data-line-id="' + ln.line_id + '">' +
+        '<td><input type="checkbox" class="credit-line-chk"' + disabled + ' data-ln="' + ln.line_number + '" /></td>' +
+        '<td>' + ln.line_number + '</td>' +
+        '<td>' + (ln.description || '—') + '</td>' +
+        '<td>' + ln.line_gross + '</td>' +
+        '<td>' + rem + '</td>' +
+        '<td><input class="credit-line-amt" type="text" inputmode="decimal" value="' + rem + '" data-max="' + rem + '"' + disabled + ' /></td></tr>';
+    }).join('');
+  }
+
+  function openCreditModal(detail) {
+    creditTargetDetail = detail;
+    $('#creditModalTitle').textContent = '冲销 · ' + (detail.invoice_no || '');
+    $('#creditReason').value = 'Devolucao';
+    setCreditTab('full');
+    renderCreditLinesTable(detail);
+    $('#creditModal').classList.remove('hidden');
+  }
+
+  function closeCreditModal() {
+    $('#creditModal').classList.add('hidden');
+    creditTargetDetail = null;
+  }
+
+  function closeCreditConfirmModal() {
+    $('#creditConfirmModal').classList.add('hidden');
+  }
+
+  function readCreditSubmitPayload() {
+    const reason = String($('#creditReason').value || '').trim();
+    if (!reason) throw { error: 'validation_failed', message: '请填写冲销原因' };
+    if (reason.length > 200) throw { error: 'validation_failed', message: '冲销原因最多 200 字' };
+    if (creditMode === 'full') {
+      return { reason: reason, credit_full: true, summaryGross: creditTargetDetail.remaining_gross_total || creditTargetDetail.gross_total, linesSummary: '全额冲销' };
+    }
+    const selected = [];
+    let total = 0;
+    $$('#creditLinesTbody tr').forEach(row => {
+      const chk = row.querySelector('.credit-line-chk');
+      if (!chk || !chk.checked) return;
+      const ln = parseInt(chk.dataset.ln, 10);
+      const amtIn = row.querySelector('.credit-line-amt');
+      const amt = String(amtIn.value || '').trim();
+      const max = parseFloat(amtIn.dataset.max || '0');
+      const val = parseFloat(amt);
+      if (!amt || isNaN(val) || val <= 0) throw { error: 'validation_failed', message: '请填写有效冲销金额' };
+      if (val > max + 0.001) throw { error: 'validation_failed', message: '冲销金额不能超过剩余' };
+      selected.push({ original_line_number: ln, line_gross: val.toFixed(2) });
+      total += val;
+    });
+    if (!selected.length) throw { error: 'validation_failed', message: '请至少选择一行' };
+    return {
+      reason: reason,
+      credit_full: false,
+      lines: selected,
+      summaryGross: total.toFixed(2),
+      linesSummary: selected.map(l => '行' + l.original_line_number + ' €' + l.line_gross).join('；')
+    };
+  }
+
+  function showCreditConfirm(payload) {
+    $('#creditConfirmBody').innerHTML =
+      invoiceDetailRow('原票号', creditTargetDetail.invoice_no) +
+      invoiceDetailRow('本 NC 合计', fmtMoney(payload.summaryGross)) +
+      invoiceDetailRow('冲销行', payload.linesSummary) +
+      invoiceDetailRow('原因', payload.reason);
+    $('#creditConfirmModal').classList.remove('hidden');
+    $('#creditConfirmModal')._payload = payload;
   }
 
   /** ONLY query builder for invoice list + home today stats. */
@@ -2227,7 +2391,7 @@
     }
     const invRow = e.target.closest('tr[data-inv]');
     if (invRow && !e.target.closest('button')) {
-      openInvoiceDetail(invRow.dataset.inv);
+      openInvoiceDetail(invRow.dataset.inv).catch(e => toast(errText(e), 'error'));
       return;
     }
     const editProd = e.target.closest('[data-edit-prod]');
@@ -2301,14 +2465,36 @@
     try { await reprintInvoice(id); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
-  $('#btnInvoiceDetailCredit').onclick = () => withBusy($('#btnInvoiceDetailCredit'), '冲销中…', async () => {
-    const id = $('#btnInvoiceDetailCredit').dataset.credit;
-    if (!id) return;
-    const reason = window.prompt('冲销原因（必填）', 'Devolucao');
-    if (reason == null) return;
-    if (!String(reason).trim()) { toast('请填写冲销原因', 'error'); return; }
+  $('#btnInvoiceDetailCredit').onclick = () => {
+    const btn = $('#btnInvoiceDetailCredit');
+    const detail = btn._creditDetail;
+    if (!btn.dataset.credit || !detail) return;
+    openCreditModal(detail);
+  };
+
+  $('#creditTabFull').onclick = () => setCreditTab('full');
+  $('#creditTabPartial').onclick = () => setCreditTab('partial');
+  $('#btnCreditCancel').onclick = () => closeCreditModal();
+  $('#creditModal').addEventListener('click', e => {
+    if (e.target.id === 'creditModal') closeCreditModal();
+  });
+  $('#btnCreditNext').onclick = () => {
     try {
-      await creditInvoice(id, String(reason).trim());
+      const payload = readCreditSubmitPayload();
+      showCreditConfirm(payload);
+    } catch (er) { toast(errText(er), 'error'); }
+  };
+  $('#btnCreditConfirmBack').onclick = () => closeCreditConfirmModal();
+  $('#creditConfirmModal').addEventListener('click', e => {
+    if (e.target.id === 'creditConfirmModal') closeCreditConfirmModal();
+  });
+  $('#btnCreditSubmit').onclick = () => withBusy($('#btnCreditSubmit'), '提交中…', async () => {
+    const payload = $('#creditConfirmModal')._payload;
+    if (!payload || !creditTargetDetail) return;
+    try {
+      await creditInvoice(creditTargetDetail.document_id, payload);
+      closeCreditConfirmModal();
+      closeCreditModal();
       toast('冲销成功', 'success');
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
@@ -2498,6 +2684,7 @@
   });
 
   $('#series').value = 'FT' + y + 'DEMO01';
+  $('#seriesNc').value = 'NC' + y + 'DEMO01';
 
   $('#btnRefreshSetup').onclick = () => withBusy($('#btnRefreshSetup'), '刷新中…', async () => {
     try { await refreshSetupStatus(); toast('状态已刷新', 'success'); }
@@ -2550,7 +2737,19 @@
         fiscal_year: y
       });
       await refreshSetupStatus();
-      toast('系列注册成功', 'success');
+      toast('FT 系列注册成功', 'success');
+    } catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+
+  $('#btnSeriesNc').onclick = () => withBusy($('#btnSeriesNc'), '注册中…', async () => {
+    try {
+      await j('POST', '/local/v1/setup/series/register', {
+        series_code: $('#seriesNc').value,
+        document_type: 'NC',
+        fiscal_year: y
+      });
+      await refreshSetupStatus();
+      toast('NC 系列注册成功', 'success');
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
@@ -2590,10 +2789,24 @@
       await j('PUT', '/local/v1/setup/operator', {
         id: OPERATOR_ID,
         role: 'cashier',
-        display_name: 'Demo Cashier'
+        display_name: 'Demo Cashier',
+        can_issue_nc: $('#chkCanIssueNC').checked
       });
       await refreshSetupStatus();
       toast('操作员已保存', 'success');
+    } catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+
+  $('#chkCanIssueNC').onchange = () => withBusy($('#btnOp'), '保存中…', async () => {
+    try {
+      await j('PUT', '/local/v1/setup/operator', {
+        id: OPERATOR_ID,
+        role: 'cashier',
+        display_name: 'Demo Cashier',
+        can_issue_nc: $('#chkCanIssueNC').checked
+      });
+      await refreshSetupStatus();
+      toast('冲销权限已更新', 'success');
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 

@@ -30,14 +30,25 @@ func (s *FiscalService) IssueCreditNote(ctx context.Context, req domain.CreditNo
 	if req.OperatorID == "" {
 		return nil, coded(ErrCodeValidationFailed, "operator_id required")
 	}
-	if strings.TrimSpace(req.Reason) == "" {
+	reason := strings.TrimSpace(req.Reason)
+	if reason == "" {
 		return nil, coded(ErrCodeValidationFailed, "reason required")
+	}
+	if len(reason) > 200 {
+		return nil, coded(ErrCodeValidationFailed, "reason length must be 1-200")
 	}
 	if req.OriginalInvoiceID == "" {
 		return nil, coded(ErrCodeValidationFailed, "original invoice id required")
 	}
 	if req.StoreID == "" {
 		req.StoreID = s.storeID
+	}
+	canNC, err := s.db.OperatorCanIssueNC(req.StoreID, req.OperatorID)
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return nil, err
+	}
+	if !canNC {
+		return nil, coded(ErrCodeCreditNotAllowed, "operator cannot issue credit notes")
 	}
 	if !req.CreditFull && len(req.Lines) == 0 {
 		return nil, coded(ErrCodeValidationFailed, "lines required for partial credit")
@@ -73,7 +84,7 @@ func (s *FiscalService) IssueCreditNote(ctx context.Context, req domain.CreditNo
 		OriginalInvoiceID: req.OriginalInvoiceID,
 		OperatorID:        req.OperatorID,
 		StationID:         req.StationID,
-		Reason:            strings.TrimSpace(req.Reason),
+		Reason:            reason,
 		CreditFull:        req.CreditFull,
 		Lines:             lines,
 	})

@@ -142,12 +142,51 @@ func (d *DB) UpsertOperator(id, storeID, role, displayName, mesaUserID string) e
 	if mesaUserID == "" {
 		mesaUserID = "mesa-" + id
 	}
+	canNC := 0
+	if role == "owner" {
+		canNC = 1
+	}
 	_, err := d.SQL.Exec(`INSERT INTO operators (
 		id, mesa_user_id, store_id, role, display_name, active, pin_hash, can_issue_nc, synced_at, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, 1, NULL, 0, ?, ?, ?)
-	ON CONFLICT(id) DO UPDATE SET display_name=excluded.display_name, role=excluded.role, active=1, updated_at=excluded.updated_at`,
-		id, mesaUserID, storeID, role, displayName, now, now, now)
+	) VALUES (?, ?, ?, ?, ?, 1, NULL, ?, ?, ?, ?)
+	ON CONFLICT(id) DO UPDATE SET display_name=excluded.display_name, role=excluded.role, active=1,
+		can_issue_nc=CASE WHEN excluded.role='owner' THEN 1 ELSE operators.can_issue_nc END,
+		updated_at=excluded.updated_at`,
+		id, mesaUserID, storeID, role, displayName, canNC, now, now, now)
 	return err
+}
+
+// SetOperatorCanIssueNC is the ONLY write path for operators.can_issue_nc.
+func (d *DB) SetOperatorCanIssueNC(storeID, operatorID string, canIssue bool) error {
+	v := 0
+	if canIssue {
+		v = 1
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	res, err := d.SQL.Exec(`UPDATE operators SET can_issue_nc=?, updated_at=? WHERE store_id=? AND id=? AND active=1`,
+		v, now, storeID, operatorID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// OperatorCanIssueNC returns whether operator may issue credit notes.
+func (d *DB) OperatorCanIssueNC(storeID, operatorID string) (bool, error) {
+	var v int
+	err := d.SQL.QueryRow(`SELECT can_issue_nc FROM operators WHERE store_id=? AND id=? AND active=1`,
+		storeID, operatorID).Scan(&v)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, ErrNotFound
+	}
+	if err != nil {
+		return false, err
+	}
+	return v == 1, nil
 }
 
 // EnsureConsumidorFinal inserts the system default customer once.
@@ -235,11 +274,16 @@ type SetupStatus struct {
 	TaxpayerOK            bool   `json:"taxpayer_ok"`
 	ATCredsOK             bool   `json:"at_credentials_ok"`
 	SeriesOK              bool   `json:"series_ok"`
+	NCSeriesOK            bool   `json:"nc_series_ok"`
 	ActivatedOK           bool   `json:"activated_ok"`
 	OperatorOK            bool   `json:"operator_ok"`
 	SeriesCode            string `json:"series_code,omitempty"`
 	Validation            string `json:"validation_code,omitempty"`
+	NCSeriesCode          string `json:"nc_series_code,omitempty"`
+	NCValidation          string `json:"nc_validation_code,omitempty"`
 	ReadyToIssue          bool   `json:"ready_to_issue"`
+	ReadyToCredit         bool   `json:"ready_to_credit"`
+	OperatorCanIssueNC    bool   `json:"operator_can_issue_nc"`
 	LocalProvisionAllowed bool   `json:"local_provision_allowed"`
 }
 
@@ -260,11 +304,25 @@ func (d *DB) GetSetupStatus(storeID string) (*SetupStatus, error) {
 		s.SeriesCode = code.String
 		s.Validation = val.String
 	}
+	var ncCode, ncVal sql.NullString
+	err = d.SQL.QueryRow(`SELECT series_code, validation_code FROM series
+		WHERE store_id=? AND document_type='NC' AND status='ACTIVE' AND validation_code IS NOT NULL AND validation_code != ''
+		ORDER BY fiscal_year DESC LIMIT 1`, storeID).Scan(&ncCode, &ncVal)
+	if err == nil {
+		s.NCSeriesOK = true
+		s.NCSeriesCode = ncCode.String
+		s.NCValidation = ncVal.String
+	}
 	_ = d.SQL.QueryRow(`SELECT COUNT(1) FROM signing_keys WHERE status='ACTIVE'`).Scan(&n)
 	s.ActivatedOK = n > 0
 	_ = d.SQL.QueryRow(`SELECT COUNT(1) FROM operators WHERE store_id=? AND active=1`, storeID).Scan(&n)
 	s.OperatorOK = n > 0
+	var canNC int
+	if err := d.SQL.QueryRow(`SELECT can_issue_nc FROM operators WHERE store_id=? AND id='op-demo-cashier' AND active=1`, storeID).Scan(&canNC); err == nil {
+		s.OperatorCanIssueNC = canNC == 1
+	}
 	s.LocalProvisionAllowed = os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION") == "1"
 	s.ReadyToIssue = s.TaxpayerOK && s.SeriesOK && s.ActivatedOK && s.OperatorOK
+	s.ReadyToCredit = s.NCSeriesOK && s.ActivatedOK && s.OperatorOK
 	return s, nil
 }

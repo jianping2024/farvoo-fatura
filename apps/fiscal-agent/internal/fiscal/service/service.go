@@ -368,6 +368,17 @@ func (s *FiscalService) UpsertOperator(id, storeID, role, name string) error {
 	return s.db.UpsertOperator(id, storeID, role, name, "")
 }
 
+// SetOperatorCanIssueNC is the ONLY service entry for operators.can_issue_nc updates.
+func (s *FiscalService) SetOperatorCanIssueNC(storeID, operatorID string, canIssue bool) error {
+	if storeID == "" {
+		storeID = s.storeID
+	}
+	if operatorID == "" {
+		operatorID = "op-demo-cashier"
+	}
+	return s.db.SetOperatorCanIssueNC(storeID, operatorID, canIssue)
+}
+
 // SetupStatus proxies store.
 func (s *FiscalService) SetupStatus(storeID string) (*store.SetupStatus, error) {
 	if storeID == "" {

@@ -50,11 +50,14 @@ type InvoiceListResult struct {
 // InvoiceDetail extends IssueRecord with totals for GET /local/v1/fiscal-documents/{id}.
 type InvoiceDetail struct {
 	IssueRecord
-	GrossTotal   string `json:"gross_total"`
-	NetTotal     string `json:"net_total"`
-	TaxPayable   string `json:"tax_payable"`
-	SourceSaleID string `json:"source_sale_id,omitempty"`
-	OrderLabel   string `json:"order_label,omitempty"`
+	GrossTotal          string                `json:"gross_total"`
+	NetTotal            string                `json:"net_total"`
+	TaxPayable          string                `json:"tax_payable"`
+	SourceSaleID        string                `json:"source_sale_id,omitempty"`
+	OrderLabel          string                `json:"order_label,omitempty"`
+	CreditedGrossTotal  string                `json:"credited_gross_total,omitempty"`
+	RemainingGrossTotal string                `json:"remaining_gross_total,omitempty"`
+	Lines               []CreditLineRemaining `json:"lines,omitempty"`
 }
 
 var allowedInvoicePageSizes = map[int]bool{10: true, 20: true}

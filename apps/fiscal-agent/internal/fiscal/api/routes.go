@@ -264,14 +264,24 @@ func handleOperator(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		StoreID     string `json:"store_id"`
 		Role        string `json:"role"`
 		DisplayName string `json:"display_name"`
+		CanIssueNC  *bool  `json:"can_issue_nc"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
 		return
 	}
+	if body.StoreID == "" {
+		body.StoreID = deps.StoreID
+	}
 	if err := deps.Fiscal.UpsertOperator(body.ID, body.StoreID, body.Role, body.DisplayName); err != nil {
 		writeCoded(w, err)
 		return
+	}
+	if body.CanIssueNC != nil {
+		if err := deps.Fiscal.SetOperatorCanIssueNC(body.StoreID, body.ID, *body.CanIssueNC); err != nil {
+			writeCoded(w, err)
+			return
+		}
 	}
 	st, _ := deps.Fiscal.SetupStatus(body.StoreID)
 	writeJSON(w, http.StatusOK, st)

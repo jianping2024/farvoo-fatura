@@ -34,11 +34,23 @@ func (s *FiscalService) ListInvoices(q store.InvoiceListQuery) (*store.InvoiceLi
 	return s.db.ListInvoices(q)
 }
 
-// GetInvoiceDetail returns one invoice.
+// GetInvoiceDetail returns one invoice with credit remaining (M3.1).
 func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetail, error) {
 	d, err := s.db.GetInvoiceDetail(documentID)
 	if errors.Is(err, store.ErrNotFound) {
 		return nil, coded("not_found", "invoice not found")
 	}
-	return d, err
+	if err != nil {
+		return nil, err
+	}
+	rem, err := s.db.CreditRemainingForInvoice(documentID)
+	if err != nil {
+		return d, err
+	}
+	if rem != nil {
+		d.CreditedGrossTotal = rem.CreditedGrossTotal
+		d.RemainingGrossTotal = rem.RemainingGrossTotal
+		d.Lines = rem.Lines
+	}
+	return d, nil
 }

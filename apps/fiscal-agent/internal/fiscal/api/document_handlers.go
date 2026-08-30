@@ -87,7 +87,7 @@ func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps Handle
 		writeCoded(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	out := map[string]any{
 		"document_id":     detail.DocumentID,
 		"invoice_no":      detail.InvoiceNo,
 		"atcud":           detail.ATCUD,
@@ -102,7 +102,15 @@ func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps Handle
 		"order_label":     detail.OrderLabel,
 		"issued_at":       detail.IssuedAt.UTC().Format(time.RFC3339),
 		"hash":            detail.Hash,
-	})
+	}
+	if detail.CreditedGrossTotal != "" {
+		out["credited_gross_total"] = detail.CreditedGrossTotal
+		out["remaining_gross_total"] = detail.RemainingGrossTotal
+	}
+	if len(detail.Lines) > 0 {
+		out["lines"] = detail.Lines
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func handleReprint(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
