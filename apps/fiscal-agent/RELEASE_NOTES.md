@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.29
+
+**M5.1：SAF-T Windows-1252 校验修复**
+
+- `validateWindows1252`：CP1252 编解码 roundtrip（修复葡语重音 `Água`、`Guarná` 等误报 INVALID）。
+- 回归：`fiscal-m5-regression.mjs` 使用重音 `saft_name`；`saft/build_test.go` 增葡语 VALID + 中文 INVALID 断言。
+
 ## 0.4.28
 
 **M5：SAF-T 月报导出**

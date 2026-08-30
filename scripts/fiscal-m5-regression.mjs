@@ -75,7 +75,7 @@ async function issueFT() {
     snapshot: {
       source_system: 'LOCAL', source_sale_id: `sale-${requestId}`, scope_type: 'session', scope_id: `scope-${requestId}`,
       fiscal_purpose: 'sale',
-      lines: [{ product_code: 'DEMO1', display_name: 'Prato Demo', saft_name: 'Prato Demo',
+      lines: [{ product_code: 'DEMO1', display_name: 'Prato Demo', saft_name: 'Água 500ml',
         quantity: '1', unit_price_gross: '12.50', vat_rate: '0.23', product_type: 'P', unit_of_measure: 'UN' }],
       customer: { tax_id: '999999990', company_name: 'Consumidor Final', country: 'PT' },
       payments: [{ method: 'CASH', amount: '12.50' }],
@@ -172,9 +172,9 @@ async function main() {
 
   try {
     const dl = await fetch(`${base}/local/v1/saft/exports/${exp.export_id}/download`);
-    const xml = await dl.text();
+    const xml = Buffer.from(await dl.arrayBuffer()).toString('latin1');
     record('download-saft-xml', xml.includes('<AuditFile') && xml.includes(ft.invoice_no) && xml.includes(nc.invoice_no));
-    record('saft-xml-nc-ref', xml.includes('Devolucao M5'));
+    record('saft-xml-nc-ref', xml.includes('Devolucao M5') && xml.includes('Água 500ml'));
   } catch (e) {
     record('download-saft-xml', false, String(e));
     record('saft-xml-nc-ref', false, String(e));

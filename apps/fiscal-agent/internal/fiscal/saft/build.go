@@ -10,6 +10,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/store"
 
 	"github.com/shopspring/decimal"
+	"golang.org/x/text/encoding/charmap"
 )
 
 const auditNS = "urn:OECD:StandardAuditFile-Tax:PT_1.04_01"
@@ -306,7 +307,10 @@ func vatRatePercent(vatRate string) string {
 
 func validateWindows1252(s string) error {
 	raw := escposenc.Windows1252(s)
-	back := string(raw)
+	back, err := charmap.Windows1252.NewDecoder().String(string(raw))
+	if err != nil {
+		return fmt.Errorf("contains non-Windows-1252 characters")
+	}
 	if back != s {
 		return fmt.Errorf("contains non-Windows-1252 characters")
 	}

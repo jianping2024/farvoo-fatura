@@ -33,7 +33,7 @@
 | 编码 | Windows-1252，无 BOM |
 | FT 行金额 | `DebitAmount` = 行 `gross` |
 | NC 行金额 | `CreditAmount` = 行 `gross`；`References` 来自 `invoice_line_references` |
-| validation_status | `VALID` / `INVALID`（Windows-1252 不可编码字符 → `INVALID` + `validation_errors` JSON） |
+| validation_status | `VALID` / `INVALID`（Windows-1252 **编解码 roundtrip**；葡语重音合法；中文等不可编码字符 → `INVALID`） |
 | 审计 | 每次成功导出写 `audit_log.action = EXPORT_SAFT` |
 
 ## 4. 唯一路径

@@ -11,6 +11,8 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/saft"
 	"farvoo-fiscal-agent/internal/fiscal/signer"
 	"farvoo-fiscal-agent/internal/fiscal/store"
+
+	"golang.org/x/text/encoding/charmap"
 )
 
 func TestBuildContainsFTAndNC(t *testing.T) {
@@ -72,6 +74,73 @@ func TestBuildContainsFTAndNC(t *testing.T) {
 	}
 	if !strings.Contains(xml, "<InvoiceType>NC</InvoiceType>") {
 		t.Fatal("missing NC type")
+	}
+}
+
+func TestBuildPortugueseAccentsValid(t *testing.T) {
+	taxpayer := &store.TaxpayerSettings{
+		TaxRegistrationNumber: "517535009", LegalName: "Farvoo Demo Lda",
+		AddressDetail: "Rua Demo 1", City: "Lisboa", PostalCode: "1000-001", Country: "PT",
+		SoftwareCertificateNumber: "0", ProductID: "Farvoo/InvoiceEngine",
+	}
+	inv := store.SAFTInvoice{
+		DocumentType: "FT", InvoiceNo: "FT FT2026DEMO01/1", ATCUD: "X-1",
+		InvoiceDate: "2026-08-21", SystemEntryDate: "2026-08-21T12:00:00",
+		Hash: "abc", HashControl: 1, GrossTotal: "1.85", NetTotal: "1.50", TaxPayable: "0.35",
+		SourceID: "op-demo-cashier",
+		Customer: store.SAFTCustomer{CustomerTaxID: "999999990", CompanyName: "Consumidor Final", Country: "PT"},
+		Lines: []store.SAFTLine{{
+			LineNumber: 1, ProductCode: "001", ProductDescription: "Água 500ml",
+			Quantity: "1", UnitOfMeasure: "UN", LineGross: "1.85", VATRate: "0.23",
+			TaxType: "IVA", TaxCountryRegion: "PT", TaxCode: "NOR", ProductType: "P",
+		}},
+	}
+	built, err := saft.Build(saft.BuildInput{
+		Taxpayer: taxpayer, Year: 2026, Month: 8,
+		StartDate: "2026-08-01", EndDate: "2026-08-31", Invoices: []store.SAFTInvoice{inv},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if built.ValidationStatus != "VALID" {
+		t.Fatalf("validation %s errs=%v", built.ValidationStatus, built.ValidationErrors)
+	}
+	xml, err := charmap.Windows1252.NewDecoder().String(string(built.XMLBytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(xml, "Água 500ml") {
+		t.Fatal("missing accented product in XML")
+	}
+}
+
+func TestBuildRejectsNon1252Characters(t *testing.T) {
+	taxpayer := &store.TaxpayerSettings{
+		TaxRegistrationNumber: "517535009", LegalName: "Farvoo Demo Lda",
+		AddressDetail: "Rua Demo 1", City: "Lisboa", PostalCode: "1000-001", Country: "PT",
+		SoftwareCertificateNumber: "0", ProductID: "Farvoo/InvoiceEngine",
+	}
+	inv := store.SAFTInvoice{
+		DocumentType: "FT", InvoiceNo: "FT FT2026DEMO01/1", ATCUD: "X-1",
+		InvoiceDate: "2026-08-21", SystemEntryDate: "2026-08-21T12:00:00",
+		Hash: "abc", HashControl: 1, GrossTotal: "12.50", NetTotal: "10.16", TaxPayable: "2.34",
+		SourceID: "op-demo-cashier",
+		Customer: store.SAFTCustomer{CustomerTaxID: "999999990", CompanyName: "Consumidor Final", Country: "PT"},
+		Lines: []store.SAFTLine{{
+			LineNumber: 1, ProductCode: "CN1", ProductDescription: "茉莉茶",
+			Quantity: "1", UnitOfMeasure: "UN", LineGross: "12.50", VATRate: "0.23",
+			TaxType: "IVA", TaxCountryRegion: "PT", TaxCode: "NOR", ProductType: "P",
+		}},
+	}
+	built, err := saft.Build(saft.BuildInput{
+		Taxpayer: taxpayer, Year: 2026, Month: 8,
+		StartDate: "2026-08-01", EndDate: "2026-08-31", Invoices: []store.SAFTInvoice{inv},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if built.ValidationStatus != "INVALID" {
+		t.Fatalf("expected INVALID got %s", built.ValidationStatus)
 	}
 }
 

@@ -90,7 +90,7 @@ async function main() {
     snapshot: {
       source_system: 'LOCAL', source_sale_id: 'sale-m5-uat', scope_type: 'session', scope_id: 'scope-m5-uat',
       fiscal_purpose: 'sale',
-      lines: [{ product_code: 'DEMO1', display_name: 'Prato Demo', saft_name: 'Prato Demo',
+      lines: [{ product_code: 'DEMO1', display_name: 'Prato Demo', saft_name: 'Água 500ml',
         quantity: '1', unit_price_gross: '12.50', vat_rate: '0.23', product_type: 'P', unit_of_measure: 'UN' }],
       customer: { tax_id: '999999990', company_name: 'Consumidor Final', country: 'PT' },
       payments: [{ method: 'CASH', amount: '12.50' }],
