@@ -80,6 +80,18 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/credit-notes", func(w http.ResponseWriter, r *http.Request) {
 		handleCreditNote(w, r, deps)
 	})
+	mux.HandleFunc("POST /local/v1/saft/exports", func(w http.ResponseWriter, r *http.Request) {
+		handleExportSAFT(w, r, deps)
+	})
+	mux.HandleFunc("GET /local/v1/saft/exports", func(w http.ResponseWriter, r *http.Request) {
+		handleListSAFTExports(w, r, deps)
+	})
+	mux.HandleFunc("GET /local/v1/saft/exports/{exportId}", func(w http.ResponseWriter, r *http.Request) {
+		handleGetSAFTExport(w, r, deps)
+	})
+	mux.HandleFunc("GET /local/v1/saft/exports/{exportId}/download", func(w http.ResponseWriter, r *http.Request) {
+		handleDownloadSAFTExport(w, r, deps)
+	})
 	mux.HandleFunc("GET /local/v1/fiscal-documents/by-request/{requestId}", func(w http.ResponseWriter, r *http.Request) {
 		handleGetByRequest(w, r, deps)
 	})
@@ -526,7 +538,8 @@ func writeCoded(w http.ResponseWriter, err error) {
 		case service.ErrCodeATSOAPFailed:
 			status = http.StatusBadGateway
 		case service.ErrCodeSignerNotReady, service.ErrCodeOpsActivatePending, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing,
-			service.ErrCodeCreditNotAllowed, service.ErrCodeCreditAmountExceeded, service.ErrCodeIdempotencyConflict:
+			service.ErrCodeCreditNotAllowed, service.ErrCodeCreditAmountExceeded, service.ErrCodeIdempotencyConflict,
+			service.ErrCodeNoInvoices:
 			status = http.StatusConflict
 		case "scope_mutex", "allocation_conflict", "draft_not_open", "already_invoiced":
 			status = http.StatusConflict

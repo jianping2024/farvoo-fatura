@@ -2,7 +2,7 @@
 
 > **状态：定稿**（里程碑顺序与每步交付物；排期日期未定）  
 > **权威：是**（本仓工程推进顺序以本文为准）  
-> **对应实现：** 按里程碑落地；**M2.6 已完成**（0.4.0）；**M4 联调已完成**（0.4.20）；**M3 已完成**（0.4.25，[`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §1–13）；**下一步：M3.1**（同文 §16）  
+> **对应实现：** 按里程碑落地；**M3.1 已完成**（0.4.26）；**M5 已完成**（0.4.28）；**下一步：M6**（FS/FR/ND + 认证扫尾）。**M3.2** 开票员身份 [定稿后置](fiscal-m3-2-operators.zh.md)，不挡现网开发/回归（继续 `op-demo-cashier` + PIN 占位）  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 ## 依据（只读，不替代本文交付定义）
@@ -45,9 +45,10 @@
 | **M2** | 并入主 Agent + 真机税务打印 | **已完成** |
 | **M2.5** | 待开票账单 / 分单开票（整桌/按人/NIF） | **已完成**（回归见 `fiscal-bill-sync-regression.mjs`） |
 | **M2.6** | 正式 Admin + FT 日常收口 | **已完成**（0.4.0；`fiscal-reprint-regression.mjs`） |
-| **M3** | NC（冲销） | **已完成**（0.4.25）；**M3.1 Admin 补强** 见 [`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §16 |
+| **M3** | NC（冲销） | **已完成**（0.4.25）；**M3.1 Admin 补强** **已完成**（0.4.26，[`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §16） |
+| **M3.2** | 开票员身份（Agent 本地创建 + PIN 登录） | **定稿后置**（[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)；不挡开发/回归） |
 | **M4** | Farvoo 账单同步联调（同步关台 → 收银账单 → Admin 开票） | **已完成**（D4.5 白云 UAT；0.4.20） |
-| **M5** | SAF-T 月报导出 | 未开始 |
+| **M5** | SAF-T 月报导出 | **已完成**（0.4.28） |
 | **M6** | FS/FR/ND + 加固（认证扫尾） | 未开始（可与认证窗口并行细化） |
 
 ```text
@@ -57,8 +58,9 @@ M0 开 FT（seed）
            ├─► M2.5 待开票账单 / 分单（整桌/按人）
            ├─► M2.6 正式 Admin + 重打 + 商品/客户/手动 FT 收口
            ├─► M4 账单同步联调 ← 已完成（白云）
-           ├─► M3 NC（冲销）← **已完成**（0.4.25）
-           └─► M5 SAF-T（本地月导，含 NC）
+           ├─► M3 NC + M3.1 ← **已完成**（0.4.26）
+           ├─► M3.2 开票员（后置，定稿已有）
+           ├─► M6 FS/FR/ND ← **下一步**
                 └─► M6 其余单据类型 / 认证材料
 ```
 
@@ -195,7 +197,7 @@ M1（至少能 ACTIVE 系列 + Signer）；打印机 fake 可在 M1 未完成时
 
 - 改 restaurant-ordering 契约文档或同步载荷  
 - NC/重打完整工作台、云端打票页  
-- **§13 PIN / `operator_token` / 开票终端**（完整方案有；**归 M4**，本刀继续本机 Admin 信任）  
+- **§13 PIN / `operator_token` / 开票终端**（完整方案有；**M3.2** 落地本地操作员；`operator_token` 餐馆 P0 不做）  
 - 混合付款（P1）  
 - 第二套插票 / 第二套 Realtime  
 
@@ -236,7 +238,7 @@ M2（主进程 + 开票可用）；账单同步入草稿（已有）。宜在 **
 ### 非目标
 
 - NC（**M3**）  
-- 完整 §13 / LAN 鉴权（**M4**）  
+- 完整 §13 PIN 登录（**M3.2**）；`operator_token` / LAN 鉴权（餐馆 P0 不做）  
 - SAF-T 导出 UI（**M5**）  
 - 独立 React 大重构（除非本里程碑验收需要；P0 可 bootstrap 嵌入 + 静态页）  
 - 手机/PWA 直连
@@ -290,7 +292,7 @@ M2.5（待开票账单 issue）；M2（打印）；M1（系列）。**M3 NC 依�
 
 ## M3 — NC（冲销）
 
-> **状态：M3 已完成**（0.4.25）；**M3.1 定稿待实现**（[`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §16）  
+> **状态：M3 已完成**（0.4.25）；**M3.1 已完成**（0.4.26，[`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §16）；**M3.2 定稿待实现**（[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)）  
 
 ### 目标
 
@@ -311,7 +313,7 @@ ND、FS、FR 产品化签发；自动「NC 冲 NC」产品化；会计完整对�
 | D3.5 | **打印** | NC payload 原票号 + 原因 |
 | D3.6 | **回归** | `scripts/fiscal-m3-regression.mjs` |
 
-### 交付物（M3.1 — 下一步）
+### 交付物（M3.1 — 已完成，0.4.26）
 
 | # | 交付物 | 定义「完成」 |
 |---|--------|----------------|
@@ -320,7 +322,7 @@ ND、FS、FR 产品化签发；自动「NC 冲 NC」产品化；会计完整对�
 | D3.9 | `can_issue_nc` enforce + 设置 checkbox | §16.3、§16.6 |
 | D3.10 | 回归扩展 | partial + 权限场景 |
 
-（细节以 [`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §13、§16 为准。）
+（细节以 [`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §16 为准。）
 
 ### 验收清单（M3 — 已完成）
 
@@ -332,6 +334,40 @@ ND、FS、FR 产品化签发；自动「NC 冲 NC」产品化；会计完整对�
 ### 依赖
 
 M1（NC 系列也要 validation_code）；M2 建议已完成以便真打 NC；**M2.6** 正式 Admin 提供发票详情入口。
+
+---
+
+## M3.2 — 开票员身份（Agent 本地创建）
+
+> **状态：定稿后置**（不挡 M5 及现网开发/回归）  
+> **权威：** [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)
+
+**P0 排期定法：** 文档与 schema 口径先锁定（Agent 本地创建、不同步 Farvoo）；**实现刀延后**。在 M3.2 落地前，开发/UAT **继续**使用 `op-demo-cashier`、Admin 任意 4 位 PIN 占位、M3.1 单用户冲销 checkbox——**不得**因 M3.2 未做而阻塞 M5 或其它刀。
+
+### 目标
+
+Admin **本地**创建管理员/操作员、设 PIN 登录；签发与冲销使用真实 `operators.id`；**不同步** Farvoo 员工。
+
+### 非目标
+
+Farvoo `fiscal-operators` 拉取；Mesa 密码复用；`operator_token` / LAN 鉴权（餐馆 P0 不做）。
+
+### 交付物
+
+| # | 交付物 | 定义「完成」 |
+|---|--------|----------------|
+| D3.11 | **设计** `fiscal-m3-2-operators.zh.md` | P0 角色、字段占位、唯一写路径 |
+| D3.12 | **Store/Service** | 创建操作员、设 PIN、`VerifyOperatorPIN`；`mesa_user_id=local-{id}` |
+| D3.13 | **Admin** | 设置 §5 操作员列表 + 登录 PIN 校验；移除写死 `op-demo-cashier` 生产路径 |
+| D3.14 | **回归** | 扩展 `fiscal-m3-regression.mjs` 或新脚本：双角色登录 + `source_id` 断言 |
+
+### 验收清单
+
+见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §5。
+
+### 依赖
+
+M3.1（`can_issue_nc`）；M2.6 Admin 壳。
 
 ---
 
@@ -502,4 +538,6 @@ M1–M5 主路径稳定。
 | 2026-08-22 | **M2.6 完成**（0.4.0）：重打 API + 正式 Admin v2 + `fiscal-reprint-regression.mjs` |
 | 2026-08-25 | 工作台双 CTA **同级** + 有待开票时优先焦点：写入 M2.6 P0；权威见原型 README |
 | 2026-08-29 | **M4 D4.5 联调通过**（白云饭店）；M4 目标改为账单同步→Admin，废弃桌台 Local API / §13 / outbox 条目 |
-| 2026-08-30 | 回滚误做的 M4 工程扫尾（0.4.21）；文档与 **0.4.20** 代码对齐 |
+| 2026-08-30 | **M5 完成**（0.4.28）：SAF-T 月导；[`fiscal-m5-saft.zh.md`](fiscal-m5-saft.zh.md)；`fiscal-m5-regression.mjs`；下一步 **M6** |
+| 2026-08-30 | **M3.2 后置**：定稿保留，暂不实施；下一步改为 **M5**；现网继续 demo 操作员 + PIN 占位 |
+| 2026-08-30 | **M3.1 完成**（0.4.26）；M3.2 定稿：开票员 Agent 本地创建（[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)）；废止 Farvoo 同步口径 |

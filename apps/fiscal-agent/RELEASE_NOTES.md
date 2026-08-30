@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.28
+
+**M5：SAF-T 月报导出**
+
+- 唯一路径：`service.ExportSAFT` → `store.LoadSAFTInvoicesForPeriod` → `saft.Build` → `store.InsertSAFTExport`；Admin §7 `exportSAFT()`。
+- API：`POST/GET /local/v1/saft/exports`、详情、下载；空月 `no_invoices`；重复导出追加新归档行。
+- 同月 FT + NC 进同一 XML；NC References 与 `invoice_line_references` 一致；Windows-1252 校验。
+- 回归：`scripts/fiscal-m5-regression.mjs`；设计定稿 `docs/fiscal-m5-saft.zh.md`。
+
 ## 0.4.27
 
 **M3.1b：NC 详情原票回链（读模型收口）**

@@ -589,6 +589,19 @@
             <a href="http://127.0.0.1:17892/configure" target="_blank" rel="noopener" class="hint">管理档口打印机 →</a>
           </div>
         </div>
+        <div class="panel">
+          <h2>7. SAF-T 月导</h2>
+          <p class="hint">按月导出本机已签 FT / NC，归档 XML（对外合规出口）。</p>
+          <div class="split">
+            <div class="field"><label>年份</label><input id="saftYear" type="number" min="2000" max="2100" /></div>
+            <div class="field"><label>月份</label><input id="saftMonth" type="number" min="1" max="12" /></div>
+          </div>
+          <div class="actions">
+            <button type="button" id="btnSaftExport">导出 SAF-T</button>
+            <button type="button" class="secondary" id="btnSaftRefresh">刷新列表</button>
+          </div>
+          <ul class="checklist" id="saftExportList"></ul>
+        </div>
       </section>
     </main>
   </div>
@@ -2327,6 +2340,7 @@
     if (name === 'settings') {
       refreshSetupStatus().catch(e => toast(errText(e), 'error'));
       refreshPrinters().catch(() => {});
+      refreshSAFTExports().catch(() => {});
     }
   }
 
@@ -2713,8 +2727,40 @@
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
+  async function refreshSAFTExports() {
+    const y = parseInt($('#saftYear').value, 10);
+    const m = parseInt($('#saftMonth').value, 10);
+    const q = (y > 0 && m > 0) ? ('?year=' + y + '&month=' + m) : '';
+    const data = await j('GET', '/local/v1/saft/exports' + q);
+    const list = data.exports || [];
+    const el = $('#saftExportList');
+    if (!list.length) {
+      el.innerHTML = '<li class="hint">暂无导出记录</li>';
+      return;
+    }
+    el.innerHTML = list.map(ex =>
+      '<li class="' + (ex.validation_status === 'VALID' ? 'ok' : 'no') + '">' +
+      ex.period_year + '-' + String(ex.period_month).padStart(2, '0') +
+      ' · ' + ex.invoice_count + ' 张 · ' + ex.validation_status +
+      ' · <a href="/local/v1/saft/exports/' + ex.id + '/download" download="' + (ex.file_name || 'saft.xml') + '">下载</a></li>'
+    ).join('');
+  }
+
+  /** ONLY SAF-T export UI path. */
+  async function exportSAFT() {
+    const year = parseInt($('#saftYear').value, 10);
+    const month = parseInt($('#saftMonth').value, 10);
+    return j('POST', '/local/v1/saft/exports', {
+      operator_id: 'op-demo-cashier',
+      year: year,
+      month: month
+    });
+  }
+
   $('#series').value = 'FT' + y + 'DEMO01';
   $('#seriesNc').value = 'NC' + y + 'DEMO01';
+  $('#saftYear').value = String(y);
+  $('#saftMonth').value = String(new Date().getMonth() + 1);
 
   $('#btnRefreshSetup').onclick = () => withBusy($('#btnRefreshSetup'), '刷新中…', async () => {
     try { await refreshSetupStatus(); toast('状态已刷新', 'success'); }
@@ -2726,6 +2772,18 @@
       const st = await refreshPrinters();
       toast(st.length ? ('档口 ' + st.length + ' 个') : '无档口映射', 'success');
     } catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+
+  $('#btnSaftExport').onclick = () => withBusy($('#btnSaftExport'), '导出中…', async () => {
+    try {
+      const res = await exportSAFT();
+      await refreshSAFTExports();
+      toast('SAF-T 已导出 · ' + res.invoice_count + ' 张 · ' + res.validation_status, 'success');
+    } catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+  $('#btnSaftRefresh').onclick = () => withBusy($('#btnSaftRefresh'), '刷新中…', async () => {
+    try { await refreshSAFTExports(); toast('列表已刷新', 'success'); }
+    catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
   $('#stationSel').onchange = () => setStationId($('#stationSel').value);
