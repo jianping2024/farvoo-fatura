@@ -618,6 +618,23 @@
           </div>
           <ul class="checklist" id="saftExportList"></ul>
         </div>
+        <div class="panel">
+          <h2>8. 备份与换机</h2>
+          <p class="hint">备份税务库；恢复后校验系列序号/Hash。换机：本机停用授权 → 拷备份到新机 → 新机校验并重新同步开票授权。</p>
+          <div class="actions">
+            <button type="button" id="btnFiscalBackup">备份税务库</button>
+            <button type="button" class="secondary" id="btnIntegrityVerify">校验系列完整性</button>
+          </div>
+          <label class="check-row" for="chkIntegrityHeal" style="margin-top:0.75rem">
+            <input type="checkbox" id="chkIntegrityHeal" />
+            <span>校验通过时恢复已停用系列</span>
+          </label>
+          <p id="integrityResult" class="hint" style="margin-top:0.5rem"></p>
+          <div class="actions" style="margin-top:1rem">
+            <button type="button" class="secondary" id="btnPrepareSwap">本机停用开票授权（换机）</button>
+          </div>
+          <p class="hint" style="margin-top:0.5rem">停用前会自动备份。新机替换 fiscal.db 后须「从运营同步开票授权」，旧封装密钥无法在新机解开。</p>
+        </div>
       </section>
     </main>
   </div>
@@ -3004,6 +3021,42 @@
       });
       await refreshSetupStatus();
       toast('冲销权限已更新', 'success');
+    } catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+
+  $('#btnFiscalBackup').onclick = () => withBusy($('#btnFiscalBackup'), '备份中…', async () => {
+    try {
+      const res = await j('POST', '/local/v1/setup/backup', {});
+      toast('已备份 · ' + (res.backup_path || ''), 'success');
+      $('#integrityResult').textContent = '备份：' + (res.backup_path || '') + '（' + (res.bytes || 0) + ' 字节）';
+    } catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+
+  $('#btnIntegrityVerify').onclick = () => withBusy($('#btnIntegrityVerify'), '校验中…', async () => {
+    try {
+      const res = await j('POST', '/local/v1/setup/integrity/verify', {
+        operator_id: OPERATOR_ID,
+        block_on_fail: true,
+        heal_on_pass: !!$('#chkIntegrityHeal').checked
+      });
+      const msg = res.ok
+        ? ('校验通过 · ' + res.checked + ' 个系列' + (res.healed ? '（恢复 ' + res.healed + '）' : ''))
+        : ('校验失败 · 不匹配 ' + res.failed + (res.blocked ? '，已停用 ' + res.blocked : ''));
+      $('#integrityResult').textContent = msg;
+      toast(msg, res.ok ? 'success' : 'error');
+      await refreshSetupStatus();
+    } catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+
+  $('#btnPrepareSwap').onclick = () => withBusy($('#btnPrepareSwap'), '处理中…', async () => {
+    if (!confirm('确认本机停用开票授权？将自动备份后吊销本机签名钥（换机用）。')) return;
+    try {
+      const res = await j('POST', '/local/v1/setup/prepare-swap', { operator_id: OPERATOR_ID, backup: true });
+      const path = res.backup_path || '';
+      $('#integrityResult').textContent = '已停用 · 备份：' + path;
+      toast('开票授权已停用' + (path ? '；备份 ' + path : ''), 'success');
+      setActCloudStatus('wait', '换机后请在新机同步开票授权');
+      await refreshSetupStatus();
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 

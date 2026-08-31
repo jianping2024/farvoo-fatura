@@ -2,7 +2,7 @@
 
 > **状态：定稿**（里程碑顺序与每步交付物；排期日期未定）  
 > **权威：是**（本仓工程推进顺序以本文为准）  
-> **对应实现：** 按里程碑落地；**M3.1 已完成**（0.4.26）；**M5 已完成**（0.4.28）；**M6 D6.1 已完成**（0.4.30：FS/FR/ND）；**下一步：M6 D6.2–D6.4**（认证扫尾）。**M3.2** 开票员身份 [定稿后置](fiscal-m3-2-operators.zh.md)，不挡现网开发/回归（继续 `op-demo-cashier` + PIN 占位）  
+> **对应实现：** 按里程碑落地；**M3.1 已完成**（0.4.26）；**M5 已完成**（0.4.28）；**M6 D6.1–D6.4 已完成**（0.4.32：FS/FR/ND + 认证 runner + 备份/换机）；**下一步：认证窗口前手测**（UI/扫枪/真机出纸；可选真机换机）。**M3.2** 开票员身份 [定稿后置](fiscal-m3-2-operators.zh.md)，不挡现网开发/回归（继续 `op-demo-cashier` + PIN 占位）  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 ## 依据（只读，不替代本文交付定义）
@@ -49,7 +49,7 @@
 | **M3.2** | 开票员身份（Agent 本地创建 + PIN 登录） | **定稿后置**（[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)；不挡开发/回归） |
 | **M4** | Farvoo 账单同步联调（同步关台 → 收银账单 → Admin 开票） | **已完成**（D4.5 白云 UAT；0.4.20） |
 | **M5** | SAF-T 月报导出 | **已完成**（0.4.28） |
-| **M6** | FS/FR/ND + 加固（认证扫尾） | D6.1 已完成（0.4.30）；D6.2–D6.4 未开始 |
+| **M6** | FS/FR/ND + 加固（认证扫尾） | **已完成**（0.4.32）；手测项见认证清单 |
 
 ```text
 M0 开 FT（seed）
@@ -60,8 +60,8 @@ M0 开 FT（seed）
            ├─► M4 账单同步联调 ← 已完成（白云）
            ├─► M3 NC + M3.1 ← **已完成**（0.4.26）
            ├─► M3.2 开票员（后置，定稿已有）
-           ├─► M6 FS/FR/ND ← **下一步**
-                └─► M6 其余单据类型 / 认证材料
+           ├─► M6 FS/FR/ND + 认证扫尾 ← **已完成**（0.4.32）
+                └─► 认证窗口前手测（UI / 扫枪 / 真机）
 ```
 
 ---
@@ -488,9 +488,9 @@ M0+M1；有 NC 时 M3 票也进同一文件。
 | # | 交付物 | 定义「完成」 |
 |---|--------|----------------|
 | D6.1 | 各类型系列注册与签发（与 FT 同入口，类型可选） | API/UI 可选 `document_type`；各有独立 series |
-| D6.2 | 认证检查清单 `docs/fiscal-certification-checklist.zh.md` | Hash 金样、QR、ATCUD、系列、SAF-T、打印、权限 |
-| D6.3 | 备份/恢复校验工具或菜单 | 恢复后校验 last_number/last_hash；失败阻断系列 |
-| D6.4 | 换机流程实现（与对接说明 §12 对齐的最小集） | revoked 旧 installation + 新 wrap |
+| D6.2 | 认证检查清单 `docs/fiscal-certification-checklist.zh.md` | **已完成**：分类 + `fiscal-d62-cert-regression.mjs` |
+| D6.3 | 备份/恢复校验工具或菜单 | **已完成**（0.4.32）：backup + integrity verify/block/heal |
+| D6.4 | 换机流程实现（与对接说明 §12 对齐的最小集） | **已完成**（0.4.32）：prepare-swap → ClearLocalActivation |
 
 ### 验收清单
 
@@ -541,3 +541,5 @@ M1–M5 主路径稳定。
 | 2026-08-30 | **M5 完成**（0.4.28）：SAF-T 月导；[`fiscal-m5-saft.zh.md`](fiscal-m5-saft.zh.md)；`fiscal-m5-regression.mjs`；下一步 **M6** |
 | 2026-08-30 | **M3.2 后置**：定稿保留，暂不实施；下一步改为 **M5**；现网继续 demo 操作员 + PIN 占位 |
 | 2026-08-30 | **M3.1 完成**（0.4.26）；M3.2 定稿：开票员 Agent 本地创建（[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)）；废止 Farvoo 同步口径 |
+| 2026-08-31 | **D6.2 清单填实**：分类自动/手测/blocked；`fiscal-d62-cert-regression.mjs` 出具；下一步 **D6.3–D6.4** |
+| 2026-08-31 | **D6.3/D6.4 完成**（0.4.32）：[`fiscal-m6-backup-swap.zh.md`](fiscal-m6-backup-swap.zh.md)；`fiscal-d63-d64-regression.mjs`；M6 关闭；下一步认证手测 |

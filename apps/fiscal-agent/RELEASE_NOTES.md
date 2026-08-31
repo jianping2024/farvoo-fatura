@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.32
+
+**M6 D6.3 / D6.4：备份校验 + 换机最小集**
+
+- 备份：`POST /local/v1/setup/backup`（`VACUUM INTO`）；校验：`POST .../integrity/verify`（失配将 ACTIVE→FAILED 阻断开票；可 heal）。
+- 换机：`POST .../prepare-swap`（备份 + `ClearLocalActivation`）；Admin 设置 §8；设计 `docs/fiscal-m6-backup-swap.zh.md`。
+- 回归：`scripts/fiscal-d63-d64-regression.mjs`；认证清单 C7.1/C7.2 可自动出具。
+
 ## 0.4.31
 
 **M6 D6.1b：产品单据规则收口（唯一写法）**

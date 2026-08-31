@@ -13,7 +13,7 @@
 | `station_printers`（含 `fiscal_receipt_printer`） | `config.json` | 打印机设置向导 |
 | `default_printer` / legacy `printer_host` | `config.json` | 向导 / 参数 |
 | 纳税人、AT 凭证、系列、签名钥、发票、税务打印队列 | **SQLite** | Fiscal Local API / Core |
-| 开票员 PIN | SQLite `operators` | Fiscal setup / 同步 |
+| 开票员 PIN | SQLite `operators` | Admin 设置（本地创建 + 设 PIN） |
 | `fiscal_allow_local_provision` / `fiscal_at_env` | `config.json` | 本机开关（默认允许粘贴 PEM 激活；AT 默认 mock）。环境变量若已设则优先 |
 
 ## 税务打印机解析（唯一）

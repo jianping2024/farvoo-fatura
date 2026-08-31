@@ -43,6 +43,12 @@ idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL
 
 **草稿开票唯一路径：** `billsync.DraftToSaleSnapshot`（整桌）/ `billsync.DraftPersonFromAllocation`（按人）→ `ApplyCustomerOverride` → `service.IssueFromBillDraft` → `IssueDocument`/`IssueFT` →（到期时）`DeleteBillDraftsBySale`。丢弃仅 `DiscardBillDrafts` → `DeleteBillDraftsBySale`。再同步靠 `HasSignedSaleForSale` / `ListSignedSaleScopesForSale`（FT+FS）。本机分单：`service.SaveBillDraftAllocation` → `store.SaveBillDraftAllocation`（OCC）。`DraftPartToSaleSnapshot` 仅为 splits→allocation 适配器，不得作为 issue 主路径。
 
+**备份唯一路径：** `store.BackupFiscalDB`（`VACUUM INTO`）← `service.BackupFiscalDB` / `POST /local/v1/setup/backup`。
+
+**系列完整性唯一路径：** `store.VerifySeriesIntegrity` ← `POST /local/v1/setup/integrity/verify`（失配可 ACTIVE→FAILED）。
+
+**换机本机停用唯一路径：** `service.PrepareMachineSwap` →（可选 backup）→ `ClearLocalActivation` ← `POST /local/v1/setup/prepare-swap`。新机激活仍走 `ActivateFromCloud` / `ActivateFiscal`。
+
 **REMOTE 商品同步唯一写路径：** `IngestCloudJob` → `UpsertFiscalProductByCode`（不覆盖 LOCAL）。
 
 **LOCAL 商品唯一写路径：** `UpsertLocalFiscalProduct`（API `POST /local/v1/products`）。

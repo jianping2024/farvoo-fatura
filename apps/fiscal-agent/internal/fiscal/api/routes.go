@@ -50,6 +50,15 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("PUT /local/v1/setup/operator", func(w http.ResponseWriter, r *http.Request) {
 		handleOperator(w, r, deps)
 	})
+	mux.HandleFunc("POST /local/v1/setup/backup", func(w http.ResponseWriter, r *http.Request) {
+		handleBackupFiscalDB(w, r, deps)
+	})
+	mux.HandleFunc("POST /local/v1/setup/integrity/verify", func(w http.ResponseWriter, r *http.Request) {
+		handleVerifyIntegrity(w, r, deps)
+	})
+	mux.HandleFunc("POST /local/v1/setup/prepare-swap", func(w http.ResponseWriter, r *http.Request) {
+		handlePrepareSwap(w, r, deps)
+	})
 	mux.HandleFunc("POST /local/v1/fiscal-documents", func(w http.ResponseWriter, r *http.Request) {
 		handleIssue(w, r, deps)
 	})
@@ -184,6 +193,83 @@ func handleSetupStatus(w http.ResponseWriter, r *http.Request, deps HandlerDeps)
 		return
 	}
 	writeJSON(w, http.StatusOK, st)
+}
+
+func handleBackupFiscalDB(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	if deps.Fiscal == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
+		return
+	}
+	path, size, err := deps.Fiscal.BackupFiscalDB()
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "backup_failed", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"backup_path": path, "bytes": size})
+}
+
+func handleVerifyIntegrity(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	if deps.Fiscal == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
+		return
+	}
+	var body struct {
+		OperatorID  string `json:"operator_id"`
+		BlockOnFail *bool  `json:"block_on_fail"`
+		HealOnPass  bool   `json:"heal_on_pass"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	block := true
+	if body.BlockOnFail != nil {
+		block = *body.BlockOnFail
+	}
+	if body.OperatorID == "" {
+		body.OperatorID = "op-demo-cashier"
+	}
+	rep, err := deps.Fiscal.VerifySeriesIntegrity(block, body.HealOnPass, body.OperatorID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "integrity_failed", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, rep)
+}
+
+func handlePrepareSwap(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	if deps.Fiscal == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
+		return
+	}
+	var body struct {
+		OperatorID string `json:"operator_id"`
+		Backup     *bool  `json:"backup"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	doBackup := true
+	if body.Backup != nil {
+		doBackup = *body.Backup
+	}
+	if body.OperatorID == "" {
+		body.OperatorID = "op-demo-cashier"
+	}
+	path, size, err := deps.Fiscal.PrepareMachineSwap(doBackup, body.OperatorID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "prepare_swap_failed", err.Error())
+		return
+	}
+	st, _ := deps.Fiscal.SetupStatus(deps.StoreID)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":            true,
+		"backup_path":   path,
+		"backup_bytes":  size,
+		"activated_ok":  st != nil && st.ActivatedOK,
+		"ready_to_issue": st != nil && st.ReadyToIssue,
+		"next_steps": []string{
+			"Copy backup_path to the new PC",
+			"Stop Agent; replace fiscal.db with the backup (remove -wal/-shm if present)",
+			"Start Agent; POST /local/v1/setup/integrity/verify",
+			"POST /local/v1/setup/activate-from-cloud (or local PEM in UAT)",
+		},
+	})
 }
 
 func handleUpsertTaxpayer(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {

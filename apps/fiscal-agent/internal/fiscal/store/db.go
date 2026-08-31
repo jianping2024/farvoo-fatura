@@ -17,6 +17,8 @@ var migrationFS embed.FS
 // DB wraps SQLite access for fiscal authority.
 type DB struct {
 	SQL *sql.DB
+	// Path is the SQLite file path passed to Open (for VACUUM INTO backup).
+	Path string
 	// OnBillDraftsChanged is set by bootstrap to fan-out Admin SSE after draft writers.
 	// Signature: openCount, tableHint, kind ("upsert"|"delete").
 	OnBillDraftsChanged func(openCount int, tableHint, kind string)
@@ -33,7 +35,7 @@ func Open(path string) (*DB, error) {
 		return nil, err
 	}
 	sqlDB.SetMaxOpenConns(1) // serialize writers; series lock + IMMEDIATE
-	d := &DB{SQL: sqlDB}
+	d := &DB{SQL: sqlDB, Path: path}
 	if err := d.Migrate(); err != nil {
 		_ = sqlDB.Close()
 		return nil, err

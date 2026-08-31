@@ -11,8 +11,8 @@
 | 门店 | Farvoo 餐厅「Pirata Wok Lisboa」 | Farvoo `restaurants` |
 | `store_id` | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` | claim 返回的 `restaurant_id`，写入 `config.json` 后再写入各表 |
 | 主机 | 店内唯一 Windows 收银主机 | 物理机 |
-| 店长 | 张三 | Farvoo 员工，role=`owner` |
-| 收银 | 李四 | Farvoo 员工，role=`cashier`（若 Farvoo 为 `frontdesk`，入库映射为 `cashier`） |
+| 管理员 | 张三 | Agent 本地创建，`role=owner` |
+| 操作员 | 李四 | Agent 本地创建，`role=cashier` |
 
 时间一律举 UTC 例：`2026-08-20T13:05:00Z`。
 
@@ -110,44 +110,45 @@
 
 ---
 
-## 4. `operators`（Agent 启动联网同步 + 店长设 PIN）
+## 4. `operators`（Agent 本地创建 + PIN）
 
-**名册来源：** Farvoo `GET /api/print-agent/fiscal-operators`（Bearer **`agentjwt`**）。  
-**PIN：** 仅 Agent 本地录入；不上云。
+**名册来源：** Admin **设置 → 操作员**；**不同步** Farvoo。  
+**PIN：** 创建或编辑时录入；argon2id 写 `pin_hash`；不上云。  
+**权威：** [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)
 
-### 4.1 店长张三
+### 4.1 管理员张三
 
 | 列 | 本例值 | 明确来源 |
 |----|--------|----------|
-| id | `op-zhang-uuid` | Agent 生成本地 UUID（作 SourceID） |
-| mesa_user_id | `11111111-2222-3333-4444-555555555555` | Farvoo 接口返回的 `user_id` |
+| id | `op-zhang-uuid` | Agent 生成 UUID（作 SourceID） |
+| mesa_user_id | `local-op-zhang-uuid` | 占位 `local-{id}`（非 Farvoo user） |
 | store_id | `a1b2c3d4-…7890` | `config.json.restaurant_id` |
-| role | `owner` | Farvoo 返回 `owner` → **原样**写入 |
-| display_name | `张三` | Farvoo 返回显示名 |
-| active | `1` | Farvoo 未禁用 → 1；禁用 → 0 |
-| pin_hash | `$argon2id$…` | 店长在 Agent「开票员工」页输入 PIN → Agent 单向哈希后写入 |
-| can_issue_nc | `1` | 店长在 Agent 为本账号打开的开关；默认实现可对 owner 默认 1 |
-| synced_at | `2026-08-20T15:00:00Z` | 本次拉取对账成功时间 |
-| created_at | `2026-08-20T14:05:00Z` | 首次 upsert |
-| updated_at | `2026-08-20T15:00:00Z` | 同步或改 PIN 时刷新 |
+| role | `owner` | 创建时选 **管理员** |
+| display_name | `张三` | Admin 手填 |
+| active | `1` | 创建时默认启用 |
+| pin_hash | `$argon2id$…` | 创建时设 PIN |
+| can_issue_nc | `1` | `owner` 默认 1 |
+| synced_at | NULL | P0 本地路径不写 |
+| created_at | `2026-08-20T14:05:00Z` | 首次创建 |
+| updated_at | `2026-08-20T15:00:00Z` | 改 PIN 或权限时刷新 |
 
-### 4.2 收银李四
+### 4.2 操作员李四
 
 | 列 | 本例值 | 明确来源 |
 |----|--------|----------|
 | id | `op-li-uuid` | Agent 生成 |
-| mesa_user_id | `aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee` | Farvoo `user_id` |
+| mesa_user_id | `local-op-li-uuid` | 占位 `local-{id}` |
 | store_id | `a1b2c3d4-…7890` | 同上 |
-| role | `cashier` | Farvoo 返回 `cashier` 或 `frontdesk` → **统一映射为 `cashier`** |
-| display_name | `李四` | Farvoo |
-| active | `1` | Farvoo |
-| pin_hash | `$argon2id$…` | 店长或本人在 Agent 设 PIN |
-| can_issue_nc | `0` | 默认 0；仅店长在 Agent 打开后为 1 |
-| synced_at | `2026-08-20T15:00:00Z` | 同步时间 |
+| role | `cashier` | 创建时选 **操作员** |
+| display_name | `李四` | Admin 手填 |
+| active | `1` | 默认启用 |
+| pin_hash | `$argon2id$…` | 管理员创建时或本人改 PIN |
+| can_issue_nc | `0` | 默认 0；管理员可在设置页打开 |
+| synced_at | NULL | P0 本地路径不写 |
 | created_at | `2026-08-20T14:05:00Z` | |
 | updated_at | `2026-08-20T15:00:00Z` | |
 
-李四开 FT 时：`invoices.source_id = op-li-uuid`（有网则经 Farvoo `operator_token` 解析到该行）。
+李四开 FT 时：`invoices.source_id = op-li-uuid`（登录会话解析到该 `operators.id`）。
 
 ---
 
@@ -173,9 +174,9 @@ T4  （可穿插）用 at_credentials 调 AT 注册系列
     → 更新 at_credentials.last_ok_at
     → 验证码写入 series（别表，本篇不展开）
 
-T5  Agent 重启联网
-    → upsert operators（张三、李四）
-    → 店长设 pin_hash
+T5  管理员在 Agent 设置创建操作员
+    → INSERT operators（张三 owner、李四 cashier）
+    → 各设 pin_hash
 
 T6  日常开票
     → 读 taxpayer_settings + signing_keys + operators
@@ -191,9 +192,8 @@ T6  日常开票
 | A. 店长手填 | Agent 表单 | NIF、地址、AT username/密码明文（存前加密） |
 | B. claim/config.json | 打印配对已有 | store_id、device_id |
 | C. 产品常量/版本 | 安装包 | product_id、software_certificate_number 初值、wrap_meta.scheme |
-| D. 本机生成 | Agent/TPM | installation_id、device_public_key、password_ciphertext、operators.id |
+| D. 本机生成 | Agent/TPM | installation_id、device_public_key、password_ciphertext、operators.id、mesa_user_id 占位 |
 | E. 运营下发 | Fiscal 激活 API | wrapped_private_key、public_key_pem、key_version |
-| F. Farvoo API | agentjwt 拉取 | mesa_user_id、display_name、role（再映射） |
-| G. Agent 运行时写入 | 成功/失败回调 | last_ok_at、provisioned_at、synced_at、created_at |
+| G. Agent 运行时写入 | 成功/失败回调 | last_ok_at、provisioned_at、created_at、updated_at |
 
 任一列必须能归到 A–G 之一；不能写「系统自动」而不指明哪一步。

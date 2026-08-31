@@ -108,7 +108,7 @@
 | 签名后再改金额/客户/Hash | 违法；只能 NC |
 | 签名算法升级成 SHA-256 | AT 要求 RSA-SHA1 |
 | 中文进 SAF-T `ProductDescription` | 必须葡/英 `saft_name`，签前 Windows-1252 校验 |
-| Agent 自建开票账号体系 | 操作员从 Farvoo 同步 + 本地 PIN |
+| Agent 开票员名册 | Agent 本地创建 + PIN（[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)）；**不同步** Farvoo 员工 |
 | Fiscal Core 读库存/结账表 | 只吃 `SaleSnapshot` |
 
 ---

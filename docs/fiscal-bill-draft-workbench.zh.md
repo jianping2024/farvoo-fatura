@@ -2,7 +2,7 @@
 
 > **状态：定稿**（实现已落地，见 Agent `IssueFromBillDraft` / 正式 Admin）  
 > **权威：是**（本仓「从同步账单开票 / 分单补票」以本文为准；**库表/API 内部名不变**）  
-> **对应实现：** 已落地（`mode`/`scope_id`/NIF/`discard`/详情已开标记）；§13 仍归 M4  
+> **对应实现：** 已落地（`mode`/`scope_id`/NIF/`discard`/详情已开标记）；开票员 PIN 见 **M3.2** [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)  
 > **库表权威：** [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §6.21  
 > **只读依据（不改对方仓文档）：** restaurant-ordering `farvoo-fiscal-agent-integration.zh.md` §3.1（整桌/按人互斥、`scope_id` 稳定 UUID）；挂单载荷见同仓 `farvoo-fiscal-bill-sync-api.zh.md` §5  
@@ -50,7 +50,7 @@ Farvoo 结账只负责「同步账单」进本机 `bill_sync_drafts`；**整桌�
 | NIF / 客户名 | MVP 固定散客 | **P0**：开票前可编辑；默认可散客；按人**各自**指定 |
 | 再同步挡重 | `HasSignedFTForSale`（按 `source_sale_id` 有任一张 FT 即挡） | 实现刀须收紧：见 §5.2（按业务键区分整桌/按人） |
 | UI | Admin 调试页 §7（工程） | **M2.6** 正式 Admin「收银账单」→ 进入开票 → 签发 |
-| §13 鉴权 | Admin `/issue` **无**登录（本机 `127.0.0.1` 信任） | **本里程碑仍后置**；正式挂 §13 见开发计划 **M4** |
+| §13 鉴权 | Admin `/issue` **无**真 PIN（本机信任） | **M3.2** 落地 Agent 本地操作员 + PIN（[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)） |
 
 ---
 
@@ -61,8 +61,8 @@ Farvoo 结账只负责「同步账单」进本机 `bill_sync_drafts`；**整桌�
 | Farvoo 结账 | 功能开关；点「同步账单」；挂 `bill_sync_jobs`；示「同步完成」 | 分单开票 UI、税票、ATCUD、改草稿、填 NIF |
 | Agent | 列 open 收银账单；选整桌或按人 scope；**填 NIF（可选）**；签发发票；进度展示；作废账单 | 改云端菜单、关台、替 Restaurant 结账 |
 
-发票开票人 = 打票本机操作员（第一实现刀可暂用 `op-demo-cashier`）。  
-**§13 PIN / `operator_token` / 开票终端凭证：不在本里程碑交付**（完整方案有；工程排在 **M4**）。本刀继续本机 Admin 信任模型，与现 MVP 一致。
+发票开票人 = 打票本机 **当前登录操作员**（M3.2 前可暂用 `op-demo-cashier`）。  
+**开票员 PIN / 本地名册：** **M3.2** [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)（Agent 创建，**不同步** Farvoo）。本里程碑继续本机 Admin 信任模型直至 M3.2 落地。
 
 ---
 
@@ -222,7 +222,7 @@ POST /local/v1/bill-drafts/{id}/issue
 POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 ```
 
-本里程碑上述 Local 路由：**不**强制 §13；与现 Admin 本机信任一致。M4 起 LAN / 正式开票路径再挂终端凭证 + 操作员。
+本里程碑上述 Local 路由：**不**强制真 PIN；与现 Admin 本机信任一致。**M3.2** 落地后 `operator_id` 须为登录操作员。
 
 ### `POST .../issue` body
 
@@ -265,14 +265,14 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 |----|------|
 | 客户 | 未填 NIF → `999999990` / Consumidor Final；填了则用本次输入 |
 | 付款 | 该 scope 全额 `CASH` |
-| 操作员 | 可暂 `op-demo-cashier`（§13 归 M4） |
+| 操作员 | M3.2 前可暂 `op-demo-cashier`；M3.2 后为登录 `operators.id` |
 
 ### P1（不挡本里程碑关闭）
 
 | 项 | 说明 |
 |----|------|
 | 混合付款 | 多 `payments[]` |
-| §13 PIN / Farvoo `operator_token` / 开票终端 | 正式开票员与设备鉴权（**M4**） |
+| 开票员 PIN / 本地名册 | **M3.2** [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)（Agent 创建，不同步 Farvoo） |
 | 重打 / NC 入口 | 发票详情：**重打 M2.6b**；**NC M3** |
 | 新 NIF 写入本地客户主档 | 对接文 A7；本刀至少写入本票快照即可 |
 
@@ -314,7 +314,7 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 ## 12. 非目标
 
 - NC / 重打完整工作台、SAF-T、FS/FR/ND  
-- §13 鉴权落地（归 **M4**；非「方案没有」）  
+- 开票员 PIN / 本地名册（归 **M3.2**；非「方案没有」）  
 - 修改 Restaurant 同步载荷契约文或 API（本仓消费已有 `split`；**本机按菜再分配不回写云**，见分单 UX 定稿）  
 - 第二套 Realtime / 第二套插票  
 - 云端打票页、手机直连签发  

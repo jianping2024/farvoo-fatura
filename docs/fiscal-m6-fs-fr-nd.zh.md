@@ -4,7 +4,7 @@
 > **权威：是**（M6 D6.1 行为与 API；库列仍以 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/*.sql` 为准）  
 > **对应实现：** M6 D6.1 已落地（`IssueDocument` FT/FS/FR、`store.IssueND`、`service.IssueDebitNote`、Admin 系列与借记）  
 > **计划：** [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) M6  
-> **后续：** D6.2–D6.4（认证清单、备份恢复、换机）另里程碑细化
+> **后续：** D6.2–D6.4 见 [`fiscal-m6-backup-swap.zh.md`](fiscal-m6-backup-swap.zh.md) / 认证清单（0.4.32 已完成）
 
 ## 1. 目标（D6.1）
 
