@@ -291,7 +291,7 @@ async function main() {
     }));
     const orig = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${ft.document_id}`);
     (nd.document_type === 'ND' && ft.document_type === 'FT' ? pass : fail)('C4.1', nd.document_type);
-    (orig.document_status === 'DEBITED_FULL' ? pass : fail)('C4.3', orig.document_status);
+    (orig.document_status === 'DEBITED_PARTIAL' ? pass : fail)('C4.3', orig.document_status);
   } catch (e) {
     fail('C4.1', String(e).slice(0, 120));
     fail('C4.3', String(e).slice(0, 80));
@@ -299,15 +299,14 @@ async function main() {
 
   try {
     const ft = await issue('FT', 'sale-nd-over');
-    await uatJson('req', 'POST', `/local/v1/fiscal-documents/${ft.document_id}/debit-notes`, '--body', JSON.stringify({
-      request_id: `d62-nd-over-${Date.now()}`, operator_id: 'op-demo-cashier', reason: 'Too much',
+    const nd = await uatJson('req', 'POST', `/local/v1/fiscal-documents/${ft.document_id}/debit-notes`, '--body', JSON.stringify({
+      request_id: `d62-nd-over-${Date.now()}`, operator_id: 'op-demo-cashier', reason: 'Above original',
       debit_full: false, lines: [{ original_line_number: 1, line_gross: '99.00' }],
     }));
-    fail('C4.2', 'expected debit_amount_exceeded');
+    const orig = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${ft.document_id}`);
+    (nd.document_type === 'ND' && orig.debited_gross_total === '99.00' ? pass : fail)('C4.2', `debited=${orig.debited_gross_total}`);
   } catch (e) {
-    const msg = String(e);
-    const ok = msg.includes('debit_amount_exceeded') || msg.includes('409') || msg.includes('400');
-    (ok ? pass : fail)('C4.2', msg.includes('debit_amount_exceeded') ? 'debit_amount_exceeded' : msg.slice(0, 80));
+    fail('C4.2', String(e).slice(0, 80));
   }
 
   // --- C5 SAF-T + print ---

@@ -53,29 +53,6 @@ func loadCreditedGrossByLine(q creditLineQuerier, originalInvoiceID string) (map
 	return out, rows.Err()
 }
 
-func loadDebitedGrossByLine(q creditLineQuerier, originalInvoiceID string) (map[string]decimal.Decimal, error) {
-	rows, err := q.Query(`SELECT r.original_line_id, COALESCE(SUM(CAST(il.line_gross AS REAL)), 0)
-		FROM invoice_line_references r
-		JOIN invoice_lines il ON il.id = r.credit_line_id
-		JOIN invoices i ON i.id = il.invoice_id
-		WHERE r.original_invoice_id = ? AND i.document_type = 'ND'
-		GROUP BY r.original_line_id`, originalInvoiceID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	out := map[string]decimal.Decimal{}
-	for rows.Next() {
-		var id string
-		var sum float64
-		if err := rows.Scan(&id, &sum); err != nil {
-			return nil, err
-		}
-		out[id], _ = compliance.ParseDecimal(fmt.Sprintf("%.2f", sum))
-	}
-	return out, rows.Err()
-}
-
 // CreditRemainingForInvoice is the ONLY reader for per-line remaining credit gross.
 func (d *DB) CreditRemainingForInvoice(invoiceID string) (*CreditInvoiceRemaining, error) {
 	var gross, credited string
@@ -135,29 +112,18 @@ func (d *DB) CreditRemainingForInvoice(invoiceID string) (*CreditInvoiceRemainin
 	}, nil
 }
 
-// DebitInvoiceRemaining aggregates debit balances for an invoice.
-type DebitInvoiceRemaining struct {
-	DebitedGrossTotal   string                `json:"debited_gross_total"`
-	RemainingGrossTotal string                `json:"remaining_debit_gross_total"`
-	Lines               []CreditLineRemaining `json:"debit_lines"`
+// DebitInvoiceLines is original-invoice lines for ND UI (correction amounts; no remaining ceiling).
+type DebitInvoiceLines struct {
+	DebitedGrossTotal string                `json:"debited_gross_total"`
+	Lines             []CreditLineRemaining `json:"debit_lines"`
 }
 
-// DebitRemainingForInvoice is the ONLY reader for per-line remaining debit gross.
-func (d *DB) DebitRemainingForInvoice(invoiceID string) (*DebitInvoiceRemaining, error) {
-	var gross, debited string
-	err := d.SQL.QueryRow(`SELECT gross_total, COALESCE(debited_gross_total,'0.00') FROM invoices WHERE id = ?`, invoiceID).
-		Scan(&gross, &debited)
-	if err != nil {
-		return nil, err
-	}
-	grossDec, _ := compliance.ParseDecimal(gross)
-	debitedDec, _ := compliance.ParseDecimal(debited)
-	remainingTot := grossDec.Sub(debitedDec)
-	if remainingTot.IsNegative() {
-		remainingTot = decimal.Zero
-	}
-
-	debitedByLine, err := loadDebitedGrossByLine(d.SQL, invoiceID)
+// DebitLinesForInvoice is the ONLY reader for ND line options on an original FT/FS/FR.
+// RemainingLineGross is left empty — Admin must not treat original gross as a debit max.
+func (d *DB) DebitLinesForInvoice(invoiceID string) (*DebitInvoiceLines, error) {
+	var debited string
+	err := d.SQL.QueryRow(`SELECT COALESCE(debited_gross_total,'0.00') FROM invoices WHERE id = ?`, invoiceID).
+		Scan(&debited)
 	if err != nil {
 		return nil, err
 	}
@@ -181,22 +147,14 @@ func (d *DB) DebitRemainingForInvoice(invoiceID string) (*DebitInvoiceRemaining,
 		} else {
 			l.Description = desc
 		}
-		origGross, _ := compliance.ParseDecimal(l.LineGross)
-		debitedLine := debitedByLine[l.LineID]
-		rem := origGross.Sub(debitedLine)
-		if rem.IsNegative() {
-			rem = decimal.Zero
-		}
-		l.RemainingLineGross = compliance.Money2(rem)
 		lines = append(lines, l)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return &DebitInvoiceRemaining{
-		DebitedGrossTotal:   debited,
-		RemainingGrossTotal: compliance.Money2(remainingTot),
-		Lines:               lines,
+	return &DebitInvoiceLines{
+		DebitedGrossTotal: debited,
+		Lines:             lines,
 	}, nil
 }

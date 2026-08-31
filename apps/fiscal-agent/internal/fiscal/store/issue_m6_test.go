@@ -115,7 +115,7 @@ func TestIssueNDFullDebitOnFS(t *testing.T) {
 		Scan(&fsStatus, &debited); err != nil {
 		t.Fatal(err)
 	}
-	if fsStatus != string(domain.DocumentDebitedFull) || debited != "12.50" {
+	if fsStatus != string(domain.DocumentDebitedPartial) || debited != "12.50" {
 		t.Fatalf("original status=%s debited=%s", fsStatus, debited)
 	}
 }
@@ -149,7 +149,7 @@ func TestIssueNDFullDebitOnFT(t *testing.T) {
 	if err := db.SQL.QueryRow(`SELECT document_status FROM invoices WHERE id=?`, ftID).Scan(&status); err != nil {
 		t.Fatal(err)
 	}
-	if status != string(domain.DocumentDebitedFull) {
+	if status != string(domain.DocumentDebitedPartial) {
 		t.Fatalf("status %s", status)
 	}
 }
@@ -190,7 +190,7 @@ func TestIssueNDPartialDebit(t *testing.T) {
 	}
 }
 
-func TestIssueNDAmountExceeded(t *testing.T) {
+func TestIssueNDAllowsAboveOriginalGross(t *testing.T) {
 	dir := t.TempDir()
 	db, err := store.Open(filepath.Join(dir, "fiscal.db"))
 	if err != nil {
@@ -203,17 +203,51 @@ func TestIssueNDAmountExceeded(t *testing.T) {
 	}
 	seedDemoM6(t, db, sig)
 	ftID := issueDemoFT(t, db, sig, domain.DocumentFT, "ft-nd-over")
-	_, err = db.IssueND(context.Background(), sig, store.IssueNDParams{
+	nd, err := db.IssueND(context.Background(), sig, store.IssueNDParams{
 		StoreID: "store-demo-001", RequestID: "nd-over-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Too much", DebitFull: false,
+		OperatorID: "op-demo-cashier", Reason: "Correction above original", DebitFull: false,
 		Lines: []store.CreditLineInput{{OriginalLineNumber: 1, LineGross: "20.00"}},
 	})
-	if err != store.ErrDebitAmountExceeded {
-		t.Fatalf("want exceeded, got %v", err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nd.DocumentType != domain.DocumentND {
+		t.Fatalf("type %s", nd.DocumentType)
+	}
+	var status, debited string
+	if err := db.SQL.QueryRow(`SELECT document_status, debited_gross_total FROM invoices WHERE id=?`, ftID).
+		Scan(&status, &debited); err != nil {
+		t.Fatal(err)
+	}
+	if status != string(domain.DocumentDebitedPartial) || debited != "20.00" {
+		t.Fatalf("status=%s debited=%s", status, debited)
 	}
 }
 
-func TestIssueNDDebitedFullRejected(t *testing.T) {
+func TestIssueNDRejectsNonPositiveAmount(t *testing.T) {
+	dir := t.TempDir()
+	db, err := store.Open(filepath.Join(dir, "fiscal.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	sig, err := signer.LoadPEMFile(filepath.Join("..", "testdata", "dev_signing_key.pem"), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedDemoM6(t, db, sig)
+	ftID := issueDemoFT(t, db, sig, domain.DocumentFT, "ft-nd-zero")
+	_, err = db.IssueND(context.Background(), sig, store.IssueNDParams{
+		StoreID: "store-demo-001", RequestID: "nd-zero-1", OriginalInvoiceID: ftID,
+		OperatorID: "op-demo-cashier", Reason: "Zero", DebitFull: false,
+		Lines: []store.CreditLineInput{{OriginalLineNumber: 1, LineGross: "0.00"}},
+	})
+	if err != store.ErrDebitAmountExceeded {
+		t.Fatalf("want invalid amount, got %v", err)
+	}
+}
+
+func TestIssueNDAllowsFurtherDebitAfterFull(t *testing.T) {
 	dir := t.TempDir()
 	db, err := store.Open(filepath.Join(dir, "fiscal.db"))
 	if err != nil {
@@ -233,12 +267,22 @@ func TestIssueNDDebitedFullRejected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.IssueND(context.Background(), sig, store.IssueNDParams{
+	nd2, err := db.IssueND(context.Background(), sig, store.IssueNDParams{
 		StoreID: "store-demo-001", RequestID: "nd-full-2", OriginalInvoiceID: ftID,
 		OperatorID: "op-demo-cashier", Reason: "Again", DebitFull: false,
 		Lines: []store.CreditLineInput{{OriginalLineNumber: 1, LineGross: "1.00"}},
 	})
-	if err != store.ErrDebitNotAllowed {
-		t.Fatalf("want debit_not_allowed, got %v", err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nd2.InvoiceNo == "" {
+		t.Fatal("expected second ND")
+	}
+	var debited string
+	if err := db.SQL.QueryRow(`SELECT debited_gross_total FROM invoices WHERE id=?`, ftID).Scan(&debited); err != nil {
+		t.Fatal(err)
+	}
+	if debited != "13.50" { // 12.50 + 1.00
+		t.Fatalf("debited=%s", debited)
 	}
 }

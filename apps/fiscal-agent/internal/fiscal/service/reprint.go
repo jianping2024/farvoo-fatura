@@ -55,13 +55,12 @@ func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetai
 			d.RemainingGrossTotal = rem.RemainingGrossTotal
 			d.Lines = rem.Lines
 		}
-		drem, err := s.db.DebitRemainingForInvoice(documentID)
+		drem, err := s.db.DebitLinesForInvoice(documentID)
 		if err != nil {
 			return d, err
 		}
 		if drem != nil {
 			d.DebitedGrossTotal = drem.DebitedGrossTotal
-			d.RemainingDebitGrossTotal = drem.RemainingGrossTotal
 			d.DebitLines = drem.Lines
 		}
 	case d.DocumentType == domain.DocumentNC, d.DocumentType == domain.DocumentND:

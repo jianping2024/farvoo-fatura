@@ -194,9 +194,10 @@ async function main() {
       snapshot: saleSnapshot('sale-ft-nd'),
     }));
     const detailBefore = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${ft.document_id}`);
-    record('ft-debit-remaining-before',
-      detailBefore.remaining_debit_gross_total === '10.00' && Array.isArray(detailBefore.debit_lines) && detailBefore.debit_lines.length >= 1,
-      `rem=${detailBefore.remaining_debit_gross_total}`);
+    record('ft-debit-lines-before',
+      detailBefore.debited_gross_total === '0.00' && Array.isArray(detailBefore.debit_lines) && detailBefore.debit_lines.length >= 1
+        && detailBefore.remaining_debit_gross_total == null,
+      `debited=${detailBefore.debited_gross_total}`);
 
     const ndPartial = await uatJson('req', 'POST', `/local/v1/fiscal-documents/${ft.document_id}/debit-notes`, '--body', JSON.stringify({
       request_id: 'm6p-nd-partial', operator_id: 'op-demo-cashier', reason: 'Ajuste parcial',
@@ -212,13 +213,14 @@ async function main() {
       ndPartial.document_type === 'ND' && origAfter.document_status === 'DEBITED_PARTIAL' && origAfter.debited_gross_total === '3.00',
       `status=${origAfter.document_status} debited=${origAfter.debited_gross_total}`);
 
-    const ndFull = await uatJson('req', 'POST', `/local/v1/fiscal-documents/${ft.document_id}/debit-notes`, '--body', JSON.stringify({
-      request_id: 'm6p-nd-ft-rest', operator_id: 'op-demo-cashier', reason: 'Ajuste resto', debit_full: true,
+    const ndAbove = await uatJson('req', 'POST', `/local/v1/fiscal-documents/${ft.document_id}/debit-notes`, '--body', JSON.stringify({
+      request_id: 'm6p-nd-above', operator_id: 'op-demo-cashier', reason: 'Ajuste acima',
+      debit_full: false, lines: [{ original_line_number: 1, line_gross: '25.00' }],
     }));
-    const fullOrig = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${ft.document_id}`);
-    record('nd-full-remainder-on-ft',
-      ndFull.document_type === 'ND' && fullOrig.document_status === 'DEBITED_FULL',
-      fullOrig.document_status);
+    const aboveOrig = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${ft.document_id}`);
+    record('nd-allows-above-original',
+      ndAbove.document_type === 'ND' && aboveOrig.debited_gross_total === '28.00' && aboveOrig.document_status === 'DEBITED_PARTIAL',
+      `debited=${aboveOrig.debited_gross_total}`);
   } catch (e) {
     record('nd-on-ft', false, String(e));
   }

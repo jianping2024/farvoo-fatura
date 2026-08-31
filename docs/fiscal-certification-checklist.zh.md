@@ -63,8 +63,8 @@
 | # | 检查项 | 通过标准 | 分类 | 验证方式 |
 |---|--------|----------|------|----------|
 | C4.1 | 原票类型 | FT、FS 可借记 | 自动 | d62 ND on FT |
-| C4.2 | 超额拒绝 | `debit_amount_exceeded` | 自动 | d62 |
-| C4.3 | 原票状态 | `DEBITED_PARTIAL` / `DEBITED_FULL` | 自动 | d62 全额；部分见 m6-regression |
+| C4.2 | 允许超过原票金额 | ND `line_gross` > 原票 gross 成功 | 自动 | d62 |
+| C4.3 | 原票状态 | 任意 ND 后 `DEBITED_PARTIAL`（可继续借记） | 自动 | d62 |
 
 ## 5. SAF-T 与打印
 

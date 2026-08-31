@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.35
+
+**ND 纠正差额：取消原票金额天花板**
+
+- `buildNDLines` 唯一构建 ND 行；金额须 >0，**可大于原行/原票**；废止累计 ≤ 原票 gross。
+- 任一次 ND 后原票均为 `DEBITED_PARTIAL`（可继续借记；含历史 `DEBITED_FULL`）。
+- 读模型：`DebitLinesForInvoice`（废止 `DebitRemainingForInvoice` / `remaining_debit_gross_total`）。
+- Admin：借记按行无 max；详情只显示「已借记」。
+- 回归：m6 / m6-product / d62 C4.2 改为允许超额。
+
 ## 0.4.34
 
 **ND 部分借记 UI + 原票回链；手工开票已开关联**

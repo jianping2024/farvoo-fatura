@@ -151,7 +151,7 @@ async function main() {
       request_id: 'm6-nd-1', operator_id: 'op-demo-cashier', reason: 'Ajuste', debit_full: true,
     }));
     const orig = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${fs.document_id}`);
-    record('nd-on-fs', nd.document_type === 'ND' && orig.document_status === 'DEBITED_FULL');
+    record('nd-on-fs', nd.document_type === 'ND' && orig.document_status === 'DEBITED_PARTIAL');
   } catch (e) {
     record('nd-on-fs', false, String(e));
   }
@@ -170,14 +170,28 @@ async function main() {
 
   try {
     const ftOver = await issueDoc('FT', 'sale-ft-over');
-    await uatJson('req', 'POST', `/local/v1/fiscal-documents/${ftOver.document_id}/debit-notes`, '--body', JSON.stringify({
-      request_id: 'm6-nd-over', operator_id: 'op-demo-cashier', reason: 'Too much',
+    const ndOver = await uatJson('req', 'POST', `/local/v1/fiscal-documents/${ftOver.document_id}/debit-notes`, '--body', JSON.stringify({
+      request_id: 'm6-nd-over', operator_id: 'op-demo-cashier', reason: 'Above original',
       debit_full: false, lines: [{ original_line_number: 1, line_gross: '20.00' }],
     }));
-    record('nd-exceeded-rejected', false, 'expected 4xx');
+    const origOver = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${ftOver.document_id}`);
+    record('nd-allows-above-original',
+      ndOver.document_type === 'ND' && origOver.debited_gross_total === '20.00' && origOver.document_status === 'DEBITED_PARTIAL',
+      `debited=${origOver.debited_gross_total}`);
+  } catch (e) {
+    record('nd-allows-above-original', false, String(e));
+  }
+
+  try {
+    const ftZero = await issueDoc('FT', 'sale-ft-zero');
+    await uatJson('req', 'POST', `/local/v1/fiscal-documents/${ftZero.document_id}/debit-notes`, '--body', JSON.stringify({
+      request_id: 'm6-nd-zero', operator_id: 'op-demo-cashier', reason: 'Zero',
+      debit_full: false, lines: [{ original_line_number: 1, line_gross: '0.00' }],
+    }));
+    record('nd-zero-rejected', false, 'expected 4xx');
   } catch (e) {
     const msg = String(e);
-    record('nd-exceeded-rejected', msg.includes('debit_amount_exceeded') || msg.includes('409') || msg.includes('400'), msg.slice(0, 120));
+    record('nd-zero-rejected', msg.includes('debit_amount_exceeded') || msg.includes('409') || msg.includes('400'), msg.slice(0, 120));
   }
 
   try {

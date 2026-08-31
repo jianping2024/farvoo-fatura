@@ -95,7 +95,7 @@ func (s *FiscalService) IssueDebitNote(ctx context.Context, req domain.DebitNote
 		return nil, coded(ErrCodeDebitNotAllowed, "original invoice cannot be debited")
 	}
 	if errors.Is(err, store.ErrDebitAmountExceeded) {
-		return nil, coded(ErrCodeDebitAmountExceeded, "debit amount exceeds original gross")
+		return nil, coded(ErrCodeDebitAmountExceeded, "debit amount must be positive")
 	}
 	if errors.Is(err, store.ErrNDSeriesMissing) {
 		return nil, coded(ErrCodeSeriesMissing, "no ACTIVE ND series with validation_code")

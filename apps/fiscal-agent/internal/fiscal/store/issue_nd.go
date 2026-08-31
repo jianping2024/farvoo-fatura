@@ -17,13 +17,14 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 // ErrDebitNotAllowed indicates the original invoice cannot be debited.
 var ErrDebitNotAllowed = errors.New("store: debit not allowed")
 
-// ErrDebitAmountExceeded indicates cumulative debit would exceed original gross.
-var ErrDebitAmountExceeded = errors.New("store: debit amount exceeded")
+// ErrDebitAmountExceeded indicates debit line_gross is missing or not positive (not an original-gross cap).
+var ErrDebitAmountExceeded = errors.New("store: debit amount invalid")
 
 // ErrNDSeriesMissing indicates no ACTIVE ND series with validation_code.
 var ErrNDSeriesMissing = errors.New("store: ND series missing")
@@ -78,17 +79,8 @@ func (d *DB) IssueND(ctx context.Context, signer Signer, p IssueNDParams) (*Issu
 	if err != nil {
 		return nil, err
 	}
-	debitedByLine, err := loadDebitedGrossByLine(tx, p.OriginalInvoiceID)
-	if err != nil {
-		return nil, err
-	}
 
-	ndLines, ndGross, ndNet, ndTax, buckets, err := buildNCLines(origLines, debitedByLine, IssueNCParams{
-		CreditFull: p.DebitFull, Lines: p.Lines,
-	})
-	if errors.Is(err, ErrCreditAmountExceeded) {
-		return nil, ErrDebitAmountExceeded
-	}
+	ndLines, ndGross, ndNet, ndTax, buckets, err := buildNDLines(origLines, p)
 	if err != nil {
 		return nil, err
 	}
@@ -96,12 +88,8 @@ func (d *DB) IssueND(ctx context.Context, signer Signer, p IssueNDParams) (*Issu
 		return nil, fmt.Errorf("store: no debit lines")
 	}
 
-	origGross, _ := compliance.ParseDecimal(orig.GrossTotal)
 	debitedTot, _ := compliance.ParseDecimal(orig.DebitedGross)
 	newDebited := debitedTot.Add(ndGross)
-	if newDebited.GreaterThan(origGross) {
-		return nil, ErrDebitAmountExceeded
-	}
 
 	var tz, nif, legalName, businessName, addr, city, postal, cert, taxRegion string
 	err = tx.QueryRow(`SELECT timezone, tax_registration_number, legal_name, COALESCE(business_name,''),
@@ -289,12 +277,9 @@ func (d *DB) IssueND(ctx context.Context, signer Signer, p IssueNDParams) (*Issu
 	}
 
 	newDebitedStr := compliance.Money2(newDebited)
-	newStatus := string(domain.DocumentDebitedPartial)
-	if newDebited.Equal(origGross) {
-		newStatus = string(domain.DocumentDebitedFull)
-	}
+	// ND is a correction delta — never cap at original gross; always DEBITED_PARTIAL after any ND.
 	_, err = tx.Exec(`UPDATE invoices SET debited_gross_total = ?, document_status = ? WHERE id = ?`,
-		newDebitedStr, newStatus, p.OriginalInvoiceID)
+		newDebitedStr, string(domain.DocumentDebitedPartial), p.OriginalInvoiceID)
 	if err != nil {
 		return nil, fmt.Errorf("store: update original: %w", err)
 	}
@@ -346,11 +331,97 @@ func validateDebitOriginal(orig *origInvoiceRow) error {
 		return ErrDebitNotAllowed
 	}
 	switch orig.DocStatus {
-	case string(domain.DocumentSigned), string(domain.DocumentDebitedPartial):
+	case string(domain.DocumentSigned), string(domain.DocumentDebitedPartial), string(domain.DocumentDebitedFull):
+		// DEBITED_FULL kept for legacy rows; further ND still allowed (no original-gross ceiling).
 	default:
 		return ErrDebitNotAllowed
 	}
 	return nil
+}
+
+// buildNDLines is the ONLY ND line builder (correction delta; no cap vs original line/gross).
+func buildNDLines(origLines []origLineRow, p IssueNDParams) (
+	[]ncPreparedLine, decimal.Decimal, decimal.Decimal, decimal.Decimal, []compliance.TaxBucket, error,
+) {
+	lineByNo := map[int]origLineRow{}
+	for _, ol := range origLines {
+		lineByNo[ol.LineNumber] = ol
+	}
+
+	var inputs []CreditLineInput
+	if p.DebitFull {
+		for _, ol := range origLines {
+			inputs = append(inputs, CreditLineInput{
+				OriginalLineNumber: ol.LineNumber,
+				LineGross:          ol.LineGross,
+			})
+		}
+	} else {
+		inputs = p.Lines
+	}
+
+	bucketMap := map[string]*compliance.TaxBucket{}
+	var lines []ncPreparedLine
+	var grossTot, netTot, taxTot decimal.Decimal
+	lineNo := 0
+
+	for _, in := range inputs {
+		ol, ok := lineByNo[in.OriginalLineNumber]
+		if !ok {
+			return nil, decimal.Zero, decimal.Zero, decimal.Zero, nil, fmt.Errorf("store: unknown line %d", in.OriginalLineNumber)
+		}
+		grossStr := strings.TrimSpace(in.LineGross)
+		qtyStr := strings.TrimSpace(in.Quantity)
+		if grossStr == "" && qtyStr == "" {
+			return nil, decimal.Zero, decimal.Zero, decimal.Zero, nil, ErrDebitAmountExceeded
+		}
+		// No remaining ceiling: use a large sentinel only so creditLineFromInput can fill from qty.
+		origGross, _ := compliance.ParseDecimal(ol.LineGross)
+		sentinel := origGross
+		if strings.TrimSpace(in.LineGross) != "" {
+			g, err := compliance.ParseDecimal(in.LineGross)
+			if err != nil {
+				return nil, decimal.Zero, decimal.Zero, decimal.Zero, nil, err
+			}
+			if g.LessThanOrEqual(decimal.Zero) {
+				return nil, decimal.Zero, decimal.Zero, decimal.Zero, nil, ErrDebitAmountExceeded
+			}
+			sentinel = g
+		}
+		ln, err := creditLineFromInput(ol, sentinel, in)
+		if err != nil {
+			return nil, decimal.Zero, decimal.Zero, decimal.Zero, nil, err
+		}
+		debitGross, _ := compliance.ParseDecimal(ln.LineGross)
+		if debitGross.LessThanOrEqual(decimal.Zero) {
+			return nil, decimal.Zero, decimal.Zero, decimal.Zero, nil, ErrDebitAmountExceeded
+		}
+
+		lineNo++
+		ln.LineNumber = lineNo
+		lines = append(lines, ncPreparedLine{preparedLine: ln, OrigLineNumber: ol.LineNumber})
+		g, _ := compliance.ParseDecimal(ln.LineGross)
+		n, _ := compliance.ParseDecimal(ln.LineNet)
+		t, _ := compliance.ParseDecimal(ln.LineTax)
+		grossTot = grossTot.Add(g)
+		netTot = netTot.Add(n)
+		taxTot = taxTot.Add(t)
+		rate := ln.VATRate
+		if b, ok := bucketMap[rate]; ok {
+			bb, _ := compliance.ParseDecimal(b.TaxBase)
+			bt, _ := compliance.ParseDecimal(b.TaxAmount)
+			b.TaxBase = compliance.Money2(bb.Add(n))
+			b.TaxAmount = compliance.Money2(bt.Add(t))
+		} else {
+			bucketMap[rate] = &compliance.TaxBucket{Rate: rate, TaxBase: ln.LineNet, TaxAmount: ln.LineTax}
+		}
+	}
+
+	var buckets []compliance.TaxBucket
+	for _, b := range bucketMap {
+		buckets = append(buckets, *b)
+	}
+	return lines, grossTot.Round(2), netTot.Round(2), taxTot.Round(2), buckets, nil
 }
 
 func debitPayloadHash(p IssueNDParams) string {

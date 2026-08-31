@@ -59,7 +59,6 @@ type InvoiceDetail struct {
 	RemainingGrossTotal      string                `json:"remaining_gross_total,omitempty"`
 	Lines                    []CreditLineRemaining `json:"lines,omitempty"`
 	DebitedGrossTotal        string                `json:"debited_gross_total,omitempty"`
-	RemainingDebitGrossTotal string                `json:"remaining_debit_gross_total,omitempty"`
 	DebitLines               []CreditLineRemaining `json:"debit_lines,omitempty"`
 	OriginalInvoiceID        string                `json:"original_invoice_id,omitempty"`
 	OriginalInvoiceNo        string                `json:"original_invoice_no,omitempty"`

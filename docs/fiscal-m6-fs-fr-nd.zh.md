@@ -12,12 +12,13 @@
 |----|------|
 | FS / FR 签发 | 与 FT 同一路径：`service.IssueDocument` → `store.IssueFT`；`document_type` 可选 `FT` / `FS` / `FR`；各自 **ACTIVE** 系列 |
 | ND 借记 | 唯一写路径：`service.IssueDebitNote` → `store.IssueND`；API `POST /local/v1/fiscal-documents/{id}/debit-notes` |
-| 可借记原票 | **FT / FS / FR**；状态 `SIGNED` 或 `DEBITED_PARTIAL` |
-| 累计借记 | 原票 `debited_gross_total`；满额 → `DEBITED_FULL` |
+| 可借记原票 | **FT / FS / FR**；状态 `SIGNED` / `DEBITED_PARTIAL` / 历史 `DEBITED_FULL` |
+| 累计借记 | 原票 `debited_gross_total` 累加；任一次 ND 后状态均为 `DEBITED_PARTIAL`（**不以原票 gross 为上限**，可继续借记） |
 | 权限 | P0 复用 `operators.can_issue_nc`（Admin 文案「NC / ND」） |
 | SAF-T | 同月 **FT + NC + ND + FS + FR** 进入同一 XML；ND 行引用同 NC（`invoice_line_references`） |
-| Admin ND | 与 NC **同一** `openAdjustModal`；默认 **按行**；全额需确认；详情原票回链同 NC（`CorrectiveOriginalForDocument`） |
-| 原票借记余额 | 唯一读 `DebitRemainingForInvoice` → `debited_gross_total` / `remaining_debit_gross_total` / `debit_lines` |
+| Admin ND | 与 NC **同一** `openAdjustModal`；默认 **按行**；纠正金额可大于原行/原票；详情原票回链 |
+| 原票借记行 | 唯一读 `DebitLinesForInvoice` → `debited_gross_total` / `debit_lines`（无 `remaining_debit_*` 天花板） |
+| ND 行构建 | 唯一 `buildNDLines`（禁止再走 `buildNCLines` 剩余逻辑） |
 
 ## 2. API
 

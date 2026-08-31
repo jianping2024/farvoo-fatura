@@ -932,9 +932,8 @@
       body += invoiceDetailRow('已冲金额', fmtMoney(inv.credited_gross_total)) +
         invoiceDetailRow('剩余可冲', fmtMoney(inv.remaining_gross_total));
     }
-    if (isAdjustableOriginal(inv.document_type) && inv.remaining_debit_gross_total != null) {
-      body += invoiceDetailRow('已借记', fmtMoney(inv.debited_gross_total)) +
-        invoiceDetailRow('剩余可借记', fmtMoney(inv.remaining_debit_gross_total));
+    if (isAdjustableOriginal(inv.document_type) && inv.debited_gross_total != null && inv.debited_gross_total !== '') {
+      body += invoiceDetailRow('已借记', fmtMoney(inv.debited_gross_total));
     }
     body += invoiceDetailHashRow('上张 Hash', inv.previous_hash, 'previous_hash') +
       invoiceDetailHashRow('Hash', inv.hash, 'hash');
@@ -951,7 +950,7 @@
     if (canCredit) creditBtn._creditDetail = inv;
     const debitBtn = $('#btnInvoiceDetailDebit');
     const canDebit = isAdjustableOriginal(inv.document_type) &&
-      ['SIGNED', 'DEBITED_PARTIAL'].includes(inv.document_status) &&
+      ['SIGNED', 'DEBITED_PARTIAL', 'DEBITED_FULL'].includes(inv.document_status) &&
       setupStatusCache && setupStatusCache.operator_can_issue_nc && setupStatusCache.ready_to_debit;
     debitBtn.classList.toggle('hidden', !canDebit);
     debitBtn.dataset.debit = canDebit ? inv.document_id : '';
@@ -1663,20 +1662,25 @@
   function renderAdjustLinesTable(detail) {
     const lines = adjustLinesForKind(detail);
     const tbody = $('#adjustLinesTbody');
+    const isDebit = adjustKind === 'debit';
     if (!lines.length) {
       tbody.innerHTML = '<tr><td colspan="6" class="hint">无可用行</td></tr>';
       return;
     }
     tbody.innerHTML = lines.map(ln => {
       const rem = ln.remaining_line_gross || '0.00';
-      const disabled = parseFloat(rem) <= 0 ? ' disabled' : '';
+      const disabledCredit = !isDebit && parseFloat(rem) <= 0 ? ' disabled' : '';
+      // Debit: correction delta — default empty, no max vs original.
+      const defaultAmt = isDebit ? '' : rem;
+      const maxAttr = isDebit ? '' : (' data-max="' + rem + '"');
       return '<tr data-line-id="' + ln.line_id + '">' +
-        '<td><input type="checkbox" class="adjust-line-chk"' + disabled + ' data-ln="' + ln.line_number + '" /></td>' +
+        '<td><input type="checkbox" class="adjust-line-chk"' + disabledCredit + ' data-ln="' + ln.line_number + '" /></td>' +
         '<td>' + ln.line_number + '</td>' +
         '<td>' + (ln.description || '—') + '</td>' +
         '<td>' + ln.line_gross + '</td>' +
-        '<td>' + rem + '</td>' +
-        '<td><input class="adjust-line-amt" type="text" inputmode="decimal" value="' + rem + '" data-max="' + rem + '"' + disabled + ' /></td></tr>';
+        '<td>' + (isDebit ? '—' : rem) + '</td>' +
+        '<td><input class="adjust-line-amt" type="text" inputmode="decimal" value="' + defaultAmt + '"' + maxAttr + disabledCredit +
+        (isDebit ? ' placeholder="纠正金额"' : '') + ' /></td></tr>';
     }).join('');
   }
 
@@ -1687,9 +1691,11 @@
     const isDebit = kind === 'debit';
     $('#adjustModalTitle').textContent = (isDebit ? '借记 · ' : '冲销 · ') + (detail.invoice_no || '');
     $('#adjustFullHint').textContent = isDebit
-      ? '将对整张发票剩余可借记金额全额借记（少见，请确认）。'
+      ? '将按原票各行原额作为本次纠正差额借记（可再开其它差额；不设原票总额上限）。'
       : '将对整张发票剩余金额全额冲销。';
     $('#adjustAmtColHead').textContent = isDebit ? '本次借记' : '本次冲销';
+    const remHead = $('#adjustPartialPane thead th:nth-child(5)');
+    if (remHead) remHead.textContent = isDebit ? '—' : '剩余';
     $('#adjustReasonLabel').textContent = isDebit ? '借记原因' : '冲销原因';
     $('#adjustReason').value = isDebit ? 'Ajuste' : 'Devolucao';
     $('#adjustReason').placeholder = isDebit ? 'Ajuste' : 'Devolucao';
@@ -1713,12 +1719,15 @@
     if (!reason) throw { error: 'validation_failed', message: '请填写原因' };
     if (reason.length > 200) throw { error: 'validation_failed', message: '原因最多 200 字' };
     const isDebit = adjustKind === 'debit';
-    const fullLabel = isDebit ? '全额借记' : '全额冲销';
     if (adjustMode === 'full') {
       const rem = isDebit
-        ? (adjustTargetDetail.remaining_debit_gross_total || adjustTargetDetail.gross_total)
+        ? (adjustTargetDetail.gross_total || '0.00')
         : (adjustTargetDetail.remaining_gross_total || adjustTargetDetail.gross_total);
-      const out = { reason: reason, summaryGross: rem, linesSummary: fullLabel };
+      const out = {
+        reason: reason,
+        summaryGross: rem,
+        linesSummary: isDebit ? '按原票行额借记' : '全额冲销'
+      };
       if (isDebit) out.debit_full = true;
       else out.credit_full = true;
       return out;
@@ -1731,10 +1740,12 @@
       const ln = parseInt(chk.dataset.ln, 10);
       const amtIn = row.querySelector('.adjust-line-amt');
       const amt = String(amtIn.value || '').trim();
-      const max = parseFloat(amtIn.dataset.max || '0');
       const val = parseFloat(amt);
       if (!amt || isNaN(val) || val <= 0) throw { error: 'validation_failed', message: '请填写有效金额' };
-      if (val > max + 0.001) throw { error: 'validation_failed', message: '金额不能超过剩余' };
+      if (!isDebit) {
+        const max = parseFloat(amtIn.dataset.max || '0');
+        if (val > max + 0.001) throw { error: 'validation_failed', message: '金额不能超过剩余' };
+      }
       selected.push({ original_line_number: ln, line_gross: val.toFixed(2) });
       total += val;
     });

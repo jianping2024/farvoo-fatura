@@ -87,7 +87,7 @@ func TestCorrectiveOriginalForDocument_ND(t *testing.T) {
 		t.Fatal("expected original invoice no")
 	}
 
-	drem, err := db.DebitRemainingForInvoice(ftID)
+	drem, err := db.DebitLinesForInvoice(ftID)
 	if err != nil {
 		t.Fatal(err)
 	}

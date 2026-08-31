@@ -113,7 +113,6 @@ func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps Handle
 		}
 		if detail.DebitedGrossTotal != "" {
 			out["debited_gross_total"] = detail.DebitedGrossTotal
-			out["remaining_debit_gross_total"] = detail.RemainingDebitGrossTotal
 		}
 		if len(detail.DebitLines) > 0 {
 			out["debit_lines"] = detail.DebitLines
