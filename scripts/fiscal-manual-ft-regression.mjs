@@ -95,6 +95,7 @@ async function main() {
   }));
   await uatCmd('req', 'PUT', '/local/v1/setup/at-credentials', '--body', JSON.stringify({ username: '517535009/37', password: 'demo' }));
   await uatCmd('req', 'POST', '/local/v1/setup/series/register', '--body', JSON.stringify({ series_code: `FT${year}MAN001`, document_type: 'FT', fiscal_year: year }));
+  await uatCmd('req', 'POST', '/local/v1/setup/series/register', '--body', JSON.stringify({ series_code: `FS${year}MAN001`, document_type: 'FS', fiscal_year: year }));
   await uatCmd('req', 'POST', '/local/v1/setup/activate', '--body', JSON.stringify({ product_private_key_pem: pem.trim() }));
   await uatCmd('req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({ id: 'op-demo-cashier', role: 'cashier', display_name: 'Demo' }));
   record('fiscal-setup', true, 'taxpayer/series/activate');
@@ -121,7 +122,7 @@ async function main() {
   };
   const issue1 = await uatCmd('req', 'POST', '/local/v1/fiscal-documents/manual', '--body', JSON.stringify(manualBody));
   const inv = JSON.parse(issue1);
-  record('manual-ft-issue', !!inv.invoice_no, inv.invoice_no || issue1);
+  record('manual-default-fs-issue', inv.document_type === 'FS' && !!inv.invoice_no, inv.document_type + ' ' + (inv.invoice_no || ''));
 
   await uatCmd('assert-db', '--db', dbPath, '--sql', "SELECT source FROM fiscal_products WHERE product_code='LOCAL-MANUAL-1'", '--expect-count', '1');
   record('sqlite-local-product', true, 'LOCAL');
@@ -131,7 +132,7 @@ async function main() {
 
   const issue2 = await uatCmd('req', 'POST', '/local/v1/fiscal-documents/manual', '--body', JSON.stringify(manualBody));
   const hit = JSON.parse(issue2);
-  record('manual-ft-idempotent', hit.idempotent_hit === true, String(hit.idempotent_hit));
+  record('manual-ft-idempotent', hit.idempotent_hit === true && hit.document_type === 'FS', String(hit.idempotent_hit));
 
   record('unique-write-guards', true, 'UpsertLocalFiscalProduct / BuildManualSaleSnapshot in go test');
 

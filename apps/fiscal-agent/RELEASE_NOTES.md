@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.31
+
+**M6 D6.1b：产品单据规则收口（唯一写法）**
+
+- 默认销售单据 **FS**；产品 UI / 手工开票 / 分单仅 **FT + FS**；六种付款方式统一 `domain.NormalizePaymentMethod`。
+- 账单同步挡重与已开 scope：`HasSignedSaleForSale` / `ListSignedSaleScopesForSale`（FT+FS，含 DEBITED_*）。
+- NC/ND Admin：**FT + FS** 显示冲销/借记；`ready_to_issue` 须 FT **与** FS 系列齐备。
+- 认证清单骨架：`docs/fiscal-certification-checklist.zh.md`；回归 `scripts/fiscal-m6-product-regression.mjs`。
+
 ## 0.4.30
 
 **M6 D6.1：FS / FR / ND**

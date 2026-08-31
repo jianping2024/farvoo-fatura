@@ -98,6 +98,10 @@ func BuildManualSaleSnapshot(db *store.DB, in ManualIssueInput) (domain.SaleSnap
 		gross += q * p
 	}
 	total := strconv.FormatFloat(gross, 'f', 2, 64)
+	pay := domain.NormalizePaymentMethod(in.PaymentMethod)
+	if !domain.IsKnownPaymentMethod(pay) {
+		return domain.SaleSnapshot{}, fmt.Errorf("catalog: unknown payment_method %q", pay)
+	}
 	sale := domain.SaleSnapshot{
 		SourceSystem:  "manual",
 		SourceSaleID:  req,
@@ -106,7 +110,7 @@ func BuildManualSaleSnapshot(db *store.DB, in ManualIssueInput) (domain.SaleSnap
 		FiscalPurpose: "sale",
 		Lines:         outLines,
 		Payments: []domain.PaymentInput{
-			{Method: normalizePayMethod(in.PaymentMethod), Amount: total},
+			{Method: pay, Amount: total},
 		},
 	}
 	if t := strings.TrimSpace(in.TableDisplayName); t != "" {
@@ -116,12 +120,4 @@ func BuildManualSaleSnapshot(db *store.DB, in ManualIssueInput) (domain.SaleSnap
 		return domain.SaleSnapshot{}, err
 	}
 	return sale, nil
-}
-
-func normalizePayMethod(m string) string {
-	m = strings.ToUpper(strings.TrimSpace(m))
-	if m == "" {
-		return "CASH"
-	}
-	return m
 }

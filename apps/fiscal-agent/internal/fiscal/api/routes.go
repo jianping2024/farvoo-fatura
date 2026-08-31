@@ -326,7 +326,7 @@ func handleIssue(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	}
 	docType := domain.DocumentType(body.DocType)
 	if docType == "" {
-		docType = domain.DocumentFT
+		docType = domain.DefaultSaleDocumentType
 	}
 	res, err := deps.Fiscal.IssueDocument(r.Context(), domain.IssueRequest{
 		StoreID: body.StoreID, RequestID: body.RequestID, OperatorID: body.OperatorID,
@@ -467,8 +467,9 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 	}
 	id := r.PathValue("id")
 	var body struct {
-		OperatorID           string `json:"operator_id"`
-		Mode                 string `json:"mode"`
+		OperatorID         string `json:"operator_id"`
+		DocumentType       string `json:"document_type"`
+		Mode               string `json:"mode"`
 		ScopeID              string `json:"scope_id"`
 		StationID            string `json:"station_id"`
 		CustomerNIF          string `json:"customer_nif"`
@@ -483,7 +484,7 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		body.Mode = "whole_table"
 	}
 	res, err := deps.Fiscal.IssueFromBillDraft(r.Context(), service.IssueBillDraftInput{
-		DraftID: id, OperatorID: body.OperatorID, Mode: body.Mode, ScopeID: body.ScopeID,
+		DraftID: id, DocumentType: body.DocumentType, OperatorID: body.OperatorID, Mode: body.Mode, ScopeID: body.ScopeID,
 		StationID: body.StationID, CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
 		AllocationRevision: body.AllocationRevision,
 	})

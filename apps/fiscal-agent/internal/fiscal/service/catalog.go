@@ -22,9 +22,9 @@ func (s *FiscalService) IssueManualFT(ctx context.Context, in catalog.ManualIssu
 	if err != nil {
 		return nil, err
 	}
-	docType := domain.DocumentFT
-	if in.DocumentType != "" {
-		docType = domain.DocumentType(in.DocumentType)
+	docType, err := ResolveSaleDocumentType(in.DocumentType)
+	if err != nil {
+		return nil, err
 	}
 	return s.IssueDocument(ctx, domain.IssueRequest{
 		StoreID:    s.storeID,

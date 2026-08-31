@@ -490,7 +490,7 @@ func TestDiscardBillDrafts_KeepsInvoices(t *testing.T) {
 	if len(list) != 0 {
 		t.Fatalf("drafts should be gone")
 	}
-	scopes, err := db.ListSignedFTScopesForSale("store-demo-001", "farvoo", "sale-d")
+	scopes, err := db.ListSignedSaleScopesForSale("store-demo-001", "farvoo", "sale-d")
 	if err != nil || len(scopes) != 1 || scopes[0].InvoiceNo != res.InvoiceNo {
 		t.Fatalf("invoice must remain: %+v err=%v", scopes, err)
 	}

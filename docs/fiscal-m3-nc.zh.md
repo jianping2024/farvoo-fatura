@@ -298,7 +298,7 @@ M3 **不新增 migration**；使用现有表。
 | 项 | 说明 |
 |----|------|
 | Farvoo 桌台开 NC | 仍禁止 |
-| FS/FR Admin 冲销按钮 | M6 产品化签发后再开 UI；M3.1 Admin **仅 FT** 显示冲销（FS/FR 仍仅 API/单测） |
+| FS/FR Admin 冲销按钮 | M6 产品化：**FT + FS** 显示冲销/借记（FR 仅内核 API） |
 | 行级不同 `reason` | 仍整单一个 `reason` 写入各 `invoice_line_references` |
 | NC 冲 NC | 不做 |
 | 新 migration | 不新增表；只用现有 `operators.can_issue_nc`、`series` |

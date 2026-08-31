@@ -248,26 +248,26 @@ func (d *DB) DeleteBillDraftsBySale(sourceSaleID string) error {
 	return nil
 }
 
-// SignedFTScope is one signed FT business scope for a Farvoo sale.
-type SignedFTScope struct {
-	DocumentID string `json:"document_id"`
-	InvoiceNo  string `json:"invoice_no"`
-	ScopeType  string `json:"scope_type"`
-	ScopeID    string `json:"scope_id"`
+// SignedSaleScope is one signed FT/FS business scope for a Farvoo sale.
+type SignedSaleScope struct {
+	DocumentID   string `json:"document_id"`
+	InvoiceNo    string `json:"invoice_no"`
+	DocumentType string `json:"document_type"`
+	ScopeType    string `json:"scope_type"`
+	ScopeID      string `json:"scope_id"`
 }
 
-// HasSignedFTForSale is the ONLY already_invoiced gate for bill-sync re-ingest (tax DB, not draft status).
-func (d *DB) HasSignedFTForSale(storeID, sourceSystem, sourceSaleID string) (bool, error) {
-	scopes, err := d.ListSignedFTScopesForSale(storeID, sourceSystem, sourceSaleID)
+// HasSignedSaleForSale is the ONLY already_invoiced gate for bill-sync re-ingest (tax DB, not draft status).
+func (d *DB) HasSignedSaleForSale(storeID, sourceSystem, sourceSaleID string) (bool, error) {
+	scopes, err := d.ListSignedSaleScopesForSale(storeID, sourceSystem, sourceSaleID)
 	if err != nil {
 		return false, err
 	}
 	return len(scopes) > 0, nil
 }
 
-// ListSignedFTScopesForSale lists signed FTs for a sale (workbench issued-scope marks + mutex).
-// ONLY tax-DB reader for "which scopes of this sale already have FT".
-func (d *DB) ListSignedFTScopesForSale(storeID, sourceSystem, sourceSaleID string) ([]SignedFTScope, error) {
+// ListSignedSaleScopesForSale lists signed FT/FS for a sale (workbench issued-scope marks + mutex).
+func (d *DB) ListSignedSaleScopesForSale(storeID, sourceSystem, sourceSaleID string) ([]SignedSaleScope, error) {
 	storeID = strings.TrimSpace(storeID)
 	sourceSystem = strings.TrimSpace(sourceSystem)
 	sourceSaleID = strings.TrimSpace(sourceSaleID)
@@ -278,11 +278,11 @@ func (d *DB) ListSignedFTScopesForSale(storeID, sourceSystem, sourceSaleID strin
 		sourceSystem = "farvoo"
 	}
 	q := `
-		SELECT id, invoice_no, IFNULL(scope_type,''), IFNULL(scope_id,'')
+		SELECT id, invoice_no, document_type, IFNULL(scope_type,''), IFNULL(scope_id,'')
 		FROM invoices
 		WHERE source_sale_id = ? AND IFNULL(source_system,'') = ?
-		  AND document_type = 'FT'
-		  AND document_status IN ('SIGNED','CREDITED_PARTIAL','CREDITED_FULL')`
+		  AND document_type IN ('FT','FS')
+		  AND document_status IN ('SIGNED','CREDITED_PARTIAL','CREDITED_FULL','DEBITED_PARTIAL','DEBITED_FULL')`
 	args := []any{sourceSaleID, sourceSystem}
 	if storeID != "" {
 		q += ` AND store_id = ?`
@@ -293,10 +293,10 @@ func (d *DB) ListSignedFTScopesForSale(storeID, sourceSystem, sourceSaleID strin
 		return nil, err
 	}
 	defer rows.Close()
-	var out []SignedFTScope
+	var out []SignedSaleScope
 	for rows.Next() {
-		var s SignedFTScope
-		if err := rows.Scan(&s.DocumentID, &s.InvoiceNo, &s.ScopeType, &s.ScopeID); err != nil {
+		var s SignedSaleScope
+		if err := rows.Scan(&s.DocumentID, &s.InvoiceNo, &s.DocumentType, &s.ScopeType, &s.ScopeID); err != nil {
 			return nil, err
 		}
 		out = append(out, s)

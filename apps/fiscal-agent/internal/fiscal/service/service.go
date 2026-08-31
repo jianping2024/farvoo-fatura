@@ -464,14 +464,15 @@ func (s *FiscalService) ListBillDrafts(limit int) ([]store.BillSyncDraft, error)
 
 // IssueBillDraftInput is the ONLY input shape for IssueFromBillDraft.
 type IssueBillDraftInput struct {
-	DraftID              string
-	OperatorID           string
-	Mode                 string // whole_table | person; empty → whole_table
-	ScopeID              string
-	StationID            string // required: station_printers key for ORIGINAL print
-	CustomerNIF          string
-	CustomerName         string
-	AllocationRevision   *int64 // person: required OCC; must match draft.allocation_revision
+	DraftID            string
+	DocumentType       string // empty → domain.DefaultSaleDocumentType (FS)
+	OperatorID         string
+	Mode               string // whole_table | person; empty → whole_table
+	ScopeID            string
+	StationID          string // required: station_printers key for ORIGINAL print
+	CustomerNIF        string
+	CustomerName       string
+	AllocationRevision *int64 // person: required OCC; must match draft.allocation_revision
 }
 
 // BillDraftDetail is GET /bill-drafts/{id} read model.
@@ -480,7 +481,7 @@ type BillDraftDetail struct {
 	Payload             billsync.Snapshot    `json:"payload"`
 	Allocation          billsync.Allocation  `json:"allocation"`
 	AllocationRevision  int64                `json:"allocation_revision"`
-	IssuedScopes        []store.SignedFTScope `json:"issued_scopes"`
+	IssuedScopes        []store.SignedSaleScope `json:"issued_scopes"`
 	Remaining           map[string]string    `json:"remaining,omitempty"` // line_key → qty label
 }
 
@@ -507,7 +508,7 @@ func (s *FiscalService) GetBillDraftDetail(draftID string) (*BillDraftDetail, er
 	if err != nil {
 		return nil, err
 	}
-	scopes, err := s.db.ListSignedFTScopesForSale(s.storeID, snap.SourceSystem, draft.SourceSaleID)
+	scopes, err := s.db.ListSignedSaleScopesForSale(s.storeID, snap.SourceSystem, draft.SourceSaleID)
 	if err != nil {
 		return nil, err
 	}
@@ -554,7 +555,7 @@ func (s *FiscalService) SaveBillDraftAllocation(in SaveBillDraftAllocationInput)
 		return nil, err
 	}
 	// Lock issued people: cannot drop or mutate their shares.
-	existing, err := s.db.ListSignedFTScopesForSale(s.storeID, snap.SourceSystem, draft.SourceSaleID)
+	existing, err := s.db.ListSignedSaleScopesForSale(s.storeID, snap.SourceSystem, draft.SourceSaleID)
 	if err != nil {
 		return nil, err
 	}
@@ -700,7 +701,7 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraf
 
 	payloadType := strings.TrimSpace(snap.ScopeType)
 
-	existing, err := s.db.ListSignedFTScopesForSale(s.storeID, snap.SourceSystem, draft.SourceSaleID)
+	existing, err := s.db.ListSignedSaleScopesForSale(s.storeID, snap.SourceSystem, draft.SourceSaleID)
 	if err != nil {
 		return nil, err
 	}
@@ -764,16 +765,21 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraf
 		return nil, err
 	}
 
+	docType, err := ResolveSaleDocumentType(in.DocumentType)
+	if err != nil {
+		return nil, err
+	}
+
 	res, err := s.IssueDocument(ctx, domain.IssueRequest{
 		StoreID: s.storeID, RequestID: reqID, OperatorID: operatorID, StationID: stationID, Snapshot: sale,
-	}, domain.DocumentFT)
+	}, docType)
 	if err != nil {
 		return nil, err
 	}
 
 	shouldDelete := mode == "whole_table"
 	if mode == "person" {
-		after, err := s.db.ListSignedFTScopesForSale(s.storeID, snap.SourceSystem, draft.SourceSaleID)
+		after, err := s.db.ListSignedSaleScopesForSale(s.storeID, snap.SourceSystem, draft.SourceSaleID)
 		if err != nil {
 			return nil, err
 		}
@@ -797,7 +803,7 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraf
 	return res, nil
 }
 
-func checkScopeMutex(mode string, existing []store.SignedFTScope) error {
+func checkScopeMutex(mode string, existing []store.SignedSaleScope) error {
 	hasWhole, hasPerson := false, false
 	for _, sc := range existing {
 		switch strings.TrimSpace(sc.ScopeType) {
@@ -808,15 +814,15 @@ func checkScopeMutex(mode string, existing []store.SignedFTScope) error {
 		}
 	}
 	if mode == "person" && hasWhole {
-		return coded("scope_mutex", "whole_table FT already exists for this sale")
+		return coded("scope_mutex", "whole_table sale document already exists for this sale")
 	}
 	if mode == "whole_table" && hasPerson {
-		return coded("scope_mutex", "person FT already exists for this sale")
+		return coded("scope_mutex", "person sale document already exists for this sale")
 	}
 	return nil
 }
 
-func findIssuedScope(mode, scopeID, saleID string, existing []store.SignedFTScope) *store.SignedFTScope {
+func findIssuedScope(mode, scopeID, saleID string, existing []store.SignedSaleScope) *store.SignedSaleScope {
 	wantType := "whole_table"
 	wantID := saleID
 	if mode == "person" {

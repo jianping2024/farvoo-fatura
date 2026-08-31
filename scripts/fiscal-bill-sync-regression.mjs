@@ -330,6 +330,13 @@ async function main() {
     await uatCmd(
       'req',
       'POST',
+      '/local/v1/setup/series/register',
+      '--body',
+      JSON.stringify({ series_code: `FS${y}DEMO01`, document_type: 'FS', fiscal_year: y }),
+    );
+    await uatCmd(
+      'req',
+      'POST',
       '/local/v1/setup/activate',
       '--body',
       JSON.stringify({ product_private_key_pem: pem }),

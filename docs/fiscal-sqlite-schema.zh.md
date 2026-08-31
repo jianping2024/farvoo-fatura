@@ -631,7 +631,7 @@ Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `Ing
 | 开票成功清临时数据 | `store.DeleteBillDraftsBySale`（硬删该 `source_sale_id` 全部行） |
 | 商品 upsert | `UpsertFiscalProductByCode`（`vat_rate` 百分数串如 `"13.00"`） |
 
-**再同步挡重（P0）：** 查税务库是否已有同 `source_system`+`source_sale_id` 的已签 FT（`store.HasSignedFTForSale`），有则 ingest ack `already_invoiced`。**不以**草稿行状态为准（开票后草稿已删）。
+**再同步挡重（P0）：** 查税务库是否已有同 `source_system`+`source_sale_id` 的已签 FT/FS（`store.HasSignedSaleForSale`），有则 ingest ack `already_invoiced`。**不以**草稿行状态为准（开票后草稿已删）。
 
 **整桌从草稿开 FT：** `billsync.DraftToSaleSnapshot`（唯一映射）→ `service.IssueFromBillDraft` → `IssueDocument`/`IssueFT` → `DeleteBillDraftsBySale`。`fiscal_products` 不删。
 

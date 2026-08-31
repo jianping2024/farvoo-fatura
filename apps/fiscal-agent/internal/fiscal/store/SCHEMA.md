@@ -41,7 +41,7 @@ idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL
 
 **Admin 收银账单提示唯一推送：** `UpsertBillDraftOpen` / `DeleteBillDraftsBySale` → `DB.OnBillDraftsChanged` → `uievents.Hub.NotifyBillDraftsChanged` → `GET /local/v1/events`（SSE）。禁止浏览器空转轮询主路径。UAT 门铃入口：`POST /local/v1/dev/bill-sync/pull`（`FISCAL_ALLOW_DEV_KEY=1`）→ 同进程 `PullAndIngest`（禁止另起进程写库冒充推送）。界面用语「收银账单」见原型 README 方案 A。
 
-**草稿开票唯一路径：** `billsync.DraftToSaleSnapshot`（整桌）/ `billsync.DraftPersonFromAllocation`（按人）→ `ApplyCustomerOverride` → `service.IssueFromBillDraft` → `IssueDocument`/`IssueFT` →（到期时）`DeleteBillDraftsBySale`。丢弃仅 `DiscardBillDrafts` → `DeleteBillDraftsBySale`。再同步靠 `HasSignedFTForSale` / `ListSignedFTScopesForSale`。本机分单：`service.SaveBillDraftAllocation` → `store.SaveBillDraftAllocation`（OCC）。`DraftPartToSaleSnapshot` 仅为 splits→allocation 适配器，不得作为 issue 主路径。
+**草稿开票唯一路径：** `billsync.DraftToSaleSnapshot`（整桌）/ `billsync.DraftPersonFromAllocation`（按人）→ `ApplyCustomerOverride` → `service.IssueFromBillDraft` → `IssueDocument`/`IssueFT` →（到期时）`DeleteBillDraftsBySale`。丢弃仅 `DiscardBillDrafts` → `DeleteBillDraftsBySale`。再同步靠 `HasSignedSaleForSale` / `ListSignedSaleScopesForSale`（FT+FS）。本机分单：`service.SaveBillDraftAllocation` → `store.SaveBillDraftAllocation`（OCC）。`DraftPartToSaleSnapshot` 仅为 splits→allocation 适配器，不得作为 issue 主路径。
 
 **REMOTE 商品同步唯一写路径：** `IngestCloudJob` → `UpsertFiscalProductByCode`（不覆盖 LOCAL）。
 

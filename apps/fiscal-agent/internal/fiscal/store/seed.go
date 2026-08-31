@@ -3,6 +3,7 @@ package store
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -31,7 +32,7 @@ type SeedDemoParams struct {
 	DevicePublicKey           string
 }
 
-// SeedDemo inserts identity + ACTIVE FT series + consumidor final if missing.
+// SeedDemo inserts identity + ACTIVE FT/FS series + consumidor final if missing.
 func (d *DB) SeedDemo(p SeedDemoParams) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	if p.Timezone == "" {
@@ -110,6 +111,19 @@ func (d *DB) SeedDemo(p SeedDemoParams) error {
 		"series-ft-"+p.SeriesCode, p.StoreID, p.SeriesCode, p.ValidationCode, p.FiscalYear, now, now, now)
 	if err != nil {
 		return fmt.Errorf("seed series: %w", err)
+	}
+
+	fsCode := strings.Replace(p.SeriesCode, "FT", "FS", 1)
+	if fsCode == p.SeriesCode {
+		fsCode = "FS" + p.SeriesCode
+	}
+	_, err = tx.Exec(`INSERT OR IGNORE INTO series (
+		id, store_id, document_type, series_code, validation_code, fiscal_year,
+		last_number, last_hash, status, registered_at, created_at, updated_at
+	) VALUES (?, ?, 'FS', ?, ?, ?, 0, '', 'ACTIVE', ?, ?, ?)`,
+		"series-fs-"+fsCode, p.StoreID, fsCode, p.ValidationCode, p.FiscalYear, now, now, now)
+	if err != nil {
+		return fmt.Errorf("seed fs series: %w", err)
 	}
 
 	return tx.Commit()

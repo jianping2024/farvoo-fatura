@@ -362,9 +362,8 @@
             <div class="field">
               <label>发票类型</label>
               <select id="docType">
+                <option value="FS" selected>FS · 简化发票</option>
                 <option value="FT">FT · 发票（销售）</option>
-                <option value="FS">FS · 简化发票</option>
-                <option value="FR">FR · 收据</option>
               </select>
             </div>
             <div class="field">
@@ -381,6 +380,10 @@
               <select id="invPay">
                 <option value="CASH">Numerário / 现金</option>
                 <option value="CARD">Cartão / 刷卡</option>
+                <option value="MBWAY">MB WAY</option>
+                <option value="MULTIBANCO">Multibanco</option>
+                <option value="MIXED">Misto / 混合</option>
+                <option value="OTHER">Outro / 其他</option>
               </select>
             </div>
             <div class="field">
@@ -447,6 +450,13 @@
           </div>
           <div class="panel" id="splitIssueRail">
             <h2>开票</h2>
+            <div class="field">
+              <label>发票类型</label>
+              <select id="splitDocType">
+                <option value="FS" selected>FS · 简化发票</option>
+                <option value="FT">FT · 发票（销售）</option>
+              </select>
+            </div>
             <div class="field"><label>购方 NIF</label><input id="splitNif" placeholder="空 = 散客" list="customerNifList" /></div>
             <div class="field"><label>购方名称</label><input id="splitName" placeholder="Consumidor Final（票面购方）" /></div>
             <div class="actions">
@@ -563,8 +573,6 @@
           <button type="button" id="btnSeriesNd">注册 ND 系列</button>
           <div class="field" style="margin-top:1rem"><label>FS 系列编号</label><input id="seriesFs" /></div>
           <button type="button" id="btnSeriesFs">注册 FS 系列</button>
-          <div class="field" style="margin-top:1rem"><label>FR 系列编号</label><input id="seriesFr" /></div>
-          <button type="button" id="btnSeriesFr">注册 FR 系列</button>
         </div>
         <div class="panel">
           <h2>4. 激活开票</h2>
@@ -707,7 +715,35 @@
   const STATION_LS = 'fiscal_admin_station_id';
   const OPERATOR_ID = 'op-demo-cashier';
   const INVOICE_TZ = 'Europe/Lisbon';
+  const DEFAULT_SALE_DOC = 'FS';
+  const SALE_DOC_TYPES = ['FT', 'FS'];
+  const PAYMENT_METHODS = [
+    ['CASH', 'Numerário / 现金'],
+    ['CARD', 'Cartão / 刷卡'],
+    ['MBWAY', 'MB WAY'],
+    ['MULTIBANCO', 'Multibanco'],
+    ['MIXED', 'Misto / 混合'],
+    ['OTHER', 'Outro / 其他']
+  ];
   const y = new Date().getFullYear();
+
+  function isAdjustableOriginal(docType) {
+    return SALE_DOC_TYPES.includes(String(docType || '').trim());
+  }
+
+  function paymentMethodOptionsHtml() {
+    return PAYMENT_METHODS.map(([v, label]) =>
+      '<option value="' + v + '">' + label + '</option>'
+    ).join('');
+  }
+
+  function saleDocTypeOptionsHtml(selected) {
+    const sel = selected || DEFAULT_SALE_DOC;
+    return SALE_DOC_TYPES.map((t) => {
+      const label = t === 'FT' ? 'FT · 发票（销售）' : 'FS · 简化发票';
+      return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + label + '</option>';
+    }).join('');
+  }
 
   let pin = '';
   let mode = sessionStorage.getItem('fiscal_mode') || 'restaurant';
@@ -866,7 +902,7 @@
       body += invoiceDetailOriginalRow(inv);
       if (inv.credit_reason) body += invoiceDetailRow('冲销原因', inv.credit_reason);
     }
-    if (inv.document_type === 'FT' && inv.remaining_gross_total != null) {
+    if (isAdjustableOriginal(inv.document_type) && inv.remaining_gross_total != null) {
       body += invoiceDetailRow('已冲金额', fmtMoney(inv.credited_gross_total)) +
         invoiceDetailRow('剩余可冲', fmtMoney(inv.remaining_gross_total));
     }
@@ -877,14 +913,14 @@
     btn.dataset.reprint = inv.document_id;
     btn._invoiceCopy = { hash: inv.hash || '', previous_hash: inv.previous_hash || '' };
     const creditBtn = $('#btnInvoiceDetailCredit');
-    const canCredit = inv.document_type === 'FT' &&
+    const canCredit = isAdjustableOriginal(inv.document_type) &&
       ['SIGNED', 'CREDITED_PARTIAL'].includes(inv.document_status) &&
       setupStatusCache && setupStatusCache.operator_can_issue_nc;
     creditBtn.classList.toggle('hidden', !canCredit);
     creditBtn.dataset.credit = canCredit ? inv.document_id : '';
     if (canCredit) creditBtn._creditDetail = inv;
     const debitBtn = $('#btnInvoiceDetailDebit');
-    const canDebit = ['FT', 'FS', 'FR'].includes(inv.document_type) &&
+    const canDebit = isAdjustableOriginal(inv.document_type) &&
       ['SIGNED', 'DEBITED_PARTIAL'].includes(inv.document_status) &&
       setupStatusCache && setupStatusCache.operator_can_issue_nc && setupStatusCache.ready_to_debit;
     debitBtn.classList.toggle('hidden', !canDebit);
@@ -1169,11 +1205,10 @@
     const items = [
       ['门店信息', st.taxpayer_ok],
       ['税务凭证', st.at_credentials_ok],
-      ['发票系列', st.series_ok],
+      ['FT 系列', st.series_ok],
+      ['FS 系列', st.fs_series_ok],
       ['NC 系列', st.nc_series_ok],
       ['ND 系列', st.nd_series_ok],
-      ['FS 系列', st.fs_series_ok],
-      ['FR 系列', st.fr_series_ok],
       ['开票授权', st.activated_ok],
       ['操作员', st.operator_ok],
       ['可开票', st.ready_to_issue],
@@ -2306,7 +2341,7 @@
       request_id: requestId,
       operator_id: OPERATOR_ID,
       station_id: sid,
-      document_type: ($('#docType').value || 'FT'),
+      document_type: ($('#docType').value || DEFAULT_SALE_DOC),
       customer_nif: nif,
       customer_name: name,
       payment_method: pay,
@@ -2341,6 +2376,7 @@
     if (!assertCustomerNifOrToast(nif)) return;
     const body = {
       operator_id: OPERATOR_ID,
+      document_type: ($('#splitDocType').value || DEFAULT_SALE_DOC),
       mode: mode,
       station_id: sid,
       customer_nif: nif,
@@ -2818,7 +2854,6 @@
   $('#seriesNc').value = 'NC' + y + 'DEMO01';
   $('#seriesNd').value = 'ND' + y + 'DEMO01';
   $('#seriesFs').value = 'FS' + y + 'DEMO01';
-  $('#seriesFr').value = 'FR' + y + 'DEMO01';
   $('#saftYear').value = String(y);
   $('#saftMonth').value = String(new Date().getMonth() + 1);
 
@@ -2914,7 +2949,6 @@
   }
   $('#btnSeriesNd').onclick = () => registerSeries($('#btnSeriesNd'), '#seriesNd', 'ND', 'ND').catch(er => { toast(errText(er), 'error'); throw er; });
   $('#btnSeriesFs').onclick = () => registerSeries($('#btnSeriesFs'), '#seriesFs', 'FS', 'FS').catch(er => { toast(errText(er), 'error'); throw er; });
-  $('#btnSeriesFr').onclick = () => registerSeries($('#btnSeriesFr'), '#seriesFr', 'FR', 'FR').catch(er => { toast(errText(er), 'error'); throw er; });
 
   $('#btnActCloud').onclick = () => withBusy($('#btnActCloud'), '同步中…', async () => {
     setActCloudStatus('', '同步中…');

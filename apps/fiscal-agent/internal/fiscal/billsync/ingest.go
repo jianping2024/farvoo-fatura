@@ -156,7 +156,7 @@ func ValidateAndDedupeProducts(lines []Line) ([]store.ProductUpsertInput, error)
 
 // IngestCloudJob is the ONLY path that persists a Farvoo bill sync job into SQLite + products.
 // Caller must ack succeeded only after this returns nil.
-// already_invoiced is gated ONLY by store.HasSignedFTForSale (tax DB), never draft status.
+// already_invoiced is gated ONLY by store.HasSignedSaleForSale (tax DB), never draft status.
 func IngestCloudJob(db *store.DB, job CloudJob) (*store.BillSyncDraft, error) {
 	if db == nil {
 		return nil, ingestErr(CodePersistFailed, "db nil")
@@ -173,11 +173,11 @@ func IngestCloudJob(db *store.DB, job CloudJob) (*store.BillSyncDraft, error) {
 		return nil, ingestErr(CodeValidationFailed, "request_id and source_sale_id required")
 	}
 
-	hasFT, err := db.HasSignedFTForSale("", snap.SourceSystem, snap.SourceSaleID)
+	hasSale, err := db.HasSignedSaleForSale("", snap.SourceSystem, snap.SourceSaleID)
 	if err != nil {
 		return nil, ingestErr(CodePersistFailed, err.Error())
 	}
-	if hasFT {
+	if hasSale {
 		return nil, ingestErr(CodeAlreadyInvoiced, "bill already invoiced; use Agent reprint/NC")
 	}
 

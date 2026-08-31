@@ -359,7 +359,7 @@ func (d *DB) GetSetupStatus(storeID string) (*SetupStatus, error) {
 		s.OperatorCanIssueNC = canNC == 1
 	}
 	s.LocalProvisionAllowed = os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION") == "1"
-	s.ReadyToIssue = s.TaxpayerOK && s.SeriesOK && s.ActivatedOK && s.OperatorOK
+	s.ReadyToIssue = s.TaxpayerOK && s.SeriesOK && s.FSSeriesOK && s.ActivatedOK && s.OperatorOK
 	s.ReadyToCredit = s.NCSeriesOK && s.ActivatedOK && s.OperatorOK
 	s.ReadyToDebit = s.NDSeriesOK && s.ActivatedOK && s.OperatorOK
 	return s, nil
