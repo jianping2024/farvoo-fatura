@@ -34,7 +34,31 @@ func loadCreditedGrossByLine(q creditLineQuerier, originalInvoiceID string) (map
 	rows, err := q.Query(`SELECT r.original_line_id, COALESCE(SUM(CAST(il.line_gross AS REAL)), 0)
 		FROM invoice_line_references r
 		JOIN invoice_lines il ON il.id = r.credit_line_id
-		WHERE r.original_invoice_id = ?
+		JOIN invoices i ON i.id = il.invoice_id
+		WHERE r.original_invoice_id = ? AND i.document_type = 'NC'
+		GROUP BY r.original_line_id`, originalInvoiceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]decimal.Decimal{}
+	for rows.Next() {
+		var id string
+		var sum float64
+		if err := rows.Scan(&id, &sum); err != nil {
+			return nil, err
+		}
+		out[id], _ = compliance.ParseDecimal(fmt.Sprintf("%.2f", sum))
+	}
+	return out, rows.Err()
+}
+
+func loadDebitedGrossByLine(q creditLineQuerier, originalInvoiceID string) (map[string]decimal.Decimal, error) {
+	rows, err := q.Query(`SELECT r.original_line_id, COALESCE(SUM(CAST(il.line_gross AS REAL)), 0)
+		FROM invoice_line_references r
+		JOIN invoice_lines il ON il.id = r.credit_line_id
+		JOIN invoices i ON i.id = il.invoice_id
+		WHERE r.original_invoice_id = ? AND i.document_type = 'ND'
 		GROUP BY r.original_line_id`, originalInvoiceID)
 	if err != nil {
 		return nil, err

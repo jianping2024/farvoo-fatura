@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.30
+
+**M6 D6.1：FS / FR / ND**
+
+- `IssueDocument` 支持 `FT` / `FS` / `FR`；各自独立 ACTIVE 系列；手动开票可选类型。
+- ND：`service.IssueDebitNote` → `store.IssueND`；API `POST .../debit-notes`；原票 `debited_gross_total` / `DEBITED_*` 状态。
+- SAF-T 含 ND；Setup `nd_series_ok` / `fs_series_ok` / `fr_series_ok`；Admin 注册系列与全额借记按钮。
+- 回归：`scripts/fiscal-m6-regression.mjs`；设计 `docs/fiscal-m6-fs-fr-nd.zh.md`。
+
 ## 0.4.29
 
 **M5.1：SAF-T Windows-1252 校验修复**

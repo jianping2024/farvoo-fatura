@@ -20,6 +20,8 @@ const (
 	DocumentSigned          DocumentStatus = "SIGNED"
 	DocumentCreditedPartial DocumentStatus = "CREDITED_PARTIAL"
 	DocumentCreditedFull    DocumentStatus = "CREDITED_FULL"
+	DocumentDebitedPartial  DocumentStatus = "DEBITED_PARTIAL"
+	DocumentDebitedFull     DocumentStatus = "DEBITED_FULL"
 )
 
 // PrintStatus tracks physical output separately from tax status.
@@ -100,6 +102,18 @@ type CreditNoteRequest struct {
 	StationID         string
 	Reason            string
 	CreditFull        bool
+	Lines             []CreditLineRequest
+}
+
+// DebitNoteRequest wraps ND issuance input.
+type DebitNoteRequest struct {
+	StoreID           string
+	RequestID         string
+	OriginalInvoiceID string
+	OperatorID        string
+	StationID         string
+	Reason            string
+	DebitFull         bool
 	Lines             []CreditLineRequest
 }
 

@@ -387,7 +387,7 @@ func (s *FiscalService) SetupStatus(storeID string) (*store.SetupStatus, error) 
 	return s.db.GetSetupStatus(storeID)
 }
 
-// IssueDocument signs a sale snapshot as FT (P0).
+// IssueDocument signs a sale snapshot as FT / FS / FR.
 func (s *FiscalService) IssueDocument(ctx context.Context, req domain.IssueRequest, docType domain.DocumentType) (*domain.IssueResult, error) {
 	if s == nil || s.db == nil {
 		return nil, fmt.Errorf("fiscal: service not configured")
@@ -404,12 +404,17 @@ func (s *FiscalService) IssueDocument(ctx context.Context, req domain.IssueReque
 	if len(req.Snapshot.Lines) == 0 {
 		return nil, fmt.Errorf("fiscal: lines required")
 	}
-	st, err := s.db.GetSetupStatus(req.StoreID)
+	switch docType {
+	case domain.DocumentFT, domain.DocumentFS, domain.DocumentFR:
+	default:
+		return nil, coded(ErrCodeValidationFailed, "document_type must be FT, FS, or FR")
+	}
+	ok, err := s.db.HasActiveSeries(req.StoreID, string(docType))
 	if err != nil {
 		return nil, err
 	}
-	if !st.SeriesOK {
-		return nil, coded(ErrCodeSeriesMissing, "no ACTIVE FT series with validation_code")
+	if !ok {
+		return nil, coded(ErrCodeSeriesMissing, fmt.Sprintf("no ACTIVE %s series with validation_code", docType))
 	}
 	sig, err := s.ensureSigner()
 	if err != nil {

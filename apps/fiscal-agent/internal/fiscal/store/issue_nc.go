@@ -50,7 +50,7 @@ type IssueNCParams struct {
 }
 
 type origInvoiceRow struct {
-	ID, InvoiceNo, DocType, DocStatus, GrossTotal, CreditedGross string
+	ID, InvoiceNo, DocType, DocStatus, GrossTotal, CreditedGross, DebitedGross string
 	SourceSystem, SourceSaleID, ScopeType, ScopeID, FiscalPurpose  string
 	DisplayMetaJSON                                              string
 }
@@ -390,11 +390,11 @@ func loadOriginalInvoice(tx *sql.Tx, storeID, invoiceID string) (*origInvoiceRow
 	var o origInvoiceRow
 	var displayMeta sql.NullString
 	err := tx.QueryRow(`SELECT id, invoice_no, document_type, document_status, gross_total,
-		COALESCE(credited_gross_total,'0.00'),
+		COALESCE(credited_gross_total,'0.00'), COALESCE(debited_gross_total,'0.00'),
 		COALESCE(source_system,''), COALESCE(source_sale_id,''), COALESCE(scope_type,''), COALESCE(scope_id,''),
 		COALESCE(fiscal_purpose,''), display_meta_json
 		FROM invoices WHERE id = ? AND store_id = ?`, invoiceID, storeID).
-		Scan(&o.ID, &o.InvoiceNo, &o.DocType, &o.DocStatus, &o.GrossTotal, &o.CreditedGross,
+		Scan(&o.ID, &o.InvoiceNo, &o.DocType, &o.DocStatus, &o.GrossTotal, &o.CreditedGross, &o.DebitedGross,
 			&o.SourceSystem, &o.SourceSaleID, &o.ScopeType, &o.ScopeID, &o.FiscalPurpose, &displayMeta)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound

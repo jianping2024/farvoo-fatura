@@ -211,7 +211,7 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 |------|------|
 | `document_type` | `FT` `FS` `FR` `NC` `ND` |
 | `series.status` | `PENDING` `ACTIVE` `FAILED` `TERMINATED` |
-| `document_status` | `SIGNED` `CREDITED_PARTIAL` `CREDITED_FULL` |
+| `document_status` | `SIGNED` `CREDITED_PARTIAL` `CREDITED_FULL` `DEBITED_PARTIAL` `DEBITED_FULL` |
 | `print_status`（单据） | `NOT_PRINTED` `PENDING` `PROCESSING` `PRINTED` `PRINT_FAILED` `REPRINTED` |
 | `job_status`（任务） | `PENDING` `PROCESSING` `PRINTED` `FAILED_BEFORE_WRITE` `UNKNOWN_AFTER_WRITE` `FAILED` |
 | `print_purpose` | `ORIGINAL` `REPRINT` |
@@ -310,14 +310,14 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | 列 | 类型 | 必填 | 说明 |
 |----|------|------|------|
 | id | TEXT PK | 是 | = SourceID |
-| mesa_user_id | TEXT UQ | 是 | Farvoo user UUID |
+| mesa_user_id | TEXT UQ | 是 | P0 **Agent 本地创建**时写占位 `local-{id}`（满足 UNIQUE；**不同步** Farvoo user UUID） |
 | store_id | TEXT | 是 | |
-| role | TEXT | 是 | P0：`owner`（店主）或 `cashier`；Farvoo `frontdesk` 同步时映射为 `cashier` |
-| display_name | TEXT | 是 | |
+| role | TEXT | 是 | P0：`owner`（管理员）或 `cashier`（操作员） |
+| display_name | TEXT | 是 | Admin 手填 |
 | active | INTEGER | 是 | 默认 1 |
-| pin_hash | TEXT | 否 | 未设则不能离线 PIN 登录 |
-| can_issue_nc | INTEGER | 是 | 默认 0；店主可开 |
-| synced_at | TEXT | 否 | |
+| pin_hash | TEXT | 否 | Admin 设 PIN → argon2id；未设则不可登录 |
+| can_issue_nc | INTEGER | 是 | 默认 0；`owner` 创建时默认 1；管理员可改 |
+| synced_at | TEXT | 否 | P0 本地创建 **写 NULL**（列保留；不表示云同步） |
 | created_at | TEXT | 是 | UTC |
 | updated_at | TEXT | 是 | UTC |
 
@@ -432,6 +432,7 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | external_bill_id | TEXT | 否 | |
 | display_meta_json | TEXT | 否 | 桌号展示名等，不进 SAF-T |
 | credited_gross_total | TEXT | 是 | 默认 `"0.00"` |
+| debited_gross_total | TEXT | 是 | 默认 `"0.00"`；ND 累计借记额 |
 | created_at | TEXT | 是 | 签发提交时间 UTC |
 
 ### 6.11 `invoice_lines`

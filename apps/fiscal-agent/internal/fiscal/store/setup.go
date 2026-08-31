@@ -275,14 +275,24 @@ type SetupStatus struct {
 	ATCredsOK             bool   `json:"at_credentials_ok"`
 	SeriesOK              bool   `json:"series_ok"`
 	NCSeriesOK            bool   `json:"nc_series_ok"`
+	NDSeriesOK            bool   `json:"nd_series_ok"`
+	FSSeriesOK            bool   `json:"fs_series_ok"`
+	FRSeriesOK            bool   `json:"fr_series_ok"`
 	ActivatedOK           bool   `json:"activated_ok"`
 	OperatorOK            bool   `json:"operator_ok"`
 	SeriesCode            string `json:"series_code,omitempty"`
 	Validation            string `json:"validation_code,omitempty"`
 	NCSeriesCode          string `json:"nc_series_code,omitempty"`
 	NCValidation          string `json:"nc_validation_code,omitempty"`
+	NDSeriesCode          string `json:"nd_series_code,omitempty"`
+	NDValidation          string `json:"nd_validation_code,omitempty"`
+	FSSeriesCode          string `json:"fs_series_code,omitempty"`
+	FSValidation          string `json:"fs_validation_code,omitempty"`
+	FRSeriesCode          string `json:"fr_series_code,omitempty"`
+	FRValidation          string `json:"fr_validation_code,omitempty"`
 	ReadyToIssue          bool   `json:"ready_to_issue"`
 	ReadyToCredit         bool   `json:"ready_to_credit"`
+	ReadyToDebit          bool   `json:"ready_to_debit"`
 	OperatorCanIssueNC    bool   `json:"operator_can_issue_nc"`
 	LocalProvisionAllowed bool   `json:"local_provision_allowed"`
 }
@@ -313,6 +323,33 @@ func (d *DB) GetSetupStatus(storeID string) (*SetupStatus, error) {
 		s.NCSeriesCode = ncCode.String
 		s.NCValidation = ncVal.String
 	}
+	var ndCode, ndVal sql.NullString
+	err = d.SQL.QueryRow(`SELECT series_code, validation_code FROM series
+		WHERE store_id=? AND document_type='ND' AND status='ACTIVE' AND validation_code IS NOT NULL AND validation_code != ''
+		ORDER BY fiscal_year DESC LIMIT 1`, storeID).Scan(&ndCode, &ndVal)
+	if err == nil {
+		s.NDSeriesOK = true
+		s.NDSeriesCode = ndCode.String
+		s.NDValidation = ndVal.String
+	}
+	var fsCode, fsVal sql.NullString
+	err = d.SQL.QueryRow(`SELECT series_code, validation_code FROM series
+		WHERE store_id=? AND document_type='FS' AND status='ACTIVE' AND validation_code IS NOT NULL AND validation_code != ''
+		ORDER BY fiscal_year DESC LIMIT 1`, storeID).Scan(&fsCode, &fsVal)
+	if err == nil {
+		s.FSSeriesOK = true
+		s.FSSeriesCode = fsCode.String
+		s.FSValidation = fsVal.String
+	}
+	var frCode, frVal sql.NullString
+	err = d.SQL.QueryRow(`SELECT series_code, validation_code FROM series
+		WHERE store_id=? AND document_type='FR' AND status='ACTIVE' AND validation_code IS NOT NULL AND validation_code != ''
+		ORDER BY fiscal_year DESC LIMIT 1`, storeID).Scan(&frCode, &frVal)
+	if err == nil {
+		s.FRSeriesOK = true
+		s.FRSeriesCode = frCode.String
+		s.FRValidation = frVal.String
+	}
 	_ = d.SQL.QueryRow(`SELECT COUNT(1) FROM signing_keys WHERE status='ACTIVE'`).Scan(&n)
 	s.ActivatedOK = n > 0
 	_ = d.SQL.QueryRow(`SELECT COUNT(1) FROM operators WHERE store_id=? AND active=1`, storeID).Scan(&n)
@@ -324,5 +361,6 @@ func (d *DB) GetSetupStatus(storeID string) (*SetupStatus, error) {
 	s.LocalProvisionAllowed = os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION") == "1"
 	s.ReadyToIssue = s.TaxpayerOK && s.SeriesOK && s.ActivatedOK && s.OperatorOK
 	s.ReadyToCredit = s.NCSeriesOK && s.ActivatedOK && s.OperatorOK
+	s.ReadyToDebit = s.NDSeriesOK && s.ActivatedOK && s.OperatorOK
 	return s, nil
 }

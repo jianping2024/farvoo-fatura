@@ -10,7 +10,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/store"
 )
 
-// IssueManualFT builds snapshot via catalog.BuildManualSaleSnapshot then IssueDocument — ONLY manual FT entry.
+// IssueManualFT builds snapshot via catalog.BuildManualSaleSnapshot then IssueDocument — manual FT/FS/FR entry.
 func (s *FiscalService) IssueManualFT(ctx context.Context, in catalog.ManualIssueInput, operatorID, stationID string) (*domain.IssueResult, error) {
 	if strings.TrimSpace(in.RequestID) == "" {
 		return nil, fmt.Errorf("fiscal: request_id required")
@@ -22,13 +22,17 @@ func (s *FiscalService) IssueManualFT(ctx context.Context, in catalog.ManualIssu
 	if err != nil {
 		return nil, err
 	}
+	docType := domain.DocumentFT
+	if in.DocumentType != "" {
+		docType = domain.DocumentType(in.DocumentType)
+	}
 	return s.IssueDocument(ctx, domain.IssueRequest{
 		StoreID:    s.storeID,
 		RequestID:  in.RequestID,
 		OperatorID: operatorID,
 		StationID:  stationID,
 		Snapshot:   snap,
-	}, domain.DocumentFT)
+	}, docType)
 }
 
 // ListFiscalProducts proxies store.

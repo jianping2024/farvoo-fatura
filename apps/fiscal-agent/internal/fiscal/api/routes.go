@@ -80,6 +80,9 @@ func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/credit-notes", func(w http.ResponseWriter, r *http.Request) {
 		handleCreditNote(w, r, deps)
 	})
+	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/debit-notes", func(w http.ResponseWriter, r *http.Request) {
+		handleDebitNote(w, r, deps)
+	})
 	mux.HandleFunc("POST /local/v1/saft/exports", func(w http.ResponseWriter, r *http.Request) {
 		handleExportSAFT(w, r, deps)
 	})

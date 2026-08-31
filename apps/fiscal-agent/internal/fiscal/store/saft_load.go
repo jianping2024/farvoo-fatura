@@ -64,7 +64,7 @@ func (d *DB) LoadSAFTInvoicesForPeriod(storeID, startDate, endDate string) ([]SA
 		FROM invoices i
 		JOIN invoice_customer_snapshots cs ON cs.invoice_id = i.id
 		WHERE i.store_id = ? AND i.invoice_date >= ? AND i.invoice_date <= ?
-		AND i.document_type IN ('FT','NC','FS','FR')
+		AND i.document_type IN ('FT','NC','ND','FS','FR')
 		ORDER BY i.invoice_date, i.created_at`, storeID, startDate, endDate)
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (d *DB) LoadSAFTInvoicesForPeriod(storeID, startDate, endDate string) ([]SA
 		if err != nil {
 			return nil, err
 		}
-		if out[i].DocumentType == "NC" {
+		if out[i].DocumentType == "NC" || out[i].DocumentType == "ND" {
 			refs, err := d.loadNCReferences(invoiceID)
 			if err != nil {
 				return nil, err

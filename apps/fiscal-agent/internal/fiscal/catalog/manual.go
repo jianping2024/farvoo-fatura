@@ -21,9 +21,10 @@ type ManualLineInput struct {
 	Quantity       string `json:"quantity"`
 }
 
-// ManualIssueInput is the ONLY API input for manual FT (before snapshot build).
+// ManualIssueInput is the ONLY API input for manual FT/FS/FR (before snapshot build).
 type ManualIssueInput struct {
 	RequestID          string
+	DocumentType       string
 	CustomerNIF        string
 	CustomerName       string
 	PaymentMethod      string

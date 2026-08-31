@@ -55,12 +55,14 @@ type IssueRecord struct {
 	IdempotentHit  bool
 }
 
-// IssueFT is the ONLY SQLite write path that allocates series numbers and inserts signed invoices.
-// All issuance (API / UI / tests) must go through FiscalService → this method.
+// IssueFT is the ONLY SQLite write path for signed sale documents (FT / FS / FR).
+// NC and ND use IssueNC / IssueND.
 func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueRecord, error) {
 	_ = ctx
-	if p.DocType != domain.DocumentFT {
-		return nil, fmt.Errorf("store: only FT supported in P0 (got %s)", p.DocType)
+	switch p.DocType {
+	case domain.DocumentFT, domain.DocumentFS, domain.DocumentFR:
+	default:
+		return nil, fmt.Errorf("store: unsupported sale document type %s (use IssueNC/IssueND)", p.DocType)
 	}
 	if p.NowUTC.IsZero() {
 		p.NowUTC = time.Now().UTC()
@@ -109,11 +111,11 @@ func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueR
 	var lastNumber int64
 	var status string
 	err = tx.QueryRow(`SELECT id, series_code, validation_code, last_number, last_hash, status
-		FROM series WHERE store_id = ? AND document_type = 'FT' AND status = 'ACTIVE'
-		ORDER BY fiscal_year DESC LIMIT 1`, p.StoreID).
+		FROM series WHERE store_id = ? AND document_type = ? AND status = 'ACTIVE'
+		ORDER BY fiscal_year DESC LIMIT 1`, p.StoreID, string(p.DocType)).
 		Scan(&seriesID, &seriesCode, &validationCode, &lastNumber, &lastHash, &status)
 	if err != nil {
-		return nil, fmt.Errorf("store: active FT series: %w", err)
+		return nil, fmt.Errorf("store: active %s series: %w", p.DocType, err)
 	}
 	if validationCode == "" {
 		return nil, fmt.Errorf("store: series %s missing validation_code", seriesCode)

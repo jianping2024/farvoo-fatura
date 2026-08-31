@@ -10,7 +10,7 @@
 //   GET  /local/v1/fiscal-documents/by-request/{requestId}
 //   POST /local/v1/fiscal-documents/{documentId}/reprints
 //   POST /local/v1/fiscal-documents/{documentId}/credit-notes
-//   POST /local/v1/fiscal-documents/{documentId}/debit-notes  (deferred UI)
+//   POST /local/v1/fiscal-documents/{documentId}/debit-notes
 //   GET  /local/v1/print-jobs/{printJobId}
 //   GET  /local/v1/bill-drafts
 //   GET  /local/v1/bill-drafts/{id}

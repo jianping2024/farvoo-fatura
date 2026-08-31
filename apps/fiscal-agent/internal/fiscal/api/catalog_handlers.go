@@ -106,6 +106,7 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		RequestID          string                    `json:"request_id"`
 		OperatorID         string                    `json:"operator_id"`
 		StationID          string                    `json:"station_id"`
+		DocumentType       string                    `json:"document_type"`
 		CustomerNIF        string                    `json:"customer_nif"`
 		CustomerName       string                    `json:"customer_name"`
 		PaymentMethod      string                    `json:"payment_method"`
@@ -120,7 +121,8 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		body.OperatorID = "op-demo-cashier"
 	}
 	res, err := deps.Fiscal.IssueManualFT(r.Context(), catalog.ManualIssueInput{
-		RequestID: body.RequestID, CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
+		RequestID: body.RequestID, DocumentType: body.DocumentType,
+		CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
 		PaymentMethod: body.PaymentMethod, TableDisplayName: body.TableDisplayName, Lines: body.Lines,
 	}, body.OperatorID, body.StationID)
 	if errors.Is(err, store.ErrConflict) {

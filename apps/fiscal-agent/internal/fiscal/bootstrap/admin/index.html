@@ -363,6 +363,8 @@
               <label>发票类型</label>
               <select id="docType">
                 <option value="FT">FT · 发票（销售）</option>
+                <option value="FS">FS · 简化发票</option>
+                <option value="FR">FR · 收据</option>
               </select>
             </div>
             <div class="field">
@@ -557,6 +559,12 @@
           <button type="button" id="btnSeries">注册 FT 系列</button>
           <div class="field" style="margin-top:1rem"><label>NC 系列编号</label><input id="seriesNc" /></div>
           <button type="button" id="btnSeriesNc">注册 NC 系列</button>
+          <div class="field" style="margin-top:1rem"><label>ND 系列编号</label><input id="seriesNd" /></div>
+          <button type="button" id="btnSeriesNd">注册 ND 系列</button>
+          <div class="field" style="margin-top:1rem"><label>FS 系列编号</label><input id="seriesFs" /></div>
+          <button type="button" id="btnSeriesFs">注册 FS 系列</button>
+          <div class="field" style="margin-top:1rem"><label>FR 系列编号</label><input id="seriesFr" /></div>
+          <button type="button" id="btnSeriesFr">注册 FR 系列</button>
         </div>
         <div class="panel">
           <h2>4. 激活开票</h2>
@@ -574,9 +582,9 @@
           <button type="button" id="btnOp">确保收银操作员</button>
           <label class="check-row" for="chkCanIssueNC">
             <input type="checkbox" id="chkCanIssueNC" />
-            <span>允许冲销 NC</span>
+            <span>允许冲销 NC / 借记 ND</span>
           </label>
-          <p class="hint" style="margin:0.35rem 0 0">收银员默认不可冲销；勾选后当前操作员可在发票详情签发 NC。</p>
+          <p class="hint" style="margin:0.35rem 0 0">收银员默认不可冲销/借记；勾选后当前操作员可签发 NC 与 ND。</p>
         </div>
         <div class="panel">
           <h2>6. 打印机</h2>
@@ -615,6 +623,7 @@
       <dl class="detail-grid" id="invoiceDetailBody"></dl>
       <div class="actions">
         <button type="button" class="secondary hidden" id="btnInvoiceDetailCredit">冲销</button>
+        <button type="button" class="secondary hidden" id="btnInvoiceDetailDebit">借记</button>
         <button type="button" class="secondary" id="btnInvoiceDetailReprint">重打</button>
       </div>
     </div>
@@ -874,6 +883,13 @@
     creditBtn.classList.toggle('hidden', !canCredit);
     creditBtn.dataset.credit = canCredit ? inv.document_id : '';
     if (canCredit) creditBtn._creditDetail = inv;
+    const debitBtn = $('#btnInvoiceDetailDebit');
+    const canDebit = ['FT', 'FS', 'FR'].includes(inv.document_type) &&
+      ['SIGNED', 'DEBITED_PARTIAL'].includes(inv.document_status) &&
+      setupStatusCache && setupStatusCache.operator_can_issue_nc && setupStatusCache.ready_to_debit;
+    debitBtn.classList.toggle('hidden', !canDebit);
+    debitBtn.dataset.debit = canDebit ? inv.document_id : '';
+    if (canDebit) debitBtn._debitDetail = inv;
   }
 
   async function openInvoiceDetail(documentId) {
@@ -1155,10 +1171,14 @@
       ['税务凭证', st.at_credentials_ok],
       ['发票系列', st.series_ok],
       ['NC 系列', st.nc_series_ok],
+      ['ND 系列', st.nd_series_ok],
+      ['FS 系列', st.fs_series_ok],
+      ['FR 系列', st.fr_series_ok],
       ['开票授权', st.activated_ok],
       ['操作员', st.operator_ok],
       ['可开票', st.ready_to_issue],
-      ['可冲销', st.ready_to_credit]
+      ['可冲销', st.ready_to_credit],
+      ['可借记', st.ready_to_debit]
     ];
     el.innerHTML = items.map(([label, ok]) =>
       '<li class="' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : '○') + ' ' + label + '</li>'
@@ -1439,6 +1459,29 @@
       station_id: sid
     });
     await pollPrintJob(res.print_job_id, '重打已提交');
+  }
+
+  /** ONLY debit-note path for invoice detail drawer (full debit). */
+  async function debitInvoice(documentId, reason) {
+    const sid = requireStation($('#invStationSel').options.length ? $('#invStationSel') : $('#stationSel'));
+    const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/debit-notes', {
+      request_id: 'admin-debit-' + Date.now(),
+      operator_id: OPERATOR_ID,
+      station_id: sid,
+      reason: reason,
+      debit_full: true
+    });
+    if (res.idempotent_hit) {
+      toast('已存在相同借记，未新开', 'info');
+    } else if (res.print_job_id) {
+      await pollPrintJob(res.print_job_id, '借记已提交');
+    }
+    await refreshInvoices();
+    try {
+      const detail = await j('GET', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId));
+      renderInvoiceDetailModal(Object.assign({}, invoiceListCache.find(i => i.document_id === documentId) || {}, detail));
+    } catch (_) { /* ignore */ }
+    return res;
   }
 
   /** ONLY credit-note path for invoice detail drawer (full + partial). */
@@ -2263,6 +2306,7 @@
       request_id: requestId,
       operator_id: OPERATOR_ID,
       station_id: sid,
+      document_type: ($('#docType').value || 'FT'),
       customer_nif: nif,
       customer_name: name,
       payment_method: pay,
@@ -2515,6 +2559,19 @@
     if (!btn.dataset.credit || !detail) return;
     openCreditModal(detail);
   };
+  $('#btnInvoiceDetailDebit').onclick = () => withBusy($('#btnInvoiceDetailDebit'), '提交中…', async () => {
+    const btn = $('#btnInvoiceDetailDebit');
+    const detail = btn._debitDetail;
+    if (!btn.dataset.debit || !detail) return;
+    const reason = prompt('借记原因（1–200 字）', 'Ajuste');
+    if (reason == null) return;
+    const trimmed = reason.trim();
+    if (!trimmed) { toast('原因必填', 'error'); return; }
+    try {
+      await debitInvoice(detail.document_id, trimmed);
+      toast('借记成功', 'success');
+    } catch (er) { toast(errText(er), 'error'); throw er; }
+  });
 
   $('#creditTabFull').onclick = () => setCreditTab('full');
   $('#creditTabPartial').onclick = () => setCreditTab('partial');
@@ -2759,6 +2816,9 @@
 
   $('#series').value = 'FT' + y + 'DEMO01';
   $('#seriesNc').value = 'NC' + y + 'DEMO01';
+  $('#seriesNd').value = 'ND' + y + 'DEMO01';
+  $('#seriesFs').value = 'FS' + y + 'DEMO01';
+  $('#seriesFr').value = 'FR' + y + 'DEMO01';
   $('#saftYear').value = String(y);
   $('#saftMonth').value = String(new Date().getMonth() + 1);
 
@@ -2840,6 +2900,21 @@
       toast('NC 系列注册成功', 'success');
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
+
+  async function registerSeries(btn, inputId, docType, label) {
+    return withBusy(btn, '注册中…', async () => {
+      await j('POST', '/local/v1/setup/series/register', {
+        series_code: $(inputId).value,
+        document_type: docType,
+        fiscal_year: y
+      });
+      await refreshSetupStatus();
+      toast(label + ' 系列注册成功', 'success');
+    });
+  }
+  $('#btnSeriesNd').onclick = () => registerSeries($('#btnSeriesNd'), '#seriesNd', 'ND', 'ND').catch(er => { toast(errText(er), 'error'); throw er; });
+  $('#btnSeriesFs').onclick = () => registerSeries($('#btnSeriesFs'), '#seriesFs', 'FS', 'FS').catch(er => { toast(errText(er), 'error'); throw er; });
+  $('#btnSeriesFr').onclick = () => registerSeries($('#btnSeriesFr'), '#seriesFr', 'FR', 'FR').catch(er => { toast(errText(er), 'error'); throw er; });
 
   $('#btnActCloud').onclick = () => withBusy($('#btnActCloud'), '同步中…', async () => {
     setActCloudStatus('', '同步中…');
