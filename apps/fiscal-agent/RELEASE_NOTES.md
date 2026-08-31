@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.36
+
+**Admin 冲销/借记按钮：进 App 即加载 setup；清单与按钮对齐**
+
+- `ensureSetupStatus`：进入 App / 打开发票详情前保证已拉 setup（退出清空缓存）。
+- `ready_to_credit` / `ready_to_debit` 含 `operator_can_issue_nc`；详情按钮唯一门闩 `invoiceCanCredit` / `invoiceCanDebit`。
+- 修复：设置全绿但未进过设置页 → 借记按钮不出现。
+
 ## 0.4.35
 
 **ND 纠正差额：取消原票金额天花板**

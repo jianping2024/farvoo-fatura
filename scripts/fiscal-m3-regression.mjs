@@ -185,10 +185,11 @@ async function main() {
   try {
     const st = await uatJson('req', 'GET', '/local/v1/setup/status');
     record('setup-nc-series-ok', st.nc_series_ok === true && !!st.nc_series_code);
-    record('setup-ready-to-credit', st.ready_to_credit === true);
+    // ready_to_credit requires operator_can_issue_nc (aligned with Admin credit button).
+    record('setup-ready-to-credit-needs-perm', st.ready_to_credit === false && st.nc_series_ok === true);
   } catch (e) {
     record('setup-nc-series-ok', false, String(e));
-    record('setup-ready-to-credit', false, String(e));
+    record('setup-ready-to-credit-needs-perm', false, String(e));
   }
 
   try {
@@ -223,8 +224,10 @@ async function main() {
     await enableCreditPermission();
     const st = await uatJson('req', 'GET', '/local/v1/setup/status');
     record('operator-can-issue-nc', st.operator_can_issue_nc === true);
+    record('setup-ready-to-credit', st.ready_to_credit === true);
   } catch (e) {
     record('operator-can-issue-nc', false, String(e));
+    record('setup-ready-to-credit', false, String(e));
   }
 
   // M3.1: partial credit on 2-line FT

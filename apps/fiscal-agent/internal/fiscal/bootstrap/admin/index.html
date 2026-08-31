@@ -942,22 +942,33 @@
     btn.dataset.reprint = inv.document_id;
     btn._invoiceCopy = { hash: inv.hash || '', previous_hash: inv.previous_hash || '' };
     const creditBtn = $('#btnInvoiceDetailCredit');
-    const canCredit = isAdjustableOriginal(inv.document_type) &&
-      ['SIGNED', 'CREDITED_PARTIAL'].includes(inv.document_status) &&
-      setupStatusCache && setupStatusCache.operator_can_issue_nc;
+    const canCredit = invoiceCanCredit(inv);
     creditBtn.classList.toggle('hidden', !canCredit);
     creditBtn.dataset.credit = canCredit ? inv.document_id : '';
     if (canCredit) creditBtn._creditDetail = inv;
     const debitBtn = $('#btnInvoiceDetailDebit');
-    const canDebit = isAdjustableOriginal(inv.document_type) &&
-      ['SIGNED', 'DEBITED_PARTIAL', 'DEBITED_FULL'].includes(inv.document_status) &&
-      setupStatusCache && setupStatusCache.operator_can_issue_nc && setupStatusCache.ready_to_debit;
+    const canDebit = invoiceCanDebit(inv);
     debitBtn.classList.toggle('hidden', !canDebit);
     debitBtn.dataset.debit = canDebit ? inv.document_id : '';
     if (canDebit) debitBtn._debitDetail = inv;
   }
 
+  /** ONLY credit-button gate (matches setup ready_to_credit). */
+  function invoiceCanCredit(inv) {
+    return isAdjustableOriginal(inv.document_type) &&
+      ['SIGNED', 'CREDITED_PARTIAL'].includes(inv.document_status) &&
+      !!(setupStatusCache && setupStatusCache.ready_to_credit);
+  }
+
+  /** ONLY debit-button gate (matches setup ready_to_debit). */
+  function invoiceCanDebit(inv) {
+    return isAdjustableOriginal(inv.document_type) &&
+      ['SIGNED', 'DEBITED_PARTIAL', 'DEBITED_FULL'].includes(inv.document_status) &&
+      !!(setupStatusCache && setupStatusCache.ready_to_debit);
+  }
+
   async function openInvoiceDetail(documentId) {
+    await ensureSetupStatus();
     let inv = invoiceListCache.find(i => i.document_id === documentId) || { document_id: documentId };
     try {
       const detail = await j('GET', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId));
@@ -1293,6 +1304,12 @@
     const pemBlock = $('#localPemBlock');
     if (pemBlock) pemBlock.classList.toggle('hidden', !st.local_provision_allowed);
     return st;
+  }
+
+  /** ONLY loader for setupStatusCache (enterApp + invoice detail + settings). */
+  async function ensureSetupStatus() {
+    if (setupStatusCache) return setupStatusCache;
+    return refreshSetupStatus();
   }
 
   function renderHomeStats(totalInvoices, grossTotalSum) {
@@ -2571,6 +2588,7 @@
     $('#view-login').classList.add('hidden');
     $('#app-shell').classList.add('on');
     showView('home');
+    ensureSetupStatus().catch(e => toast(errText(e), 'error'));
     refreshPrinters().catch(() => {});
     ensureCustomerCatalog().catch(() => {});
     startBillDraftEvents();
@@ -2603,6 +2621,7 @@
 
   $('#btnLogout').onclick = () => {
     stopBillDraftEvents();
+    setupStatusCache = null;
     pin = '';
     $$('#pinDots i').forEach(d => d.classList.remove('on'));
     $('#app-shell').classList.remove('on');

@@ -310,7 +310,7 @@ M3 **不新增 migration**；使用现有表。
 | NC 系列注册 UI | **设置 §3** 增加按钮 **「注册 NC 系列」**；默认 `series_code = NC{YYYY}DEMO01`（与 FT 并列输入框，禁止复用 FT 的 code） |
 | 系列注册写路径 | 仍 **唯一** `POST /local/v1/setup/series/register` → `service.RegisterSeries`（`document_type: "NC"`） |
 | Setup 状态扩展 | `GET /local/v1/setup/status` 增加 **`nc_series_ok`**、**`nc_series_code`**、**`nc_validation_code`**（读 ACTIVE NC 系列，规则同 FT 的 `series_ok`） |
-| 可冲销就绪 | 增加 **`ready_to_credit`**：`nc_series_ok && activated_ok && operator_ok`（**不含** FT 的 `series_ok`） |
+| 可冲销就绪 | 增加 **`ready_to_credit`**：`nc_series_ok && activated_ok && operator_ok && operator_can_issue_nc`（**不含** FT 的 `series_ok`） |
 | 部分冲销 UI 输入 | **仅 `line_gross`**（两位小数字符串）；**不暴露** `quantity` 输入（避免 UI 与 `ParseQtyString` 精度分叉） |
 | 行选择与展示 | 详情抽屉内表格：原行号、描述、`line_gross`、**`remaining_line_gross`**（服务端计算，UI 禁止自行聚合） |
 | 多行 | 允许一次 NC 勾选多行；每行 `line_gross` 默认填该行 `remaining_line_gross`，可改小不可改大 |
@@ -404,7 +404,7 @@ M3 **不新增 migration**；使用现有表。
 
 **验收清单（M3.1 增量）：**
 
-1. 未注册 NC 系列时 Setup 显示 NC 未就绪；注册后 `ready_to_credit` 为 true（在已 activate + operator 前提下）。  
+1. 未注册 NC 系列时 Setup 显示 NC 未就绪；注册后且 `operator_can_issue_nc` 开启时 `ready_to_credit` 为 true（还须已 activate + operator）。  
 2. Admin 按行冲销：两行各冲部分 → 原票 `CREDITED_PARTIAL`；再冲剩余 → `CREDITED_FULL`。  
 3. 某行 `line_gross` 大于 `remaining_line_gross` → `credit_amount_exceeded`。  
 4. `can_issue_nc=0` 的操作员：Admin 无 checkbox 权限时按钮隐藏或提交 409（二者至少其一；**P0：API 必须 409**）。  
