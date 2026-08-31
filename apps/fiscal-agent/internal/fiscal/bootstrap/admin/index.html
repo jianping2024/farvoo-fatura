@@ -565,14 +565,15 @@
         </div>
         <div class="panel">
           <h2>3. 注册发票系列</h2>
-          <div class="field"><label>FT 系列编号</label><input id="series" /></div>
+          <p class="hint">日常开票只需 FT + FS；NC / ND 仅在需要冲销 / 借记时再注册。同类型已注册后不可再换新编号。</p>
+          <div class="field"><label>FT 系列编号</label><input id="series" /><span class="hint" id="seriesFtHint"></span></div>
           <button type="button" id="btnSeries">注册 FT 系列</button>
-          <div class="field" style="margin-top:1rem"><label>NC 系列编号</label><input id="seriesNc" /></div>
-          <button type="button" id="btnSeriesNc">注册 NC 系列</button>
-          <div class="field" style="margin-top:1rem"><label>ND 系列编号</label><input id="seriesNd" /></div>
-          <button type="button" id="btnSeriesNd">注册 ND 系列</button>
-          <div class="field" style="margin-top:1rem"><label>FS 系列编号</label><input id="seriesFs" /></div>
+          <div class="field" style="margin-top:1rem"><label>FS 系列编号</label><input id="seriesFs" /><span class="hint" id="seriesFsHint"></span></div>
           <button type="button" id="btnSeriesFs">注册 FS 系列</button>
+          <div class="field" style="margin-top:1rem"><label>NC 系列编号</label><input id="seriesNc" /><span class="hint" id="seriesNcHint"></span></div>
+          <button type="button" id="btnSeriesNc">注册 NC 系列</button>
+          <div class="field" style="margin-top:1rem"><label>ND 系列编号</label><input id="seriesNd" /><span class="hint" id="seriesNdHint"></span></div>
+          <button type="button" id="btnSeriesNd">注册 ND 系列</button>
         </div>
         <div class="panel">
           <h2>4. 激活开票</h2>
@@ -1220,24 +1221,53 @@
     const el = $('#setupChecklist');
     if (!st) { el.innerHTML = '<li class="no">无法读取状态</li>'; return; }
     const items = [
-      ['门店信息', st.taxpayer_ok],
-      ['税务凭证', st.at_credentials_ok],
-      ['FT 系列', st.series_ok],
-      ['FS 系列', st.fs_series_ok],
-      ['NC 系列', st.nc_series_ok],
-      ['ND 系列', st.nd_series_ok],
-      ['开票授权', st.activated_ok],
-      ['操作员', st.operator_ok],
-      ['可开票', st.ready_to_issue],
-      ['可冲销', st.ready_to_credit],
-      ['可借记', st.ready_to_debit]
+      ['门店信息', st.taxpayer_ok, ''],
+      ['税务凭证', st.at_credentials_ok, ''],
+      ['FT 系列', st.series_ok, st.series_code || ''],
+      ['FS 系列', st.fs_series_ok, st.fs_series_code || ''],
+      ['NC 系列', st.nc_series_ok, st.nc_series_code || ''],
+      ['ND 系列', st.nd_series_ok, st.nd_series_code || ''],
+      ['开票授权', st.activated_ok, ''],
+      ['操作员', st.operator_ok, ''],
+      ['可开票', st.ready_to_issue, ''],
+      ['可冲销', st.ready_to_credit, ''],
+      ['可借记', st.ready_to_debit, '']
     ];
-    el.innerHTML = items.map(([label, ok]) =>
-      '<li class="' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : '○') + ' ' + label + '</li>'
+    el.innerHTML = items.map(([label, ok, code]) =>
+      '<li class="' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : '○') + ' ' + label +
+      (code ? ' · ' + code : '') + '</li>'
     ).join('');
     if (st.activated_ok) {
       setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
     }
+    applySeriesForm(st);
+  }
+
+  /** ONLY UI binder for series inputs/buttons from setup status. */
+  function applySeriesForm(st) {
+    if (!st) return;
+    const rows = [
+      { ok: st.series_ok, code: st.series_code, input: '#series', btn: '#btnSeries', hint: '#seriesFtHint', label: 'FT' },
+      { ok: st.fs_series_ok, code: st.fs_series_code, input: '#seriesFs', btn: '#btnSeriesFs', hint: '#seriesFsHint', label: 'FS' },
+      { ok: st.nc_series_ok, code: st.nc_series_code, input: '#seriesNc', btn: '#btnSeriesNc', hint: '#seriesNcHint', label: 'NC' },
+      { ok: st.nd_series_ok, code: st.nd_series_code, input: '#seriesNd', btn: '#btnSeriesNd', hint: '#seriesNdHint', label: 'ND' }
+    ];
+    rows.forEach(r => {
+      const inp = $(r.input);
+      const btn = $(r.btn);
+      const hint = $(r.hint);
+      if (!inp || !btn) return;
+      if (r.ok && r.code) {
+        inp.value = r.code;
+        inp.readOnly = true;
+        btn.disabled = true;
+        if (hint) hint.textContent = '已注册 · 不可重复';
+      } else {
+        inp.readOnly = false;
+        btn.disabled = false;
+        if (hint) hint.textContent = '';
+      }
+    });
   }
 
   async function refreshSetupStatus() {
@@ -2929,44 +2959,31 @@
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnSeries').onclick = () => withBusy($('#btnSeries'), '注册中…', async () => {
-    try {
-      await j('POST', '/local/v1/setup/series/register', {
-        series_code: $('#series').value,
-        document_type: 'FT',
-        fiscal_year: y
-      });
-      await refreshSetupStatus();
-      toast('FT 系列注册成功', 'success');
-    } catch (er) { toast(errText(er), 'error'); throw er; }
-  });
+  $('#btnSeries').onclick = () => registerSeries($('#btnSeries'), '#series', 'FT', 'FT').catch(er => { toast(errText(er), 'error'); throw er; });
+  $('#btnSeriesFs').onclick = () => registerSeries($('#btnSeriesFs'), '#seriesFs', 'FS', 'FS').catch(er => { toast(errText(er), 'error'); throw er; });
+  $('#btnSeriesNc').onclick = () => registerSeries($('#btnSeriesNc'), '#seriesNc', 'NC', 'NC').catch(er => { toast(errText(er), 'error'); throw er; });
+  $('#btnSeriesNd').onclick = () => registerSeries($('#btnSeriesNd'), '#seriesNd', 'ND', 'ND').catch(er => { toast(errText(er), 'error'); throw er; });
 
-  $('#btnSeriesNc').onclick = () => withBusy($('#btnSeriesNc'), '注册中…', async () => {
-    try {
-      await j('POST', '/local/v1/setup/series/register', {
-        series_code: $('#seriesNc').value,
-        document_type: 'NC',
-        fiscal_year: y
-      });
-      await refreshSetupStatus();
-      toast('NC 系列注册成功', 'success');
-    } catch (er) { toast(errText(er), 'error'); throw er; }
-  });
-
+  /** ONLY Admin path to POST /local/v1/setup/series/register. */
   async function registerSeries(btn, inputId, docType, label) {
-    return withBusy(btn, '注册中…', async () => {
-      await j('POST', '/local/v1/setup/series/register', {
-        series_code: $(inputId).value,
+    await withBusy(btn, '注册中…', async () => {
+      const code = ($(inputId).value || '').trim();
+      const res = await j('POST', '/local/v1/setup/series/register', {
+        series_code: code,
         document_type: docType,
         fiscal_year: y
       });
       await refreshSetupStatus();
-      toast(label + ' 系列注册成功', 'success');
+      const shown = res.series_code || code || '';
+      if (res.idempotent_hit) {
+        toast(label + ' 系列已注册 · ' + shown, 'success');
+      } else {
+        toast(label + ' 系列注册成功 · ' + shown, 'success');
+      }
     });
+    // withBusy re-enables the button; re-bind from status (disable if already registered).
+    if (setupStatusCache) applySeriesForm(setupStatusCache);
   }
-  $('#btnSeriesNd').onclick = () => registerSeries($('#btnSeriesNd'), '#seriesNd', 'ND', 'ND').catch(er => { toast(errText(er), 'error'); throw er; });
-  $('#btnSeriesFs').onclick = () => registerSeries($('#btnSeriesFs'), '#seriesFs', 'FS', 'FS').catch(er => { toast(errText(er), 'error'); throw er; });
-
   $('#btnActCloud').onclick = () => withBusy($('#btnActCloud'), '同步中…', async () => {
     setActCloudStatus('', '同步中…');
     try {

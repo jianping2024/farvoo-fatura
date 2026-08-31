@@ -23,6 +23,7 @@
 - `scripts/fiscal-bill-sync-regression.mjs` — 账单同步挡重
 - `scripts/fiscal-reprint-regression.mjs` — 重打 Hash 不变
 - `scripts/fiscal-d63-d64-regression.mjs` — 备份 / 完整性 / 换机停用
+- `scripts/fiscal-series-register-regression.mjs` — 系列注册幂等 / 拒重复
 
 ---
 

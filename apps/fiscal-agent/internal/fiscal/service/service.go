@@ -23,12 +23,13 @@ import (
 
 // API error codes (stable).
 const (
-	ErrCodeTaxpayerMissing   = "taxpayer_missing"
-	ErrCodeATCredsMissing    = "at_credentials_missing"
-	ErrCodeSeriesMissing     = "series_missing"
-	ErrCodeSignerNotReady    = "signer_not_ready"
-	ErrCodeOpsActivatePending = "ops_activate_pending"
-	ErrCodeATSOAPFailed      = "at_soap_failed"
+	ErrCodeTaxpayerMissing      = "taxpayer_missing"
+	ErrCodeATCredsMissing       = "at_credentials_missing"
+	ErrCodeSeriesMissing        = "series_missing"
+	ErrCodeSeriesAlreadyActive  = "series_already_active"
+	ErrCodeSignerNotReady       = "signer_not_ready"
+	ErrCodeOpsActivatePending   = "ops_activate_pending"
+	ErrCodeATSOAPFailed         = "at_soap_failed"
 )
 
 // CodedError carries a stable error code for HTTP.
@@ -131,20 +132,32 @@ func (s *FiscalService) UpsertATCredentials(storeID, username, password string) 
 	return s.db.UpsertATCredentials(storeID, username, ct, meta)
 }
 
+// SeriesRegisterResult is returned by RegisterSeries (ONLY series registration entry).
+type SeriesRegisterResult struct {
+	Status        *store.SetupStatus
+	IdempotentHit bool
+	SeriesCode    string
+	DocumentType  string
+}
+
 // RegisterSeries calls AT (or mock) and persists ACTIVE series — ONLY series registration entry.
-func (s *FiscalService) RegisterSeries(ctx context.Context, storeID, seriesCode, docType string, fiscalYear int) (*store.SetupStatus, error) {
+// Same ACTIVE series_code → idempotent (no AT). Different ACTIVE code for same document_type → reject.
+func (s *FiscalService) RegisterSeries(ctx context.Context, storeID, seriesCode, docType string, fiscalYear int) (*SeriesRegisterResult, error) {
 	if storeID == "" {
 		storeID = s.storeID
 	}
+	docType = strings.ToUpper(strings.TrimSpace(docType))
 	if docType == "" {
 		docType = "FT"
 	}
 	if fiscalYear == 0 {
 		fiscalYear = time.Now().Year()
 	}
+	seriesCode = strings.TrimSpace(seriesCode)
 	if seriesCode == "" {
 		seriesCode = fmt.Sprintf("%s%dDEMO01", docType, fiscalYear)
 	}
+
 	st, err := s.db.GetSetupStatus(storeID)
 	if err != nil {
 		return nil, err
@@ -152,6 +165,24 @@ func (s *FiscalService) RegisterSeries(ctx context.Context, storeID, seriesCode,
 	if !st.TaxpayerOK {
 		return nil, coded(ErrCodeTaxpayerMissing, "configure taxpayer first")
 	}
+
+	hasSame, err := s.db.ActiveSeriesHasCode(storeID, seriesCode)
+	if err != nil {
+		return nil, err
+	}
+	if hasSame {
+		return &SeriesRegisterResult{Status: st, IdempotentHit: true, SeriesCode: seriesCode, DocumentType: docType}, nil
+	}
+
+	existingCode, err := s.db.ActiveSeriesCodeForDocType(storeID, docType)
+	if err == nil && !strings.EqualFold(existingCode, seriesCode) {
+		return nil, coded(ErrCodeSeriesAlreadyActive,
+			fmt.Sprintf("%s series already active (%s); refuse registering %s", docType, existingCode, seriesCode))
+	}
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return nil, err
+	}
+
 	cred, err := s.db.GetATCredentials(storeID)
 	if errors.Is(err, store.ErrNotFound) {
 		return nil, coded(ErrCodeATCredsMissing, "configure AT credentials first")
@@ -179,7 +210,11 @@ func (s *FiscalService) RegisterSeries(ctx context.Context, storeID, seriesCode,
 		return nil, err
 	}
 	_ = s.db.MarkATCredentialsOK(storeID)
-	return s.db.GetSetupStatus(storeID)
+	st, err = s.db.GetSetupStatus(storeID)
+	if err != nil {
+		return nil, err
+	}
+	return &SeriesRegisterResult{Status: st, IdempotentHit: false, SeriesCode: seriesCode, DocumentType: docType}, nil
 }
 
 // ActivateFiscal provisions device key + wraps product PEM — ONLY local-PEM activation entry (UAT).

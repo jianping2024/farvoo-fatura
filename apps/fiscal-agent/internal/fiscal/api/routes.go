@@ -321,12 +321,24 @@ func handleRegisterSeries(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
 		return
 	}
-	st, err := deps.Fiscal.RegisterSeries(r.Context(), body.StoreID, body.SeriesCode, body.DocType, body.FiscalYear)
+	res, err := deps.Fiscal.RegisterSeries(r.Context(), body.StoreID, body.SeriesCode, body.DocType, body.FiscalYear)
 	if err != nil {
 		writeCoded(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, st)
+	out := map[string]any{
+		"idempotent_hit": res.IdempotentHit,
+		"series_code":    res.SeriesCode,
+		"document_type":  res.DocumentType,
+	}
+	if res.Status != nil {
+		b, _ := json.Marshal(res.Status)
+		_ = json.Unmarshal(b, &out)
+		out["idempotent_hit"] = res.IdempotentHit
+		out["series_code"] = res.SeriesCode
+		out["document_type"] = res.DocumentType
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func handleActivate(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
@@ -628,6 +640,7 @@ func writeCoded(w http.ResponseWriter, err error) {
 		case service.ErrCodeATSOAPFailed:
 			status = http.StatusBadGateway
 		case service.ErrCodeSignerNotReady, service.ErrCodeOpsActivatePending, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing,
+			service.ErrCodeSeriesAlreadyActive,
 			service.ErrCodeCreditNotAllowed, service.ErrCodeCreditAmountExceeded, service.ErrCodeIdempotencyConflict,
 			service.ErrCodeNoInvoices:
 			status = http.StatusConflict

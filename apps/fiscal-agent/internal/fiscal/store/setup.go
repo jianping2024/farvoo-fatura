@@ -136,6 +136,29 @@ func (d *DB) UpsertActiveSeries(storeID, docType, seriesCode, validationCode str
 	return err
 }
 
+// ActiveSeriesCodeForDocType returns the ACTIVE series_code for store+document_type, or ErrNotFound.
+func (d *DB) ActiveSeriesCodeForDocType(storeID, docType string) (seriesCode string, err error) {
+	err = d.SQL.QueryRow(`
+		SELECT series_code FROM series
+		WHERE store_id=? AND document_type=? AND status='ACTIVE'
+		  AND validation_code IS NOT NULL AND validation_code != ''
+		ORDER BY fiscal_year DESC, updated_at DESC LIMIT 1`, storeID, docType).Scan(&seriesCode)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	return seriesCode, err
+}
+
+// ActiveSeriesHasCode reports whether store+series_code is ACTIVE with a validation_code.
+func (d *DB) ActiveSeriesHasCode(storeID, seriesCode string) (bool, error) {
+	var n int
+	err := d.SQL.QueryRow(`
+		SELECT COUNT(1) FROM series
+		WHERE store_id=? AND series_code=? AND status='ACTIVE'
+		  AND validation_code IS NOT NULL AND validation_code != ''`, storeID, seriesCode).Scan(&n)
+	return n > 0, err
+}
+
 // UpsertOperator creates cashier/owner used as invoices.source_id.
 func (d *DB) UpsertOperator(id, storeID, role, displayName, mesaUserID string) error {
 	now := time.Now().UTC().Format(time.RFC3339)

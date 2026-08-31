@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.33
+
+**系列注册防重复：幂等同码 + 拒同类型新码 + Admin 唯一路径**
+
+- `RegisterSeries`：同 ACTIVE `series_code` 幂等（不调 AT）；同类型已有不同 ACTIVE code → `series_already_active` (409)。
+- Admin §3：单一 `registerSeries`；就绪清单展示系列号；已注册输入只读并禁用按钮；提示日常只需 FT+FS。
+- 回归：`scripts/fiscal-series-register-regression.mjs`；单测 `TestRegisterSeries_IdempotentAndRejectSecondCode`。
+
 ## 0.4.32
 
 **M6 D6.3 / D6.4：备份校验 + 换机最小集**

@@ -5,6 +5,23 @@ import (
 	"testing"
 )
 
+func TestAdminHTMLSeriesRegisterSinglePath(t *testing.T) {
+	if !strings.Contains(adminHTML, "ONLY Admin path to POST /local/v1/setup/series/register") {
+		t.Fatal("admin must document single registerSeries path")
+	}
+	if !strings.Contains(adminHTML, "function registerSeries(") {
+		t.Fatal("admin must define registerSeries")
+	}
+	if !strings.Contains(adminHTML, "function applySeriesForm(") {
+		t.Fatal("admin must define applySeriesForm")
+	}
+	// No second inline withBusy register for FT/NC (must go through registerSeries).
+	if strings.Count(adminHTML, "POST', '/local/v1/setup/series/register'") != 1 {
+		t.Fatalf("want exactly one series/register call site in admin, got %d",
+			strings.Count(adminHTML, "POST', '/local/v1/setup/series/register'"))
+	}
+}
+
 func TestAdminHTMLUsesSharedToastOnly(t *testing.T) {
 	if !strings.Contains(adminHTML, `/fiscal-ui/toast.js`) {
 		t.Fatal("admin must load /fiscal-ui/toast.js")
