@@ -2,7 +2,7 @@
 
 > **状态：定稿**  
 > **权威：是**（M6 D6.1 行为与 API；库列仍以 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/*.sql` 为准）  
-> **对应实现：** M6 D6.1 已落地（`IssueDocument` FT/FS/FR、`store.IssueND`、`service.IssueDebitNote`、Admin 系列与借记）  
+> **对应实现：** M6 D6.1 已落地（`IssueDocument` FT/FS/FR、`store.IssueND`、`service.IssueDebitNote`）；**0.4.34** Admin 部分借记 + ND 原票回链（与 NC 共用 `adjustModal` / `CorrectiveOriginalForDocument`）  
 > **计划：** [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) M6  
 > **后续：** D6.2–D6.4 见 [`fiscal-m6-backup-swap.zh.md`](fiscal-m6-backup-swap.zh.md) / 认证清单（0.4.32 已完成）
 
@@ -16,6 +16,8 @@
 | 累计借记 | 原票 `debited_gross_total`；满额 → `DEBITED_FULL` |
 | 权限 | P0 复用 `operators.can_issue_nc`（Admin 文案「NC / ND」） |
 | SAF-T | 同月 **FT + NC + ND + FS + FR** 进入同一 XML；ND 行引用同 NC（`invoice_line_references`） |
+| Admin ND | 与 NC **同一** `openAdjustModal`；默认 **按行**；全额需确认；详情原票回链同 NC（`CorrectiveOriginalForDocument`） |
+| 原票借记余额 | 唯一读 `DebitRemainingForInvoice` → `debited_gross_total` / `remaining_debit_gross_total` / `debit_lines` |
 
 ## 2. API
 

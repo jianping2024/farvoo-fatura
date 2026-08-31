@@ -193,10 +193,32 @@ async function main() {
       request_id: `m6p-ft-nd-${Date.now()}`, operator_id: 'op-demo-cashier', document_type: 'FT',
       snapshot: saleSnapshot('sale-ft-nd'),
     }));
-    const nd = await uatJson('req', 'POST', `/local/v1/fiscal-documents/${ft.document_id}/debit-notes`, '--body', JSON.stringify({
-      request_id: 'm6p-nd-ft', operator_id: 'op-demo-cashier', reason: 'Ajuste', debit_full: true,
+    const detailBefore = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${ft.document_id}`);
+    record('ft-debit-remaining-before',
+      detailBefore.remaining_debit_gross_total === '10.00' && Array.isArray(detailBefore.debit_lines) && detailBefore.debit_lines.length >= 1,
+      `rem=${detailBefore.remaining_debit_gross_total}`);
+
+    const ndPartial = await uatJson('req', 'POST', `/local/v1/fiscal-documents/${ft.document_id}/debit-notes`, '--body', JSON.stringify({
+      request_id: 'm6p-nd-partial', operator_id: 'op-demo-cashier', reason: 'Ajuste parcial',
+      debit_full: false, lines: [{ original_line_number: 1, line_gross: '3.00' }],
     }));
-    record('nd-on-ft', nd.document_type === 'ND', ft.invoice_no);
+    const ndDetail = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${ndPartial.document_id}`);
+    record('nd-detail-original-ref',
+      ndDetail.original_invoice_id === ft.document_id && !!ndDetail.original_invoice_no && ndDetail.credit_reason === 'Ajuste parcial',
+      `orig=${ndDetail.original_invoice_no}`);
+
+    const origAfter = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${ft.document_id}`);
+    record('nd-partial-on-ft',
+      ndPartial.document_type === 'ND' && origAfter.document_status === 'DEBITED_PARTIAL' && origAfter.debited_gross_total === '3.00',
+      `status=${origAfter.document_status} debited=${origAfter.debited_gross_total}`);
+
+    const ndFull = await uatJson('req', 'POST', `/local/v1/fiscal-documents/${ft.document_id}/debit-notes`, '--body', JSON.stringify({
+      request_id: 'm6p-nd-ft-rest', operator_id: 'op-demo-cashier', reason: 'Ajuste resto', debit_full: true,
+    }));
+    const fullOrig = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${ft.document_id}`);
+    record('nd-full-remainder-on-ft',
+      ndFull.document_type === 'ND' && fullOrig.document_status === 'DEBITED_FULL',
+      fullOrig.document_status);
   } catch (e) {
     record('nd-on-ft', false, String(e));
   }

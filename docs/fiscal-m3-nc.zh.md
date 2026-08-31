@@ -359,7 +359,7 @@ M3 **不新增 migration**；使用现有表。
 
 **不返回** §16.4 的 `credited_gross_total` / `remaining_gross_total` / `lines`（那些仅属原票）。
 
-**唯一聚合实现：** `store.CreditOriginalForNC(ncInvoiceID)`（仅被 `GetInvoiceDetail` 与单测调用）。
+**唯一聚合实现：** `store.CorrectiveOriginalForDocument(correctiveInvoiceID)`（NC/ND 共用；仅被 `GetInvoiceDetail` 与单测调用）。
 
 **Admin：** NC 详情抽屉显示 **原票**（可点击打开原 FT 详情）与 **冲销原因**；仍经 **唯一** `renderInvoiceDetailModal`。
 
@@ -380,7 +380,7 @@ M3 **不新增 migration**；使用现有表。
 | NC 系列注册 UI | 复用 `RegisterSeries`（与 FT 按钮同 handler 模式） | 第二套 AT 调用 |
 | 操作员 `can_issue_nc` | `store.SetOperatorCanIssueNC` | handler 直写 SQL |
 | 行剩余额 | `store.CreditRemainingForInvoice` | Admin 内联聚合 |
-| NC 原票回链 | `store.CreditOriginalForNC` | handler / Admin JOIN `invoice_line_references` |
+| NC/ND 原票回链 | `store.CorrectiveOriginalForDocument` | handler / Admin JOIN `invoice_line_references` |
 | 冲销提交 | 仍 `creditInvoice` → `POST .../credit-notes` | 新函数 `partialCreditInvoice` 等第二入口 |
 | 权限校验 | `IssueCreditNote` 开头 | 仅在 UI 隐藏按钮 |
 

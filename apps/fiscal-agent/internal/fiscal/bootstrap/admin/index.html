@@ -187,7 +187,7 @@
     .credit-tabs button.active { border-color: var(--mode); font-weight: 600; }
     .credit-lines-table { width: 100%; font-size: 0.85rem; margin: 0.5rem 0; }
     .credit-lines-table th, .credit-lines-table td { padding: 0.35rem 0.25rem; text-align: left; }
-    .credit-line-amt { width: 5rem; padding: 0.25rem; }
+    .adjust-line-amt { width: 5rem; padding: 0.25rem; }
     .modal-backdrop {
       position: fixed; inset: 0; background: rgba(20,32,27,.45); z-index: 40;
       display: grid; place-items: center; padding: 1rem;
@@ -347,7 +347,7 @@
         <div class="topbar">
           <div>
             <h1>开票 · <span id="invOrderNo">—</span></h1>
-            <p class="hint">本单已确认，选择发票类型与购方信息后签发。</p>
+            <p class="hint" id="invOrderHint">本单已确认，选择发票类型与购方信息后签发。</p>
           </div>
         </div>
         <div class="split">
@@ -359,6 +359,10 @@
           </div>
           <div class="panel">
             <h2>发票信息</h2>
+            <div class="detail-row" id="invLinkedRow" style="display:none;margin-bottom:0.75rem">
+              <dt style="font-size:0.8rem;color:var(--muted, #666)">已关联发票</dt>
+              <dd style="margin:0.25rem 0 0"><button type="button" class="secondary" id="btnInvLinkedOpen">—</button></dd>
+            </div>
             <div class="field">
               <label>发票类型</label>
               <select id="docType">
@@ -392,7 +396,8 @@
             </div>
             <div class="actions">
               <button type="button" id="btnIssueInvoice">签发发票并打印</button>
-              <button type="button" class="secondary" data-nav="orders">稍后开票</button>
+              <button type="button" class="secondary hidden" id="btnOrderReprint">重打</button>
+              <button type="button" class="secondary" id="btnOrderInvoiceBack" data-nav="orders">稍后开票</button>
             </div>
           </div>
         </div>
@@ -655,38 +660,38 @@
     </div>
   </div>
 
-  <div id="creditModal" class="modal-backdrop hidden">
+  <div id="adjustModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:560px">
-      <h2 id="creditModalTitle">冲销发票</h2>
+      <h2 id="adjustModalTitle">纠正发票</h2>
       <div class="credit-tabs">
-        <button type="button" class="secondary active" id="creditTabFull">全额</button>
-        <button type="button" class="secondary" id="creditTabPartial">按行</button>
+        <button type="button" class="secondary" id="adjustTabFull">全额</button>
+        <button type="button" class="secondary active" id="adjustTabPartial">按行</button>
       </div>
-      <div id="creditFullPane">
-        <p class="hint">将对整张发票剩余金额全额冲销。</p>
+      <div id="adjustFullPane" class="hidden">
+        <p class="hint" id="adjustFullHint">将对整张发票剩余金额全额处理。</p>
       </div>
-      <div id="creditPartialPane" class="hidden">
+      <div id="adjustPartialPane">
         <table class="credit-lines-table">
-          <thead><tr><th></th><th>行</th><th>描述</th><th>原额</th><th>剩余</th><th>本次冲销</th></tr></thead>
-          <tbody id="creditLinesTbody"></tbody>
+          <thead><tr><th></th><th>行</th><th>描述</th><th>原额</th><th>剩余</th><th id="adjustAmtColHead">本次金额</th></tr></thead>
+          <tbody id="adjustLinesTbody"></tbody>
         </table>
       </div>
-      <div class="field"><label>冲销原因</label><input id="creditReason" placeholder="Devolucao" maxlength="200" /></div>
+      <div class="field"><label id="adjustReasonLabel">原因</label><input id="adjustReason" placeholder="" maxlength="200" /></div>
       <div class="actions">
-        <button type="button" id="btnCreditNext">下一步</button>
-        <button type="button" class="secondary" id="btnCreditCancel">取消</button>
+        <button type="button" id="btnAdjustNext">下一步</button>
+        <button type="button" class="secondary" id="btnAdjustCancel">取消</button>
       </div>
     </div>
   </div>
 
-  <div id="creditConfirmModal" class="modal-backdrop hidden">
+  <div id="adjustConfirmModal" class="modal-backdrop hidden">
     <div class="modal">
-      <h2>确认冲销</h2>
+      <h2 id="adjustConfirmTitle">确认签发</h2>
       <p class="hint">签发后不可撤销。</p>
-      <dl class="detail-grid" id="creditConfirmBody"></dl>
+      <dl class="detail-grid" id="adjustConfirmBody"></dl>
       <div class="actions">
-        <button type="button" id="btnCreditSubmit">确认签发 NC</button>
-        <button type="button" class="secondary" id="btnCreditConfirmBack">返回</button>
+        <button type="button" id="btnAdjustSubmit">确认签发</button>
+        <button type="button" class="secondary" id="btnAdjustConfirmBack">返回</button>
       </div>
     </div>
   </div>
@@ -776,8 +781,9 @@
   let lastOpenBillCount = 0;
   let billEventsSource = null;
   let setupStatusCache = null;
-  let creditTargetDetail = null;
-  let creditMode = 'full';
+  let adjustTargetDetail = null;
+  let adjustKind = null; // 'credit' | 'debit' — ONLY modal kind for NC/ND
+  let adjustMode = 'partial';
 
   async function j(method, path, body) {
     let r, t;
@@ -916,13 +922,19 @@
       invoiceDetailRow('类型', inv.document_type) +
       invoiceDetailRow('单据状态', inv.document_status) +
       invoiceDetailRow('打印状态', inv.print_status);
-    if (inv.document_type === 'NC') {
+    if (inv.document_type === 'NC' || inv.document_type === 'ND') {
       body += invoiceDetailOriginalRow(inv);
-      if (inv.credit_reason) body += invoiceDetailRow('冲销原因', inv.credit_reason);
+      if (inv.credit_reason) {
+        body += invoiceDetailRow(inv.document_type === 'ND' ? '借记原因' : '冲销原因', inv.credit_reason);
+      }
     }
     if (isAdjustableOriginal(inv.document_type) && inv.remaining_gross_total != null) {
       body += invoiceDetailRow('已冲金额', fmtMoney(inv.credited_gross_total)) +
         invoiceDetailRow('剩余可冲', fmtMoney(inv.remaining_gross_total));
+    }
+    if (isAdjustableOriginal(inv.document_type) && inv.remaining_debit_gross_total != null) {
+      body += invoiceDetailRow('已借记', fmtMoney(inv.debited_gross_total)) +
+        invoiceDetailRow('剩余可借记', fmtMoney(inv.remaining_debit_gross_total));
     }
     body += invoiceDetailHashRow('上张 Hash', inv.previous_hash, 'previous_hash') +
       invoiceDetailHashRow('Hash', inv.hash, 'hash');
@@ -947,15 +959,18 @@
   }
 
   async function openInvoiceDetail(documentId) {
-    let inv = invoiceListCache.find(i => i.document_id === documentId);
-    if (!inv) {
-      toast('找不到该发票', 'error');
-      return;
-    }
+    let inv = invoiceListCache.find(i => i.document_id === documentId) || { document_id: documentId };
     try {
       const detail = await j('GET', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId));
       inv = Object.assign({}, inv, detail);
-    } catch (_) { /* list cache fallback */ }
+    } catch (er) {
+      toast(errText(er), 'error');
+      return;
+    }
+    if (!inv.document_id) {
+      toast('找不到该发票', 'error');
+      return;
+    }
     renderInvoiceDetailModal(inv);
     $('#invoiceDetailModal').classList.remove('hidden');
   }
@@ -1300,12 +1315,15 @@
       const badge = o.status === 'issued'
         ? '<span class="badge done">已开票</span>'
         : (o.status === 'confirmed' ? '<span class="badge wait">待开票</span>' : '<span class="badge wait">编辑中</span>');
+      const ticket = (o.status === 'issued' && o.invoiceNo)
+        ? ('<div class="hint">' + o.invoiceNo + '</div>')
+        : '';
       const action = o.status === 'issued' ? '查看 →' : '继续 →';
       return '<tr class="clickable" data-open-order="' + o.id + '">' +
         '<td><strong>' + o.id + '</strong></td>' +
         '<td>' + (o.sourceLabel || '手动创建') + '</td>' +
         '<td>' + fmtMoney(orderTotal(o)) + '</td>' +
-        '<td>' + badge + '</td>' +
+        '<td>' + badge + ticket + '</td>' +
         '<td>' + action + '</td></tr>';
     }).join('');
   }
@@ -1371,7 +1389,39 @@
     currentOrder = order;
     $('#invOrderNo').textContent = order.id;
     renderInvoiceSummary(order);
+    syncOrderInvoicePanel(order);
     showView('order-invoice');
+  }
+
+  /** ONLY sync for manual order-invoice panel: issued → link + reprint; else → issue CTA. */
+  function syncOrderInvoicePanel(order) {
+    const issued = !!(order && order.status === 'issued' && order.documentId);
+    const linkRow = $('#invLinkedRow');
+    const linkBtn = $('#btnInvLinkedOpen');
+    const issueBtn = $('#btnIssueInvoice');
+    const reprintBtn = $('#btnOrderReprint');
+    const backBtn = $('#btnOrderInvoiceBack');
+    const hint = $('#invOrderHint');
+    const fields = [$('#docType'), $('#invNif'), $('#invName'), $('#invPay')];
+    fields.forEach(el => { if (el) el.disabled = issued; });
+    if (issued) {
+      hint.textContent = '本单已开票；可查看关联发票或重打。';
+      linkRow.style.display = '';
+      linkBtn.textContent = order.invoiceNo || order.documentId;
+      linkBtn.dataset.openOriginal = order.documentId;
+      issueBtn.classList.add('hidden');
+      reprintBtn.classList.remove('hidden');
+      reprintBtn.dataset.reprint = order.documentId;
+      backBtn.textContent = '返回列表';
+    } else {
+      hint.textContent = '本单已确认，选择发票类型与购方信息后签发。';
+      linkRow.style.display = 'none';
+      linkBtn.removeAttribute('data-open-original');
+      issueBtn.classList.remove('hidden');
+      reprintBtn.classList.add('hidden');
+      reprintBtn.removeAttribute('data-reprint');
+      backBtn.textContent = '稍后开票';
+    }
   }
 
   function clearProductFields() {
@@ -1543,16 +1593,20 @@
     await pollPrintJob(res.print_job_id, '重打已提交');
   }
 
-  /** ONLY debit-note path for invoice detail drawer (full debit). */
-  async function debitInvoice(documentId, reason) {
+  /** ONLY debit-note path for invoice detail drawer (full + partial). */
+  async function debitInvoice(documentId, opts) {
     const sid = requireStation($('#invStationSel').options.length ? $('#invStationSel') : $('#stationSel'));
-    const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/debit-notes', {
+    const reason = typeof opts === 'string' ? opts : opts.reason;
+    const debitFull = typeof opts === 'string' ? true : !!opts.debit_full;
+    const body = {
       request_id: 'admin-debit-' + Date.now(),
       operator_id: OPERATOR_ID,
       station_id: sid,
       reason: reason,
-      debit_full: true
-    });
+      debit_full: debitFull
+    };
+    if (!debitFull && opts.lines && opts.lines.length) body.lines = opts.lines;
+    const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/debit-notes', body);
     if (res.idempotent_hit) {
       toast('已存在相同借记，未新开', 'info');
     } else if (res.print_job_id) {
@@ -1593,17 +1647,22 @@
     return res;
   }
 
-  function setCreditTab(mode) {
-    creditMode = mode;
-    $('#creditTabFull').classList.toggle('active', mode === 'full');
-    $('#creditTabPartial').classList.toggle('active', mode === 'partial');
-    $('#creditFullPane').classList.toggle('hidden', mode !== 'full');
-    $('#creditPartialPane').classList.toggle('hidden', mode !== 'partial');
+  function setAdjustTab(mode) {
+    adjustMode = mode;
+    $('#adjustTabFull').classList.toggle('active', mode === 'full');
+    $('#adjustTabPartial').classList.toggle('active', mode === 'partial');
+    $('#adjustFullPane').classList.toggle('hidden', mode !== 'full');
+    $('#adjustPartialPane').classList.toggle('hidden', mode !== 'partial');
   }
 
-  function renderCreditLinesTable(detail) {
-    const lines = (detail && detail.lines) || [];
-    const tbody = $('#creditLinesTbody');
+  function adjustLinesForKind(detail) {
+    if (adjustKind === 'debit') return (detail && detail.debit_lines) || [];
+    return (detail && detail.lines) || [];
+  }
+
+  function renderAdjustLinesTable(detail) {
+    const lines = adjustLinesForKind(detail);
+    const tbody = $('#adjustLinesTbody');
     if (!lines.length) {
       tbody.innerHTML = '<tr><td colspan="6" class="hint">无可用行</td></tr>';
       return;
@@ -1612,73 +1671,96 @@
       const rem = ln.remaining_line_gross || '0.00';
       const disabled = parseFloat(rem) <= 0 ? ' disabled' : '';
       return '<tr data-line-id="' + ln.line_id + '">' +
-        '<td><input type="checkbox" class="credit-line-chk"' + disabled + ' data-ln="' + ln.line_number + '" /></td>' +
+        '<td><input type="checkbox" class="adjust-line-chk"' + disabled + ' data-ln="' + ln.line_number + '" /></td>' +
         '<td>' + ln.line_number + '</td>' +
         '<td>' + (ln.description || '—') + '</td>' +
         '<td>' + ln.line_gross + '</td>' +
         '<td>' + rem + '</td>' +
-        '<td><input class="credit-line-amt" type="text" inputmode="decimal" value="' + rem + '" data-max="' + rem + '"' + disabled + ' /></td></tr>';
+        '<td><input class="adjust-line-amt" type="text" inputmode="decimal" value="' + rem + '" data-max="' + rem + '"' + disabled + ' /></td></tr>';
     }).join('');
   }
 
-  function openCreditModal(detail) {
-    creditTargetDetail = detail;
-    $('#creditModalTitle').textContent = '冲销 · ' + (detail.invoice_no || '');
-    $('#creditReason').value = 'Devolucao';
-    setCreditTab('full');
-    renderCreditLinesTable(detail);
-    $('#creditModal').classList.remove('hidden');
+  /** ONLY NC/ND adjust modal opener (shared UI; submit still creditInvoice / debitInvoice). */
+  function openAdjustModal(kind, detail) {
+    adjustKind = kind;
+    adjustTargetDetail = detail;
+    const isDebit = kind === 'debit';
+    $('#adjustModalTitle').textContent = (isDebit ? '借记 · ' : '冲销 · ') + (detail.invoice_no || '');
+    $('#adjustFullHint').textContent = isDebit
+      ? '将对整张发票剩余可借记金额全额借记（少见，请确认）。'
+      : '将对整张发票剩余金额全额冲销。';
+    $('#adjustAmtColHead').textContent = isDebit ? '本次借记' : '本次冲销';
+    $('#adjustReasonLabel').textContent = isDebit ? '借记原因' : '冲销原因';
+    $('#adjustReason').value = isDebit ? 'Ajuste' : 'Devolucao';
+    $('#adjustReason').placeholder = isDebit ? 'Ajuste' : 'Devolucao';
+    setAdjustTab(isDebit ? 'partial' : 'full');
+    renderAdjustLinesTable(detail);
+    $('#adjustModal').classList.remove('hidden');
   }
 
-  function closeCreditModal() {
-    $('#creditModal').classList.add('hidden');
-    creditTargetDetail = null;
+  function closeAdjustModal() {
+    $('#adjustModal').classList.add('hidden');
+    adjustTargetDetail = null;
+    adjustKind = null;
   }
 
-  function closeCreditConfirmModal() {
-    $('#creditConfirmModal').classList.add('hidden');
+  function closeAdjustConfirmModal() {
+    $('#adjustConfirmModal').classList.add('hidden');
   }
 
-  function readCreditSubmitPayload() {
-    const reason = String($('#creditReason').value || '').trim();
-    if (!reason) throw { error: 'validation_failed', message: '请填写冲销原因' };
-    if (reason.length > 200) throw { error: 'validation_failed', message: '冲销原因最多 200 字' };
-    if (creditMode === 'full') {
-      return { reason: reason, credit_full: true, summaryGross: creditTargetDetail.remaining_gross_total || creditTargetDetail.gross_total, linesSummary: '全额冲销' };
+  function readAdjustSubmitPayload() {
+    const reason = String($('#adjustReason').value || '').trim();
+    if (!reason) throw { error: 'validation_failed', message: '请填写原因' };
+    if (reason.length > 200) throw { error: 'validation_failed', message: '原因最多 200 字' };
+    const isDebit = adjustKind === 'debit';
+    const fullLabel = isDebit ? '全额借记' : '全额冲销';
+    if (adjustMode === 'full') {
+      const rem = isDebit
+        ? (adjustTargetDetail.remaining_debit_gross_total || adjustTargetDetail.gross_total)
+        : (adjustTargetDetail.remaining_gross_total || adjustTargetDetail.gross_total);
+      const out = { reason: reason, summaryGross: rem, linesSummary: fullLabel };
+      if (isDebit) out.debit_full = true;
+      else out.credit_full = true;
+      return out;
     }
     const selected = [];
     let total = 0;
-    $$('#creditLinesTbody tr').forEach(row => {
-      const chk = row.querySelector('.credit-line-chk');
+    $$('#adjustLinesTbody tr').forEach(row => {
+      const chk = row.querySelector('.adjust-line-chk');
       if (!chk || !chk.checked) return;
       const ln = parseInt(chk.dataset.ln, 10);
-      const amtIn = row.querySelector('.credit-line-amt');
+      const amtIn = row.querySelector('.adjust-line-amt');
       const amt = String(amtIn.value || '').trim();
       const max = parseFloat(amtIn.dataset.max || '0');
       const val = parseFloat(amt);
-      if (!amt || isNaN(val) || val <= 0) throw { error: 'validation_failed', message: '请填写有效冲销金额' };
-      if (val > max + 0.001) throw { error: 'validation_failed', message: '冲销金额不能超过剩余' };
+      if (!amt || isNaN(val) || val <= 0) throw { error: 'validation_failed', message: '请填写有效金额' };
+      if (val > max + 0.001) throw { error: 'validation_failed', message: '金额不能超过剩余' };
       selected.push({ original_line_number: ln, line_gross: val.toFixed(2) });
       total += val;
     });
     if (!selected.length) throw { error: 'validation_failed', message: '请至少选择一行' };
-    return {
+    const out = {
       reason: reason,
-      credit_full: false,
       lines: selected,
       summaryGross: total.toFixed(2),
       linesSummary: selected.map(l => '行' + l.original_line_number + ' €' + l.line_gross).join('；')
     };
+    if (isDebit) out.debit_full = false;
+    else out.credit_full = false;
+    return out;
   }
 
-  function showCreditConfirm(payload) {
-    $('#creditConfirmBody').innerHTML =
-      invoiceDetailRow('原票号', creditTargetDetail.invoice_no) +
-      invoiceDetailRow('本 NC 合计', fmtMoney(payload.summaryGross)) +
-      invoiceDetailRow('冲销行', payload.linesSummary) +
+  function showAdjustConfirm(payload) {
+    const isDebit = adjustKind === 'debit';
+    $('#adjustConfirmTitle').textContent = isDebit ? '确认借记' : '确认冲销';
+    $('#btnAdjustSubmit').textContent = isDebit ? '确认签发 ND' : '确认签发 NC';
+    $('#adjustConfirmBody').innerHTML =
+      invoiceDetailRow('原票号', adjustTargetDetail.invoice_no) +
+      invoiceDetailRow(isDebit ? '本 ND 合计' : '本 NC 合计', fmtMoney(payload.summaryGross)) +
+      invoiceDetailRow(isDebit ? '借记行' : '冲销行', payload.linesSummary) +
       invoiceDetailRow('原因', payload.reason);
-    $('#creditConfirmModal').classList.remove('hidden');
-    $('#creditConfirmModal')._payload = payload;
+    $('#adjustConfirmModal').classList.remove('hidden');
+    $('#adjustConfirmModal')._payload = payload;
   }
 
   /** ONLY query builder for invoice list + home today stats. */
@@ -2402,10 +2484,10 @@
     currentOrder.requestId = requestId;
     upsertOrder(currentOrder);
     await pollPrintJob(res.print_job_id, '已签发 ' + (res.invoice_no || 'FT'));
-    showView('invoices');
     await refreshHomeStats();
     await refreshInvoices();
     renderOrdersList();
+    openOrderForInvoice(currentOrder);
   }
 
   async function issueBill(mode, scopeId, buyer) {
@@ -2640,46 +2722,44 @@
     const btn = $('#btnInvoiceDetailCredit');
     const detail = btn._creditDetail;
     if (!btn.dataset.credit || !detail) return;
-    openCreditModal(detail);
+    openAdjustModal('credit', detail);
   };
-  $('#btnInvoiceDetailDebit').onclick = () => withBusy($('#btnInvoiceDetailDebit'), '提交中…', async () => {
+  $('#btnInvoiceDetailDebit').onclick = () => {
     const btn = $('#btnInvoiceDetailDebit');
     const detail = btn._debitDetail;
     if (!btn.dataset.debit || !detail) return;
-    const reason = prompt('借记原因（1–200 字）', 'Ajuste');
-    if (reason == null) return;
-    const trimmed = reason.trim();
-    if (!trimmed) { toast('原因必填', 'error'); return; }
-    try {
-      await debitInvoice(detail.document_id, trimmed);
-      toast('借记成功', 'success');
-    } catch (er) { toast(errText(er), 'error'); throw er; }
-  });
+    openAdjustModal('debit', detail);
+  };
 
-  $('#creditTabFull').onclick = () => setCreditTab('full');
-  $('#creditTabPartial').onclick = () => setCreditTab('partial');
-  $('#btnCreditCancel').onclick = () => closeCreditModal();
-  $('#creditModal').addEventListener('click', e => {
-    if (e.target.id === 'creditModal') closeCreditModal();
+  $('#adjustTabFull').onclick = () => setAdjustTab('full');
+  $('#adjustTabPartial').onclick = () => setAdjustTab('partial');
+  $('#btnAdjustCancel').onclick = () => closeAdjustModal();
+  $('#adjustModal').addEventListener('click', e => {
+    if (e.target.id === 'adjustModal') closeAdjustModal();
   });
-  $('#btnCreditNext').onclick = () => {
+  $('#btnAdjustNext').onclick = () => {
     try {
-      const payload = readCreditSubmitPayload();
-      showCreditConfirm(payload);
+      const payload = readAdjustSubmitPayload();
+      showAdjustConfirm(payload);
     } catch (er) { toast(errText(er), 'error'); }
   };
-  $('#btnCreditConfirmBack').onclick = () => closeCreditConfirmModal();
-  $('#creditConfirmModal').addEventListener('click', e => {
-    if (e.target.id === 'creditConfirmModal') closeCreditConfirmModal();
+  $('#btnAdjustConfirmBack').onclick = () => closeAdjustConfirmModal();
+  $('#adjustConfirmModal').addEventListener('click', e => {
+    if (e.target.id === 'adjustConfirmModal') closeAdjustConfirmModal();
   });
-  $('#btnCreditSubmit').onclick = () => withBusy($('#btnCreditSubmit'), '提交中…', async () => {
-    const payload = $('#creditConfirmModal')._payload;
-    if (!payload || !creditTargetDetail) return;
+  $('#btnAdjustSubmit').onclick = () => withBusy($('#btnAdjustSubmit'), '提交中…', async () => {
+    const payload = $('#adjustConfirmModal')._payload;
+    if (!payload || !adjustTargetDetail || !adjustKind) return;
     try {
-      await creditInvoice(creditTargetDetail.document_id, payload);
-      closeCreditConfirmModal();
-      closeCreditModal();
-      toast('冲销成功', 'success');
+      if (adjustKind === 'debit') {
+        await debitInvoice(adjustTargetDetail.document_id, payload);
+        toast('借记成功', 'success');
+      } else {
+        await creditInvoice(adjustTargetDetail.document_id, payload);
+        toast('冲销成功', 'success');
+      }
+      closeAdjustConfirmModal();
+      closeAdjustModal();
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
@@ -2705,6 +2785,17 @@
     try { await issueCurrentOrder(); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
+  $('#btnOrderReprint').onclick = () => withBusy($('#btnOrderReprint'), '重打中…', async () => {
+    const id = $('#btnOrderReprint').dataset.reprint;
+    if (!id) return;
+    try { await reprintInvoice(id); }
+    catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+  $('#btnInvLinkedOpen').onclick = () => {
+    const id = $('#btnInvLinkedOpen').dataset.openOriginal;
+    if (!id) return;
+    openInvoiceDetail(id).catch(er => toast(errText(er), 'error'));
+  };
 
   bindCustomerNifAutofill($('#invNif'), $('#invName'));
   bindCustomerNifAutofill($('#cNif'), $('#cName'));

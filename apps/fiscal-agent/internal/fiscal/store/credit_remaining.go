@@ -134,3 +134,69 @@ func (d *DB) CreditRemainingForInvoice(invoiceID string) (*CreditInvoiceRemainin
 		Lines:               lines,
 	}, nil
 }
+
+// DebitInvoiceRemaining aggregates debit balances for an invoice.
+type DebitInvoiceRemaining struct {
+	DebitedGrossTotal   string                `json:"debited_gross_total"`
+	RemainingGrossTotal string                `json:"remaining_debit_gross_total"`
+	Lines               []CreditLineRemaining `json:"debit_lines"`
+}
+
+// DebitRemainingForInvoice is the ONLY reader for per-line remaining debit gross.
+func (d *DB) DebitRemainingForInvoice(invoiceID string) (*DebitInvoiceRemaining, error) {
+	var gross, debited string
+	err := d.SQL.QueryRow(`SELECT gross_total, COALESCE(debited_gross_total,'0.00') FROM invoices WHERE id = ?`, invoiceID).
+		Scan(&gross, &debited)
+	if err != nil {
+		return nil, err
+	}
+	grossDec, _ := compliance.ParseDecimal(gross)
+	debitedDec, _ := compliance.ParseDecimal(debited)
+	remainingTot := grossDec.Sub(debitedDec)
+	if remainingTot.IsNegative() {
+		remainingTot = decimal.Zero
+	}
+
+	debitedByLine, err := loadDebitedGrossByLine(d.SQL, invoiceID)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := d.SQL.Query(`SELECT id, line_number, COALESCE(display_name,''), product_description, line_gross
+		FROM invoice_lines WHERE invoice_id = ? ORDER BY line_number`, invoiceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var lines []CreditLineRemaining
+	for rows.Next() {
+		var l CreditLineRemaining
+		var desc, display string
+		if err := rows.Scan(&l.LineID, &l.LineNumber, &display, &desc, &l.LineGross); err != nil {
+			return nil, err
+		}
+		if display != "" {
+			l.Description = display
+		} else {
+			l.Description = desc
+		}
+		origGross, _ := compliance.ParseDecimal(l.LineGross)
+		debitedLine := debitedByLine[l.LineID]
+		rem := origGross.Sub(debitedLine)
+		if rem.IsNegative() {
+			rem = decimal.Zero
+		}
+		l.RemainingLineGross = compliance.Money2(rem)
+		lines = append(lines, l)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &DebitInvoiceRemaining{
+		DebitedGrossTotal:   debited,
+		RemainingGrossTotal: compliance.Money2(remainingTot),
+		Lines:               lines,
+	}, nil
+}

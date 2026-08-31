@@ -311,13 +311,25 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 		"function formatInvoiceBuyerCell",
 		"function renderInvoiceDetailModal",
 		"function openInvoiceDetail",
+		"function syncOrderInvoicePanel",
+		"function openAdjustModal",
 		"async function refreshInvoices",
 		"async function reprintInvoice",
 		"async function creditInvoice",
+		"async function debitInvoice",
 	} {
 		if n := strings.Count(adminHTML, fn); n != 1 {
 			t.Fatalf("%s must appear exactly once, got %d", fn, n)
 		}
+	}
+	if strings.Contains(adminHTML, `id="creditModal"`) || strings.Contains(adminHTML, "prompt(") {
+		t.Fatal("creditModal and prompt() debit path must be removed; use adjustModal only")
+	}
+	if strings.Count(adminHTML, `id="adjustModal"`) != 1 {
+		t.Fatal("adjustModal must exist exactly once")
+	}
+	if strings.Count(adminHTML, `id="btnOrderReprint"`) != 1 {
+		t.Fatal("btnOrderReprint must exist exactly once")
 	}
 	if strings.Count(adminHTML, `id="invoiceDetailModal"`) != 1 {
 		t.Fatal("invoiceDetailModal must exist exactly once")

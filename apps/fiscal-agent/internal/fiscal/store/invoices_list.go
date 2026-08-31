@@ -55,12 +55,15 @@ type InvoiceDetail struct {
 	TaxPayable          string                `json:"tax_payable"`
 	SourceSaleID        string                `json:"source_sale_id,omitempty"`
 	OrderLabel          string                `json:"order_label,omitempty"`
-	CreditedGrossTotal  string                `json:"credited_gross_total,omitempty"`
-	RemainingGrossTotal string                `json:"remaining_gross_total,omitempty"`
-	Lines               []CreditLineRemaining `json:"lines,omitempty"`
-	OriginalInvoiceID   string                `json:"original_invoice_id,omitempty"`
-	OriginalInvoiceNo   string                `json:"original_invoice_no,omitempty"`
-	CreditReason        string                `json:"credit_reason,omitempty"`
+	CreditedGrossTotal       string                `json:"credited_gross_total,omitempty"`
+	RemainingGrossTotal      string                `json:"remaining_gross_total,omitempty"`
+	Lines                    []CreditLineRemaining `json:"lines,omitempty"`
+	DebitedGrossTotal        string                `json:"debited_gross_total,omitempty"`
+	RemainingDebitGrossTotal string                `json:"remaining_debit_gross_total,omitempty"`
+	DebitLines               []CreditLineRemaining `json:"debit_lines,omitempty"`
+	OriginalInvoiceID        string                `json:"original_invoice_id,omitempty"`
+	OriginalInvoiceNo        string                `json:"original_invoice_no,omitempty"`
+	CreditReason             string                `json:"credit_reason,omitempty"` // NC/ND reason
 }
 
 var allowedInvoicePageSizes = map[int]bool{10: true, 20: true}

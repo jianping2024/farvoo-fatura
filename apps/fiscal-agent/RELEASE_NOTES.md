@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.34
+
+**ND 部分借记 UI + 原票回链；手工开票已开关联**
+
+- ND/NC 原票：唯一读 `CorrectiveOriginalForDocument`（废止 `CreditOriginalForNC`）；原票借记余额唯一读 `DebitRemainingForInvoice`。
+- Admin：单一 `adjustModal` / `openAdjustModal`（NC+ND）；借记默认按行；`debitInvoice` 支持部分/全额；ND 详情原票按钮。
+- 手工开票已开：唯一 `syncOrderInvoicePanel` — 显示关联票号、签发隐藏、主 CTA「重打」走 `reprintInvoice`；`openInvoiceDetail` 可按 id GET（不依赖列表缓存）。
+- 回归：`fiscal-m6-product-regression.mjs`（部分 ND + ND 详情原票）；单测 `TestCorrectiveOriginalForDocument_*`。
+
 ## 0.4.33
 
 **系列注册防重复：幂等同码 + 拒同类型新码 + Admin 唯一路径**
