@@ -939,7 +939,7 @@
       invoiceDetailHashRow('Hash', inv.hash, 'hash');
     $('#invoiceDetailBody').innerHTML = body;
     const btn = $('#btnInvoiceDetailReprint');
-    btn.dataset.reprint = inv.document_id;
+    btn._reprintDocId = inv.document_id;
     btn._invoiceCopy = { hash: inv.hash || '', previous_hash: inv.previous_hash || '' };
     const creditBtn = $('#btnInvoiceDetailCredit');
     const canCredit = invoiceCanCredit(inv);
@@ -1427,7 +1427,7 @@
       linkBtn.dataset.openOriginal = order.documentId;
       issueBtn.classList.add('hidden');
       reprintBtn.classList.remove('hidden');
-      reprintBtn.dataset.reprint = order.documentId;
+      reprintBtn._reprintDocId = order.documentId;
       backBtn.textContent = '返回列表';
     } else {
       hint.textContent = '本单已确认，选择发票类型与购方信息后签发。';
@@ -1435,7 +1435,7 @@
       linkBtn.removeAttribute('data-open-original');
       issueBtn.classList.remove('hidden');
       reprintBtn.classList.add('hidden');
-      reprintBtn.removeAttribute('data-reprint');
+      delete reprintBtn._reprintDocId;
       backBtn.textContent = '稍后开票';
     }
   }
@@ -1599,7 +1599,7 @@
     ).join('');
   }
 
-  /** ONLY reprint path for invoice list + detail drawer. */
+  /** ONLY reprint API path (list + detail + order buttons). */
   async function reprintInvoice(documentId) {
     const sid = requireStation($('#invStationSel').options.length ? $('#invStationSel') : $('#stationSel'));
     const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/reprints', {
@@ -1607,6 +1607,15 @@
       station_id: sid
     });
     await pollPrintJob(res.print_job_id, '重打已提交');
+  }
+
+  /** ONLY reprint click handler (withBusy + toast). */
+  function handleReprintClick(btn, documentId) {
+    if (!btn || !documentId) return;
+    withBusy(btn, '重打中…', async () => {
+      try { await reprintInvoice(documentId); }
+      catch (er) { toast(errText(er), 'error'); throw er; }
+    });
   }
 
   /** ONLY debit-note path for invoice detail drawer (full + partial). */
@@ -2660,10 +2669,7 @@
     const reprint = e.target.closest('[data-reprint]');
     if (reprint) {
       e.stopPropagation();
-      withBusy(reprint, '重打中…', async () => {
-        try { await reprintInvoice(reprint.dataset.reprint); }
-        catch (er) { toast(errText(er), 'error'); throw er; }
-      });
+      handleReprintClick(reprint, reprint.dataset.reprint);
       return;
     }
     const invRow = e.target.closest('tr[data-inv]');
@@ -2742,12 +2748,9 @@
       copyInvoiceHash(copyBtn.dataset.copyHash);
     }
   });
-  $('#btnInvoiceDetailReprint').onclick = () => withBusy($('#btnInvoiceDetailReprint'), '重打中…', async () => {
-    const id = $('#btnInvoiceDetailReprint').dataset.reprint;
-    if (!id) return;
-    try { await reprintInvoice(id); }
-    catch (er) { toast(errText(er), 'error'); throw er; }
-  });
+  $('#btnInvoiceDetailReprint').onclick = () => {
+    handleReprintClick($('#btnInvoiceDetailReprint'), $('#btnInvoiceDetailReprint')._reprintDocId);
+  };
   $('#btnInvoiceDetailCredit').onclick = () => {
     const btn = $('#btnInvoiceDetailCredit');
     const detail = btn._creditDetail;
@@ -2815,12 +2818,9 @@
     try { await issueCurrentOrder(); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
-  $('#btnOrderReprint').onclick = () => withBusy($('#btnOrderReprint'), '重打中…', async () => {
-    const id = $('#btnOrderReprint').dataset.reprint;
-    if (!id) return;
-    try { await reprintInvoice(id); }
-    catch (er) { toast(errText(er), 'error'); throw er; }
-  });
+  $('#btnOrderReprint').onclick = () => {
+    handleReprintClick($('#btnOrderReprint'), $('#btnOrderReprint')._reprintDocId);
+  };
   $('#btnInvLinkedOpen').onclick = () => {
     const id = $('#btnInvLinkedOpen').dataset.openOriginal;
     if (!id) return;

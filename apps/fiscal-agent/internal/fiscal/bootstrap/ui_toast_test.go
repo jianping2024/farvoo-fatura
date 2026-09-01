@@ -318,6 +318,7 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 		"async function ensureSetupStatus",
 		"async function refreshInvoices",
 		"async function reprintInvoice",
+		"function handleReprintClick",
 		"async function creditInvoice",
 		"async function debitInvoice",
 	} {
@@ -333,6 +334,14 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 	}
 	if strings.Count(adminHTML, `id="btnOrderReprint"`) != 1 {
 		t.Fatal("btnOrderReprint must exist exactly once")
+	}
+	if strings.Contains(adminHTML, "btnInvoiceDetailReprint').dataset.reprint") ||
+		strings.Contains(adminHTML, "btnOrderReprint').dataset.reprint") ||
+		strings.Contains(adminHTML, "reprintBtn.dataset.reprint") {
+		t.Fatal("detail/order reprint buttons must not use data-reprint (delegation double-fire)")
+	}
+	if strings.Count(adminHTML, "withBusy(btn, '重打中…'") != 1 {
+		t.Fatal("reprint withBusy must exist exactly once in handleReprintClick")
 	}
 	if strings.Count(adminHTML, `id="invoiceDetailModal"`) != 1 {
 		t.Fatal("invoiceDetailModal must exist exactly once")

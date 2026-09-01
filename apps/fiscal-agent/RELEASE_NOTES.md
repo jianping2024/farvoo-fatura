@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.37
+
+**Admin 重打：去掉双重点击，详情/订单不再双打**
+
+- 唯一 `handleReprintClick`（`withBusy` + `reprintInvoice`）；列表仍用 `data-reprint` 委托。
+- 详情 `#btnInvoiceDetailReprint`、订单 `#btnOrderReprint` 改用 `_reprintDocId`，不再带 `data-reprint`，避免与委托重复触发。
+- 修复：详情点重打 → 打两张 + 按钮卡在「重打中…」。
+
 ## 0.4.36
 
 **Admin 冲销/借记按钮：进 App 即加载 setup；清单与按钮对齐**
