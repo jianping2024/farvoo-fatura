@@ -30,6 +30,7 @@ type Session struct {
 	OperatorID  string
 	Role        string
 	DisplayName string
+	Epoch       int
 	IssuedAt    time.Time
 	LastSeen    time.Time
 }
@@ -56,6 +57,7 @@ type sessionPayload struct {
 	OperatorID  string `json:"op"`
 	Role        string `json:"role"`
 	DisplayName string `json:"name"`
+	Epoch       int    `json:"epoch"`
 	IssuedAt    int64  `json:"iat"`
 	LastSeen    int64  `json:"ls"`
 }
@@ -77,6 +79,7 @@ func (m *SessionManager) SetSessionCookie(w http.ResponseWriter, sess Session) e
 		OperatorID:  sess.OperatorID,
 		Role:        sess.Role,
 		DisplayName: sess.DisplayName,
+		Epoch:       sess.Epoch,
 		IssuedAt:    sess.IssuedAt.Unix(),
 		LastSeen:    sess.LastSeen.Unix(),
 	}
@@ -139,6 +142,7 @@ func (m *SessionManager) ParseRequest(r *http.Request) (*Session, error) {
 		OperatorID:  p.OperatorID,
 		Role:        p.Role,
 		DisplayName: p.DisplayName,
+		Epoch:       p.Epoch,
 		IssuedAt:    issued,
 		LastSeen:    last,
 	}, nil

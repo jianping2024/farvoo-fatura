@@ -17,9 +17,10 @@ const (
 
 // LoginResult is returned after successful PIN login.
 type LoginResult struct {
-	OperatorID  string
-	DisplayName string
-	Role        string
+	OperatorID   string
+	DisplayName  string
+	Role         string
+	SessionEpoch int
 }
 
 // BootstrapOwner creates first owner when operators empty.
@@ -36,13 +37,14 @@ func (s *FiscalService) LoginOperator(ctx context.Context, storeID, operatorID, 
 		return nil, err
 	}
 	var name, role string
-	err := s.db.SQL.QueryRow(`SELECT display_name, role FROM operators WHERE store_id=? AND id=? AND active=1`,
-		storeID, operatorID).Scan(&name, &role)
+	var epoch int
+	err := s.db.SQL.QueryRow(`SELECT display_name, role, session_epoch FROM operators WHERE store_id=? AND id=? AND active=1`,
+		storeID, operatorID).Scan(&name, &role, &epoch)
 	if err != nil {
 		return nil, err
 	}
 	_ = s.db.InsertAuditLog(operatorID, "LOGIN", "operator", operatorID, "{}")
-	return &LoginResult{OperatorID: operatorID, DisplayName: name, Role: role}, nil
+	return &LoginResult{OperatorID: operatorID, DisplayName: name, Role: role, SessionEpoch: epoch}, nil
 }
 
 // ChangeOperatorPIN is self-service PIN change.

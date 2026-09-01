@@ -92,6 +92,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		OperatorID:  sess.OperatorID,
 		Role:        sess.Role,
 		DisplayName: sess.DisplayName,
+		Epoch:       sess.SessionEpoch,
 	})
 	writeJSON(w, http.StatusOK, map[string]any{
 		"operator_id":  sess.OperatorID,
@@ -139,6 +140,7 @@ func handleChangePIN(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		return
 	}
 	_ = deps.Fiscal.DB().InsertAuditLog(s.OperatorID, "PIN_CHANGE", "operator", s.OperatorID, "{}")
+	setSessionCookieFromState(w, deps, s.OperatorID)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 

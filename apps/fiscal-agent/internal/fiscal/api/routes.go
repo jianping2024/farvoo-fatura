@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -47,11 +46,15 @@ func (deps HandlerDeps) guardAuto(h http.HandlerFunc) http.HandlerFunc {
 			writeErr(w, http.StatusUnauthorized, "unauthorized", "session required")
 			return
 		}
+		ctx, ok := deps.sessionContext(w, r, sess)
+		if !ok {
+			return
+		}
+		sess = SessionFromContext(ctx)
 		if mode == authOwner && sess.Role != "owner" {
 			writeErr(w, http.StatusForbidden, "forbidden", "owner required")
 			return
 		}
-		ctx := context.WithValue(r.Context(), ctxSessionKey, sess)
 		h(w, r.WithContext(ctx))
 	}
 }
@@ -67,11 +70,15 @@ func (deps HandlerDeps) guard(h http.HandlerFunc, minAuth routeAuth) http.Handle
 			writeErr(w, http.StatusUnauthorized, "unauthorized", "session required")
 			return
 		}
+		ctx, ok := deps.sessionContext(w, r, sess)
+		if !ok {
+			return
+		}
+		sess = SessionFromContext(ctx)
 		if minAuth == authOwner && sess.Role != "owner" {
 			writeErr(w, http.StatusForbidden, "forbidden", "owner required")
 			return
 		}
-		ctx := context.WithValue(r.Context(), ctxSessionKey, sess)
 		h(w, r.WithContext(ctx))
 	}
 }
@@ -101,6 +108,9 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	}))
 	mux.HandleFunc("GET /local/v1/setup/operators", g(func(w http.ResponseWriter, r *http.Request) {
 		handleListOperators(w, r, deps)
+	}))
+	mux.HandleFunc("GET /local/v1/setup/operators/manage", g(func(w http.ResponseWriter, r *http.Request) {
+		handleListOperatorsManage(w, r, deps)
 	}))
 	mux.HandleFunc("POST /local/v1/setup/bootstrap-owner", g(func(w http.ResponseWriter, r *http.Request) {
 		handleBootstrapOwner(w, r, deps)
@@ -463,6 +473,40 @@ func handleActivateFromCloud(w http.ResponseWriter, r *http.Request, deps Handle
 	writeJSON(w, http.StatusOK, st)
 }
 
+func handleListOperatorsManage(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	db := deps.Fiscal.DB()
+	if db == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "db missing")
+		return
+	}
+	rows, err := db.ListOperatorsForManage(deps.StoreID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "list_failed", err.Error())
+		return
+	}
+	if rows == nil {
+		rows = []store.OperatorManageRow{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"operators": rows})
+}
+
+func setSessionCookieFromState(w http.ResponseWriter, deps HandlerDeps, operatorID string) {
+	sm := deps.Sessions
+	if sm == nil {
+		sm = NewSessionManager(deps.DataDir)
+	}
+	st, err := deps.Fiscal.DB().GetOperatorSessionState(deps.StoreID, operatorID)
+	if err != nil || st == nil || !st.Active {
+		return
+	}
+	_ = sm.SetSessionCookie(w, Session{
+		OperatorID:  operatorID,
+		Role:        st.Role,
+		DisplayName: st.DisplayName,
+		Epoch:       st.SessionEpoch,
+	})
+}
+
 func handleOperator(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	var body struct {
 		ID          string `json:"id"`
@@ -470,6 +514,7 @@ func handleOperator(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		Role        string `json:"role"`
 		DisplayName string `json:"display_name"`
 		PIN         string `json:"pin"`
+		Active      *bool  `json:"active"`
 		CanIssueNC  *bool  `json:"can_issue_nc"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -479,9 +524,28 @@ func handleOperator(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	if body.StoreID == "" {
 		body.StoreID = deps.StoreID
 	}
+	if body.ID == "" {
+		writeErr(w, http.StatusBadRequest, "id_required", "operator id required")
+		return
+	}
 	if err := deps.Fiscal.UpsertOperator(body.ID, body.StoreID, body.Role, body.DisplayName); err != nil {
 		writeCoded(w, err)
 		return
+	}
+	if body.Active != nil {
+		if err := deps.Fiscal.SetOperatorActive(body.StoreID, body.ID, *body.Active); err != nil {
+			writeCoded(w, err)
+			return
+		}
+		actor := ""
+		if s := SessionFromContext(r.Context()); s != nil {
+			actor = s.OperatorID
+		}
+		action := "OPERATOR_ACTIVATE"
+		if !*body.Active {
+			action = "OPERATOR_DEACTIVATE"
+		}
+		_ = deps.Fiscal.DB().InsertAuditLog(actor, action, "operator", body.ID, "{}")
 	}
 	if body.PIN != "" {
 		if err := deps.Fiscal.SetOperatorPIN(body.StoreID, body.ID, body.PIN); err != nil {
@@ -742,6 +806,10 @@ func handleSaveBillDraftAllocation(w http.ResponseWriter, r *http.Request, deps 
 }
 
 func writeCoded(w http.ResponseWriter, err error) {
+	if errors.Is(err, store.ErrLastOwnerConstraint) {
+		writeErr(w, http.StatusConflict, "last_owner_constraint", err.Error())
+		return
+	}
 	var ce *service.CodedError
 	if errors.As(err, &ce) {
 		status := http.StatusBadRequest

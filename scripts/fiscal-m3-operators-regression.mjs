@@ -70,7 +70,7 @@ async function main() {
     const st0 = uatJson(['req', 'GET', '/local/v1/setup/status'], { FISCAL_UAT_BASE: base });
     record('operator_ok false before bootstrap', st0.operator_ok === false);
 
-    const { cookie: ownerCookie } = ensureOwnerSession(base, 'Owner One', DEFAULT_PIN);
+    const { cookie: ownerCookie, operatorId: ownerId } = ensureOwnerSession(base, 'Owner One', DEFAULT_PIN);
     let env = envWithCookie(base, ownerCookie);
 
     const unauth = await fetch(`${base}/local/v1/fiscal-documents`, {
@@ -153,6 +153,50 @@ async function main() {
     };
     const issued = uatJson(['req', 'POST', '/local/v1/fiscal-documents', '--body', JSON.stringify(issueBody)], envWithCookie(base, newCashierCookie));
     record('cashier issue with session', !!issued.document_id);
+
+    // M3.2b: manage list owner-only
+    const manage = uatJson(['req', 'GET', '/local/v1/setup/operators/manage'], env);
+    record('owner can list operators/manage', Array.isArray(manage.operators) && manage.operators.length >= 2);
+    const manageForbid = spawnSync(process.execPath, [
+      join(__dirname, 'fiscal-local-uat.mjs'), 'req', 'GET', '/local/v1/setup/operators/manage',
+    ], { encoding: 'utf8', env: cashierEnv });
+    record('cashier cannot operators/manage', manageForbid.status !== 0);
+
+    // deactivate cashier → old cookie 401
+    uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
+      id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', active: false,
+    })], env);
+    const deactivated = await fetch(`${base}/local/v1/fiscal-documents`, {
+      method: 'GET',
+      headers: { Cookie: newCashierCookie },
+    });
+    record('deactivated cashier cookie → 401', deactivated.status === 401, `status ${deactivated.status}`);
+
+    // reactivate for further tests
+    uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
+      id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', active: true, pin: '111111',
+    })], env);
+
+    // pin reset bumps epoch → old cookie revoked
+    const epochCookie = loginOperator(base, 'cashier-test-1', '111111');
+    uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
+      id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', pin: '333333',
+    })], env);
+    const epochRevoked = await fetch(`${base}/local/v1/products`, {
+      headers: { Cookie: epochCookie },
+    });
+    record('pin reset revokes old cookie', epochRevoked.status === 401, `status ${epochRevoked.status}`);
+
+    // last owner deactivate → 409
+    let lastOwnerBlocked = false;
+    try {
+      uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
+        id: ownerId, role: 'owner', display_name: 'Owner One', active: false,
+      })], env);
+    } catch {
+      lastOwnerBlocked = true;
+    }
+    record('cannot deactivate last owner', lastOwnerBlocked);
 
     const failed = results.filter((r) => r.status === 'fail');
     console.log('\nSummary:', results.length - failed.length, '/', results.length, 'passed');

@@ -1,8 +1,8 @@
 # M3.2：开票员身份（Agent 本地创建）
 
-> **状态：定稿**（M3.2 已实施；**§3.3 / §3.7.2 / §3.10 / §4** 增量 **M3.2b** 待实现）  
+> **状态：定稿**（M3.2 + **M3.2b 已实施**）  
 > **权威：是**（开票员名册、PIN 登录、会话、角色与 `operators` 列口径；DDL 以 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/*.sql` 为准）  
-> **对应实现：** `apps/fiscal-agent` M3.2（owner/cashier + 会话 Cookie；cashier 不可见设置 §3.3.1）；M3.2b（`session_epoch`、开票员管理 UI、停用吊销）**待实现**  
+> **对应实现：** `apps/fiscal-agent` M3.2（owner/cashier + 会话 Cookie；cashier 不可见设置 §3.3.1）；M3.2b（`session_epoch`、开票员管理 UI、停用吊销）**已实施**  
 > **计划：** [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) M3.2  
 > **前置：** M2.6 开票 Web、M3.1 `can_issue_nc` enforce（0.4.26）
 

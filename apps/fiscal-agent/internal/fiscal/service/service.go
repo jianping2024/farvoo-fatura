@@ -417,6 +417,14 @@ func (s *FiscalService) TryPullCloudProvisionIfNeeded(ctx context.Context) {
 	}
 }
 
+// SetOperatorActive sets operator active flag — ONLY active service entry.
+func (s *FiscalService) SetOperatorActive(storeID, operatorID string, active bool) error {
+	if storeID == "" {
+		storeID = s.storeID
+	}
+	return s.db.SetOperatorActive(storeID, operatorID, active)
+}
+
 // SetOperatorPIN sets operator PIN (owner reset path).
 func (s *FiscalService) SetOperatorPIN(storeID, operatorID, pin string) error {
 	return s.db.SetOperatorPIN(storeID, operatorID, pin)

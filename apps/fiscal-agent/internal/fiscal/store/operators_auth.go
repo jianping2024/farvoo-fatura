@@ -34,6 +34,24 @@ type OperatorLoginRow struct {
 	HasPIN      bool   `json:"has_pin"`
 }
 
+// OperatorManageRow is owner manage list (GET /setup/operators/manage).
+type OperatorManageRow struct {
+	ID          string `json:"id"`
+	DisplayName string `json:"display_name"`
+	Role        string `json:"role"`
+	Active      bool   `json:"active"`
+	HasPIN      bool   `json:"has_pin"`
+	CanIssueNC  bool   `json:"can_issue_nc"`
+}
+
+// OperatorSessionState is the ONLY middleware read model for session validation.
+type OperatorSessionState struct {
+	DisplayName  string
+	Role         string
+	Active       bool
+	SessionEpoch int
+}
+
 type pinParams struct {
 	memory      uint32
 	iterations  uint32
@@ -95,7 +113,7 @@ func verifyPINHash(pin, encoded string) bool {
 	return subtle.ConstantTimeCompare(got, want) == 1
 }
 
-// SetOperatorPIN is the ONLY PIN write path.
+// SetOperatorPIN is the ONLY PIN write path (always bumps session_epoch).
 func (d *DB) SetOperatorPIN(storeID, operatorID, pin string) error {
 	h, err := hashPIN(pin)
 	if err != nil {
@@ -111,7 +129,7 @@ func (d *DB) SetOperatorPIN(storeID, operatorID, pin string) error {
 	if n == 0 {
 		return ErrNotFound
 	}
-	return nil
+	return d.BumpOperatorSessionEpoch(storeID, operatorID)
 }
 
 // ChangeOperatorPIN verifies old PIN then writes new hash — ONLY self-change path.
@@ -242,10 +260,145 @@ func (d *DB) BootstrapOwner(storeID, displayName, pin string) (string, error) {
 	return id, nil
 }
 
+// GetOperatorSessionState loads active/role/epoch — ONLY session middleware read path.
+func (d *DB) GetOperatorSessionState(storeID, operatorID string) (*OperatorSessionState, error) {
+	var role, name string
+	var active, epoch int
+	err := d.SQL.QueryRow(`SELECT display_name, role, active, session_epoch FROM operators
+		WHERE store_id=? AND id=?`, storeID, operatorID).Scan(&name, &role, &active, &epoch)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &OperatorSessionState{
+		DisplayName:  name,
+		Role:         role,
+		Active:       active == 1,
+		SessionEpoch: epoch,
+	}, nil
+}
+
+// BumpOperatorSessionEpoch invalidates all cookies for operator — ONLY revocation write path.
+func (d *DB) BumpOperatorSessionEpoch(storeID, operatorID string) error {
+	now := time.Now().UTC().Format(time.RFC3339)
+	res, err := d.SQL.Exec(`UPDATE operators SET session_epoch = session_epoch + 1, updated_at=? WHERE store_id=? AND id=?`,
+		now, storeID, operatorID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (d *DB) assertRemainsActiveOwner(storeID, exceptID string) error {
+	var n int
+	err := d.SQL.QueryRow(`SELECT COUNT(1) FROM operators
+		WHERE store_id=? AND active=1 AND role='owner' AND id != ?`, storeID, exceptID).Scan(&n)
+	if err != nil {
+		return err
+	}
+	if n < 1 {
+		return ErrLastOwnerConstraint
+	}
+	return nil
+}
+
+func (d *DB) assertRemainsOwnerWithNC(storeID, exceptID string) error {
+	var n int
+	err := d.SQL.QueryRow(`SELECT COUNT(1) FROM operators
+		WHERE store_id=? AND active=1 AND role='owner' AND can_issue_nc=1 AND id != ?`, storeID, exceptID).Scan(&n)
+	if err != nil {
+		return err
+	}
+	if n < 1 {
+		return ErrLastOwnerConstraint
+	}
+	return nil
+}
+
+func (d *DB) assertCanRemoveActiveOwner(storeID, operatorID string) error {
+	var role string
+	var active, canNC int
+	err := d.SQL.QueryRow(`SELECT role, active, can_issue_nc FROM operators WHERE store_id=? AND id=?`,
+		storeID, operatorID).Scan(&role, &active, &canNC)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if active != 1 || role != "owner" {
+		return nil
+	}
+	if err := d.assertRemainsActiveOwner(storeID, operatorID); err != nil {
+		return err
+	}
+	if canNC == 1 {
+		return d.assertRemainsOwnerWithNC(storeID, operatorID)
+	}
+	return nil
+}
+
+// SetOperatorActive enables/disables operator — ONLY active write path.
+func (d *DB) SetOperatorActive(storeID, operatorID string, active bool) error {
+	if !active {
+		if err := d.assertCanRemoveActiveOwner(storeID, operatorID); err != nil {
+			return err
+		}
+	}
+	v := 0
+	if active {
+		v = 1
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	res, err := d.SQL.Exec(`UPDATE operators SET active=?, updated_at=? WHERE store_id=? AND id=?`,
+		v, now, storeID, operatorID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	if !active {
+		return d.BumpOperatorSessionEpoch(storeID, operatorID)
+	}
+	return nil
+}
+
+// ListOperatorsForManage lists all operators for owner UI.
+func (d *DB) ListOperatorsForManage(storeID string) ([]OperatorManageRow, error) {
+	rows, err := d.SQL.Query(`SELECT id, display_name, role, active, pin_hash, can_issue_nc FROM operators
+		WHERE store_id=? ORDER BY active DESC, display_name`, storeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []OperatorManageRow
+	for rows.Next() {
+		var r OperatorManageRow
+		var pin sql.NullString
+		var active, canNC int
+		if err := rows.Scan(&r.ID, &r.DisplayName, &r.Role, &active, &pin, &canNC); err != nil {
+			return nil, err
+		}
+		r.Active = active == 1
+		r.HasPIN = pin.Valid && pin.String != ""
+		r.CanIssueNC = canNC == 1
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
 // ListOperatorsForLogin lists operators without pin_hash.
 func (d *DB) ListOperatorsForLogin(storeID string) ([]OperatorLoginRow, error) {
 	rows, err := d.SQL.Query(`SELECT id, display_name, role, pin_hash FROM operators
-		WHERE store_id=? AND active=1 ORDER BY display_name`, storeID)
+		WHERE store_id=? AND active=1 AND pin_hash IS NOT NULL AND pin_hash != '' ORDER BY display_name`, storeID)
 	if err != nil {
 		return nil, err
 	}

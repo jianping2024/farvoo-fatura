@@ -159,7 +159,7 @@ func (d *DB) ActiveSeriesHasCode(storeID, seriesCode string) (bool, error) {
 	return n > 0, err
 }
 
-// UpsertOperator creates cashier/owner used as invoices.source_id.
+// UpsertOperator creates/updates operator metadata — does NOT change active (use SetOperatorActive).
 func (d *DB) UpsertOperator(id, storeID, role, displayName, mesaUserID string) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	if mesaUserID == "" {
@@ -169,18 +169,49 @@ func (d *DB) UpsertOperator(id, storeID, role, displayName, mesaUserID string) e
 	if role == "owner" {
 		canNC = 1
 	}
+	var oldRole sql.NullString
+	var oldActive int
+	_ = d.SQL.QueryRow(`SELECT role, active FROM operators WHERE store_id=? AND id=?`, storeID, id).Scan(&oldRole, &oldActive)
+	if oldRole.Valid && oldActive == 1 && oldRole.String == "owner" && role == "cashier" {
+		if err := d.assertCanRemoveActiveOwner(storeID, id); err != nil {
+			return err
+		}
+	}
 	_, err := d.SQL.Exec(`INSERT INTO operators (
 		id, mesa_user_id, store_id, role, display_name, active, pin_hash, can_issue_nc, synced_at, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, 1, NULL, ?, ?, ?, ?)
-	ON CONFLICT(id) DO UPDATE SET display_name=excluded.display_name, role=excluded.role, active=1,
+	) VALUES (?, ?, ?, ?, ?, 1, NULL, ?, NULL, ?, ?)
+	ON CONFLICT(id) DO UPDATE SET display_name=excluded.display_name, role=excluded.role,
 		can_issue_nc=CASE WHEN excluded.role='owner' THEN 1 ELSE operators.can_issue_nc END,
 		updated_at=excluded.updated_at`,
-		id, mesaUserID, storeID, role, displayName, canNC, now, now, now)
-	return err
+		id, mesaUserID, storeID, role, displayName, canNC, now, now)
+	if err != nil {
+		return err
+	}
+	if oldRole.Valid && oldRole.String != role {
+		return d.BumpOperatorSessionEpoch(storeID, id)
+	}
+	return nil
 }
 
 // SetOperatorCanIssueNC is the ONLY write path for operators.can_issue_nc.
 func (d *DB) SetOperatorCanIssueNC(storeID, operatorID string, canIssue bool) error {
+	if !canIssue {
+		var role string
+		var active, canNC int
+		err := d.SQL.QueryRow(`SELECT role, active, can_issue_nc FROM operators WHERE store_id=? AND id=?`,
+			storeID, operatorID).Scan(&role, &active, &canNC)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if active == 1 && role == "owner" && canNC == 1 {
+			if err := d.assertRemainsOwnerWithNC(storeID, operatorID); err != nil {
+				return err
+			}
+		}
+	}
 	v := 0
 	if canIssue {
 		v = 1

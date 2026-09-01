@@ -683,20 +683,22 @@
             <button type="button" id="btnAct">本地 PEM 激活</button>
           </div>
         </div>
-        <div class="panel" id="panelOperators">
+        <div class="panel admin-list-panel" id="panelOperators">
           <h2>5. 开票员名册</h2>
-          <p class="hint">角色仅 <strong>owner</strong> / <strong>cashier</strong>；仅 owner 可增删改 PIN 与冲销权限。</p>
+          <p class="hint">角色：<strong>店长</strong> (owner) / <strong>店员</strong> (cashier)；仅店长可管理名册。</p>
           <p class="hint" id="fiscalProfileHint">门店业态：加载中…</p>
-          <ul id="operatorsList" class="checklist" style="margin-top:0.75rem"></ul>
-          <div id="addOperatorBlock" class="hidden" style="margin-top:0.75rem">
-            <h3 style="font-size:0.95rem;margin:0 0 0.5rem">添加开票员</h3>
-            <div class="field"><label>显示名称</label><input id="newOpName" /></div>
-            <div class="field"><label>角色</label>
-              <select id="newOpRole"><option value="cashier">cashier</option><option value="owner">owner</option></select>
-            </div>
-            <div class="field"><label>6 位 PIN</label><input id="newOpPin" inputmode="numeric" maxlength="6" /></div>
-            <button type="button" id="btnAddOperator">添加</button>
+          <div class="admin-list-filter-row owner-only" id="operatorsToolbar">
+            <button type="button" id="btnOperatorAdd">添加开票员</button>
           </div>
+          <div class="table-scroll">
+            <table class="list-table" id="operatorsTable">
+              <thead><tr>
+                <th>姓名</th><th>角色</th><th>PIN</th><th>可冲销</th><th>状态</th><th class="col-actions">操作</th>
+              </tr></thead>
+              <tbody id="operatorsTbody"></tbody>
+            </table>
+          </div>
+          <p class="hint hidden" id="operatorsEmptyHint">无开票员 · 请退出后在登录页创建 owner</p>
         </div>
         <div class="panel">
           <h2>6. 打印机</h2>
@@ -808,6 +810,36 @@
     </div>
   </div>
 
+  <div id="operatorFormModal" class="modal-backdrop hidden">
+    <div class="modal" style="max-width:420px">
+      <h2 id="operatorFormTitle">添加开票员</h2>
+      <input type="hidden" id="operatorFormId" value="" />
+      <div class="field"><label>显示名称</label><input id="operatorFormName" autocomplete="off" /></div>
+      <div class="field"><label>角色</label>
+        <select id="operatorFormRole"><option value="cashier">店员 (cashier)</option><option value="owner">店长 (owner)</option></select>
+      </div>
+      <div class="field" id="operatorFormPinBlock"><label>初始 PIN（6 位）</label><input id="operatorFormPin" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      <div class="actions">
+        <button type="button" id="btnOperatorFormSubmit">保存</button>
+        <button type="button" class="secondary" id="btnOperatorFormCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="operatorResetPinModal" class="modal-backdrop hidden">
+    <div class="modal" style="max-width:400px">
+      <h2>重置 PIN</h2>
+      <p class="hint" id="operatorResetPinHint">为开票员设置新 PIN</p>
+      <input type="hidden" id="operatorResetPinId" value="" />
+      <div class="field"><label>新 PIN</label><input id="operatorResetPinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      <div class="field"><label>确认新 PIN</label><input id="operatorResetPinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      <div class="actions">
+        <button type="button" id="btnOperatorResetPinSubmit">重置</button>
+        <button type="button" class="secondary" id="btnOperatorResetPinCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
   <div id="productPicker" class="modal-backdrop hidden">
     <div class="modal">
       <h2 id="productPickerTitle">添加商品</h2>
@@ -907,6 +939,41 @@
     document.body.classList.toggle('operator-owner', isLoggedInOwner());
   }
 
+  let forceLogoutInProgress = false;
+
+  /** ONLY client cleanup on session end / 401 revocation (§3.10). */
+  async function forceLogout(reason) {
+    if (forceLogoutInProgress) return;
+    forceLogoutInProgress = true;
+    try {
+      try {
+        await fetch('/local/v1/setup/logout', { method: 'POST', credentials: 'include' });
+      } catch (_) { /* offline */ }
+      loggedInOperator = null;
+      applyOperatorAccess();
+      stopBillDraftEvents();
+      setupStatusCache = null;
+      pin = '';
+      $$('#pinDots i').forEach(d => d.classList.remove('on'));
+      try { sessionStorage.clear(); } catch (_) { /* */ }
+      $('#app-shell').classList.remove('on');
+      $('#view-login').classList.remove('hidden');
+      if (reason) toast(reason, 'error');
+      void loadLoginOperators();
+    } finally {
+      forceLogoutInProgress = false;
+    }
+  }
+
+  function operatorRoleLabel(role) {
+    return role === 'owner' ? '店长' : '店员';
+  }
+
+  /** ONLY operator manage API write path. */
+  async function putOperator(body) {
+    return j('PUT', '/local/v1/setup/operator', body);
+  }
+
   function openChangePinModal() {
     $('#changePinOld').value = '';
     $('#changePinNew').value = '';
@@ -952,7 +1019,15 @@
       const raw = await r.text();
       throw { error: 'bad_response', message: raw || ('HTTP ' + r.status) };
     }
-    if (!r.ok) throw t;
+    if (!r.ok) {
+      const code = t && t.error;
+      if (r.status === 401 && code && (code === 'session_revoked' || code === 'operator_inactive' || code === 'unauthorized')) {
+        const msg = code === 'session_revoked' ? '会话已失效，请重新登录'
+          : code === 'operator_inactive' ? '账号已停用，请重新登录' : '请重新登录';
+        await forceLogout(msg);
+      }
+      throw t;
+    }
     return t;
   }
 
@@ -3161,17 +3236,7 @@
     if (pin.length === 6 && k !== 'C' && k !== 'OK') setTimeout(() => void tryLogin(), 200);
   });
 
-  $('#btnLogout').onclick = async () => {
-    try { await j('POST', '/local/v1/setup/logout', {}); } catch (_) {}
-    loggedInOperator = null;
-    applyOperatorAccess();
-    stopBillDraftEvents();
-    setupStatusCache = null;
-    pin = '';
-    $$('#pinDots i').forEach(d => d.classList.remove('on'));
-    $('#app-shell').classList.remove('on');
-    $('#view-login').classList.remove('hidden');
-  };
+  $('#btnLogout').onclick = () => { void forceLogout(); };
 
   $('#btnChangePin').onclick = () => openChangePinModal();
   $('#btnChangePinCancel').onclick = () => closeChangePinModal();
@@ -3679,48 +3744,197 @@
   });
 
   async function refreshOperatorsPanel() {
-    const list = $('#operatorsList');
-    const add = $('#addOperatorBlock');
-    if (!list) return;
+    const tbody = $('#operatorsTbody');
+    const empty = $('#operatorsEmptyHint');
+    if (!tbody) return;
+    if (!isLoggedInOwner()) return;
     try {
-      const data = await j('GET', '/local/v1/setup/operators');
+      const data = await j('GET', '/local/v1/setup/operators/manage');
       const ops = data.operators || [];
-      if (add) add.classList.toggle('hidden', !isLoggedInOwner());
+      operatorManageCache = ops;
+      if (empty) empty.classList.toggle('hidden', ops.length > 0);
       if (!ops.length) {
-        list.innerHTML = '<li class="hint">无开票员 · 请退出后在登录页创建 owner</li>';
+        tbody.innerHTML = '';
         return;
       }
-      list.innerHTML = ops.map(o =>
-        '<li>' + o.display_name + ' · <code>' + o.role + '</code>' +
-        (o.has_pin ? '' : ' · <span class="hint">未设 PIN</span>') + '</li>'
-      ).join('');
+      tbody.innerHTML = ops.map(o => {
+        const ncToggle = o.active
+          ? '<label class="check-row"><input type="checkbox" data-op-nc="' + o.id + '"' + (o.can_issue_nc ? ' checked' : '') + ' /><span>可冲销</span></label>'
+          : '—';
+        const actions = o.active
+          ? '<button type="button" class="ghost" data-op-edit="' + o.id + '">编辑</button> ' +
+            '<button type="button" class="ghost" data-op-reset-pin="' + o.id + '">重置 PIN</button> ' +
+            '<button type="button" class="ghost" data-op-toggle="' + o.id + '" data-op-active="0">停用</button>'
+          : '<button type="button" class="ghost" data-op-toggle="' + o.id + '" data-op-active="1">启用</button>';
+        return '<tr' + (o.active ? '' : ' class="muted"') + '>' +
+          '<td>' + escHtml(o.display_name) + '</td>' +
+          '<td>' + operatorRoleLabel(o.role) + '</td>' +
+          '<td>' + (o.has_pin ? '已设置' : '未设置') + '</td>' +
+          '<td>' + ncToggle + '</td>' +
+          '<td>' + (o.active ? '启用' : '已停用') + '</td>' +
+          '<td class="col-actions">' + actions + '</td></tr>';
+      }).join('');
     } catch (e) {
-      list.innerHTML = '<li class="hint">无法加载开票员</li>';
+      tbody.innerHTML = '<tr><td colspan="6" class="hint">无法加载开票员</td></tr>';
     }
   }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  let operatorManageCache = [];
+
+  async function loadOperatorManageCache() {
+    const data = await j('GET', '/local/v1/setup/operators/manage');
+    operatorManageCache = data.operators || [];
+    return operatorManageCache;
+  }
+
+  function openOperatorFormModal(mode, operatorId) {
+    const isEdit = mode === 'edit';
+    $('#operatorFormTitle').textContent = isEdit ? '编辑开票员' : '添加开票员';
+    $('#operatorFormId').value = isEdit ? operatorId : '';
+    $('#operatorFormPinBlock').classList.toggle('hidden', isEdit);
+    if (isEdit) {
+      const op = operatorManageCache.find(x => x.id === operatorId);
+      $('#operatorFormName').value = op ? op.display_name : '';
+      $('#operatorFormRole').value = op ? op.role : 'cashier';
+    } else {
+      $('#operatorFormName').value = '';
+      $('#operatorFormRole').value = 'cashier';
+      $('#operatorFormPin').value = '';
+    }
+    $('#operatorFormModal').classList.remove('hidden');
+    $('#operatorFormName').focus();
+  }
+
+  function closeOperatorFormModal() {
+    $('#operatorFormModal').classList.add('hidden');
+  }
+
+  async function submitOperatorForm() {
+    const isEdit = !!$('#operatorFormId').value;
+    const name = $('#operatorFormName').value.trim();
+    const role = $('#operatorFormRole').value;
+    const body = { display_name: name, role };
+    if (isEdit) {
+      body.id = $('#operatorFormId').value;
+    } else {
+      const pin = $('#operatorFormPin').value.trim();
+      if (!name || !/^\d{6}$/.test(pin)) {
+        toast('请填写名称与 6 位 PIN', 'error');
+        return;
+      }
+      body.id = 'op-' + Date.now().toString(36);
+      body.pin = pin;
+    }
+    if (!name) {
+      toast('请填写名称', 'error');
+      return;
+    }
+    await putOperator(body);
+    closeOperatorFormModal();
+    await refreshOperatorsPanel();
+    await refreshSetupStatus();
+    toast(isEdit ? '开票员已更新' : '开票员已添加', 'success');
+  }
+
+  function openOperatorResetPinModal(operatorId) {
+    const op = operatorManageCache.find(x => x.id === operatorId);
+    $('#operatorResetPinId').value = operatorId;
+    $('#operatorResetPinHint').textContent = '为「' + (op ? op.display_name : operatorId) + '」设置新 PIN';
+    $('#operatorResetPinNew').value = '';
+    $('#operatorResetPinConfirm').value = '';
+    $('#operatorResetPinModal').classList.remove('hidden');
+    $('#operatorResetPinNew').focus();
+  }
+
+  function closeOperatorResetPinModal() {
+    $('#operatorResetPinModal').classList.add('hidden');
+  }
+
+  async function submitOperatorResetPin() {
+    const id = $('#operatorResetPinId').value;
+    const pin = $('#operatorResetPinNew').value.trim();
+    const confirmPin = $('#operatorResetPinConfirm').value.trim();
+    if (!/^\d{6}$/.test(pin)) {
+      toast('PIN 须为 6 位数字', 'error');
+      return;
+    }
+    if (pin !== confirmPin) {
+      toast('两次 PIN 不一致', 'error');
+      return;
+    }
+    const op = operatorManageCache.find(x => x.id === id) || {};
+    await putOperator({ id, role: op.role || 'cashier', display_name: op.display_name || '', pin });
+    closeOperatorResetPinModal();
+    await refreshOperatorsPanel();
+    toast('PIN 已重置', 'success');
+  }
+
+  async function toggleOperatorActive(operatorId, active) {
+    const op = operatorManageCache.find(x => x.id === operatorId);
+    if (!op) return;
+    if (!active) {
+      if (!confirm('确认停用「' + op.display_name + '」？其所有端会话将立即失效。')) return;
+    }
+    await putOperator({ id: operatorId, role: op.role, display_name: op.display_name, active: !!active });
+    await refreshOperatorsPanel();
+    toast(active ? '开票员已启用' : '开票员已停用', 'success');
+  }
+
+  $('#btnOperatorAdd').onclick = async () => {
+    try {
+      await loadOperatorManageCache();
+      openOperatorFormModal('add');
+    } catch (er) { toast(errText(er), 'error'); }
+  };
+  $('#btnOperatorFormCancel').onclick = () => closeOperatorFormModal();
+  $('#btnOperatorFormSubmit').onclick = () => withBusy($('#btnOperatorFormSubmit'), '保存中…', async () => {
+    try { await submitOperatorForm(); } catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+  $('#operatorFormModal').addEventListener('click', e => {
+    if (e.target === $('#operatorFormModal')) closeOperatorFormModal();
+  });
+  $('#btnOperatorResetPinCancel').onclick = () => closeOperatorResetPinModal();
+  $('#btnOperatorResetPinSubmit').onclick = () => withBusy($('#btnOperatorResetPinSubmit'), '重置中…', async () => {
+    try { await submitOperatorResetPin(); } catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+  $('#operatorResetPinModal').addEventListener('click', e => {
+    if (e.target === $('#operatorResetPinModal')) closeOperatorResetPinModal();
+  });
+  $('#operatorsTbody').addEventListener('click', async e => {
+    const editBtn = e.target.closest('[data-op-edit]');
+    const resetBtn = e.target.closest('[data-op-reset-pin]');
+    const toggleBtn = e.target.closest('[data-op-toggle]');
+    if (!editBtn && !resetBtn && !toggleBtn) return;
+    try {
+      await loadOperatorManageCache();
+      if (editBtn) openOperatorFormModal('edit', editBtn.dataset.opEdit);
+      else if (resetBtn) openOperatorResetPinModal(resetBtn.dataset.opResetPin);
+      else if (toggleBtn) await toggleOperatorActive(toggleBtn.dataset.opToggle, toggleBtn.dataset.opActive === '1');
+    } catch (er) { toast(errText(er), 'error'); }
+  });
+  $('#operatorsTbody').addEventListener('change', async e => {
+    const nc = e.target.closest('[data-op-nc]');
+    if (!nc) return;
+    try {
+      await loadOperatorManageCache();
+      const op = operatorManageCache.find(x => x.id === nc.dataset.opNc);
+      if (!op) return;
+      await putOperator({ id: op.id, role: op.role, display_name: op.display_name, can_issue_nc: nc.checked });
+      await refreshOperatorsPanel();
+      toast('冲销权限已更新', 'success');
+    } catch (er) {
+      nc.checked = !nc.checked;
+      toast(errText(er), 'error');
+    }
+  });
 
   $('#btnLoginBootstrapOwner').onclick = () => withBusy($('#btnLoginBootstrapOwner'), '创建中…', async () => {
     try {
       await bootstrapOwnerAndLogin($('#loginBootstrapName').value, $('#loginBootstrapPin').value);
-    } catch (er) { toast(errText(er), 'error'); throw er; }
-  });
-
-  $('#btnAddOperator').onclick = () => withBusy($('#btnAddOperator'), '添加中…', async () => {
-    const name = $('#newOpName').value.trim();
-    const role = $('#newOpRole').value;
-    const pin = $('#newOpPin').value.trim();
-    if (!name || !/^\d{6}$/.test(pin)) {
-      toast('请填写名称与 6 位 PIN', 'error');
-      return;
-    }
-    const id = 'op-' + Date.now().toString(36);
-    try {
-      await j('PUT', '/local/v1/setup/operator', { id, role, display_name: name, pin });
-      $('#newOpName').value = '';
-      $('#newOpPin').value = '';
-      await refreshOperatorsPanel();
-      await refreshSetupStatus();
-      toast('开票员已添加', 'success');
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 

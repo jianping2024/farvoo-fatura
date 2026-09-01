@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"net/http"
 	"strings"
 )
@@ -44,16 +43,19 @@ func routeAuthFor(r *http.Request) routeAuth {
 	}
 	ownerPaths := map[string]bool{
 		"/local/v1/setup/taxpayer":              true,
-		"/local/v1/setup/at-credentials":      true,
-		"/local/v1/setup/series/register":     true,
-		"/local/v1/setup/activate":            true,
-		"/local/v1/setup/activate-from-cloud": true,
-		"/local/v1/setup/operator":              true,
-		"/local/v1/setup/backup":                true,
-		"/local/v1/setup/integrity/verify":      true,
-		"/local/v1/setup/prepare-swap":          true,
+		"/local/v1/setup/at-credentials":        true,
+		"/local/v1/setup/series/register":         true,
+		"/local/v1/setup/activate":                true,
+		"/local/v1/setup/activate-from-cloud":     true,
+		"/local/v1/setup/operator":                true,
+		"/local/v1/setup/backup":                  true,
+		"/local/v1/setup/integrity/verify":        true,
+		"/local/v1/setup/prepare-swap":              true,
 	}
 	if ownerPaths[p] {
+		return authOwner
+	}
+	if p == "/local/v1/setup/operators/manage" {
 		return authOwner
 	}
 	if strings.HasPrefix(p, "/local/v1/saft/exports") {
@@ -79,11 +81,15 @@ func WrapWithSessionAuth(deps HandlerDeps, inner http.Handler) http.Handler {
 			writeErr(w, http.StatusUnauthorized, "unauthorized", "session required")
 			return
 		}
+		ctx, ok := deps.sessionContext(w, r, sess)
+		if !ok {
+			return
+		}
+		sess = SessionFromContext(ctx)
 		if mode == authOwner && sess.Role != "owner" {
 			writeErr(w, http.StatusForbidden, "forbidden", "owner required")
 			return
 		}
-		ctx := context.WithValue(r.Context(), ctxSessionKey, sess)
 		inner.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

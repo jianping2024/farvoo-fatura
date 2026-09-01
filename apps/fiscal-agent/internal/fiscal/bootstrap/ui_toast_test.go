@@ -414,3 +414,26 @@ func TestAdminHTMLOperatorAccessSinglePath(t *testing.T) {
 			strings.Count(adminHTML, "/local/v1/setup/change-pin"))
 	}
 }
+
+func TestAdminHTMLOperatorManageM32bSinglePath(t *testing.T) {
+	if n := strings.Count(adminHTML, "function forceLogout"); n != 1 {
+		t.Fatalf("forceLogout must appear exactly once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function putOperator"); n != 1 {
+		t.Fatalf("putOperator must appear exactly once, got %d", n)
+	}
+	if strings.Count(adminHTML, "/local/v1/setup/operators/manage") != 2 {
+		t.Fatalf("operators/manage must be called from refreshOperatorsPanel + loadOperatorManageCache only, got %d",
+			strings.Count(adminHTML, "/local/v1/setup/operators/manage"))
+	}
+	if strings.Count(adminHTML, "j('PUT', '/local/v1/setup/operator'") != 1 {
+		t.Fatalf("operator PUT must go through putOperator() only, got %d direct j() calls",
+			strings.Count(adminHTML, "j('PUT', '/local/v1/setup/operator'"))
+	}
+	if strings.Contains(adminHTML, "btnAddOperator") || strings.Contains(adminHTML, "operatorsList") {
+		t.Fatal("legacy operator checklist UI must be removed")
+	}
+	if !strings.Contains(adminHTML, "session_revoked") || !strings.Contains(adminHTML, "operator_inactive") {
+		t.Fatal("j() must handle session_revoked and operator_inactive via forceLogout")
+	}
+}
