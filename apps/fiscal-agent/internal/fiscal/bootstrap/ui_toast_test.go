@@ -415,6 +415,38 @@ func TestAdminHTMLOperatorAccessSinglePath(t *testing.T) {
 	}
 }
 
+func TestAdminHTMLSettingsUILayoutSinglePath(t *testing.T) {
+	if n := strings.Count(adminHTML, "function applySettingsStatusUI"); n != 1 {
+		t.Fatalf("applySettingsStatusUI must appear exactly once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function saveTaxpayerSettings"); n != 1 {
+		t.Fatalf("saveTaxpayerSettings must appear exactly once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function saveATCredentialsSettings"); n != 1 {
+		t.Fatalf("saveATCredentialsSettings must appear exactly once, got %d", n)
+	}
+	if strings.Contains(adminHTML, "setupChecklist") {
+		t.Fatal("legacy setupChecklist must be removed; use setupDashboard")
+	}
+	if !strings.Contains(adminHTML, `id="setupDashboard"`) {
+		t.Fatal("settings must use setupDashboard")
+	}
+	if !strings.Contains(adminHTML, `id="settingsShell"`) || !strings.Contains(adminHTML, `id="settingsNav"`) {
+		t.Fatal("settings must define shell + nav")
+	}
+	if strings.Count(adminHTML, "j('PUT', '/local/v1/setup/taxpayer'") != 1 {
+		t.Fatalf("taxpayer PUT must go through saveTaxpayerSettings only, got %d",
+			strings.Count(adminHTML, "j('PUT', '/local/v1/setup/taxpayer'"))
+	}
+	if strings.Count(adminHTML, "j('PUT', '/local/v1/setup/at-credentials'") != 1 {
+		t.Fatalf("at-credentials PUT must go through saveATCredentialsSettings only, got %d",
+			strings.Count(adminHTML, "j('PUT', '/local/v1/setup/at-credentials'"))
+	}
+	if strings.Contains(adminHTML, "1. 门店信息") || strings.Contains(adminHTML, "8. 备份与换机") {
+		t.Fatal("numbered settings sections must be removed")
+	}
+}
+
 func TestAdminHTMLOperatorManageM32bSinglePath(t *testing.T) {
 	if n := strings.Count(adminHTML, "function forceLogout"); n != 1 {
 		t.Fatalf("forceLogout must appear exactly once, got %d", n)

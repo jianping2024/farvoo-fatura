@@ -227,6 +227,126 @@
     .checklist li { padding: 0.35rem 0; font-size: 0.9rem; }
     .checklist li.ok { color: #1f7a4c; }
     .checklist li.no { color: #9a6700; }
+
+    /* —— Settings (ONLY layout for view-settings) —— */
+    .main.settings-page { max-width: 1120px; }
+    .settings-topbar { align-items: center; }
+    .settings-topbar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .settings-shell {
+      display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 1.25rem; align-items: start;
+    }
+    .settings-nav {
+      position: sticky; top: 1rem; display: flex; flex-direction: column; gap: 0.25rem;
+    }
+    .settings-nav a {
+      display: block; padding: 0.5rem 0.65rem; border-radius: 10px; font-size: 0.86rem; font-weight: 600;
+      color: var(--muted); text-decoration: none; border: 1px solid transparent;
+    }
+    .settings-nav a:hover, .settings-nav a.active {
+      color: var(--mode); background: #f0f7f2; border-color: #cfe3d7;
+    }
+    .settings-nav-mobile {
+      display: none; gap: 0.45rem; overflow-x: auto; padding: 0.25rem 0 0.75rem;
+      -webkit-overflow-scrolling: touch; scrollbar-width: thin;
+    }
+    .settings-nav-mobile a {
+      flex: 0 0 auto; padding: 0.4rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+      text-decoration: none; color: var(--muted); border: 1px solid var(--line); background: #fff;
+    }
+    .settings-nav-mobile a.active { color: #fff; background: var(--mode); border-color: var(--mode); }
+    .settings-main { min-width: 0; display: flex; flex-direction: column; gap: 0.85rem; }
+    .settings-panel {
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: var(--shadow); overflow: hidden;
+    }
+    .settings-panel > summary {
+      list-style: none; cursor: pointer; padding: 0.95rem 1.1rem; font-weight: 700; font-size: 1rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    }
+    .settings-panel > summary::-webkit-details-marker { display: none; }
+    .settings-panel > summary::after { content: '▾'; color: var(--muted); font-size: 0.85rem; }
+    .settings-panel:not([open]) > summary::after { content: '▸'; }
+    .settings-panel-body { padding: 0 1.1rem 1rem; border-top: 1px solid var(--line); }
+    .settings-panel-flat { padding: 1rem 1.1rem; }
+    .settings-panel-flat h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+    .settings-panel.panel-danger { border-color: #e8b4b4; background: #fffafa; }
+    .settings-panel.panel-danger > summary { color: #8b2e2e; }
+    .panel-footer {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end;
+      margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--line);
+    }
+    .setup-dashboard {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem;
+    }
+    .setup-dash-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 0.75rem 0.85rem;
+    }
+    .setup-dash-card.warn { border-color: #f0d59a; background: #fffaf0; }
+    .setup-dash-card.ok { border-color: #b7e0c6; background: #f4fbf7; }
+    .setup-dash-card .k { font-size: 0.72rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+    .setup-dash-card .v { font-size: 0.92rem; font-weight: 700; margin-top: 0.35rem; line-height: 1.35; }
+    .setup-dash-card .d { font-size: 0.78rem; color: var(--muted); margin-top: 0.25rem; }
+    .status-pill {
+      display: inline-block; padding: 0.12rem 0.5rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+      background: #fff1d6; color: #9a6700;
+    }
+    .status-pill.ok { background: #dff3e7; color: #1f7a4c; }
+    .status-pill.optional { background: #eef2f4; color: var(--muted); }
+    .series-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+    .series-card {
+      border: 1px solid var(--line); border-radius: 12px; padding: 0.75rem; background: #fff;
+    }
+    .series-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+    .series-card-head strong { font-size: 0.95rem; }
+    .series-card.optional { opacity: 0.95; }
+    .field-error { display: block; font-size: 0.78rem; color: #a33b3b; margin-top: 0.25rem; min-height: 1rem; }
+    input.field-invalid, select.field-invalid, textarea.field-invalid {
+      border-color: #e8a0a0; background: #fff8f8;
+    }
+    button.btn-saved { background: #1f7a4c !important; }
+    .settings-wizard-bar {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.85rem;
+    }
+    .wizard-step-chip {
+      padding: 0.35rem 0.7rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+    }
+    .wizard-step-chip.done { border-color: #b7e0c6; color: #1f7a4c; background: #f4fbf7; }
+    .wizard-step-chip.active { border-color: var(--mode); color: var(--mode); background: #f0f7f2; }
+    .settings-shell.settings-wizard-active .settings-nav,
+    .settings-shell.settings-wizard-active .settings-nav-mobile { display: none; }
+    .settings-shell.settings-wizard-active .settings-panel[data-wizard-step] { display: none; }
+    .settings-shell.settings-wizard-active .settings-panel[data-wizard-step].wizard-current { display: block; }
+    .settings-shell.settings-wizard-active .settings-panel:not([data-wizard-step]),
+    .settings-shell.settings-wizard-active .settings-panel-flat { display: none !important; }
+    .settings-shell.settings-wizard-active #settings-section-overview { display: none; }
+    .settings-wizard-actions {
+      display: flex; justify-content: space-between; gap: 0.75rem; margin-top: 0.85rem;
+    }
+    .op-menu { position: relative; display: inline-block; }
+    .op-menu > summary {
+      list-style: none; cursor: pointer; padding: 0.35rem 0.55rem; border-radius: 8px;
+      font-weight: 700; color: var(--muted); user-select: none;
+    }
+    .op-menu > summary::-webkit-details-marker { display: none; }
+    .op-menu-pop {
+      position: absolute; right: 0; top: 100%; z-index: 5; min-width: 8.5rem;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+      box-shadow: var(--shadow); padding: 0.35rem; display: flex; flex-direction: column; gap: 0.15rem;
+    }
+    .op-menu-pop button { width: 100%; text-align: left; padding: 0.45rem 0.55rem; font-size: 0.85rem; }
+    tr.muted td { opacity: 0.65; }
+    @media (max-width: 900px) {
+      .settings-shell { grid-template-columns: 1fr; }
+      .settings-nav { display: none; }
+      .settings-nav-mobile { display: flex; }
+      .setup-dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .series-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px) {
+      .setup-dashboard { grid-template-columns: 1fr; }
+    }
+
     .credit-tabs { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
     .credit-tabs button { flex: 1; }
     .credit-tabs button.active { border-color: var(--mode); font-weight: 600; }
@@ -635,111 +755,181 @@
       </section>
 
       <section class="view hidden" id="view-settings">
-        <div class="topbar"><div><h1>设置</h1><p class="hint">门店与设备</p></div></div>
-        <div class="panel">
-          <h2>就绪状态</h2>
-          <ul class="checklist" id="setupChecklist"></ul>
-          <div class="actions"><button type="button" class="secondary" id="btnRefreshSetup">刷新状态</button></div>
-        </div>
-        <div class="panel">
-          <h2>1. 门店信息</h2>
-          <div class="split">
-            <div class="field"><label>NIF</label><input id="nif" value="517535009" /></div>
-            <div class="field"><label>店名</label><input id="legal" value="Farvoo Demo Lda" /></div>
+        <div class="topbar settings-topbar">
+          <div>
+            <h1>设置</h1>
+            <p class="hint" id="settingsSubtitle">门店与设备</p>
           </div>
-          <div class="field"><label>地址</label><input id="addr" value="Rua Demo 1" /></div>
-          <div class="split">
-            <div class="field"><label>城市</label><input id="city" value="Lisboa" /></div>
-            <div class="field"><label>邮编</label><input id="postal" value="1000-001" /></div>
-          </div>
-          <button type="button" id="btnTax">保存门店信息</button>
-        </div>
-        <div class="panel">
-          <h2>2. 税务平台凭证</h2>
-          <div class="field"><label>用户名</label><input id="atuser" value="517535009/37" /></div>
-          <div class="field"><label>密码</label><input id="atpass" type="password" value="demo-pass" /></div>
-          <button type="button" id="btnAT">保存凭证</button>
-        </div>
-        <div class="panel">
-          <h2>3. 注册发票系列</h2>
-          <p class="hint">日常开票只需 FT + FS；NC / ND 仅在需要冲销 / 借记时再注册。同类型已注册后不可再换新编号。</p>
-          <div class="field"><label>FT 系列编号</label><input id="series" /><span class="hint" id="seriesFtHint"></span></div>
-          <button type="button" id="btnSeries">注册 FT 系列</button>
-          <div class="field" style="margin-top:1rem"><label>FS 系列编号</label><input id="seriesFs" /><span class="hint" id="seriesFsHint"></span></div>
-          <button type="button" id="btnSeriesFs">注册 FS 系列</button>
-          <div class="field" style="margin-top:1rem"><label>NC 系列编号</label><input id="seriesNc" /><span class="hint" id="seriesNcHint"></span></div>
-          <button type="button" id="btnSeriesNc">注册 NC 系列</button>
-          <div class="field" style="margin-top:1rem"><label>ND 系列编号</label><input id="seriesNd" /><span class="hint" id="seriesNdHint"></span></div>
-          <button type="button" id="btnSeriesNd">注册 ND 系列</button>
-        </div>
-        <div class="panel">
-          <h2>4. 激活开票</h2>
-          <p class="hint" id="actCloudHint">由运营后台「激活开票」后，点下方同步领取封装私钥（无需粘贴 PEM）。</p>
-          <button type="button" id="btnActCloud">从运营同步开票授权</button>
-          <div id="actCloudStatus" class="sync-status" role="status">尚未同步 · 点上方按钮从运营领取</div>
-          <div id="localPemBlock" class="hidden" style="margin-top:1rem">
-            <p class="hint">开发/UAT：允许粘贴产品 RSA 私钥 PEM。</p>
-            <div class="field"><textarea id="pem" rows="4" placeholder="-----BEGIN … PRIVATE KEY-----"></textarea></div>
-            <button type="button" id="btnAct">本地 PEM 激活</button>
+          <div class="settings-topbar-actions">
+            <button type="button" class="secondary hidden" id="btnSettingsShowWizard">配置向导</button>
+            <button type="button" class="secondary hidden" id="btnSettingsShowFull">查看全部设置</button>
           </div>
         </div>
-        <div class="panel admin-list-panel" id="panelOperators">
-          <h2>5. 开票员名册</h2>
-          <p class="hint">角色：<strong>店长</strong> (owner) / <strong>店员</strong> (cashier)；仅店长可管理名册。</p>
-          <p class="hint" id="fiscalProfileHint">门店业态：加载中…</p>
-          <div class="admin-list-filter-row owner-only" id="operatorsToolbar">
-            <button type="button" id="btnOperatorAdd">添加开票员</button>
+        <div id="settingsWizardBar" class="settings-wizard-bar hidden" aria-label="配置进度"></div>
+        <div class="settings-shell" id="settingsShell">
+          <nav class="settings-nav" id="settingsNav" aria-label="设置分区">
+            <a href="#settings-section-overview" data-settings-nav="overview">概览</a>
+            <a href="#settings-section-store" data-settings-nav="store">门店与税务</a>
+            <a href="#settings-section-series" data-settings-nav="series">系列与授权</a>
+            <a href="#settings-section-operators" data-settings-nav="operators">人员</a>
+            <a href="#settings-section-printers" data-settings-nav="printers">设备</a>
+            <a href="#settings-section-saft" data-settings-nav="saft">合规</a>
+            <a href="#settings-section-advanced" data-settings-nav="advanced">高级</a>
+          </nav>
+          <div class="settings-nav-mobile" id="settingsNavMobile" aria-label="设置分区">
+            <a href="#settings-section-overview" data-settings-nav="overview">概览</a>
+            <a href="#settings-section-store" data-settings-nav="store">门店</a>
+            <a href="#settings-section-series" data-settings-nav="series">授权</a>
+            <a href="#settings-section-operators" data-settings-nav="operators">人员</a>
+            <a href="#settings-section-printers" data-settings-nav="printers">设备</a>
+            <a href="#settings-section-saft" data-settings-nav="saft">合规</a>
+            <a href="#settings-section-advanced" data-settings-nav="advanced">高级</a>
           </div>
-          <div class="table-scroll">
-            <table class="list-table" id="operatorsTable">
-              <thead><tr>
-                <th>姓名</th><th>角色</th><th>PIN</th><th>可冲销</th><th>状态</th><th class="col-actions">操作</th>
-              </tr></thead>
-              <tbody id="operatorsTbody"></tbody>
-            </table>
+          <div class="settings-main">
+            <div class="settings-panel-flat panel" id="settings-section-overview">
+              <h2>就绪概览</h2>
+              <div class="setup-dashboard" id="setupDashboard" role="status"></div>
+              <div class="panel-footer">
+                <button type="button" class="secondary" id="btnRefreshSetup">刷新状态</button>
+              </div>
+            </div>
+
+            <details class="settings-panel" id="settings-section-store" data-settings-section="store" data-wizard-step="1">
+              <summary>门店与税务</summary>
+              <div class="settings-panel-body">
+                <h3 style="margin:0.75rem 0 0.5rem;font-size:0.95rem">门店信息</h3>
+                <div class="split">
+                  <div class="field"><label for="nif">NIF</label><input id="nif" value="517535009" autocomplete="off" /><span class="field-error" id="nifError"></span></div>
+                  <div class="field"><label for="legal">店名</label><input id="legal" value="Farvoo Demo Lda" autocomplete="off" /><span class="field-error" id="legalError"></span></div>
+                </div>
+                <div class="field"><label for="addr">地址</label><input id="addr" value="Rua Demo 1" autocomplete="off" /></div>
+                <div class="split">
+                  <div class="field"><label for="city">城市</label><input id="city" value="Lisboa" autocomplete="off" /></div>
+                  <div class="field"><label for="postal">邮编</label><input id="postal" value="1000-001" autocomplete="off" /><span class="field-error" id="postalError"></span></div>
+                </div>
+                <div class="panel-footer"><button type="button" id="btnTax">保存门店信息</button></div>
+                <h3 style="margin:1rem 0 0.5rem;font-size:0.95rem">税务平台凭证</h3>
+                <div class="field"><label for="atuser">用户名</label><input id="atuser" value="517535009/37" autocomplete="off" /><span class="field-error" id="atuserError"></span></div>
+                <div class="field"><label for="atpass">密码</label><input id="atpass" type="password" value="demo-pass" autocomplete="off" /><span class="field-error" id="atpassError"></span></div>
+                <div class="panel-footer"><button type="button" id="btnAT">保存凭证</button></div>
+              </div>
+            </details>
+
+            <details class="settings-panel" id="settings-section-series" data-settings-section="series" data-wizard-step="2">
+              <summary>系列与开票授权</summary>
+              <div class="settings-panel-body">
+                <p class="hint">日常开票只需 FT + FS；NC / ND 仅在冲销 / 借记时需要。</p>
+                <div class="series-grid">
+                  <div class="series-card" data-series="ft">
+                    <div class="series-card-head"><strong>FT</strong><span class="status-pill" id="seriesFtPill">待配置</span></div>
+                    <div class="field"><label for="series">系列编号</label><input id="series" /><span class="hint" id="seriesFtHint"></span></div>
+                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeries" class="btn-sm">注册 FT</button></div>
+                  </div>
+                  <div class="series-card" data-series="fs">
+                    <div class="series-card-head"><strong>FS</strong><span class="status-pill" id="seriesFsPill">待配置</span></div>
+                    <div class="field"><label for="seriesFs">系列编号</label><input id="seriesFs" /><span class="hint" id="seriesFsHint"></span></div>
+                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesFs" class="btn-sm">注册 FS</button></div>
+                  </div>
+                  <div class="series-card optional" data-series="nc">
+                    <div class="series-card-head"><strong>NC</strong><span class="status-pill optional" id="seriesNcPill">可选</span></div>
+                    <div class="field"><label for="seriesNc">系列编号</label><input id="seriesNc" /><span class="hint" id="seriesNcHint"></span></div>
+                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesNc" class="btn-sm">注册 NC</button></div>
+                  </div>
+                  <div class="series-card optional" data-series="nd">
+                    <div class="series-card-head"><strong>ND</strong><span class="status-pill optional" id="seriesNdPill">可选</span></div>
+                    <div class="field"><label for="seriesNd">系列编号</label><input id="seriesNd" /><span class="hint" id="seriesNdHint"></span></div>
+                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesNd" class="btn-sm">注册 ND</button></div>
+                  </div>
+                </div>
+                <h3 style="margin:1rem 0 0.5rem;font-size:0.95rem">激活开票</h3>
+                <p class="hint" id="actCloudHint">由运营后台「激活开票」后，点下方同步领取封装私钥。</p>
+                <div class="panel-footer" style="border:0;justify-content:flex-start">
+                  <button type="button" id="btnActCloud">从运营同步开票授权</button>
+                </div>
+                <div id="actCloudStatus" class="sync-status" role="status">尚未同步 · 点上方按钮从运营领取</div>
+                <div id="localPemBlock" class="hidden" style="margin-top:1rem">
+                  <p class="hint">开发/UAT：允许粘贴产品 RSA 私钥 PEM。</p>
+                  <div class="field"><textarea id="pem" rows="4" placeholder="-----BEGIN … PRIVATE KEY-----"></textarea><span class="field-error" id="pemError"></span></div>
+                  <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnAct">本地 PEM 激活</button></div>
+                </div>
+              </div>
+            </details>
+
+            <details class="settings-panel admin-list-panel" id="settings-section-operators" data-settings-section="operators">
+              <summary>开票员名册</summary>
+              <div class="settings-panel-body">
+                <p class="hint">角色：<strong>店长</strong> / <strong>店员</strong>；仅店长可管理名册。</p>
+                <p class="hint" id="fiscalProfileHint">门店业态：加载中…</p>
+                <div class="admin-list-filter-row owner-only" id="operatorsToolbar">
+                  <button type="button" id="btnOperatorAdd">添加开票员</button>
+                </div>
+                <div class="table-scroll">
+                  <table class="list-table" id="operatorsTable">
+                    <thead><tr>
+                      <th>姓名</th><th>角色</th><th>PIN</th><th>可冲销</th><th>状态</th><th class="col-actions">操作</th>
+                    </tr></thead>
+                    <tbody id="operatorsTbody"></tbody>
+                  </table>
+                </div>
+                <p class="hint hidden" id="operatorsEmptyHint">无开票员 · 请退出后在登录页创建 owner</p>
+              </div>
+            </details>
+
+            <details class="settings-panel" id="settings-section-printers" data-settings-section="printers">
+              <summary>打印机</summary>
+              <div class="settings-panel-body">
+                <div class="field">
+                  <label for="stationSel">默认打印档口</label>
+                  <select id="stationSel"><option value="">（加载中…）</option></select>
+                </div>
+                <div class="panel-footer" style="border:0;justify-content:flex-start">
+                  <button type="button" class="secondary" id="btnPrinters">刷新档口</button>
+                  <a href="http://127.0.0.1:17892/configure" target="_blank" rel="noopener" class="hint">管理档口打印机 →</a>
+                </div>
+              </div>
+            </details>
+
+            <details class="settings-panel" id="settings-section-saft" data-settings-section="saft">
+              <summary>SAF-T 月导</summary>
+              <div class="settings-panel-body">
+                <p class="hint">按月导出本机已签 FT / NC，归档 XML。</p>
+                <div class="split">
+                  <div class="field"><label for="saftYear">年份</label><input id="saftYear" type="number" min="2000" max="2100" /></div>
+                  <div class="field"><label for="saftMonth">月份</label><input id="saftMonth" type="number" min="1" max="12" /></div>
+                </div>
+                <div class="panel-footer" style="border:0;justify-content:flex-start">
+                  <button type="button" id="btnSaftExport">导出 SAF-T</button>
+                  <button type="button" class="secondary" id="btnSaftRefresh">刷新列表</button>
+                </div>
+                <ul class="checklist" id="saftExportList"></ul>
+              </div>
+            </details>
+
+            <details class="settings-panel panel-danger" id="settings-section-advanced" data-settings-section="advanced">
+              <summary>备份与换机</summary>
+              <div class="settings-panel-body">
+                <p class="hint">备份税务库；恢复后校验系列序号/Hash。换机须先停用本机授权。</p>
+                <div class="panel-footer" style="border:0;justify-content:flex-start">
+                  <button type="button" id="btnFiscalBackup">备份税务库</button>
+                  <button type="button" class="secondary" id="btnIntegrityVerify">校验系列完整性</button>
+                </div>
+                <label class="check-row" for="chkIntegrityHeal">
+                  <input type="checkbox" id="chkIntegrityHeal" />
+                  <span>校验通过时恢复已停用系列</span>
+                </label>
+                <p id="integrityResult" class="hint" style="margin-top:0.5rem"></p>
+                <div class="panel-footer">
+                  <button type="button" class="secondary" id="btnPrepareSwap">本机停用开票授权（换机）</button>
+                </div>
+                <p class="hint">停用前会自动备份。新机须重新「从运营同步开票授权」。</p>
+              </div>
+            </details>
+
+            <div class="settings-wizard-actions hidden" id="settingsWizardActions">
+              <button type="button" class="secondary" id="btnWizardPrev">上一步</button>
+              <button type="button" id="btnWizardNext">下一步</button>
+            </div>
           </div>
-          <p class="hint hidden" id="operatorsEmptyHint">无开票员 · 请退出后在登录页创建 owner</p>
-        </div>
-        <div class="panel">
-          <h2>6. 打印机</h2>
-          <div class="field">
-            <label>默认打印档口</label>
-            <select id="stationSel"><option value="">（加载中…）</option></select>
-          </div>
-          <div class="actions">
-            <button type="button" class="secondary" id="btnPrinters">刷新档口</button>
-            <a href="http://127.0.0.1:17892/configure" target="_blank" rel="noopener" class="hint">管理档口打印机 →</a>
-          </div>
-        </div>
-        <div class="panel">
-          <h2>7. SAF-T 月导</h2>
-          <p class="hint">按月导出本机已签 FT / NC，归档 XML（对外合规出口）。</p>
-          <div class="split">
-            <div class="field"><label>年份</label><input id="saftYear" type="number" min="2000" max="2100" /></div>
-            <div class="field"><label>月份</label><input id="saftMonth" type="number" min="1" max="12" /></div>
-          </div>
-          <div class="actions">
-            <button type="button" id="btnSaftExport">导出 SAF-T</button>
-            <button type="button" class="secondary" id="btnSaftRefresh">刷新列表</button>
-          </div>
-          <ul class="checklist" id="saftExportList"></ul>
-        </div>
-        <div class="panel">
-          <h2>8. 备份与换机</h2>
-          <p class="hint">备份税务库；恢复后校验系列序号/Hash。换机：本机停用授权 → 拷备份到新机 → 新机校验并重新同步开票授权。</p>
-          <div class="actions">
-            <button type="button" id="btnFiscalBackup">备份税务库</button>
-            <button type="button" class="secondary" id="btnIntegrityVerify">校验系列完整性</button>
-          </div>
-          <label class="check-row" for="chkIntegrityHeal" style="margin-top:0.75rem">
-            <input type="checkbox" id="chkIntegrityHeal" />
-            <span>校验通过时恢复已停用系列</span>
-          </label>
-          <p id="integrityResult" class="hint" style="margin-top:0.5rem"></p>
-          <div class="actions" style="margin-top:1rem">
-            <button type="button" class="secondary" id="btnPrepareSwap">本机停用开票授权（换机）</button>
-          </div>
-          <p class="hint" style="margin-top:0.5rem">停用前会自动备份。新机替换 fiscal.db 后须「从运营同步开票授权」，旧封装密钥无法在新机解开。</p>
         </div>
       </section>
     </main>
@@ -1566,58 +1756,326 @@
     return '失败 · ' + (msg || code || '未知错误');
   }
 
-  function renderSetupChecklist(st) {
-    const el = $('#setupChecklist');
-    if (!st) { el.innerHTML = '<li class="no">无法读取状态</li>'; return; }
-    const items = [
-      ['门店信息', st.taxpayer_ok, ''],
-      ['税务凭证', st.at_credentials_ok, ''],
-      ['FT 系列', st.series_ok, st.series_code || ''],
-      ['FS 系列', st.fs_series_ok, st.fs_series_code || ''],
-      ['NC 系列', st.nc_series_ok, st.nc_series_code || ''],
-      ['ND 系列', st.nd_series_ok, st.nd_series_code || ''],
-      ['开票授权', st.activated_ok, ''],
-      ['开票员', st.operator_ok, ''],
-      ['可开票', st.ready_to_issue, ''],
-      ['可冲销', st.ready_to_credit, ''],
-      ['可借记', st.ready_to_debit, '']
-    ];
-    el.innerHTML = items.map(([label, ok, code]) =>
-      '<li class="' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : '○') + ' ' + label +
-      (code ? ' · ' + code : '') + '</li>'
-    ).join('');
-    if (st.activated_ok) {
-      setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
-    } else if (!st.cloud_paired_ok) {
-      setActCloudStatus('wait', '尚未配对云端 · 请先完成打印助手配对');
-    } else if (!st.taxpayer_ok) {
-      setActCloudStatus('wait', '请先保存 §1 门店信息');
+  const SETTINGS_SECTIONS_KEY = 'fiscal_settings_sections';
+  const SETTINGS_VIEW_MODE_KEY = 'fiscal_settings_view_mode';
+  const SETTINGS_WIZARD_STEP_KEY = 'fiscal_settings_wizard_step';
+  const SETTINGS_WIZARD_STEPS = [
+    { step: 1, label: '门店与税务', panel: 'store' },
+    { step: 2, label: '系列与授权', panel: 'series' }
+  ];
+  let settingsViewMode = 'full';
+  let settingsWizardStep = 1;
+  let settingsNavBound = false;
+
+  function loadSettingsSectionState() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_SECTIONS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (_) { return {}; }
+  }
+
+  function saveSettingsSectionOpen(section, open) {
+    const state = loadSettingsSectionState();
+    state[section] = !!open;
+    try { localStorage.setItem(SETTINGS_SECTIONS_KEY, JSON.stringify(state)); } catch (_) { /* */ }
+  }
+
+  function bindSettingsSectionPersistence() {
+    $$('[data-settings-section]').forEach(el => {
+      if (el.dataset.settingsBound) return;
+      el.dataset.settingsBound = '1';
+      el.addEventListener('toggle', () => {
+        saveSettingsSectionOpen(el.dataset.settingsSection, el.open);
+      });
+    });
+  }
+
+  function applySettingsCollapseDefaults(st) {
+    const saved = loadSettingsSectionState();
+    const ready = !!(st && st.ready_to_issue);
+    const defaults = ready
+      ? { store: false, series: false, operators: true, printers: true, saft: true, advanced: false }
+      : { store: true, series: true, operators: true, printers: false, saft: false, advanced: false };
+    $$('[data-settings-section]').forEach(el => {
+      const key = el.dataset.settingsSection;
+      if (key in saved) el.open = !!saved[key];
+      else if (key in defaults) el.open = !!defaults[key];
+    });
+  }
+
+  function setFieldError(input, errEl, msg) {
+    if (!input) return false;
+    if (msg) {
+      input.classList.add('field-invalid');
+      if (errEl) errEl.textContent = msg;
+      return false;
     }
+    input.classList.remove('field-invalid');
+    if (errEl) errEl.textContent = '';
+    return true;
+  }
+
+  function markSaveSuccess(btn) {
+    if (!btn) return;
+    const orig = btn.dataset.labelOrig || btn.textContent;
+    btn.dataset.labelOrig = orig;
+    btn.textContent = '已保存';
+    btn.classList.add('btn-saved');
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.classList.remove('btn-saved');
+    }, 1800);
+  }
+
+  function validateTaxpayerForm() {
+    let ok = true;
+    const nif = ($('#nif').value || '').trim();
+    const legal = ($('#legal').value || '').trim();
+    const postal = ($('#postal').value || '').trim();
+    ok = setFieldError($('#nif'), $('#nifError'), nif ? '' : 'NIF 必填') && ok;
+    ok = setFieldError($('#legal'), $('#legalError'), legal ? '' : '店名必填') && ok;
+    ok = setFieldError($('#postal'), $('#postalError'), postal ? '' : '邮编必填') && ok;
+    return ok;
+  }
+
+  function validateATForm() {
+    let ok = true;
+    const user = ($('#atuser').value || '').trim();
+    const pass = ($('#atpass').value || '').trim();
+    ok = setFieldError($('#atuser'), $('#atuserError'), user ? '' : '用户名必填') && ok;
+    ok = setFieldError($('#atpass'), $('#atpassError'), pass ? '' : '密码必填') && ok;
+    return ok;
+  }
+
+  /** ONLY taxpayer save path. */
+  async function saveTaxpayerSettings(btn) {
+    if (!validateTaxpayerForm()) {
+      toast('请修正标红字段', 'error');
+      throw { error: 'validation_failed' };
+    }
+    await j('PUT', '/local/v1/setup/taxpayer', {
+      tax_registration_number: $('#nif').value.trim(),
+      legal_name: $('#legal').value.trim(),
+      address_detail: $('#addr').value.trim(),
+      city: $('#city').value.trim(),
+      postal_code: $('#postal').value.trim(),
+      country: 'PT',
+      timezone: 'Europe/Lisbon',
+      software_certificate_number: '0'
+    });
+    await refreshSetupStatus();
+    markSaveSuccess(btn);
+    toast('门店信息保存成功', 'success');
+  }
+
+  /** ONLY AT credentials save path. */
+  async function saveATCredentialsSettings(btn) {
+    if (!validateATForm()) {
+      toast('请修正标红字段', 'error');
+      throw { error: 'validation_failed' };
+    }
+    await j('PUT', '/local/v1/setup/at-credentials', {
+      username: $('#atuser').value.trim(),
+      password: $('#atpass').value
+    });
+    await refreshSetupStatus();
+    markSaveSuccess(btn);
+    toast('凭证保存成功', 'success');
+  }
+
+  function renderSetupDashboard(st) {
+    const el = $('#setupDashboard');
+    if (!el) return;
+    if (!st) { el.innerHTML = '<p class="hint">无法读取状态</p>'; return; }
+    const baseOk = st.taxpayer_ok && st.at_credentials_ok;
+    const seriesOk = st.series_ok && st.fs_series_ok && st.activated_ok;
+    const cards = [
+      {
+        title: '基础信息', ok: baseOk,
+        value: baseOk ? '已就绪' : '待配置',
+        detail: [st.taxpayer_ok ? '门店 ✓' : '门店 ○', st.at_credentials_ok ? '凭证 ✓' : '凭证 ○'].join(' · ')
+      },
+      {
+        title: '系列与授权', ok: seriesOk,
+        value: seriesOk ? '已同步' : '待完成',
+        detail: [
+          st.series_ok ? 'FT ✓' : 'FT ○',
+          st.fs_series_ok ? 'FS ✓' : 'FS ○',
+          st.activated_ok ? '授权 ✓' : '授权 ○'
+        ].join(' · ')
+      },
+      {
+        title: '可开票', ok: st.ready_to_issue,
+        value: st.ready_to_issue ? '可以开票' : '尚未就绪',
+        detail: st.operator_ok ? '开票员 ✓' : '开票员 ○'
+      },
+      {
+        title: '冲销 / 借记', ok: st.ready_to_credit || st.ready_to_debit,
+        value: (st.ready_to_credit ? '可冲销' : '不可冲销') + ' · ' + (st.ready_to_debit ? '可借记' : '不可借记'),
+        detail: (st.nc_series_ok ? 'NC ✓' : 'NC ○') + ' · ' + (st.nd_series_ok ? 'ND ✓' : 'ND ○')
+      }
+    ];
+    el.innerHTML = cards.map(c =>
+      '<div class="setup-dash-card ' + (c.ok ? 'ok' : 'warn') + '">' +
+      '<div class="k">' + c.title + '</div>' +
+      '<div class="v">' + c.value + '</div>' +
+      '<div class="d">' + c.detail + '</div></div>'
+    ).join('');
+    const sub = $('#settingsSubtitle');
+    if (sub) {
+      sub.textContent = st.ready_to_issue ? '门店与设备 · 开票已就绪' : '完成下方配置后即可开票';
+    }
+  }
+
+  function renderWizardProgress(st) {
+    const bar = $('#settingsWizardBar');
+    if (!bar) return;
+    const inWizard = settingsViewMode === 'wizard' && st && !st.ready_to_issue;
+    bar.classList.toggle('hidden', !inWizard);
+    if (!inWizard) return;
+    bar.innerHTML = SETTINGS_WIZARD_STEPS.map(s => {
+      let cls = 'wizard-step-chip';
+      if (s.step < settingsWizardStep) cls += ' done';
+      if (s.step === settingsWizardStep) cls += ' active';
+      return '<span class="' + cls + '">' + s.step + '. ' + s.label + '</span>';
+    }).join('');
+  }
+
+  function applySettingsWizardUI(st) {
+    const shell = $('#settingsShell');
+    const actions = $('#settingsWizardActions');
+    const showWizard = settingsViewMode === 'wizard' && st && !st.ready_to_issue;
+    if (shell) shell.classList.toggle('settings-wizard-active', showWizard);
+    if (actions) actions.classList.toggle('hidden', !showWizard);
+    $('#btnSettingsShowFull').classList.toggle('hidden', !showWizard);
+    $('#btnSettingsShowWizard').classList.toggle('hidden', showWizard || (st && st.ready_to_issue));
+    if (!showWizard) {
+      $$('[data-wizard-step]').forEach(el => el.classList.remove('wizard-current'));
+      renderWizardProgress(st);
+      return;
+    }
+    $$('[data-wizard-step]').forEach(el => {
+      el.classList.toggle('wizard-current', Number(el.dataset.wizardStep) === settingsWizardStep);
+      if (Number(el.dataset.wizardStep) === settingsWizardStep) el.open = true;
+    });
+    renderWizardProgress(st);
+    const nextBtn = $('#btnWizardNext');
+    if (nextBtn) {
+      nextBtn.textContent = settingsWizardStep >= SETTINGS_WIZARD_STEPS.length ? '完成配置' : '下一步';
+    }
+  }
+
+  function setSettingsViewMode(mode, st) {
+    settingsViewMode = mode === 'wizard' ? 'wizard' : 'full';
+    try { localStorage.setItem(SETTINGS_VIEW_MODE_KEY, settingsViewMode); } catch (_) { /* */ }
+    applySettingsWizardUI(st || setupStatusCache);
+  }
+
+  function inferWizardStep(st) {
+    if (!st) return 1;
+    if (!st.taxpayer_ok || !st.at_credentials_ok) return 1;
+    if (!st.series_ok || !st.fs_series_ok || !st.activated_ok) return 2;
+    return 2;
+  }
+
+  function initSettingsView(st) {
+    bindSettingsSectionPersistence();
+    if (!settingsNavBound) {
+      settingsNavBound = true;
+      const onNav = e => {
+        const a = e.target.closest('[data-settings-nav]');
+        if (!a) return;
+        e.preventDefault();
+        const id = 'settings-section-' + a.dataset.settingsNav;
+        const target = document.getElementById(id);
+        if (target && target.tagName === 'DETAILS') target.open = true;
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        syncSettingsNavActive(a.dataset.settingsNav);
+      };
+      $('#settingsNav').addEventListener('click', onNav);
+      $('#settingsNavMobile').addEventListener('click', onNav);
+    }
+    try {
+      const savedMode = localStorage.getItem(SETTINGS_VIEW_MODE_KEY);
+      settingsWizardStep = Number(localStorage.getItem(SETTINGS_WIZARD_STEP_KEY) || '0') || inferWizardStep(st);
+      if (st && st.ready_to_issue) settingsViewMode = 'full';
+      else if (!st || !st.ready_to_issue) settingsViewMode = savedMode === 'full' ? 'full' : 'wizard';
+      else settingsViewMode = savedMode || 'full';
+    } catch (_) {
+      settingsViewMode = st && !st.ready_to_issue ? 'wizard' : 'full';
+      settingsWizardStep = inferWizardStep(st);
+    }
+    applySettingsCollapseDefaults(st);
+    applySettingsWizardUI(st);
+    syncSettingsNavActive('overview');
+  }
+
+  function syncSettingsNavActive(active) {
+    $$('[data-settings-nav]').forEach(a => {
+      a.classList.toggle('active', a.dataset.settingsNav === active);
+    });
+  }
+
+  async function wizardNextStep() {
+    const st = setupStatusCache || await refreshSetupStatus();
+    if (settingsWizardStep === 1) {
+      if (!st.taxpayer_ok) {
+        toast('请先保存门店信息与税务凭证', 'error');
+        return;
+      }
+    }
+    if (settingsWizardStep >= SETTINGS_WIZARD_STEPS.length) {
+      if (!st.ready_to_issue) {
+        toast('请先完成系列注册并同步开票授权', 'error');
+        return;
+      }
+      setSettingsViewMode('full', st);
+      toast('配置完成', 'success');
+      return;
+    }
+    settingsWizardStep += 1;
+    try { localStorage.setItem(SETTINGS_WIZARD_STEP_KEY, String(settingsWizardStep)); } catch (_) { /* */ }
+    applySettingsWizardUI(st);
+  }
+
+  function wizardPrevStep() {
+    settingsWizardStep = Math.max(1, settingsWizardStep - 1);
+    try { localStorage.setItem(SETTINGS_WIZARD_STEP_KEY, String(settingsWizardStep)); } catch (_) { /* */ }
+    applySettingsWizardUI(setupStatusCache);
+  }
+
+  /** ONLY settings status UI path (dashboard + wizard + collapse + series form). */
+  function applySettingsStatusUI(st) {
+    renderSetupDashboard(st);
     applySeriesForm(st);
+    applySettingsWizardUI(st);
+    if (st) applySettingsCollapseDefaults(st);
     const prof = $('#fiscalProfileHint');
     if (prof) {
-      if (st.fiscal_profile_ok && st.fiscal_profile) {
+      if (st && st.fiscal_profile_ok && st.fiscal_profile) {
         prof.textContent = '门店业态（Ops）：' + (st.fiscal_profile === 'retail' ? '商超' : '餐馆') +
           ' · 终端 ' + (st.terminals_used || 0) + '/' + (st.max_fiscal_terminals || 1);
-      } else if (st.taxpayer_ok) {
-        prof.textContent = '门店业态（Ops）：尚未同步到本机 — 点 §4「从运营同步开票授权」';
+      } else if (st && st.taxpayer_ok) {
+        prof.textContent = '门店业态（Ops）：尚未同步 — 完成「系列与授权」后自动拉取';
       } else {
-        prof.textContent = '门店业态（Ops）：请先保存 §1 门店信息，再同步';
+        prof.textContent = '门店业态（Ops）：请先保存门店信息';
       }
     }
+    if (st && st.activated_ok) {
+      setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
+    } else if (st && !st.cloud_paired_ok) {
+      setActCloudStatus('wait', '尚未配对云端 · 请先完成打印助手配对');
+    } else if (st && !st.taxpayer_ok) {
+      setActCloudStatus('wait', '请先保存门店纳税人信息');
+    }
     const cloudBtn = $('#btnActCloud');
-    if (cloudBtn) cloudBtn.disabled = !st.taxpayer_ok || !st.cloud_paired_ok || st.activated_ok;
+    if (cloudBtn && st) cloudBtn.disabled = !st.taxpayer_ok || !st.cloud_paired_ok || st.activated_ok;
     const actHint = $('#actCloudHint');
-    if (actHint) {
-      if (!st.cloud_paired_ok) {
-        actHint.textContent = '请先完成打印助手配对，再领取开票授权。';
-      } else if (!st.taxpayer_ok) {
-        actHint.textContent = '请先保存 §1 门店信息，再领取开票授权。';
-      } else if (st.activated_ok) {
-        actHint.textContent = '开票授权已同步到本机。';
-      } else {
-        actHint.textContent = 'Ops 激活开票后，点下方领取（进入设置页会自动尝试一次）。';
-      }
+    if (actHint && st) {
+      if (!st.cloud_paired_ok) actHint.textContent = '请先完成打印助手配对，再领取开票授权。';
+      else if (!st.taxpayer_ok) actHint.textContent = '请先保存门店信息，再领取开票授权。';
+      else if (st.activated_ok) actHint.textContent = '开票授权已同步到本机。';
+      else actHint.textContent = 'Ops 激活开票后，点下方领取（进入设置页会自动尝试一次）。';
     }
   }
 
@@ -1647,7 +2105,8 @@
   async function refreshSetupStatus(opts) {
     const st = await j('GET', '/local/v1/setup/status');
     setupStatusCache = st;
-    renderSetupChecklist(st);
+    applySettingsStatusUI(st);
+    if (st.ready_to_issue) setSettingsViewMode('full', st);
     const pemBlock = $('#localPemBlock');
     if (pemBlock) pemBlock.classList.toggle('hidden', !st.local_provision_allowed);
     if (opts && opts.autoSync && !st.activated_ok && st.taxpayer_ok && st.cloud_paired_ok) {
@@ -1661,25 +2120,31 @@
   function applySeriesForm(st) {
     if (!st) return;
     const rows = [
-      { ok: st.series_ok, code: st.series_code, input: '#series', btn: '#btnSeries', hint: '#seriesFtHint', label: 'FT' },
-      { ok: st.fs_series_ok, code: st.fs_series_code, input: '#seriesFs', btn: '#btnSeriesFs', hint: '#seriesFsHint', label: 'FS' },
-      { ok: st.nc_series_ok, code: st.nc_series_code, input: '#seriesNc', btn: '#btnSeriesNc', hint: '#seriesNcHint', label: 'NC' },
-      { ok: st.nd_series_ok, code: st.nd_series_code, input: '#seriesNd', btn: '#btnSeriesNd', hint: '#seriesNdHint', label: 'ND' }
+      { ok: st.series_ok, code: st.series_code, input: '#series', btn: '#btnSeries', hint: '#seriesFtHint', label: 'FT', pill: '#seriesFtPill' },
+      { ok: st.fs_series_ok, code: st.fs_series_code, input: '#seriesFs', btn: '#btnSeriesFs', hint: '#seriesFsHint', label: 'FS', pill: '#seriesFsPill' },
+      { ok: st.nc_series_ok, code: st.nc_series_code, input: '#seriesNc', btn: '#btnSeriesNc', hint: '#seriesNcHint', label: 'NC', pill: '#seriesNcPill', optional: true },
+      { ok: st.nd_series_ok, code: st.nd_series_code, input: '#seriesNd', btn: '#btnSeriesNd', hint: '#seriesNdHint', label: 'ND', pill: '#seriesNdPill', optional: true }
     ];
     rows.forEach(r => {
       const inp = $(r.input);
       const btn = $(r.btn);
       const hint = $(r.hint);
+      const pill = $(r.pill);
       if (!inp || !btn) return;
       if (r.ok && r.code) {
         inp.value = r.code;
         inp.readOnly = true;
         btn.disabled = true;
         if (hint) hint.textContent = '已注册 · 不可重复';
+        if (pill) { pill.textContent = '已注册'; pill.className = 'status-pill ok'; }
       } else {
         inp.readOnly = false;
         btn.disabled = false;
         if (hint) hint.textContent = '';
+        if (pill) {
+          pill.textContent = r.optional ? '可选' : '待配置';
+          pill.className = 'status-pill' + (r.optional ? ' optional' : '');
+        }
       }
     });
   }
@@ -3187,10 +3652,14 @@
     }
     if (name === 'bills') refreshBills().catch(e => toast(errText(e), 'error'));
     if (name === 'settings') {
+      document.querySelector('.main').classList.add('settings-page');
+      initSettingsView(setupStatusCache);
       refreshSetupStatus({ autoSync: true }).catch(e => toast(errText(e), 'error'));
       refreshOperatorsPanel().catch(() => {});
       refreshPrinters().catch(() => {});
       refreshSAFTExports().catch(() => {});
+    } else {
+      document.querySelector('.main').classList.remove('settings-page');
     }
   }
 
@@ -3677,31 +4146,11 @@
   $('#invStationSel').onchange = () => setStationId($('#invStationSel').value);
 
   $('#btnTax').onclick = () => withBusy($('#btnTax'), '保存中…', async () => {
-    try {
-      await j('PUT', '/local/v1/setup/taxpayer', {
-        tax_registration_number: $('#nif').value,
-        legal_name: $('#legal').value,
-        address_detail: $('#addr').value,
-        city: $('#city').value,
-        postal_code: $('#postal').value,
-        country: 'PT',
-        timezone: 'Europe/Lisbon',
-        software_certificate_number: '0'
-      });
-      await refreshSetupStatus();
-      toast('门店信息保存成功', 'success');
-    } catch (er) { toast(errText(er), 'error'); throw er; }
+    try { await saveTaxpayerSettings($('#btnTax')); } catch (er) { if (er && er.error !== 'validation_failed') toast(errText(er), 'error'); throw er; }
   });
 
   $('#btnAT').onclick = () => withBusy($('#btnAT'), '保存中…', async () => {
-    try {
-      await j('PUT', '/local/v1/setup/at-credentials', {
-        username: $('#atuser').value,
-        password: $('#atpass').value
-      });
-      await refreshSetupStatus();
-      toast('凭证保存成功', 'success');
-    } catch (er) { toast(errText(er), 'error'); throw er; }
+    try { await saveATCredentialsSettings($('#btnAT')); } catch (er) { if (er && er.error !== 'validation_failed') toast(errText(er), 'error'); throw er; }
   });
 
   $('#btnSeries').onclick = () => registerSeries($('#btnSeries'), '#series', 'FT', 'FT').catch(er => { toast(errText(er), 'error'); throw er; });
@@ -3735,13 +4184,29 @@
 
   $('#btnAct').onclick = () => withBusy($('#btnAct'), '激活中…', async () => {
     try {
-      if (!$('#pem').value.trim()) throw { error: 'validation_failed', message: '请先粘贴产品私钥 PEM' };
-      await j('POST', '/local/v1/setup/activate', { product_private_key_pem: $('#pem').value });
+      const pem = $('#pem').value.trim();
+      if (!pem) {
+        setFieldError($('#pem'), $('#pemError'), '请先粘贴产品私钥 PEM');
+        toast('请先粘贴产品私钥 PEM', 'error');
+        throw { error: 'validation_failed' };
+      }
+      setFieldError($('#pem'), $('#pemError'), '');
+      await j('POST', '/local/v1/setup/activate', { product_private_key_pem: pem });
       await refreshSetupStatus();
       setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
+      markSaveSuccess($('#btnAct'));
       toast('开票已激活', 'success');
-    } catch (er) { toast(errText(er), 'error'); throw er; }
+    } catch (er) { if (er && er.error !== 'validation_failed') toast(errText(er), 'error'); throw er; }
   });
+
+  $('#btnSettingsShowFull').onclick = () => setSettingsViewMode('full', setupStatusCache);
+  $('#btnSettingsShowWizard').onclick = () => {
+    settingsWizardStep = inferWizardStep(setupStatusCache);
+    try { localStorage.setItem(SETTINGS_WIZARD_STEP_KEY, String(settingsWizardStep)); } catch (_) { /* */ }
+    setSettingsViewMode('wizard', setupStatusCache);
+  };
+  $('#btnWizardNext').onclick = () => wizardNextStep().catch(er => toast(errText(er), 'error'));
+  $('#btnWizardPrev').onclick = () => wizardPrevStep();
 
   async function refreshOperatorsPanel() {
     const tbody = $('#operatorsTbody');
@@ -3761,11 +4226,13 @@
         const ncToggle = o.active
           ? '<label class="check-row"><input type="checkbox" data-op-nc="' + o.id + '"' + (o.can_issue_nc ? ' checked' : '') + ' /><span>可冲销</span></label>'
           : '—';
-        const actions = o.active
-          ? '<button type="button" class="ghost" data-op-edit="' + o.id + '">编辑</button> ' +
-            '<button type="button" class="ghost" data-op-reset-pin="' + o.id + '">重置 PIN</button> ' +
-            '<button type="button" class="ghost" data-op-toggle="' + o.id + '" data-op-active="0">停用</button>'
-          : '<button type="button" class="ghost" data-op-toggle="' + o.id + '" data-op-active="1">启用</button>';
+        const menuItems = o.active
+          ? '<button type="button" class="ghost" data-op-action="edit" data-op-id="' + o.id + '">编辑</button>' +
+            '<button type="button" class="ghost" data-op-action="reset-pin" data-op-id="' + o.id + '">重置 PIN</button>' +
+            '<button type="button" class="ghost" data-op-action="deactivate" data-op-id="' + o.id + '">停用</button>'
+          : '<button type="button" class="ghost" data-op-action="activate" data-op-id="' + o.id + '">启用</button>';
+        const actions = '<details class="op-menu"><summary aria-label="操作">⋯</summary><div class="op-menu-pop">' +
+          menuItems + '</div></details>';
         return '<tr' + (o.active ? '' : ' class="muted"') + '>' +
           '<td>' + escHtml(o.display_name) + '</td>' +
           '<td>' + operatorRoleLabel(o.role) + '</td>' +
@@ -3905,15 +4372,18 @@
     if (e.target === $('#operatorResetPinModal')) closeOperatorResetPinModal();
   });
   $('#operatorsTbody').addEventListener('click', async e => {
-    const editBtn = e.target.closest('[data-op-edit]');
-    const resetBtn = e.target.closest('[data-op-reset-pin]');
-    const toggleBtn = e.target.closest('[data-op-toggle]');
-    if (!editBtn && !resetBtn && !toggleBtn) return;
+    const btn = e.target.closest('[data-op-action]');
+    if (!btn) return;
+    const menu = btn.closest('.op-menu');
+    if (menu) menu.open = false;
+    const id = btn.dataset.opId;
+    const action = btn.dataset.opAction;
     try {
       await loadOperatorManageCache();
-      if (editBtn) openOperatorFormModal('edit', editBtn.dataset.opEdit);
-      else if (resetBtn) openOperatorResetPinModal(resetBtn.dataset.opResetPin);
-      else if (toggleBtn) await toggleOperatorActive(toggleBtn.dataset.opToggle, toggleBtn.dataset.opActive === '1');
+      if (action === 'edit') openOperatorFormModal('edit', id);
+      else if (action === 'reset-pin') openOperatorResetPinModal(id);
+      else if (action === 'deactivate') await toggleOperatorActive(id, false);
+      else if (action === 'activate') await toggleOperatorActive(id, true);
     } catch (er) { toast(errText(er), 'error'); }
   });
   $('#operatorsTbody').addEventListener('change', async e => {
