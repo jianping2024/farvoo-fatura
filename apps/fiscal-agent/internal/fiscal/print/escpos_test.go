@@ -135,7 +135,7 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 	}
 	// feed-then-cut
 	if !bytes.Contains(raw, []byte{0x1D, 0x56, 0x42, cutFeedDots}) {
-		t.Fatal("must use GS V 66 feed-then-cut")
+		t.Fatalf("must use GS V 66 feed-then-cut with cutFeedDots=%d", cutFeedDots)
 	}
 	if bytes.Contains(raw, []byte{0x1D, 0x56, 0x00}) {
 		t.Fatal("must not use immediate GS V 0 cut")

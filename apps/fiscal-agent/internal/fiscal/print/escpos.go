@@ -22,13 +22,18 @@ var ivaSummaryColWidths = []int{10, 14, 12, 12}
 // Default ESC/POS line height (ESC 2) on most 80mm printers.
 const escposLineDots = 30
 
-// Receipt vertical padding (software-controlled only; ESC @ top feed is printer-specific).
-// Was 1 LF (30 dots) after LegalName; halved via ESC J n (dot feed — NOT ESC d, which feeds n lines).
-const receiptTopGapDots byte = escposLineDots / 2
+// v0.4.40 software vertical padding baselines (dots).
+const (
+	receiptTopGapDotsV040      = escposLineDots / 2 // 15 — ESC J after LegalName
+	receiptBottomFeedTotalV040 = 85                 // writeQR trailing LF (30) + GS V 66 (55)
+)
 
-// Bottom after QR: was writeQR LF (30) + 2 LF (60) + GS V 66 80 = 170 dots; halved to 85.
-// writeQR still ends with one LF (30); cut feed supplies the remaining 55 dots.
-const cutFeedDots byte = 85 - escposLineDots
+// Current targets: top ×½ of v0.4.40; bottom ×⅔ of v0.4.40 (integer dot math).
+const (
+	receiptTopGapDots        byte = receiptTopGapDotsV040 / 2              // 7 — ESC J only; NOT ESC d
+	receiptBottomFeedTotal        = receiptBottomFeedTotalV040 * 2 / 3    // 56
+	cutFeedDots              byte = receiptBottomFeedTotal - escposLineDots // 26 — GS V 66 n (writeQR LF fixed 30)
+)
 
 // escFeedDots emits ESC J n — feed n dots (buffer empty → feed only). Do NOT use ESC d (0x64): that feeds n lines.
 func escFeedDots(n byte) []byte { return []byte{0x1B, 0x4A, n} }
@@ -57,7 +62,7 @@ func RenderESCPOS(p *Payload) []byte {
 	}
 	rule := func() { w(strings.Repeat("-", receiptWidth)) }
 
-	// ① merchant — LegalName only: 1×2 bold, then one blank line (address/NIF stay 1×1)
+	// ① merchant — LegalName only: 1×2 bold, then dot gap (address/NIF stay 1×1)
 	align(1)
 	bold(true)
 	b.Write([]byte{0x1D, 0x21, 0x01}) // GS ! — double height only
@@ -154,7 +159,7 @@ func RenderESCPOS(p *Payload) []byte {
 	}
 	align(0)
 
-	// feed-then-cut: writeQR already LF (30 dots); + cutFeedDots = 85 total (half of prior 170).
+	// feed-then-cut: writeQR LF (30) + cutFeedDots = receiptBottomFeedTotal (56).
 	b.Write([]byte{0x1D, 0x56, 0x42, cutFeedDots})
 	return b.Bytes()
 }

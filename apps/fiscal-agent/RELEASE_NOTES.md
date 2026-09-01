@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.41
+
+**税票留白：顶 ×½、底 ×⅔（相对 0.4.40 软件进纸）**
+
+- 店名后 `ESC J 7`（原 15 点之半）；QR 后合计 **56 点**（原 85 之 ⅔）：`writeQR` LF 30 + `GS V 66` 26。
+- 常量由 v0.4.40 基线推导；单测 `TestReceiptVerticalPaddingConstants`。权威 `docs/fiscal-ft-receipt-layout.zh.md` P0 #9/#11。
+
 ## 0.4.40
 
 **热修：店名后间距误用 ESC d（15 行）→ ESC J（15 点）**
