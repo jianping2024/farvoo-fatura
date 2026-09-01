@@ -56,6 +56,9 @@ func routeAuthFor(r *http.Request) routeAuth {
 	if ownerPaths[p] {
 		return authOwner
 	}
+	if strings.HasPrefix(p, "/local/v1/saft/exports") {
+		return authOwner
+	}
 	return authSession
 }
 

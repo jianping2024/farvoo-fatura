@@ -74,11 +74,49 @@
     .mode-pick button.selected { border-color: var(--mode); background: #f7faf8; }
     .mode-pick strong { display: block; font-size: 1rem; margin-bottom: 0.25rem; }
     .mode-pick span { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
-    .pin-dots { display: flex; justify-content: center; gap: 0.5rem; margin: 0.75rem 0; }
-    .pin-dots i { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--green); display: block; }
-    .pin-dots i.on { background: var(--green); }
-    .pin-pad { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.5rem; }
-    .pin-pad button { background: #f7f2e8; color: var(--ink); aspect-ratio: 1.5; }
+    .pin-dots { display: flex; justify-content: center; gap: 0.55rem; margin: 0.75rem 0 1rem; }
+    .pin-dots i {
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid #8fa396; background: transparent; display: block;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .pin-dots i.on { background: var(--green); border-color: var(--green); }
+    .pin-pad { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.6rem; }
+    .pin-pad button {
+      aspect-ratio: 1.5; font-size: 1.3rem; font-weight: 700;
+      border-radius: 12px; transition: background 0.12s, border-color 0.12s, box-shadow 0.12s, transform 0.08s;
+    }
+    .pin-pad button:not(.secondary):not([data-k="OK"]) {
+      background: #fff; color: var(--ink);
+      border: 1.5px solid #c9bba8;
+      box-shadow: 0 2px 0 #e0d5c6, 0 1px 4px rgba(20,32,27,.07);
+    }
+    .pin-pad button:not(.secondary):not([data-k="OK"]):hover {
+      background: #faf8f4; border-color: #b5a48e;
+      box-shadow: 0 2px 0 #d8cdbf, 0 2px 6px rgba(20,32,27,.1);
+    }
+    .pin-pad button:not(.secondary):not([data-k="OK"]):active {
+      transform: translateY(1px);
+      box-shadow: inset 0 1px 3px rgba(20,32,27,.12);
+    }
+    .pin-pad button.secondary {
+      background: #faf6ef; color: var(--muted);
+      border: 1.5px solid var(--line); font-size: 1rem; font-weight: 600;
+      box-shadow: none;
+    }
+    .pin-pad button.secondary:hover {
+      background: #f0e8da; color: var(--ink); border-color: #c9bba8;
+    }
+    .pin-pad button[data-k="OK"] {
+      background: var(--green); color: #fff; border: 0;
+      font-size: 1rem; font-weight: 700;
+      box-shadow: 0 2px 0 #062a20, 0 2px 8px rgba(11,61,46,.28);
+    }
+    .pin-pad button[data-k="OK"]:hover { filter: brightness(1.06); }
+    .pin-pad button[data-k="OK"]:active {
+      transform: translateY(1px); filter: none;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,.18);
+    }
 
     #app-shell { display: none; min-height: 100vh; grid-template-columns: 220px 1fr; }
     #app-shell.on { display: grid; }
@@ -179,10 +217,12 @@
     .cta-big:focus { outline: 3px solid var(--mode); outline-offset: 2px; }
     .cta-big strong { display: block; font-size: 1.05rem; margin-bottom: 0.25rem; }
     .cta-big span { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
-    .retail-only, .rest-only { display: none; }
+    .retail-only, .rest-only, .owner-only { display: none; }
     body.mode-restaurant .rest-only { display: block; }
     body.mode-retail .retail-only { display: block; }
     body.mode-restaurant tr.rest-only, body.mode-retail tr.retail-only { display: table-row; }
+    body.operator-owner .owner-only { display: block; }
+    body.operator-owner tr.owner-only { display: table-row; }
     .checklist { list-style: none; padding: 0; margin: 0; }
     .checklist li { padding: 0.35rem 0; font-size: 0.9rem; }
     .checklist li.ok { color: #1f7a4c; }
@@ -248,9 +288,10 @@
       <button type="button" class="nav-btn" data-nav="invoices">发票<small>查询 / 重打</small></button>
       <button type="button" class="nav-btn" data-nav="products">商品<small>本店商品维护</small></button>
       <button type="button" class="nav-btn" data-nav="customers">客户<small>常用购方</small></button>
-      <button type="button" class="nav-btn" data-nav="settings">设置<small>店名 / 打印机</small></button>
+      <button type="button" class="nav-btn owner-only" data-nav="settings" id="navSettings">设置<small>店名 / 打印机</small></button>
       <div class="foot">
         <div id="operatorName">开票员</div>
+        <button type="button" class="ghost" id="btnChangePin" style="color:#cfe3d7;padding-left:0;margin-top:0.35rem">修改 PIN</button>
         <button type="button" class="ghost" id="btnLogout" style="color:#cfe3d7;padding-left:0">退出</button>
       </div>
     </aside>
@@ -753,6 +794,20 @@
     </div>
   </div>
 
+  <div id="changePinModal" class="modal-backdrop hidden">
+    <div class="modal" style="max-width:400px">
+      <h2>修改 PIN</h2>
+      <p class="hint">6 位数字；忘记 PIN 请联系店长重置。</p>
+      <div class="field"><label>当前 PIN</label><input id="changePinOld" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      <div class="field"><label>新 PIN</label><input id="changePinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      <div class="field"><label>确认新 PIN</label><input id="changePinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      <div class="actions">
+        <button type="button" id="btnChangePinSubmit">保存</button>
+        <button type="button" class="secondary" id="btnChangePinCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
   <div id="productPicker" class="modal-backdrop hidden">
     <div class="modal">
       <h2 id="productPickerTitle">添加商品</h2>
@@ -841,6 +896,45 @@
   let adjustTargetDetail = null;
   let adjustKind = null; // 'credit' | 'debit' — ONLY modal kind for NC/ND
   let adjustMode = 'partial';
+
+  /** ONLY operator role check — all owner/cashier UI gates use this. */
+  function isLoggedInOwner() {
+    return !!(loggedInOperator && loggedInOperator.role === 'owner');
+  }
+
+  /** ONLY sidebar/nav access path after login or logout. */
+  function applyOperatorAccess() {
+    document.body.classList.toggle('operator-owner', isLoggedInOwner());
+  }
+
+  function openChangePinModal() {
+    $('#changePinOld').value = '';
+    $('#changePinNew').value = '';
+    $('#changePinConfirm').value = '';
+    $('#changePinModal').classList.remove('hidden');
+    $('#changePinOld').focus();
+  }
+
+  function closeChangePinModal() {
+    $('#changePinModal').classList.add('hidden');
+  }
+
+  async function submitChangePin() {
+    const oldPin = $('#changePinOld').value.trim();
+    const newPin = $('#changePinNew').value.trim();
+    const confirmPin = $('#changePinConfirm').value.trim();
+    if (!/^\d{6}$/.test(oldPin) || !/^\d{6}$/.test(newPin)) {
+      toast('PIN 须为 6 位数字', 'error');
+      return;
+    }
+    if (newPin !== confirmPin) {
+      toast('两次新 PIN 不一致', 'error');
+      return;
+    }
+    await j('POST', '/local/v1/setup/change-pin', { old_pin: oldPin, new_pin: newPin });
+    closeChangePinModal();
+    toast('PIN 已更新', 'success');
+  }
 
   async function j(method, path, body) {
     let r, t;
@@ -2995,6 +3089,10 @@
   }
 
   function showView(name) {
+    if (name === 'settings' && !isLoggedInOwner()) {
+      toast('仅店长可访问设置', 'error');
+      name = 'home';
+    }
     $$('.view').forEach(v => v.classList.add('hidden'));
     const el = $('#view-' + name);
     if (el) el.classList.remove('hidden');
@@ -3024,6 +3122,7 @@
   async function enterApp() {
     const op = loggedInOperator || {};
     $('#operatorName').textContent = op.display_name || '操作员';
+    applyOperatorAccess();
     $('#view-login').classList.add('hidden');
     $('#app-shell').classList.add('on');
     await ensureSetupStatus();
@@ -3065,6 +3164,7 @@
   $('#btnLogout').onclick = async () => {
     try { await j('POST', '/local/v1/setup/logout', {}); } catch (_) {}
     loggedInOperator = null;
+    applyOperatorAccess();
     stopBillDraftEvents();
     setupStatusCache = null;
     pin = '';
@@ -3072,6 +3172,20 @@
     $('#app-shell').classList.remove('on');
     $('#view-login').classList.remove('hidden');
   };
+
+  $('#btnChangePin').onclick = () => openChangePinModal();
+  $('#btnChangePinCancel').onclick = () => closeChangePinModal();
+  $('#btnChangePinSubmit').onclick = () => withBusy($('#btnChangePinSubmit'), '保存中…', async () => {
+    try {
+      await submitChangePin();
+    } catch (er) {
+      toast(errText(er), 'error');
+      throw er;
+    }
+  });
+  $('#changePinModal').addEventListener('click', e => {
+    if (e.target === $('#changePinModal')) closeChangePinModal();
+  });
 
   document.addEventListener('click', e => {
     const nav = e.target.closest('[data-nav]');
@@ -3571,8 +3685,7 @@
     try {
       const data = await j('GET', '/local/v1/setup/operators');
       const ops = data.operators || [];
-      const isOwner = loggedInOperator && loggedInOperator.role === 'owner';
-      if (add) add.classList.toggle('hidden', !isOwner);
+      if (add) add.classList.toggle('hidden', !isLoggedInOwner());
       if (!ops.length) {
         list.innerHTML = '<li class="hint">无开票员 · 请退出后在登录页创建 owner</li>';
         return;

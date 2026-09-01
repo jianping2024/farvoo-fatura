@@ -56,11 +56,49 @@
     .mode-pick button.selected { border-color: var(--mode); background: #f7faf8; }
     .mode-pick strong { display: block; font-size: 1rem; margin-bottom: 0.25rem; }
     .mode-pick span { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
-    .pin-dots { display: flex; justify-content: center; gap: 0.5rem; margin: 0.75rem 0; }
-    .pin-dots i { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--green); display: block; }
-    .pin-dots i.on { background: var(--green); }
-    .pin-pad { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.5rem; }
-    .pin-pad button { background: #f7f2e8; color: var(--ink); aspect-ratio: 1.5; }
+    .pin-dots { display: flex; justify-content: center; gap: 0.55rem; margin: 0.75rem 0 1rem; }
+    .pin-dots i {
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid #8fa396; background: transparent; display: block;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .pin-dots i.on { background: var(--green); border-color: var(--green); }
+    .pin-pad { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.6rem; }
+    .pin-pad button {
+      aspect-ratio: 1.5; font-size: 1.3rem; font-weight: 700;
+      border-radius: 12px; transition: background 0.12s, border-color 0.12s, box-shadow 0.12s, transform 0.08s;
+    }
+    .pin-pad button:not(.secondary):not([data-k="OK"]) {
+      background: #fff; color: var(--ink);
+      border: 1.5px solid #c9bba8;
+      box-shadow: 0 2px 0 #e0d5c6, 0 1px 4px rgba(20,32,27,.07);
+    }
+    .pin-pad button:not(.secondary):not([data-k="OK"]):hover {
+      background: #faf8f4; border-color: #b5a48e;
+      box-shadow: 0 2px 0 #d8cdbf, 0 2px 6px rgba(20,32,27,.1);
+    }
+    .pin-pad button:not(.secondary):not([data-k="OK"]):active {
+      transform: translateY(1px);
+      box-shadow: inset 0 1px 3px rgba(20,32,27,.12);
+    }
+    .pin-pad button.secondary {
+      background: #faf6ef; color: var(--muted);
+      border: 1.5px solid var(--line); font-size: 1rem; font-weight: 600;
+      box-shadow: none;
+    }
+    .pin-pad button.secondary:hover {
+      background: #f0e8da; color: var(--ink); border-color: #c9bba8;
+    }
+    .pin-pad button[data-k="OK"] {
+      background: var(--green); color: #fff; border: 0;
+      font-size: 1rem; font-weight: 700;
+      box-shadow: 0 2px 0 #062a20, 0 2px 8px rgba(11,61,46,.28);
+    }
+    .pin-pad button[data-k="OK"]:hover { filter: brightness(1.06); }
+    .pin-pad button[data-k="OK"]:active {
+      transform: translateY(1px); filter: none;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,.18);
+    }
 
     /* shell */
     #app-shell { display: none; min-height: 100vh; grid-template-columns: 220px 1fr; }
@@ -182,9 +220,10 @@
       <button type="button" class="nav-btn" data-nav="invoices">发票<small>查询 / 重打</small></button>
       <button type="button" class="nav-btn" data-nav="products">商品<small>本店商品维护</small></button>
       <button type="button" class="nav-btn" data-nav="customers">客户<small>常用购方</small></button>
-      <button type="button" class="nav-btn" data-nav="settings">设置<small>店名 / 打印机</small></button>
+      <button type="button" class="nav-btn owner-only" data-nav="settings" id="navSettings">设置<small>店名 / 打印机</small></button>
       <div class="foot">
         <div id="operatorName">操作员 · 李四</div>
+        <button type="button" class="ghost" id="btnChangePin" style="color:#cfe3d7;padding-left:0;margin-top:0.35rem">修改 PIN</button>
         <button type="button" class="ghost" id="btnLogout" style="color:#cfe3d7;padding-left:0">退出</button>
       </div>
     </aside>

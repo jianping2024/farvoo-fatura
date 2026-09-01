@@ -108,12 +108,30 @@ async function main() {
     ], { encoding: 'utf8', env: cashierEnv });
     record('cashier cannot owner PUT', forbid.status !== 0);
 
+    const saftForbid = spawnSync(process.execPath, [
+      join(__dirname, 'fiscal-local-uat.mjs'), 'req', 'POST', '/local/v1/saft/exports',
+      '--body', JSON.stringify({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 }),
+    ], { encoding: 'utf8', env: cashierEnv });
+    record('cashier cannot SAFT export', saftForbid.status !== 0);
+
     // owner resets cashier pin
     uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
       id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', pin: '111111',
     })], env);
-    const newCashierCookie = loginOperator(base, 'cashier-test-1', '111111');
+    let newCashierCookie = loginOperator(base, 'cashier-test-1', '111111');
     record('owner pin reset', !!newCashierCookie);
+
+    const changePin = uatJson(['req', 'POST', '/local/v1/setup/change-pin', '--body', JSON.stringify({
+      old_pin: '111111', new_pin: '222222',
+    })], envWithCookie(base, newCashierCookie));
+    record('cashier can change own pin', changePin.ok === true);
+    newCashierCookie = loginOperator(base, 'cashier-test-1', '222222');
+    record('cashier login after pin change', !!newCashierCookie);
+
+    uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
+      id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', pin: '111111',
+    })], env);
+    newCashierCookie = loginOperator(base, 'cashier-test-1', '111111');
 
     // activate local signing
     const pem = await import('node:fs').then((m) => m.readFileSync(pemPath, 'utf8'));

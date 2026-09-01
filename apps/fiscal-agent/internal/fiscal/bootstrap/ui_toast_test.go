@@ -386,3 +386,31 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 		t.Fatal("invoice list must not render invoice_date")
 	}
 }
+
+func TestAdminHTMLOperatorAccessSinglePath(t *testing.T) {
+	if n := strings.Count(adminHTML, "function isLoggedInOwner"); n != 1 {
+		t.Fatalf("isLoggedInOwner must appear exactly once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function applyOperatorAccess"); n != 1 {
+		t.Fatalf("applyOperatorAccess must appear exactly once, got %d", n)
+	}
+	if strings.Count(adminHTML, "loggedInOperator.role === 'owner'") != 1 {
+		t.Fatal("loggedInOperator.role check must live only inside isLoggedInOwner()")
+	}
+	if !strings.Contains(adminHTML, `id="navSettings"`) || !strings.Contains(adminHTML, "owner-only") {
+		t.Fatal("settings nav must be owner-only")
+	}
+	if strings.Count(adminHTML, `id="changePinModal"`) != 1 {
+		t.Fatal("changePinModal must exist exactly once")
+	}
+	if strings.Count(adminHTML, `id="btnChangePin"`) != 1 {
+		t.Fatal("btnChangePin must exist exactly once in sidebar")
+	}
+	if !strings.Contains(adminHTML, "function submitChangePin") {
+		t.Fatal("submitChangePin must be the ONLY change-pin submit path")
+	}
+	if strings.Count(adminHTML, "/local/v1/setup/change-pin") != 1 {
+		t.Fatalf("change-pin API must be called from exactly one place, got %d",
+			strings.Count(adminHTML, "/local/v1/setup/change-pin"))
+	}
+}

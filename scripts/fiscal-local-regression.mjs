@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ensureOwnerSession, envWithCookie } from './fiscal-session-helper.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
@@ -30,12 +31,13 @@ function run(cmd, args, opts = {}) {
 
 async function uatCmd(...args) {
   const out = await run(process.execPath, [uat, ...args], {
-    env: { ...process.env, FISCAL_UAT_BASE: base },
+    env: { ...process.env, FISCAL_UAT_BASE: base, ...uatEnv },
   });
   return out.trim();
 }
 
 const results = [];
+let uatEnv = {};
 function record(name, ok, note) {
   results.push({ name, status: ok ? 'pass' : 'fail', note: note || '' });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${note ? ' — ' + note : ''}`);
@@ -108,10 +110,20 @@ async function main() {
     process.exit(1);
   }
 
+  try {
+    await uatCmd('exec-db', '--db', dbPath, '--sql', 'DELETE FROM operators;');
+    const { cookie } = ensureOwnerSession(base, 'Regression Owner', '123456');
+    uatEnv = envWithCookie(base, cookie);
+    record('owner-session', !!cookie);
+  } catch (e) {
+    record('owner-session', false, String(e));
+    child.kill('SIGTERM');
+    process.exit(1);
+  }
+
   const requestId = `reg-${Date.now()}`;
   const body = JSON.stringify({
     request_id: requestId,
-    operator_id: 'op-demo-cashier',
     document_type: 'FT',
     snapshot: {
       source_system: 'farvoo',
