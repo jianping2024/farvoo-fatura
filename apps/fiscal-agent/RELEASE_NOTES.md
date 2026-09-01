@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.48
+
+**Admin 列表统一（分页 + 搜索 + 操作列）**
+
+- 商品 / 客户：`GET` 支持 `page`、`page_size`、`q` 服务端分页与搜索。
+- 五张浏览列表（发票、商品、客户、手工开票、收银账单）统一 `admin-list-panel` 壳：搜索栏 + 表格滚动 + 底部分页。
+- 列表操作列统一 `list-table` + `col-actions` + 行内小按钮。
+
 ## 0.4.47
 
 **手工开票列表 + 商品表操作列**

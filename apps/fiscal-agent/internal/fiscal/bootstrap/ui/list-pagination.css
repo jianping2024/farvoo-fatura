@@ -57,24 +57,38 @@
   cursor: not-allowed;
 }
 
-.invoice-list-panel {
+.invoice-list-panel,
+.admin-list-panel {
   padding-bottom: 0.85rem;
 }
 
-.invoice-list-panel .invoice-filter-row {
+.invoice-list-panel .invoice-filter-row,
+.admin-list-panel .admin-list-filter-row {
   margin-bottom: 0.75rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--line);
 }
 
-.invoice-list-panel .table-scroll {
+.invoice-list-panel .table-scroll,
+.admin-list-panel .table-scroll {
   margin: 0 -0.1rem;
 }
 
-.invoice-search-field label {
+.list-table th,
+.list-table td {
+  font-size: 0.85rem;
+}
+
+.admin-list-search-field {
+  flex: 1;
+  min-width: 12rem;
+  margin: 0;
+}
+
+.admin-list-search-field label {
   margin-bottom: 0.25rem;
 }
 
-.invoice-search-field input {
+.admin-list-search-field input {
   padding: 0.5rem 0.65rem;
 }

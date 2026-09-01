@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,17 +12,47 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/store"
 )
 
+func parseCatalogListQuery(r *http.Request) store.CatalogListQuery {
+	page := 1
+	if q := r.URL.Query().Get("page"); q != "" {
+		if n, err := strconv.Atoi(q); err == nil && n > 0 {
+			page = n
+		}
+	}
+	pageSize := 200
+	if q := r.URL.Query().Get("page_size"); q != "" {
+		if n, err := strconv.Atoi(q); err == nil && n > 0 {
+			pageSize = n
+		}
+	}
+	return store.CatalogListQuery{
+		Page:     page,
+		PageSize: pageSize,
+		Q:        strings.TrimSpace(r.URL.Query().Get("q")),
+	}
+}
+
 func handleListProducts(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	if deps.Fiscal == nil {
 		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
 		return
 	}
-	list, err := deps.Fiscal.ListFiscalProducts(200)
+	q := parseCatalogListQuery(r)
+	result, err := deps.Fiscal.ListFiscalProductsPaged(q)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "list_failed", err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"products": list})
+	items := result.Items
+	if items == nil {
+		items = []store.FiscalProductRow{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"products":  items,
+		"page":      result.Page,
+		"page_size": result.PageSize,
+		"total":     result.Total,
+	})
 }
 
 func handleUpsertProduct(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
@@ -61,12 +92,22 @@ func handleListCustomers(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
 		return
 	}
-	list, err := deps.Fiscal.ListCustomers(200)
+	q := parseCatalogListQuery(r)
+	result, err := deps.Fiscal.ListCustomersPaged(q)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "list_failed", err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"customers": list})
+	items := result.Items
+	if items == nil {
+		items = []store.CustomerRow{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"customers": items,
+		"page":      result.Page,
+		"page_size": result.PageSize,
+		"total":     result.Total,
+	})
 }
 
 func handleUpsertCustomer(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {

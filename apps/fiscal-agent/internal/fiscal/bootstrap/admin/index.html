@@ -150,9 +150,10 @@
     table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
     th, td { text-align: left; padding: 0.6rem 0.4rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
     th { color: var(--muted); font-size: 0.76rem; }
-    .catalog-table th.col-actions, .catalog-table td.col-actions {
+    .list-table th.col-actions, .list-table td.col-actions {
       text-align: right; white-space: nowrap; width: 1%; padding-right: 0.15rem;
     }
+    .list-table td.col-actions .row-action-text { color: var(--mode); font-weight: 600; }
     button.btn-sm { padding: 0.4rem 0.7rem; font-size: 0.85rem; font-weight: 600; }
     tr.clickable { cursor: pointer; }
     tr.clickable:hover { background: #f7f3ea; }
@@ -286,11 +287,20 @@
           </div>
           <button type="button" data-goto="order-new">新建开票</button>
         </div>
-        <div class="panel">
-          <table>
-            <thead><tr><th>单号</th><th>来源</th><th>金额</th><th>状态</th><th></th></tr></thead>
-            <tbody id="ordersTbody"></tbody>
-          </table>
+        <div class="panel admin-list-panel">
+          <div class="admin-list-filter-row">
+            <div class="field admin-list-search-field">
+              <label for="ordersSearch">搜索</label>
+              <input id="ordersSearch" placeholder="单号 / 来源" autocomplete="off" />
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="list-table">
+              <thead><tr><th>单号</th><th>来源</th><th>金额</th><th>状态</th><th class="col-actions">操作</th></tr></thead>
+              <tbody id="ordersTbody"></tbody>
+            </table>
+          </div>
+          <div id="ordersListPagination"></div>
         </div>
       </section>
 
@@ -419,11 +429,20 @@
           </div>
           <button type="button" class="secondary" id="btnRefreshBills">刷新</button>
         </div>
-        <div class="panel">
-          <table>
-            <thead><tr><th>桌号</th><th>范围</th><th>金额</th><th>同步时间</th><th></th></tr></thead>
-            <tbody id="billsTbody"></tbody>
-          </table>
+        <div class="panel admin-list-panel">
+          <div class="admin-list-filter-row">
+            <div class="field admin-list-search-field">
+              <label for="billsSearch">搜索</label>
+              <input id="billsSearch" placeholder="桌号" autocomplete="off" />
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="list-table">
+              <thead><tr><th>桌号</th><th>范围</th><th>金额</th><th>同步时间</th><th class="col-actions">操作</th></tr></thead>
+              <tbody id="billsTbody"></tbody>
+            </table>
+          </div>
+          <div id="billsListPagination"></div>
         </div>
       </section>
 
@@ -486,22 +505,22 @@
           </div>
           <button type="button" class="secondary" id="btnRefreshInvoices">刷新</button>
         </div>
-        <div class="panel invoice-list-panel">
+        <div class="panel admin-list-panel invoice-list-panel">
           <div class="invoice-type-tabs" id="invoiceTypeTabs" role="tablist">
             <button type="button" class="secondary active" data-invoice-type="FT" role="tab">FT<small>完整发票</small></button>
             <button type="button" class="secondary" data-invoice-type="FS" role="tab">FS<small>简式发票</small></button>
             <button type="button" class="secondary" data-invoice-type="NC" role="tab">NC<small>冲销单</small></button>
             <button type="button" class="secondary" data-invoice-type="ND" role="tab">ND<small>借记单</small></button>
           </div>
-          <div class="invoice-filter-row">
+          <div class="invoice-filter-row admin-list-filter-row">
             <div id="invoiceDateFilter"></div>
-            <div class="field invoice-search-field">
+            <div class="field invoice-search-field admin-list-search-field">
               <label for="invoiceSearch">搜索</label>
               <input id="invoiceSearch" placeholder="票号 / NIF / 桌号" autocomplete="off" />
             </div>
           </div>
           <div class="table-scroll">
-            <table class="invoices-table">
+            <table class="invoices-table list-table">
               <thead>
                 <tr>
                   <th>签发时刻</th>
@@ -509,7 +528,7 @@
                   <th>金额</th>
                   <th>购方</th>
                   <th>来源</th>
-                  <th></th>
+                  <th class="col-actions">操作</th>
                 </tr>
               </thead>
               <tbody id="invoicesTbody"></tbody>
@@ -524,11 +543,20 @@
           <div><h1>商品</h1><p class="hint">本店可售商品；开票时从本店商品选用。</p></div>
           <button type="button" id="btnNewProd">新建商品</button>
         </div>
-        <div class="panel">
-          <table class="catalog-table">
-            <thead><tr><th>编码</th><th>名称</th><th>售价</th><th>IVA</th><th class="col-actions">操作</th></tr></thead>
-            <tbody id="productsTbody"></tbody>
-          </table>
+        <div class="panel admin-list-panel">
+          <div class="admin-list-filter-row">
+            <div class="field admin-list-search-field">
+              <label for="productsSearch">搜索</label>
+              <input id="productsSearch" placeholder="编码 / 名称" autocomplete="off" />
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="list-table">
+              <thead><tr><th>编码</th><th>名称</th><th>售价</th><th>IVA</th><th class="col-actions">操作</th></tr></thead>
+              <tbody id="productsTbody"></tbody>
+            </table>
+          </div>
+          <div id="productsListPagination"></div>
         </div>
       </section>
 
@@ -548,11 +576,20 @@
             <button type="button" class="secondary" id="btnCancelCustomer">取消</button>
           </div>
         </div>
-        <div class="panel">
-          <table class="catalog-table">
-            <thead><tr><th>NIF</th><th>名称</th><th class="col-actions">操作</th></tr></thead>
-            <tbody id="customersTbody"></tbody>
-          </table>
+        <div class="panel admin-list-panel">
+          <div class="admin-list-filter-row">
+            <div class="field admin-list-search-field">
+              <label for="customersSearch">搜索</label>
+              <input id="customersSearch" placeholder="NIF / 名称" autocomplete="off" />
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="list-table">
+              <thead><tr><th>NIF</th><th>名称</th><th class="col-actions">操作</th></tr></thead>
+              <tbody id="customersTbody"></tbody>
+            </table>
+          </div>
+          <div id="customersListPagination"></div>
         </div>
       </section>
 
@@ -903,6 +940,26 @@
   let invoiceListDocType = sessionStorage.getItem('fiscal_invoice_doc_type') || 'FT';
   if (!INVOICE_LIST_DOC_TYPES.includes(invoiceListDocType)) invoiceListDocType = 'FT';
 
+  const CATALOG_PICKER_PAGE_SIZE = 500;
+  const LIST_PAGE_INFO_ROWS = '第 {page} / {totalPages} 页 · 共 {total} 条';
+  let productListPage = 1;
+  let productListPageSize = FiscalUI.LIST_DEFAULT_PAGE_SIZE;
+  let productListPaginationCtrl = null;
+  let productSearchDebounce = null;
+  let productFiltersReady = false;
+  let customerListPage = 1;
+  let customerListPageSize = FiscalUI.LIST_DEFAULT_PAGE_SIZE;
+  let customerListPaginationCtrl = null;
+  let customerSearchDebounce = null;
+  let customerFiltersReady = false;
+  let ordersListState = { page: 1, pageSize: FiscalUI.LIST_DEFAULT_PAGE_SIZE, filter: '' };
+  let ordersListPaginationCtrl = null;
+  let ordersListReady = false;
+  let billsListCache = [];
+  let billsListState = { page: 1, pageSize: FiscalUI.LIST_DEFAULT_PAGE_SIZE, filter: '' };
+  let billsListPaginationCtrl = null;
+  let billsListReady = false;
+
   /** ONLY Hash display truncator (detail drawer preview: 前 8 … 后 4). */
   function truncateHash(h) {
     const s = String(h || '').trim();
@@ -1237,7 +1294,7 @@
       return;
     }
     try {
-      const data = await j('GET', '/local/v1/customers');
+      const data = await j('GET', buildCustomersQueryPath('', 1, CATALOG_PICKER_PAGE_SIZE));
       catalogCustomers = data.customers || [];
       renderCustomerNifDatalist();
     } catch (_) { /* list may stay empty */ }
@@ -1472,25 +1529,175 @@
     $('#statTodaySales').textContent = fmtMoney(grossTotalSum || 0);
   }
 
-  function renderOrdersList() {
-    const tbody = $('#ordersTbody');
-    const orders = loadOrders();
-    if (!orders.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无未开票草稿 · 点击「新建开票」</td></tr>';
+  function buildProductsQueryPath(q, page, pageSize) {
+    const params = new URLSearchParams();
+    params.set('page', String(page || 1));
+    params.set('page_size', String(pageSize || FiscalUI.LIST_DEFAULT_PAGE_SIZE));
+    const term = String(q || '').trim();
+    if (term) params.set('q', term);
+    return '/local/v1/products?' + params.toString();
+  }
+
+  function buildCustomersQueryPath(q, page, pageSize) {
+    const params = new URLSearchParams();
+    params.set('page', String(page || 1));
+    params.set('page_size', String(pageSize || FiscalUI.LIST_DEFAULT_PAGE_SIZE));
+    const term = String(q || '').trim();
+    if (term) params.set('q', term);
+    return '/local/v1/customers?' + params.toString();
+  }
+
+  function resetProductListPage() { productListPage = 1; }
+  function resetCustomerListPage() { customerListPage = 1; }
+  function resetOrdersListPage() { ordersListState.page = 1; }
+  function resetBillsListPage() { billsListState.page = 1; }
+
+  function renderClientPaginatedTable(cfg) {
+    const items = cfg.items || [];
+    const q = String((cfg.state && cfg.state.filter) || '').trim().toLowerCase();
+    const filtered = q ? items.filter(item => cfg.filterFn(item, q)) : items.slice();
+    const total = filtered.length;
+    const pageSize = (cfg.state && cfg.state.pageSize) || FiscalUI.LIST_DEFAULT_PAGE_SIZE;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (cfg.state.page > totalPages) cfg.state.page = totalPages;
+    const start = (cfg.state.page - 1) * pageSize;
+    const pageItems = filtered.slice(start, start + pageSize);
+    if (cfg.ctrl) {
+      cfg.ctrl.update({ page: cfg.state.page, pageSize: pageSize, total: total });
+      cfg.ctrl.setDisabled(false);
+    }
+    if (!pageItems.length) {
+      const emptyMsg = q ? '未找到匹配' : cfg.emptyMsg;
+      cfg.tbody.innerHTML = '<tr><td colspan="' + cfg.colSpan + '" class="hint">' + emptyMsg + '</td></tr>';
       return;
     }
-    tbody.innerHTML = orders.map(o => {
-      const badge = o.status === 'confirmed'
-        ? '<span class="badge wait">待开票</span>'
-        : '<span class="badge wait">编辑中</span>';
-      const action = o.status === 'confirmed' ? '去开票 →' : '继续 →';
-      return '<tr class="clickable" data-open-order="' + o.id + '">' +
-        '<td><strong>' + o.id + '</strong></td>' +
-        '<td>' + (o.sourceLabel || '手动创建') + '</td>' +
-        '<td>' + fmtMoney(orderTotal(o)) + '</td>' +
-        '<td>' + badge + '</td>' +
-        '<td>' + action + '</td></tr>';
-    }).join('');
+    cfg.tbody.innerHTML = pageItems.map(cfg.renderRow).join('');
+  }
+
+  function initOrdersListPanel() {
+    if (ordersListReady) return;
+    $('#ordersSearch').addEventListener('input', () => {
+      ordersListState.filter = $('#ordersSearch').value;
+      resetOrdersListPage();
+      renderOrdersList();
+    });
+    ordersListPaginationCtrl = FiscalUI.createListPaginationBar('#ordersListPagination', {
+      labels: { pageInfo: LIST_PAGE_INFO_ROWS },
+      onPageChange: (nextPage) => {
+        ordersListState.page = nextPage;
+        renderOrdersList();
+      },
+      onPageSizeChange: (nextSize) => {
+        ordersListState.pageSize = nextSize;
+        resetOrdersListPage();
+        renderOrdersList();
+      },
+    });
+    ordersListReady = true;
+  }
+
+  function initBillsListPanel() {
+    if (billsListReady) return;
+    $('#billsSearch').addEventListener('input', () => {
+      billsListState.filter = $('#billsSearch').value;
+      resetBillsListPage();
+      renderBillsTable();
+    });
+    billsListPaginationCtrl = FiscalUI.createListPaginationBar('#billsListPagination', {
+      labels: { pageInfo: LIST_PAGE_INFO_ROWS },
+      onPageChange: (nextPage) => {
+        billsListState.page = nextPage;
+        renderBillsTable();
+      },
+      onPageSizeChange: (nextSize) => {
+        billsListState.pageSize = nextSize;
+        resetBillsListPage();
+        renderBillsTable();
+      },
+    });
+    billsListReady = true;
+  }
+
+  function initProductListPanel() {
+    if (productFiltersReady) return;
+    $('#productsSearch').addEventListener('input', () => {
+      clearTimeout(productSearchDebounce);
+      productSearchDebounce = setTimeout(() => {
+        resetProductListPage();
+        refreshProducts().catch(e => toast(errText(e), 'error'));
+      }, 300);
+    });
+    productListPaginationCtrl = FiscalUI.createListPaginationBar('#productsListPagination', {
+      labels: { pageInfo: LIST_PAGE_INFO_ROWS },
+      onPageChange: (nextPage) => {
+        productListPage = nextPage;
+        refreshProducts().catch(e => toast(errText(e), 'error'));
+      },
+      onPageSizeChange: (nextSize) => {
+        productListPageSize = nextSize;
+        resetProductListPage();
+        refreshProducts().catch(e => toast(errText(e), 'error'));
+      },
+    });
+    productFiltersReady = true;
+  }
+
+  function initCustomerListPanel() {
+    if (customerFiltersReady) return;
+    $('#customersSearch').addEventListener('input', () => {
+      clearTimeout(customerSearchDebounce);
+      customerSearchDebounce = setTimeout(() => {
+        resetCustomerListPage();
+        refreshCustomers().catch(e => toast(errText(e), 'error'));
+      }, 300);
+    });
+    customerListPaginationCtrl = FiscalUI.createListPaginationBar('#customersListPagination', {
+      labels: { pageInfo: LIST_PAGE_INFO_ROWS },
+      onPageChange: (nextPage) => {
+        customerListPage = nextPage;
+        refreshCustomers().catch(e => toast(errText(e), 'error'));
+      },
+      onPageSizeChange: (nextSize) => {
+        customerListPageSize = nextSize;
+        resetCustomerListPage();
+        refreshCustomers().catch(e => toast(errText(e), 'error'));
+      },
+    });
+    customerFiltersReady = true;
+  }
+
+  async function loadCatalogProductsForPicker() {
+    const data = await j('GET', buildProductsQueryPath('', 1, CATALOG_PICKER_PAGE_SIZE));
+    catalogProducts = data.products || [];
+    return catalogProducts;
+  }
+
+  function renderOrdersList() {
+    initOrdersListPanel();
+    const tbody = $('#ordersTbody');
+    if (ordersListPaginationCtrl) ordersListPaginationCtrl.setDisabled(true);
+    renderClientPaginatedTable({
+      items: loadOrders(),
+      filterFn: (o, q) => String(o.id || '').toLowerCase().includes(q) ||
+        String(o.sourceLabel || '手动创建').toLowerCase().includes(q),
+      renderRow: (o) => {
+        const badge = o.status === 'confirmed'
+          ? '<span class="badge wait">待开票</span>'
+          : '<span class="badge wait">编辑中</span>';
+        const action = o.status === 'confirmed' ? '去开票 →' : '继续 →';
+        return '<tr class="clickable" data-open-order="' + o.id + '">' +
+          '<td><strong>' + o.id + '</strong></td>' +
+          '<td>' + (o.sourceLabel || '手动创建') + '</td>' +
+          '<td>' + fmtMoney(orderTotal(o)) + '</td>' +
+          '<td>' + badge + '</td>' +
+          '<td class="col-actions"><span class="row-action-text">' + action + '</span></td></tr>';
+      },
+      tbody: tbody,
+      colSpan: 5,
+      emptyMsg: '暂无未开票草稿 · 点击「新建开票」',
+      state: ordersListState,
+      ctrl: ordersListPaginationCtrl,
+    });
   }
 
   function renderOrderLines() {
@@ -1654,7 +1861,8 @@
   /** ONLY entry to open product workbench (order pick / catalog create / edit). */
   async function openProductWorkbench(mode, product) {
     productWorkbenchMode = mode;
-    await refreshProducts().catch(() => {});
+    if (mode === 'pick') await loadCatalogProductsForPicker().catch(() => {});
+    else await refreshProducts().catch(() => {});
     const searchBlock = $('#pickerSearchBlock');
     const fields = $('#productFormFields');
     const saveBtn = $('#btnSaveProduct');
@@ -1713,18 +1921,34 @@
     if (!body.saft_name) body.saft_name = body.display_name;
     await j('POST', '/local/v1/products', body);
     await refreshProducts();
-    return catalogProducts.find(x => x.product_code === body.product_code) || body;
+    const data = await j('GET', buildProductsQueryPath(body.product_code, 1, 1));
+    return (data.products || []).find(x => x.product_code === body.product_code) || body;
   }
 
   async function refreshProducts() {
-    const data = await j('GET', '/local/v1/products');
-    catalogProducts = data.products || [];
+    initProductListPanel();
     const tbody = $('#productsTbody');
-    if (!catalogProducts.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无商品</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="hint">加载中…</td></tr>';
+    if (productListPaginationCtrl) productListPaginationCtrl.setDisabled(true);
+    const q = ($('#productsSearch') && $('#productsSearch').value) || '';
+    const data = await j('GET', buildProductsQueryPath(q, productListPage, productListPageSize));
+    const list = data.products || [];
+    productListPage = data.page || productListPage;
+    if (productListPaginationCtrl) {
+      productListPaginationCtrl.update({
+        page: data.page || productListPage,
+        pageSize: data.page_size || productListPageSize,
+        total: data.total || 0,
+      });
+      productListPaginationCtrl.setDisabled(false);
+    }
+    if (!list.length) {
+      const term = String(q || '').trim();
+      tbody.innerHTML = '<tr><td colspan="5" class="hint">' +
+        (term ? '未找到匹配商品' : '暂无商品') + '</td></tr>';
       return;
     }
-    tbody.innerHTML = catalogProducts.map(p => {
+    tbody.innerHTML = list.map(p => {
       const src = (p.source === 'REMOTE_SYNC') ? '收银同步' : '本店维护';
       const editBtn = (p.source === 'REMOTE_SYNC')
         ? '<span class="hint">' + src + '</span>'
@@ -1735,16 +1959,31 @@
   }
 
   async function refreshCustomers() {
-    const data = await j('GET', '/local/v1/customers');
-    catalogCustomers = data.customers || [];
-    renderCustomerNifDatalist();
+    initCustomerListPanel();
     const tbody = $('#customersTbody');
-    if (!catalogCustomers.length) {
-      tbody.innerHTML = '<tr><td colspan="3" class="hint">暂无客户</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" class="hint">加载中…</td></tr>';
+    if (customerListPaginationCtrl) customerListPaginationCtrl.setDisabled(true);
+    const q = ($('#customersSearch') && $('#customersSearch').value) || '';
+    const data = await j('GET', buildCustomersQueryPath(q, customerListPage, customerListPageSize));
+    const list = data.customers || [];
+    customerListPage = data.page || customerListPage;
+    if (customerListPaginationCtrl) {
+      customerListPaginationCtrl.update({
+        page: data.page || customerListPage,
+        pageSize: data.page_size || customerListPageSize,
+        total: data.total || 0,
+      });
+      customerListPaginationCtrl.setDisabled(false);
+    }
+    if (!list.length) {
+      const term = String(q || '').trim();
+      tbody.innerHTML = '<tr><td colspan="3" class="hint">' +
+        (term ? '未找到匹配客户' : '暂无客户') + '</td></tr>';
       return;
     }
-    tbody.innerHTML = catalogCustomers.map(c =>
-      '<tr><td>' + c.customer_tax_id + '</td><td>' + c.company_name + '</td><td class="hint">—</td></tr>'
+    tbody.innerHTML = list.map(c =>
+      '<tr><td>' + c.customer_tax_id + '</td><td>' + c.company_name +
+        '</td><td class="col-actions hint">—</td></tr>'
     ).join('');
   }
 
@@ -2011,6 +2250,7 @@
       }, 300);
     });
     invoiceListPaginationCtrl = FiscalUI.createListPaginationBar('#invoiceListPagination', {
+      labels: { pageInfo: '第 {page} / {totalPages} 页 · 共 {total} 张' },
       onPageChange: (nextPage) => {
         invoiceListPage = nextPage;
         refreshInvoices().catch(e => toast(errText(e), 'error'));
@@ -2070,7 +2310,7 @@
           '<td>' + fmtMoney(inv.gross_total) + '</td>' +
           '<td>' + formatInvoiceBuyerCell(inv) + '</td>' +
           '<td>' + (inv.order_label || '—') + '</td>' +
-          '<td><button type="button" class="secondary" data-reprint="' + inv.document_id + '">重打</button></td></tr>';
+          '<td class="col-actions"><button type="button" class="secondary btn-sm" data-reprint="' + inv.document_id + '">重打</button></td></tr>';
       }).join('');
     }
     return list;
@@ -2099,6 +2339,31 @@
     el.setAttribute('aria-hidden', n > 0 ? 'false' : 'true');
   }
 
+  function renderBillsTable() {
+    initBillsListPanel();
+    const tbody = $('#billsTbody');
+    if (billsListPaginationCtrl) billsListPaginationCtrl.setDisabled(true);
+    renderClientPaginatedTable({
+      items: billsListCache,
+      filterFn: (d, q) => String(d.table_display_name || '').toLowerCase().includes(q),
+      renderRow: (d) => {
+        const scope = billScopeLabel(d.scope_type || 'whole_table');
+        const amt = formatBillSyncAmount(d.gross_total || '');
+        return '<tr class="clickable" data-bill-id="' + d.id + '">' +
+          '<td><strong>' + (d.table_display_name || '—') + '</strong></td>' +
+          '<td>' + scope + '</td>' +
+          '<td>' + amt + '</td>' +
+          '<td>' + fmtTimeShort(d.updated_at) + '</td>' +
+          '<td class="col-actions"><button type="button" class="secondary btn-sm" data-bill-open="' + d.id + '">选择开票</button></td></tr>';
+      },
+      tbody: tbody,
+      colSpan: 5,
+      emptyMsg: '暂无收银账单',
+      state: billsListState,
+      ctrl: billsListPaginationCtrl,
+    });
+  }
+
   async function refreshBills(opts) {
     opts = opts || {};
     if (mode !== 'restaurant') {
@@ -2110,21 +2375,8 @@
     const n = drafts.length;
     $('#statPendingBills').textContent = String(n);
     updateBillsNavBadge(n);
-    const tbody = $('#billsTbody');
-    if (!drafts.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无收银账单</td></tr>';
-    } else {
-      tbody.innerHTML = drafts.map(d => {
-        const scope = billScopeLabel(d.scope_type || 'whole_table');
-        const amt = formatBillSyncAmount(d.gross_total || '');
-        return '<tr class="clickable" data-bill-id="' + d.id + '">' +
-          '<td><strong>' + (d.table_display_name || '—') + '</strong></td>' +
-          '<td>' + scope + '</td>' +
-          '<td>' + amt + '</td>' +
-          '<td>' + fmtTimeShort(d.updated_at) + '</td>' +
-          '<td><button type="button" class="secondary" data-bill-open="' + d.id + '">选择开票</button></td></tr>';
-      }).join('');
-    }
+    billsListCache = drafts;
+    renderBillsTable();
     if (!$('#view-home').classList.contains('hidden')) {
       focusHomePrimaryCta(drafts.length);
     }
@@ -2862,8 +3114,16 @@
     }
     const editProd = e.target.closest('[data-edit-prod]');
     if (editProd) {
-      const p = catalogProducts.find(x => x.product_code === editProd.dataset.editProd);
-      if (p) openProductWorkbench('edit', p).catch(er => toast(errText(er), 'error'));
+      (async () => {
+        const code = editProd.dataset.editProd;
+        let p = catalogProducts.find(x => x.product_code === code);
+        if (!p) {
+          const data = await j('GET', buildProductsQueryPath(code, 1, 1));
+          p = (data.products || []).find(x => x.product_code === code);
+        }
+        if (p) await openProductWorkbench('edit', p);
+        else toast('未找到商品', 'error');
+      })().catch(er => toast(errText(er), 'error'));
     }
   });
 
@@ -3168,6 +3428,8 @@
       });
       toast('客户已保存', 'success');
       $('#customerForm').classList.add('hidden');
+      catalogCustomers = [];
+      await ensureCustomerCatalog();
       await refreshCustomers();
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });

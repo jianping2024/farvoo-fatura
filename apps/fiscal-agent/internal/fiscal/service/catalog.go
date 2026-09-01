@@ -35,9 +35,14 @@ func (s *FiscalService) IssueManualFT(ctx context.Context, in catalog.ManualIssu
 	}, docType)
 }
 
-// ListFiscalProducts proxies store.
+// ListFiscalProducts proxies store (legacy full list; prefer ListFiscalProductsPaged).
 func (s *FiscalService) ListFiscalProducts(limit int) ([]store.FiscalProductRow, error) {
 	return s.db.ListFiscalProducts(limit)
+}
+
+// ListFiscalProductsPaged proxies store.
+func (s *FiscalService) ListFiscalProductsPaged(q store.CatalogListQuery) (*store.ProductListResult, error) {
+	return s.db.ListFiscalProductsPaged(q)
 }
 
 // UpsertLocalProduct proxies store.
@@ -45,9 +50,14 @@ func (s *FiscalService) UpsertLocalProduct(in store.LocalProductInput) (*store.F
 	return s.db.UpsertLocalFiscalProduct(in)
 }
 
-// ListCustomers proxies store.
+// ListCustomers proxies store (legacy full list; prefer ListCustomersPaged).
 func (s *FiscalService) ListCustomers(limit int) ([]store.CustomerRow, error) {
 	return s.db.ListCustomers(limit)
+}
+
+// ListCustomersPaged proxies store.
+func (s *FiscalService) ListCustomersPaged(q store.CatalogListQuery) (*store.CustomerListResult, error) {
+	return s.db.ListCustomersPaged(q)
 }
 
 // UpsertLocalCustomer proxies store.

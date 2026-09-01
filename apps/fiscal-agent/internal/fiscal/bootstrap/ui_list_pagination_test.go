@@ -15,6 +15,9 @@ func TestFiscalUIListPaginationAssets(t *testing.T) {
 	if !strings.Contains(string(fiscalUIListPaginationCSS), ".fiscal-list-pagination") {
 		t.Fatal("list-pagination.css must style fiscal-list-pagination")
 	}
+	if !strings.Contains(string(fiscalUIListPaginationCSS), ".admin-list-panel") {
+		t.Fatal("list-pagination.css must style admin-list-panel")
+	}
 }
 
 func TestAdminHTMLInvoiceListPaginationUnique(t *testing.T) {
@@ -27,31 +30,49 @@ func TestAdminHTMLInvoiceListPaginationUnique(t *testing.T) {
 	if strings.Contains(adminHTML, "function paintInvoiceListMeta") {
 		t.Fatal("paintInvoiceListMeta must be removed")
 	}
-	if strings.Count(adminHTML, `id="invoiceListPagination"`) != 1 {
-		t.Fatal("invoiceListPagination mount must exist exactly once")
+	for _, id := range []string{
+		`id="invoiceListPagination"`,
+		`id="productsListPagination"`,
+		`id="customersListPagination"`,
+		`id="ordersListPagination"`,
+		`id="billsListPagination"`,
+	} {
+		if strings.Count(adminHTML, id) != 1 {
+			t.Fatalf("%s must exist exactly once", id)
+		}
 	}
-	if strings.Count(adminHTML, "invoice-list-panel") != 1 {
-		t.Fatal("invoice list must use a single merged panel")
+	if strings.Count(adminHTML, "admin-list-panel") < 5 {
+		t.Fatal("browse lists must use admin-list-panel shell")
 	}
 	for _, fn := range []string{
 		"function buildInvoicesQueryPath",
+		"function buildProductsQueryPath",
+		"function buildCustomersQueryPath",
 		"function initInvoiceFilters",
+		"function initProductListPanel",
+		"function initCustomerListPanel",
+		"function renderClientPaginatedTable",
 		"function resetInvoiceListPage",
 		"async function refreshHomeStats",
 		"async function refreshInvoices",
+		"async function refreshProducts",
+		"async function refreshCustomers",
 	} {
 		if n := strings.Count(adminHTML, fn); n != 1 {
 			t.Fatalf("%s must appear exactly once, got %d", fn, n)
 		}
 	}
 	if !strings.Contains(adminHTML, "FiscalUI.createListPaginationBar('#invoiceListPagination'") {
-		t.Fatal("invoice pagination must use FiscalUI.createListPaginationBar only")
+		t.Fatal("invoice pagination must use FiscalUI.createListPaginationBar")
+	}
+	if !strings.Contains(adminHTML, "FiscalUI.createListPaginationBar('#productsListPagination'") {
+		t.Fatal("products pagination must use FiscalUI.createListPaginationBar")
 	}
 	if strings.Contains(adminHTML, "params.set('limit'") {
 		t.Fatal("invoice list must not use legacy limit query param")
 	}
 	if !strings.Contains(adminHTML, "params.set('page_size'") {
-		t.Fatal("invoice list must use page_size query param")
+		t.Fatal("lists must use page_size query param")
 	}
 	if !strings.Contains(adminHTML, "data.total") || !strings.Contains(adminHTML, "data.gross_total_sum") {
 		t.Fatal("home stats must use API total and gross_total_sum")
