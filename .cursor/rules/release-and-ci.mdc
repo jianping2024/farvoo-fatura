@@ -1,0 +1,19 @@
+---
+description: >-
+  After shipping to main or tagging fiscal-agent: verify GitHub release artifacts.
+  Use when user ships, pushes main, creates fiscal-agent-v* tag, or asks if download is ready.
+alwaysApply: false
+---
+
+# Release and CI verification
+
+When you **push to `main`**, **create a tag**, or tell the user deployment/download is ready:
+
+1. **Push to `main`**: Run **`./scripts/push-to-main.sh`** (auto-commit + `git push origin main`). Fiscal-agent **release validation runs before push**; if `apps/fiscal-agent/` code changed vs last `fiscal-agent-v*` tag, the same commit must include bumped `VERSION` + `RELEASE_NOTES.md` `## X.Y.Z` (unless `PUSH_SKIP_FISCAL_AGENT_TAG=1`). Tag is applied after a successful main push.
+2. **Tag `fiscal-agent-v*`**: Run `scripts/check-fiscal-agent.sh` first (or `scripts/tag-fiscal-agent.sh`). Ensure `apps/fiscal-agent/VERSION` matches tag. Push tag; wait for **fiscal-agent-release** (`test-linux` + Windows + **verify-release**). Release must list `FarvooFiscalAgent-Setup-amd64.exe` — not tag-only Source zip. Optionally `scripts/wait-for-github-release.sh <tag>`.
+3. **Fiscal-agent code changes**: Do not edit `fiscal-agent-release.yml` unless changing the installer pipeline. Business logic stays in `apps/fiscal-agent/`; rely on fiscal-agent-ci + test-linux for tests.
+4. **Never** say fiscal agent is downloadable based only on merge to `main` without the tag.
+5. **Never** cross-compile Windows Setup/zip on macOS as a substitute for GitHub Release — production artifacts come only from tag → Actions.
+6. If release fails, report the failure URL before retrying.
+
+See `docs/ci-and-release.zh.md`.

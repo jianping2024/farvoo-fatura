@@ -1,0 +1,39 @@
+# Fiscal agent: unit tests on Linux (fast gate before Windows release build).
+name: fiscal-agent-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/fiscal-agent/**'
+      - '.github/workflows/fiscal-agent*.yml'
+      - 'scripts/fiscal-agent-release*.sh'
+      - 'scripts/check-fiscal-agent.sh'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/fiscal-agent/**'
+      - '.github/workflows/fiscal-agent*.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/fiscal-agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/fiscal-agent/go.mod
+          cache-dependency-path: apps/fiscal-agent/go.sum
+
+      - name: Test, vet, and cross-compile (Linux)
+        run: |
+          go test ./...
+          go vet ./...
+          GOOS=windows GOARCH=amd64 go build -o /dev/null .
+        # Gate before tagging: fiscal-agent-release.yml runs the same tests again, then Windows Inno build.

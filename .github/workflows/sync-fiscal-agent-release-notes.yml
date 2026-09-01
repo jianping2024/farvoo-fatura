@@ -1,0 +1,39 @@
+# Sync GitHub Release description from apps/fiscal-agent/RELEASE_NOTES.md.
+name: Sync fiscal agent release notes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/fiscal-agent/RELEASE_NOTES.md
+      - scripts/fiscal-agent-release-body.sh
+      - scripts/patch-fiscal-agent-release-body.sh
+      - .github/workflows/sync-fiscal-agent-release-notes.yml
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semver (leave empty to use apps/fiscal-agent/VERSION)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch release body on GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ github.event.inputs.version }}"
+          if [[ -z "$VERSION" ]]; then
+            VERSION="$(tr -d '\r\n' < apps/fiscal-agent/VERSION)"
+          fi
+          echo "Syncing release notes for fiscal-agent-v${VERSION} ..."
+          bash scripts/patch-fiscal-agent-release-body.sh "$VERSION"
