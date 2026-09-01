@@ -2,6 +2,7 @@
 /**
  * M3 + M3.1 NC regression: series, permission, partial credit, idempotency, print payload.
  */
+import { ensureOwnerSession, setFiscalProfileViaDb, envWithCookie, loginOperator } from './fiscal-session-helper.mjs';
 import { spawn } from 'node:child_process';
 import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -34,7 +35,7 @@ function run(cmd, args, opts = {}) {
 async function uatCmd(...args) {
   return (
     await run(process.execPath, [uat, ...args], {
-      env: { ...process.env, FISCAL_UAT_BASE: base },
+      env: { ...process.env, ...uatEnv },
     })
   ).trim();
 }
@@ -49,7 +50,11 @@ function record(name, ok, note) {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${note ? ' — ' + note : ''}`);
 }
 
+let uatEnv = { FISCAL_UAT_BASE: base };
+
 async function setupFiscal() {
+  const sess = ensureOwnerSession(base);
+  uatEnv = envWithCookie(base, sess.cookie);
   const pem = readFileSync(pemPath, 'utf8');
   await uatCmd('req', 'PUT', '/local/v1/setup/taxpayer', '--body', JSON.stringify({
     tax_registration_number: '517535009',
@@ -70,17 +75,26 @@ async function setupFiscal() {
   await uatCmd('req', 'POST', '/local/v1/setup/series/register', '--body', JSON.stringify({
     series_code: `NC${year}M3NC01`, document_type: 'NC', fiscal_year: year,
   }));
+  setFiscalProfileViaDb(dbPath, 'restaurant', 3);
   await uatCmd('req', 'POST', '/local/v1/setup/activate', '--body', JSON.stringify({
     product_private_key_pem: pem,
   }));
+  if (sess.operatorId) {
+    await uatCmd('req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
+      id: sess.operatorId, role: 'owner', display_name: 'Owner UAT', can_issue_nc: true,
+    }));
+  }
   await uatCmd('req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
-    id: 'op-demo-cashier', role: 'cashier', display_name: 'Demo Cashier',
+    id: 'cashier-m3', role: 'cashier', display_name: 'Cashier M3', pin: '654321',
   }));
 }
 
 async function enableCreditPermission() {
+  const st = await uatJson('req', 'GET', '/local/v1/setup/status');
+  const op = (await uatJson('req', 'GET', '/local/v1/setup/operators')).operators?.[0];
+  if (!op) return;
   await uatCmd('req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
-    id: 'op-demo-cashier', role: 'cashier', display_name: 'Demo Cashier', can_issue_nc: true,
+    id: op.id, role: op.role, display_name: op.display_name, can_issue_nc: true,
   }));
 }
 
@@ -201,18 +215,29 @@ async function main() {
     record('sqlite-nc-series', false, String(e));
   }
 
-  // M3.1: permission denied before enable
+  // M3.1: permission denied before enable (cashier without can_issue_nc)
   let ftPerm;
+  const cashierEnv = envWithCookie(base, loginOperator(base, 'cashier-m3', '654321'));
   try {
-    ftPerm = await issueFT();
-    await uatCmd('req', 'POST',
+    ftPerm = await uatJson('req', 'POST', '/local/v1/fiscal-documents', '--body', JSON.stringify({
+      request_id: `m3-perm-ft-${Date.now()}`,
+      document_type: 'FT',
+      snapshot: {
+        source_system: 'LOCAL', source_sale_id: 'sale-perm', scope_type: 'session', scope_id: 'sc-perm',
+        fiscal_purpose: 'sale',
+        lines: [{ product_code: 'DEMO1', display_name: 'Prato Demo', saft_name: 'Prato Demo',
+          quantity: '1', unit_price_gross: '12.50', vat_rate: '0.23', product_type: 'P', unit_of_measure: 'UN' }],
+        customer: { tax_id: '999999990', company_name: 'Consumidor Final', country: 'PT' },
+        payments: [{ method: 'CASH', amount: '12.50' }],
+      },
+    }));
+    await run(process.execPath, [uat, 'req', 'POST',
       `/local/v1/fiscal-documents/${ftPerm.document_id}/credit-notes`,
       '--body', JSON.stringify({
         request_id: `m3-perm-deny-${Date.now()}`,
-        operator_id: 'op-demo-cashier',
         reason: 'Should fail',
         credit_full: true,
-      }));
+      })], { env: { ...process.env, ...cashierEnv } });
     record('operator-permission-denied', false, 'expected credit_not_allowed');
   } catch (e) {
     record('operator-permission-denied',
@@ -221,9 +246,13 @@ async function main() {
   }
 
   try {
-    await enableCreditPermission();
+    await uatCmd('req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
+      id: 'cashier-m3', role: 'cashier', display_name: 'Cashier M3', can_issue_nc: true, pin: '654321',
+    }));
     const st = await uatJson('req', 'GET', '/local/v1/setup/status');
-    record('operator-can-issue-nc', st.operator_can_issue_nc === true);
+    record('operator-can-issue-nc', st.operator_can_issue_nc === true, JSON.stringify({
+      nc: st.nc_series_ok, act: st.activated_ok, op: st.operator_ok, can: st.operator_can_issue_nc,
+    }));
     record('setup-ready-to-credit', st.ready_to_credit === true);
   } catch (e) {
     record('operator-can-issue-nc', false, String(e));

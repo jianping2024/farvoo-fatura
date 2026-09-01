@@ -149,9 +149,11 @@ func handleReprint(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		StationID  string `json:"station_id"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
-	if body.OperatorID == "" {
-		body.OperatorID = "op-demo-cashier"
+	id, ok := RequireOperatorID(w, r)
+	if !ok {
+		return
 	}
+	body.OperatorID = id
 	res, err := deps.Fiscal.ReprintDocument(r.Context(), documentID, body.OperatorID, body.StationID)
 	if err != nil {
 		var ce *service.CodedError
@@ -194,9 +196,11 @@ func handleCreditNote(w http.ResponseWriter, r *http.Request, deps HandlerDeps) 
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
 		return
 	}
-	if body.OperatorID == "" {
-		body.OperatorID = "op-demo-cashier"
+	id, ok := RequireOperatorID(w, r)
+	if !ok {
+		return
 	}
+	body.OperatorID = id
 	creditFull := false
 	if body.CreditFull != nil {
 		creditFull = *body.CreditFull
@@ -251,9 +255,11 @@ func handleDebitNote(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
 		return
 	}
-	if body.OperatorID == "" {
-		body.OperatorID = "op-demo-cashier"
+	id, ok := RequireOperatorID(w, r)
+	if !ok {
+		return
 	}
+	body.OperatorID = id
 	debitFull := false
 	if body.DebitFull != nil {
 		debitFull = *body.DebitFull

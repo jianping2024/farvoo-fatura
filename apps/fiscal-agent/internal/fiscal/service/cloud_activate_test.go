@@ -66,6 +66,12 @@ func TestActivateFromCloud_SaveActivationOnly(t *testing.T) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/api/print-agent/fiscal-signing/register":
 			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "installation_id": "inst-cloud-1", "status": "registered"})
+		case r.Method == http.MethodGet && r.URL.Path == "/api/print-agent/fiscal-store-policy":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"fiscal_profile": "restaurant", "max_fiscal_terminals": 1, "terminals_used": 0,
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/api/print-agent/fiscal-terminals":
+			_ = json.NewEncoder(w).Encode(map[string]any{"terminals": []any{}})
 		case r.Method == http.MethodGet && r.URL.Path == "/api/print-agent/fiscal-signing/provision":
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"installation_id":        "inst-cloud-1",

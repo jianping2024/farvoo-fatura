@@ -11,8 +11,8 @@
 | 门店 | Farvoo 餐厅「Pirata Wok Lisboa」 | Farvoo `restaurants` |
 | `store_id` | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` | claim 返回的 `restaurant_id`，写入 `config.json` 后再写入各表 |
 | 主机 | 店内唯一 Windows 收银主机 | 物理机 |
-| 管理员 | 张三 | Agent 本地创建，`role=owner` |
-| 操作员 | 李四 | Agent 本地创建，`role=cashier` |
+| owner | 张三 | Agent 本地创建，`role=owner` |
+| cashier | 李四 | Agent 本地创建，`role=cashier` |
 
 时间一律举 UTC 例：`2026-08-20T13:05:00Z`。
 
@@ -112,19 +112,19 @@
 
 ## 4. `operators`（Agent 本地创建 + PIN）
 
-**名册来源：** Admin **设置 → 操作员**；**不同步** Farvoo。  
-**PIN：** 创建或编辑时录入；argon2id 写 `pin_hash`；不上云。  
+**名册来源：** 开票 Web 界面 **设置 §5**；**不同步** Farvoo。  
+**PIN：** 6 位数字；argon2id 写 `pin_hash`；不上云。  
 **权威：** [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)
 
-### 4.1 管理员张三
+### 4.1 owner 张三
 
 | 列 | 本例值 | 明确来源 |
 |----|--------|----------|
 | id | `op-zhang-uuid` | Agent 生成 UUID（作 SourceID） |
 | mesa_user_id | `local-op-zhang-uuid` | 占位 `local-{id}`（非 Farvoo user） |
 | store_id | `a1b2c3d4-…7890` | `config.json.restaurant_id` |
-| role | `owner` | 创建时选 **管理员** |
-| display_name | `张三` | Admin 手填 |
+| role | `owner` | 创建时选 `owner` |
+| display_name | `张三` | 手填 |
 | active | `1` | 创建时默认启用 |
 | pin_hash | `$argon2id$…` | 创建时设 PIN |
 | can_issue_nc | `1` | `owner` 默认 1 |
@@ -132,18 +132,18 @@
 | created_at | `2026-08-20T14:05:00Z` | 首次创建 |
 | updated_at | `2026-08-20T15:00:00Z` | 改 PIN 或权限时刷新 |
 
-### 4.2 操作员李四
+### 4.2 cashier 李四
 
 | 列 | 本例值 | 明确来源 |
 |----|--------|----------|
 | id | `op-li-uuid` | Agent 生成 |
 | mesa_user_id | `local-op-li-uuid` | 占位 `local-{id}` |
 | store_id | `a1b2c3d4-…7890` | 同上 |
-| role | `cashier` | 创建时选 **操作员** |
-| display_name | `李四` | Admin 手填 |
+| role | `cashier` | 创建时选 `cashier` |
+| display_name | `李四` | 手填 |
 | active | `1` | 默认启用 |
-| pin_hash | `$argon2id$…` | 管理员创建时或本人改 PIN |
-| can_issue_nc | `0` | 默认 0；管理员可在设置页打开 |
+| pin_hash | `$argon2id$…` | `owner` 创建时设 PIN；或本人「修改我的 PIN」 |
+| can_issue_nc | `0` | 默认 0；`owner` 可在设置页打开 |
 | synced_at | NULL | P0 本地路径不写 |
 | created_at | `2026-08-20T14:05:00Z` | |
 | updated_at | `2026-08-20T15:00:00Z` | |
@@ -174,7 +174,7 @@ T4  （可穿插）用 at_credentials 调 AT 注册系列
     → 更新 at_credentials.last_ok_at
     → 验证码写入 series（别表，本篇不展开）
 
-T5  管理员在 Agent 设置创建操作员
+T5  `owner` 在设置 §5 创建开票员
     → INSERT operators（张三 owner、李四 cashier）
     → 各设 pin_hash
 

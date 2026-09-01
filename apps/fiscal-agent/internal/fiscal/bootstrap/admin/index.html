@@ -210,19 +210,11 @@
   <section id="view-login">
     <div class="login-card">
       <p class="brand">Farvoo 开票</p>
-      <p class="hint">选择门店业态，再输入操作员 PIN 进入。</p>
-      <div class="mode-pick" id="modePick">
-        <button type="button" data-mode="restaurant" class="selected">
-          <strong>餐馆模式</strong>
-          <span>桌台账单、按桌/按人开票</span>
-        </button>
-        <button type="button" data-mode="retail">
-          <strong>商超模式</strong>
-          <span>收银台订单、即结开票</span>
-        </button>
-      </div>
+      <p class="hint">选择开票员并输入 6 位 PIN（业态由 Ops 配置）。</p>
+      <label class="hint" for="loginOperator">开票员</label>
+      <select id="loginOperator" style="width:100%;margin-bottom:0.75rem;padding:0.5rem;border-radius:8px;border:1px solid #2a3d32;background:#0f1612;color:#e8f0eb"></select>
       <p class="hint" style="text-align:center">操作员 PIN</p>
-      <div class="pin-dots" id="pinDots"><i></i><i></i><i></i><i></i></div>
+      <div class="pin-dots" id="pinDots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
       <div class="pin-pad" id="pinPad">
         <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
         <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
@@ -779,7 +771,8 @@
   }
 
   let pin = '';
-  let mode = sessionStorage.getItem('fiscal_mode') || 'restaurant';
+  let mode = 'restaurant';
+  let loggedInOperator = null;
   let currentOrder = null;
   let currentBill = null;
   let currentBillDetail = null;
@@ -800,6 +793,7 @@
     try {
       r = await fetch(path, {
         method,
+        credentials: 'include',
         headers: body ? { 'Content-Type': 'application/json' } : undefined,
         body: body ? JSON.stringify(body) : undefined
       });
@@ -1052,13 +1046,35 @@
   }
 
   function applyMode() {
+    const profile = (setupStatusCache && setupStatusCache.fiscal_profile) || mode;
+    mode = profile === 'retail' ? 'retail' : 'restaurant';
     document.body.classList.toggle('mode-restaurant', mode === 'restaurant');
     document.body.classList.toggle('mode-retail', mode === 'retail');
     $('#sidebarMode').textContent = mode === 'restaurant' ? '餐馆模式' : '商超模式';
     $('#homeSubtitle').textContent = mode === 'restaurant'
       ? '餐馆 · 收银账单 → 开票 → 发票'
       : '商超 · 新建开票 → 发票';
-    sessionStorage.setItem('fiscal_mode', mode);
+  }
+
+  async function loadLoginOperators() {
+    const sel = $('#loginOperator');
+    sel.innerHTML = '';
+    try {
+      const data = await j('GET', '/local/v1/setup/operators');
+      const ops = (data.operators || []).filter(o => o.has_pin);
+      if (!ops.length) {
+        sel.innerHTML = '<option value="">请先在设置中创建 owner</option>';
+        return;
+      }
+      for (const o of ops) {
+        const opt = document.createElement('option');
+        opt.value = o.id;
+        opt.textContent = o.display_name + (o.role === 'owner' ? ' · owner' : '');
+        sel.appendChild(opt);
+      }
+    } catch (_) {
+      sel.innerHTML = '<option value="">无法加载开票员</option>';
+    }
   }
 
   function setStationId(id) {
@@ -2652,45 +2668,50 @@
     }
   }
 
-  function enterApp() {
-    applyMode();
-    const op = sessionStorage.getItem('fiscal_operator') || ('操作员 · ' + pin.slice(-2).padStart(2, '*'));
-    $('#operatorName').textContent = op;
+  async function enterApp() {
+    const op = loggedInOperator || {};
+    $('#operatorName').textContent = op.display_name || '操作员';
     $('#view-login').classList.add('hidden');
     $('#app-shell').classList.add('on');
+    await ensureSetupStatus();
+    applyMode();
     showView('home');
-    ensureSetupStatus().catch(e => toast(errText(e), 'error'));
     refreshPrinters().catch(() => {});
     ensureCustomerCatalog().catch(() => {});
     startBillDraftEvents();
-    toast(mode === 'restaurant' ? '已进入 · 餐馆模式' : '已进入 · 商超模式', 'success');
+    toast('已进入 · ' + (mode === 'restaurant' ? '餐馆' : '商超'), 'success');
   }
 
-  $$('#modePick button').forEach(b => b.addEventListener('click', () => {
-    $$('#modePick button').forEach(x => x.classList.remove('selected'));
-    b.classList.add('selected');
-    mode = b.dataset.mode;
-  }));
+  async function tryLogin() {
+    const operatorId = $('#loginOperator').value;
+    if (!operatorId) { toast('请选择开票员', 'error'); return; }
+    if (!/^\d{6}$/.test(pin)) { toast('请输入 6 位 PIN', 'error'); return; }
+    try {
+      loggedInOperator = await j('POST', '/local/v1/setup/login', { operator_id: operatorId, pin });
+      pin = '';
+      $$('#pinDots i').forEach(d => d.classList.remove('on'));
+      await enterApp();
+    } catch (e) {
+      toast(errText(e), 'error');
+      pin = '';
+      $$('#pinDots i').forEach(d => d.classList.remove('on'));
+    }
+  }
 
   $('#pinPad').addEventListener('click', e => {
     const btn = e.target.closest('button[data-k]');
     if (!btn) return;
     const k = btn.dataset.k;
     if (k === 'C') pin = '';
-    else if (k === 'OK') {
-      if (pin.length >= 4) {
-        sessionStorage.setItem('fiscal_operator', '操作员 · ' + pin);
-        enterApp();
-      } else toast('请输入 4 位 PIN', 'error');
-    } else if (pin.length < 4) pin += k;
+    else if (k === 'OK') { void tryLogin(); }
+    else if (pin.length < 6) pin += k;
     $$('#pinDots i').forEach((d, i) => d.classList.toggle('on', i < pin.length));
-    if (pin.length === 4 && k !== 'C' && k !== 'OK') {
-      sessionStorage.setItem('fiscal_operator', '操作员 · ' + pin);
-      setTimeout(enterApp, 200);
-    }
+    if (pin.length === 6 && k !== 'C' && k !== 'OK') setTimeout(() => void tryLogin(), 200);
   });
 
-  $('#btnLogout').onclick = () => {
+  $('#btnLogout').onclick = async () => {
+    try { await j('POST', '/local/v1/setup/logout', {}); } catch (_) {}
+    loggedInOperator = null;
     stopBillDraftEvents();
     setupStatusCache = null;
     pin = '';
@@ -3261,10 +3282,10 @@
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $$('#modePick button').forEach(b => b.classList.toggle('selected', b.dataset.mode === mode));
+  void loadLoginOperators();
 
-  if (sessionStorage.getItem('fiscal_operator') && sessionStorage.getItem('fiscal_mode')) {
-    pin = '****';
+  if (document.cookie.includes('fiscal_session=')) {
+    pin = '******';
     $$('#pinDots i').forEach(d => d.classList.add('on'));
   }
 })();

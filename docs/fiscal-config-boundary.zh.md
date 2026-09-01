@@ -30,7 +30,7 @@
 | 服务 | 默认 |
 |------|------|
 | 托盘配对/打印机设置 | `:17892`（既有） |
-| Fiscal Local API + Admin | `FISCAL_BIND` 默认 `127.0.0.1:17880` |
+| Fiscal Local API + Admin | `FISCAL_BIND` 默认 `127.0.0.1:17880`；**店内多端**见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.8：`FISCAL_ALLOW_LAN=1` + 非 loopback bind |
 | SQLite 路径（可选覆盖） | `FISCAL_DB` / `FISCAL_DATA_DIR`（UAT；默认在 Agent 数据目录下） |
 
 二者同进程；Fiscal **不**占用配对端口。

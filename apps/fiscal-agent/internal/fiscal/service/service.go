@@ -308,11 +308,26 @@ func (s *FiscalService) ActivateFromCloud(ctx context.Context, storeID string) (
 		return nil, coded(ErrCodeTaxpayerMissing, "configure taxpayer first")
 	}
 
+	cli := &fiscalsigning.Client{APIBase: s.cloud.APIBase, JWT: s.cloud.JWT}
+	if strings.TrimSpace(s.cloud.APIBase) != "" && strings.TrimSpace(s.cloud.JWT) != "" {
+		if err := s.PullAndSaveStorePolicy(ctx, storeID); err != nil {
+			ok, _, _, _ := s.db.FiscalProfileOK(storeID)
+			if !ok {
+				return nil, err
+			}
+		}
+		_ = s.SyncFiscalTerminalsFromCloud(ctx, storeID)
+	} else {
+		ok, _, _, _ := s.db.FiscalProfileOK(storeID)
+		if !ok {
+			return nil, coded(ErrCodeFiscalProfileMissing, "ops fiscal_profile not configured")
+		}
+	}
+
 	dev, err := s.ensureDeviceKey()
 	if err != nil {
 		return nil, err
 	}
-	cli := &fiscalsigning.Client{APIBase: s.cloud.APIBase, JWT: s.cloud.JWT}
 	bundle, err := cli.PullProvision(ctx)
 	if err != nil {
 		if errors.Is(err, fiscalsigning.ErrNotActive) {
@@ -387,13 +402,18 @@ func (s *FiscalService) TryPullCloudProvisionIfNeeded(ctx context.Context) {
 	_, _ = s.ActivateFromCloud(ctx, s.storeID)
 }
 
+// SetOperatorPIN sets operator PIN (owner reset path).
+func (s *FiscalService) SetOperatorPIN(storeID, operatorID, pin string) error {
+	return s.db.SetOperatorPIN(storeID, operatorID, pin)
+}
+
 // UpsertOperator is the ONLY operator setup entry for M1.
 func (s *FiscalService) UpsertOperator(id, storeID, role, name string) error {
 	if storeID == "" {
 		storeID = s.storeID
 	}
 	if id == "" {
-		id = "op-demo-cashier"
+		id = uuid.NewString()
 	}
 	if role == "" {
 		role = "cashier"
@@ -401,7 +421,7 @@ func (s *FiscalService) UpsertOperator(id, storeID, role, name string) error {
 	if name == "" {
 		name = "Cashier"
 	}
-	return s.db.UpsertOperator(id, storeID, role, name, "")
+	return s.db.UpsertOperator(id, storeID, role, name, "local-"+id)
 }
 
 // SetOperatorCanIssueNC is the ONLY service entry for operators.can_issue_nc updates.

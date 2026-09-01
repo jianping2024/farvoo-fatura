@@ -117,9 +117,11 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
 		return
 	}
-	if body.OperatorID == "" {
-		body.OperatorID = "op-demo-cashier"
+	id, ok := RequireOperatorID(w, r)
+	if !ok {
+		return
 	}
+	body.OperatorID = id
 	res, err := deps.Fiscal.IssueManualFT(r.Context(), catalog.ManualIssueInput{
 		RequestID: body.RequestID, DocumentType: body.DocumentType,
 		CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,

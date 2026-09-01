@@ -1,0 +1,189 @@
+package api
+
+import (
+	"context"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+)
+
+const (
+	sessionCookieName  = "fiscal_session"
+	terminalCookieName = "fiscal_terminal_id"
+	sessionMaxAge      = 8 * time.Hour
+	sessionIdle        = 30 * time.Minute
+)
+
+type ctxKey int
+
+const ctxSessionKey ctxKey = 1
+
+// Session holds authenticated operator state.
+type Session struct {
+	OperatorID  string
+	Role        string
+	DisplayName string
+	IssuedAt    time.Time
+	LastSeen    time.Time
+}
+
+// SessionManager signs HttpOnly session cookies — ONLY session write path.
+type SessionManager struct {
+	secret []byte
+}
+
+// NewSessionManager derives or loads HMAC secret.
+func NewSessionManager(dataDir string) *SessionManager {
+	if v := strings.TrimSpace(os.Getenv("FISCAL_SESSION_SECRET")); v != "" {
+		return &SessionManager{secret: []byte(v)}
+	}
+	path := strings.TrimSpace(dataDir)
+	if path == "" {
+		path = os.TempDir()
+	}
+	sum := sha256.Sum256([]byte("fiscal-session:" + path))
+	return &SessionManager{secret: sum[:]}
+}
+
+type sessionPayload struct {
+	OperatorID  string `json:"op"`
+	Role        string `json:"role"`
+	DisplayName string `json:"name"`
+	IssuedAt    int64  `json:"iat"`
+	LastSeen    int64  `json:"ls"`
+}
+
+func (m *SessionManager) sign(payload []byte) string {
+	mac := hmac.New(sha256.New, m.secret)
+	mac.Write(payload)
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+}
+
+// SetSessionCookie writes fiscal_session cookie.
+func (m *SessionManager) SetSessionCookie(w http.ResponseWriter, sess Session) error {
+	now := time.Now().UTC()
+	if sess.IssuedAt.IsZero() {
+		sess.IssuedAt = now
+	}
+	sess.LastSeen = now
+	p := sessionPayload{
+		OperatorID:  sess.OperatorID,
+		Role:        sess.Role,
+		DisplayName: sess.DisplayName,
+		IssuedAt:    sess.IssuedAt.Unix(),
+		LastSeen:    sess.LastSeen.Unix(),
+	}
+	raw, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+	b64 := base64.RawURLEncoding.EncodeToString(raw)
+	sig := m.sign(raw)
+	val := b64 + "." + sig
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    val,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(sessionMaxAge.Seconds()),
+	})
+	return nil
+}
+
+// ClearSessionCookie removes session.
+func (m *SessionManager) ClearSessionCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true,
+	})
+}
+
+// ParseRequest loads session from cookie.
+func (m *SessionManager) ParseRequest(r *http.Request) (*Session, error) {
+	c, err := r.Cookie(sessionCookieName)
+	if err != nil || c.Value == "" {
+		return nil, errors.New("no session")
+	}
+	parts := strings.Split(c.Value, ".")
+	if len(parts) != 2 {
+		return nil, errors.New("bad session")
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return nil, err
+	}
+	if m.sign(raw) != parts[1] {
+		return nil, errors.New("bad signature")
+	}
+	var p sessionPayload
+	if err := json.Unmarshal(raw, &p); err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC()
+	issued := time.Unix(p.IssuedAt, 0).UTC()
+	last := time.Unix(p.LastSeen, 0).UTC()
+	if now.Sub(issued) > sessionMaxAge {
+		return nil, errors.New("expired")
+	}
+	if now.Sub(last) > sessionIdle {
+		return nil, errors.New("idle expired")
+	}
+	return &Session{
+		OperatorID:  p.OperatorID,
+		Role:        p.Role,
+		DisplayName: p.DisplayName,
+		IssuedAt:    issued,
+		LastSeen:    last,
+	}, nil
+}
+
+// SessionFromContext returns operator session injected by middleware.
+func SessionFromContext(ctx context.Context) *Session {
+	s, _ := ctx.Value(ctxSessionKey).(*Session)
+	return s
+}
+
+// SetTerminalCookie sets fiscal_terminal_id after Ops pairing.
+func SetTerminalCookie(w http.ResponseWriter, terminalID string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     terminalCookieName,
+		Value:    terminalID,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int((365 * 24 * time.Hour).Seconds()),
+	})
+}
+
+// TerminalIDFromRequest reads terminal cookie (may be empty on loopback).
+func TerminalIDFromRequest(r *http.Request) string {
+	c, err := r.Cookie(terminalCookieName)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(c.Value)
+}
+
+// IsLoopbackClient reports 127.0.0.1 / ::1 remote addr.
+func IsLoopbackClient(r *http.Request) bool {
+	host := r.RemoteAddr
+	if i := strings.LastIndex(host, ":"); i >= 0 {
+		host = host[:i]
+	}
+	host = strings.Trim(host, "[]")
+	return host == "127.0.0.1" || host == "::1"
+}
+
+// NewTerminalID generates local terminal UUID for loopback implicit slot.
+func NewTerminalID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return base64.RawURLEncoding.EncodeToString(b)
+}

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -19,6 +20,8 @@ import (
 type HandlerDeps struct {
 	Fiscal            *service.FiscalService
 	StoreID           string
+	DataDir           string
+	Sessions          *SessionManager
 	StationPrintersFn func() map[string]string // live Agent station_printers; may be nil
 	StationMetaFn     func() []StationMeta     // cloud print_stations; may be nil
 	UIEvents          *uievents.Hub            // Admin SSE; may be nil in unit tests
@@ -26,108 +29,178 @@ type HandlerDeps struct {
 
 // Mount registers fiscal local routes. Prefix: /local/v1
 func Mount(mux *http.ServeMux, deps HandlerDeps) {
-	mux.HandleFunc("GET /local/v1/health", func(w http.ResponseWriter, r *http.Request) {
+	if deps.Sessions == nil {
+		deps.Sessions = NewSessionManager(deps.DataDir)
+	}
+	registerFiscalRoutes(mux, deps)
+}
+
+func (deps HandlerDeps) guardAuto(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		mode := routeAuthFor(r)
+		if mode == authPublic {
+			h(w, r)
+			return
+		}
+		sess, err := deps.Sessions.ParseRequest(r)
+		if err != nil || sess == nil {
+			writeErr(w, http.StatusUnauthorized, "unauthorized", "session required")
+			return
+		}
+		if mode == authOwner && sess.Role != "owner" {
+			writeErr(w, http.StatusForbidden, "forbidden", "owner required")
+			return
+		}
+		ctx := context.WithValue(r.Context(), ctxSessionKey, sess)
+		h(w, r.WithContext(ctx))
+	}
+}
+
+func (deps HandlerDeps) guard(h http.HandlerFunc, minAuth routeAuth) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if minAuth == authPublic {
+			h(w, r)
+			return
+		}
+		sess, err := deps.Sessions.ParseRequest(r)
+		if err != nil || sess == nil {
+			writeErr(w, http.StatusUnauthorized, "unauthorized", "session required")
+			return
+		}
+		if minAuth == authOwner && sess.Role != "owner" {
+			writeErr(w, http.StatusForbidden, "forbidden", "owner required")
+			return
+		}
+		ctx := context.WithValue(r.Context(), ctxSessionKey, sess)
+		h(w, r.WithContext(ctx))
+	}
+}
+
+func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
+	g := deps.guardAuto
+	mux.HandleFunc("GET /local/v1/health", g(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "module": "fiscal"})
-	})
-	mux.HandleFunc("GET /local/v1/setup/status", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/setup/status", g(func(w http.ResponseWriter, r *http.Request) {
 		handleSetupStatus(w, r, deps)
-	})
-	mux.HandleFunc("PUT /local/v1/setup/taxpayer", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("PUT /local/v1/setup/taxpayer", g(func(w http.ResponseWriter, r *http.Request) {
 		handleUpsertTaxpayer(w, r, deps)
-	})
-	mux.HandleFunc("PUT /local/v1/setup/at-credentials", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("PUT /local/v1/setup/at-credentials", g(func(w http.ResponseWriter, r *http.Request) {
 		handleUpsertAT(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/setup/series/register", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/setup/series/register", g(func(w http.ResponseWriter, r *http.Request) {
 		handleRegisterSeries(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/setup/activate", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/setup/activate", g(func(w http.ResponseWriter, r *http.Request) {
 		handleActivate(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/setup/activate-from-cloud", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/setup/activate-from-cloud", g(func(w http.ResponseWriter, r *http.Request) {
 		handleActivateFromCloud(w, r, deps)
-	})
-	mux.HandleFunc("PUT /local/v1/setup/operator", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/setup/operators", g(func(w http.ResponseWriter, r *http.Request) {
+		handleListOperators(w, r, deps)
+	}))
+	mux.HandleFunc("POST /local/v1/setup/bootstrap-owner", g(func(w http.ResponseWriter, r *http.Request) {
+		handleBootstrapOwner(w, r, deps)
+	}))
+	mux.HandleFunc("POST /local/v1/setup/login", g(func(w http.ResponseWriter, r *http.Request) {
+		handleLogin(w, r, deps)
+	}))
+	mux.HandleFunc("POST /local/v1/setup/logout", g(func(w http.ResponseWriter, r *http.Request) {
+		handleLogout(w, r, deps)
+	}))
+	mux.HandleFunc("POST /local/v1/setup/change-pin", g(func(w http.ResponseWriter, r *http.Request) {
+		handleChangePIN(w, r, deps)
+	}))
+	mux.HandleFunc("POST /local/v1/setup/terminals/pair", g(func(w http.ResponseWriter, r *http.Request) {
+		handleTerminalPair(w, r, deps)
+	}))
+	mux.HandleFunc("GET /local/v1/setup/terminals/summary", g(func(w http.ResponseWriter, r *http.Request) {
+		handleTerminalSummary(w, r, deps)
+	}))
+	mux.HandleFunc("PUT /local/v1/setup/operator", g(func(w http.ResponseWriter, r *http.Request) {
 		handleOperator(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/setup/backup", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/setup/backup", g(func(w http.ResponseWriter, r *http.Request) {
 		handleBackupFiscalDB(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/setup/integrity/verify", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/setup/integrity/verify", g(func(w http.ResponseWriter, r *http.Request) {
 		handleVerifyIntegrity(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/setup/prepare-swap", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/setup/prepare-swap", g(func(w http.ResponseWriter, r *http.Request) {
 		handlePrepareSwap(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/fiscal-documents", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/fiscal-documents", g(func(w http.ResponseWriter, r *http.Request) {
 		handleIssue(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/fiscal-documents/manual", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/fiscal-documents/manual", g(func(w http.ResponseWriter, r *http.Request) {
 		handleIssueManualFT(w, r, deps)
-	})
-	mux.HandleFunc("GET /local/v1/products", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/products", g(func(w http.ResponseWriter, r *http.Request) {
 		handleListProducts(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/products", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/products", g(func(w http.ResponseWriter, r *http.Request) {
 		handleUpsertProduct(w, r, deps)
-	})
-	mux.HandleFunc("GET /local/v1/customers", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/customers", g(func(w http.ResponseWriter, r *http.Request) {
 		handleListCustomers(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/customers", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/customers", g(func(w http.ResponseWriter, r *http.Request) {
 		handleUpsertCustomer(w, r, deps)
-	})
-	mux.HandleFunc("GET /local/v1/fiscal-documents", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/fiscal-documents", g(func(w http.ResponseWriter, r *http.Request) {
 		handleListFiscalDocuments(w, r, deps)
-	})
-	mux.HandleFunc("GET /local/v1/fiscal-documents/{documentId}", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/fiscal-documents/{documentId}", g(func(w http.ResponseWriter, r *http.Request) {
 		handleGetFiscalDocument(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/reprints", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/reprints", g(func(w http.ResponseWriter, r *http.Request) {
 		handleReprint(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/credit-notes", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/credit-notes", g(func(w http.ResponseWriter, r *http.Request) {
 		handleCreditNote(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/debit-notes", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/debit-notes", g(func(w http.ResponseWriter, r *http.Request) {
 		handleDebitNote(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/saft/exports", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/saft/exports", g(func(w http.ResponseWriter, r *http.Request) {
 		handleExportSAFT(w, r, deps)
-	})
-	mux.HandleFunc("GET /local/v1/saft/exports", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/saft/exports", g(func(w http.ResponseWriter, r *http.Request) {
 		handleListSAFTExports(w, r, deps)
-	})
-	mux.HandleFunc("GET /local/v1/saft/exports/{exportId}", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/saft/exports/{exportId}", g(func(w http.ResponseWriter, r *http.Request) {
 		handleGetSAFTExport(w, r, deps)
-	})
-	mux.HandleFunc("GET /local/v1/saft/exports/{exportId}/download", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/saft/exports/{exportId}/download", g(func(w http.ResponseWriter, r *http.Request) {
 		handleDownloadSAFTExport(w, r, deps)
-	})
-	mux.HandleFunc("GET /local/v1/fiscal-documents/by-request/{requestId}", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/fiscal-documents/by-request/{requestId}", g(func(w http.ResponseWriter, r *http.Request) {
 		handleGetByRequest(w, r, deps)
-	})
-	mux.HandleFunc("GET /local/v1/print-jobs/{printJobId}", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/print-jobs/{printJobId}", g(func(w http.ResponseWriter, r *http.Request) {
 		handleGetPrintJob(w, r, deps)
-	})
-	mux.HandleFunc("GET /local/v1/printers", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/printers", g(func(w http.ResponseWriter, r *http.Request) {
 		handleListPrinters(w, r, deps)
-	})
-	mux.HandleFunc("GET /local/v1/bill-drafts", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/bill-drafts", g(func(w http.ResponseWriter, r *http.Request) {
 		handleListBillDrafts(w, r, deps)
-	})
-	mux.HandleFunc("GET /local/v1/bill-drafts/{id}", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /local/v1/bill-drafts/{id}", g(func(w http.ResponseWriter, r *http.Request) {
 		handleGetBillDraft(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/issue", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/issue", g(func(w http.ResponseWriter, r *http.Request) {
 		handleIssueBillDraft(w, r, deps)
-	})
-	mux.HandleFunc("PUT /local/v1/bill-drafts/{id}/allocation", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("PUT /local/v1/bill-drafts/{id}/allocation", g(func(w http.ResponseWriter, r *http.Request) {
 		handleSaveBillDraftAllocation(w, r, deps)
-	})
-	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/discard", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/discard", g(func(w http.ResponseWriter, r *http.Request) {
 		handleDiscardBillDraft(w, r, deps)
-	})
+	}))
 	mux.HandleFunc("GET /local/v1/events", func(w http.ResponseWriter, r *http.Request) {
 		if deps.UIEvents == nil {
 			writeErr(w, http.StatusServiceUnavailable, "events_unavailable", "UI events hub not configured")
@@ -192,6 +265,21 @@ func handleSetupStatus(w http.ResponseWriter, r *http.Request, deps HandlerDeps)
 		writeErr(w, http.StatusInternalServerError, "status_failed", err.Error())
 		return
 	}
+	if s := SessionFromContext(r.Context()); s != nil && deps.Fiscal.DB() != nil {
+		if can, err := deps.Fiscal.DB().OperatorCanIssueNC(deps.StoreID, s.OperatorID); err == nil {
+			st.OperatorCanIssueNC = can
+			st.ReadyToCredit = st.NCSeriesOK && st.ActivatedOK && st.OperatorOK && can
+			st.ReadyToDebit = st.NDSeriesOK && st.ActivatedOK && st.OperatorOK && can
+		}
+	} else if deps.Sessions != nil && deps.Fiscal.DB() != nil {
+		if sess, err := deps.Sessions.ParseRequest(r); err == nil && sess != nil {
+			if can, err := deps.Fiscal.DB().OperatorCanIssueNC(deps.StoreID, sess.OperatorID); err == nil {
+				st.OperatorCanIssueNC = can
+				st.ReadyToCredit = st.NCSeriesOK && st.ActivatedOK && st.OperatorOK && can
+				st.ReadyToDebit = st.NDSeriesOK && st.ActivatedOK && st.OperatorOK && can
+			}
+		}
+	}
 	writeJSON(w, http.StatusOK, st)
 }
 
@@ -223,9 +311,11 @@ func handleVerifyIntegrity(w http.ResponseWriter, r *http.Request, deps HandlerD
 	if body.BlockOnFail != nil {
 		block = *body.BlockOnFail
 	}
-	if body.OperatorID == "" {
-		body.OperatorID = "op-demo-cashier"
+	id, ok := RequireOperatorID(w, r)
+	if !ok {
+		return
 	}
+	body.OperatorID = id
 	rep, err := deps.Fiscal.VerifySeriesIntegrity(block, body.HealOnPass, body.OperatorID)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "integrity_failed", err.Error())
@@ -248,9 +338,11 @@ func handlePrepareSwap(w http.ResponseWriter, r *http.Request, deps HandlerDeps)
 	if body.Backup != nil {
 		doBackup = *body.Backup
 	}
-	if body.OperatorID == "" {
-		body.OperatorID = "op-demo-cashier"
+	id, ok := RequireOperatorID(w, r)
+	if !ok {
+		return
 	}
+	body.OperatorID = id
 	path, size, err := deps.Fiscal.PrepareMachineSwap(doBackup, body.OperatorID)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "prepare_swap_failed", err.Error())
@@ -377,6 +469,7 @@ func handleOperator(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		StoreID     string `json:"store_id"`
 		Role        string `json:"role"`
 		DisplayName string `json:"display_name"`
+		PIN         string `json:"pin"`
 		CanIssueNC  *bool  `json:"can_issue_nc"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -389,6 +482,15 @@ func handleOperator(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	if err := deps.Fiscal.UpsertOperator(body.ID, body.StoreID, body.Role, body.DisplayName); err != nil {
 		writeCoded(w, err)
 		return
+	}
+	if body.PIN != "" {
+		if err := deps.Fiscal.SetOperatorPIN(body.StoreID, body.ID, body.PIN); err != nil {
+			writeCoded(w, err)
+			return
+		}
+		if s := SessionFromContext(r.Context()); s != nil {
+			_ = deps.Fiscal.DB().InsertAuditLog(s.OperatorID, "PIN_RESET", "operator", body.ID, "{}")
+		}
 	}
 	if body.CanIssueNC != nil {
 		if err := deps.Fiscal.SetOperatorCanIssueNC(body.StoreID, body.ID, *body.CanIssueNC); err != nil {
@@ -422,6 +524,11 @@ func handleIssue(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	if body.StoreID == "" {
 		body.StoreID = deps.StoreID
 	}
+	id, ok := RequireOperatorID(w, r)
+	if !ok {
+		return
+	}
+	body.OperatorID = id
 	docType := domain.DocumentType(body.DocType)
 	if docType == "" {
 		docType = domain.DefaultSaleDocumentType
@@ -563,7 +670,7 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
 		return
 	}
-	id := r.PathValue("id")
+	draftID := r.PathValue("id")
 	var body struct {
 		OperatorID         string `json:"operator_id"`
 		DocumentType       string `json:"document_type"`
@@ -575,14 +682,16 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		AllocationRevision   *int64 `json:"allocation_revision"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
-	if body.OperatorID == "" {
-		body.OperatorID = "op-demo-cashier"
+	opID, ok := RequireOperatorID(w, r)
+	if !ok {
+		return
 	}
+	body.OperatorID = opID
 	if body.Mode == "" {
 		body.Mode = "whole_table"
 	}
 	res, err := deps.Fiscal.IssueFromBillDraft(r.Context(), service.IssueBillDraftInput{
-		DraftID: id, DocumentType: body.DocumentType, OperatorID: body.OperatorID, Mode: body.Mode, ScopeID: body.ScopeID,
+		DraftID: draftID, DocumentType: body.DocumentType, OperatorID: body.OperatorID, Mode: body.Mode, ScopeID: body.ScopeID,
 		StationID: body.StationID, CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
 		AllocationRevision: body.AllocationRevision,
 	})
@@ -639,7 +748,7 @@ func writeCoded(w http.ResponseWriter, err error) {
 		switch ce.Code {
 		case service.ErrCodeATSOAPFailed:
 			status = http.StatusBadGateway
-		case service.ErrCodeSignerNotReady, service.ErrCodeOpsActivatePending, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing,
+		case service.ErrCodeSignerNotReady, service.ErrCodeOpsActivatePending, service.ErrCodeFiscalProfileMissing, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing,
 			service.ErrCodeSeriesAlreadyActive,
 			service.ErrCodeCreditNotAllowed, service.ErrCodeCreditAmountExceeded, service.ErrCodeIdempotencyConflict,
 			service.ErrCodeNoInvoices, service.ErrCodeReprintNotAllowed:

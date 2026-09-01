@@ -346,7 +346,7 @@ M1（NC 系列也要 validation_code）；M2 建议已完成以便真打 NC；**
 
 ### 目标
 
-Admin **本地**创建管理员/操作员、设 PIN 登录；签发与冲销使用真实 `operators.id`；**不同步** Farvoo 员工。
+Admin **本地**创建 `owner` / `cashier`、PIN 登录；**一 Agent 多台 PC 浏览器开票**（[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.8）；签发 `operators.id` 来自会话；**不同步** Farvoo。
 
 ### 非目标
 
@@ -356,10 +356,12 @@ Farvoo `fiscal-operators` 拉取；Mesa 密码复用；`operator_token` / LAN �
 
 | # | 交付物 | 定义「完成」 |
 |---|--------|----------------|
-| D3.11 | **设计** `fiscal-m3-2-operators.zh.md` | P0 角色、字段占位、唯一写路径 |
-| D3.12 | **Store/Service** | 创建操作员、设 PIN、`VerifyOperatorPIN`；`mesa_user_id=local-{id}` |
-| D3.13 | **Admin** | 设置 §5 操作员列表 + 登录 PIN 校验；移除写死 `op-demo-cashier` 生产路径 |
-| D3.14 | **回归** | 扩展 `fiscal-m3-regression.mjs` 或新脚本：双角色登录 + `source_id` 断言 |
+| D3.11 | **设计** `fiscal-m3-2-operators.zh.md` | P0 角色、冷启动、PIN、会话安全、唯一写路径 |
+| D3.12 | **Store/Service** | `SetOperatorPIN`、`ChangeOperatorPIN`、`VerifyOperatorPIN`；登录限速；`mesa_user_id=local-{id}`；审计 LOGIN/PIN_* |
+| D3.13 | **API 会话** | 写路径 middleware；`bootstrap-owner` / `login` / `logout` / `change-pin`；`operator_id` 仅来自会话 |
+| D3.14 | **Admin** | 激活向导首个 `owner`；§5 名册；登录/锁定/修改我的 PIN；移除 `op-demo-cashier` 生产路径 |
+| D3.15 | **Ops 门店策略** | `max_fiscal_terminals` + `fiscal_profile` 仅 Ops 下发；`FISCAL_ALLOW_LAN`；配对码 `terminals/pair` |
+| D3.16 | **回归** | `fiscal-m3-operators-regression.mjs`：双角色、401、跨 PC、Ops 端数、**Ops 切换 fiscal_profile** |
 
 ### 验收清单
 
@@ -543,3 +545,4 @@ M1–M5 主路径稳定。
 | 2026-08-30 | **M3.1 完成**（0.4.26）；M3.2 定稿：开票员 Agent 本地创建（[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)）；废止 Farvoo 同步口径 |
 | 2026-08-31 | **D6.2 清单填实**：分类自动/手测/blocked；`fiscal-d62-cert-regression.mjs` 出具；下一步 **D6.3–D6.4** |
 | 2026-08-31 | **D6.3/D6.4 完成**（0.4.32）：[`fiscal-m6-backup-swap.zh.md`](fiscal-m6-backup-swap.zh.md)；`fiscal-d63-d64-regression.mjs`；M6 关闭；下一步认证手测 |
+| 2026-09-01 | **M3.2**：端数 + 餐馆/商超模式 **纯 Ops**；去掉本地支持账号与登录页选业态 |

@@ -318,6 +318,10 @@ type SetupStatus struct {
 	ReadyToDebit          bool   `json:"ready_to_debit"`
 	OperatorCanIssueNC    bool   `json:"operator_can_issue_nc"`
 	LocalProvisionAllowed bool   `json:"local_provision_allowed"`
+	FiscalProfileOK       bool   `json:"fiscal_profile_ok"`
+	FiscalProfile         string `json:"fiscal_profile,omitempty"`
+	MaxFiscalTerminals    int    `json:"max_fiscal_terminals"`
+	TerminalsUsed         int    `json:"terminals_used"`
 }
 
 // GetSetupStatus summarizes readiness for storeID.
@@ -377,12 +381,16 @@ func (d *DB) GetSetupStatus(storeID string) (*SetupStatus, error) {
 	s.ActivatedOK = n > 0
 	_ = d.SQL.QueryRow(`SELECT COUNT(1) FROM operators WHERE store_id=? AND active=1`, storeID).Scan(&n)
 	s.OperatorOK = n > 0
-	var canNC int
-	if err := d.SQL.QueryRow(`SELECT can_issue_nc FROM operators WHERE store_id=? AND id='op-demo-cashier' AND active=1`, storeID).Scan(&canNC); err == nil {
-		s.OperatorCanIssueNC = canNC == 1
+	profileOK, profile, maxTerm, err := d.FiscalProfileOK(storeID)
+	if err == nil {
+		s.FiscalProfileOK = profileOK
+		s.FiscalProfile = profile
+		s.MaxFiscalTerminals = maxTerm
 	}
+	used, _ := d.CountActiveFiscalTerminals(storeID)
+	s.TerminalsUsed = used
 	s.LocalProvisionAllowed = os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION") == "1"
-	s.ReadyToIssue = s.TaxpayerOK && s.SeriesOK && s.FSSeriesOK && s.ActivatedOK && s.OperatorOK
+	s.ReadyToIssue = s.TaxpayerOK && s.SeriesOK && s.FSSeriesOK && s.ActivatedOK && s.OperatorOK && s.FiscalProfileOK
 	// ready_to_* includes can_issue_nc so Admin checklist matches detail Credit/Debit buttons.
 	s.ReadyToCredit = s.NCSeriesOK && s.ActivatedOK && s.OperatorOK && s.OperatorCanIssueNC
 	s.ReadyToDebit = s.NDSeriesOK && s.ActivatedOK && s.OperatorOK && s.OperatorCanIssueNC

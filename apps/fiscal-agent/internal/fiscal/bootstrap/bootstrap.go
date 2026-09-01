@@ -128,7 +128,7 @@ func StartCore(opts Options) (*Runtime, error) {
 		})
 	}
 	MountRoutes(mux, api.HandlerDeps{
-		Fiscal: svc, StoreID: opts.StoreID,
+		Fiscal: svc, StoreID: opts.StoreID, DataDir: opts.DataDir,
 		StationPrintersFn: opts.StationPrintersFn,
 		StationMetaFn:     opts.StationMetaFn,
 		UIEvents:          hub,
@@ -182,6 +182,10 @@ func Start(opts Options) (*Runtime, error) {
 	}
 	rt, err := StartCore(opts)
 	if err != nil {
+		return nil, err
+	}
+	if err := validateBindAddr(opts.BindAddr); err != nil {
+		_ = rt.Close()
 		return nil, err
 	}
 	if err := rt.Listen(opts.BindAddr); err != nil {

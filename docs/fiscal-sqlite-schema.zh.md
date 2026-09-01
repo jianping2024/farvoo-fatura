@@ -220,6 +220,7 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | `payment_method` | `CASH` `CARD` `MBWAY` `MULTIBANCO` `MIXED` `OTHER` |
 | `completeness_status` | `SYSTEM_DEFAULT` `COMPLETE` `INCOMPLETE` `INVALID` |
 | `operator.role` | `owner` `frontdesk` `cashier` |
+| `taxpayer_settings.fiscal_profile` | `restaurant` `retail`（**Ops 下发**，Agent 只读） |
 | `signing_keys.status` | `ACTIVE` `RETIRED` `COMPROMISED` |
 | `sync_outbox.status` | `PENDING` `SENT` `FAILED` |
 | `saft validation_status` | `PENDING` `VALID` `INVALID` |
@@ -251,6 +252,9 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | product_version | TEXT | 是 | |
 | fs_amount_threshold | TEXT | 是 | 默认 `"100.00"`，可配置 |
 | tax_country_region | TEXT | 是 | 默认 `PT` |
+| fiscal_profile | TEXT | 否 | **Ops 下发**；`restaurant` 或 `retail`；**激活开票前须已有值**；Agent 只读（§3.9） |
+| max_fiscal_terminals | INTEGER | 否 | **Ops 下发**；默认语义 `1`；激活前须已下发；Agent 只读（§3.8.1） |
+| ops_policy_synced_at | TEXT | 否 | 最近一次从 Ops 同步门店策略的时间 UTC |
 | created_at | TEXT | 是 | UTC |
 | updated_at | TEXT | 是 | UTC |
 
@@ -312,11 +316,11 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | id | TEXT PK | 是 | = SourceID |
 | mesa_user_id | TEXT UQ | 是 | P0 **Agent 本地创建**时写占位 `local-{id}`（满足 UNIQUE；**不同步** Farvoo user UUID） |
 | store_id | TEXT | 是 | |
-| role | TEXT | 是 | P0：`owner`（管理员）或 `cashier`（操作员） |
+| role | TEXT | 是 | P0：`owner` 或 `cashier`（DB 与 UI 同名） |
 | display_name | TEXT | 是 | Admin 手填 |
 | active | INTEGER | 是 | 默认 1 |
-| pin_hash | TEXT | 否 | Admin 设 PIN → argon2id；未设则不可登录 |
-| can_issue_nc | INTEGER | 是 | 默认 0；`owner` 创建时默认 1；管理员可改 |
+| pin_hash | TEXT | 否 | 设 PIN → argon2id（**6 位数字**，见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.2）；未设则不可登录 |
+| can_issue_nc | INTEGER | 是 | 默认 0；新建 `owner` 时默认 1；**按账号**存储，由 `owner` 在设置页按人修改 |
 | synced_at | TEXT | 否 | P0 本地创建 **写 NULL**（列保留；不表示云同步） |
 | created_at | TEXT | 是 | UTC |
 | updated_at | TEXT | 是 | UTC |
@@ -554,7 +558,7 @@ MVP 不进 SAF-T `DocumentTotals/Payment`。
 | id | TEXT PK | 是 | |
 | at | TEXT | 是 | |
 | operator_id | TEXT | 否 | |
-| action | TEXT | 是 | ISSUE / REPRINT / NC / EXPORT_SAFT / LOGIN … |
+| action | TEXT | 是 | `ISSUE` `REPRINT` `NC` `ND` `EXPORT_SAFT` `LOGIN` `LOGIN_FAILED` `LOGOUT` `PIN_RESET` `PIN_CHANGE` `series_integrity_failed` 等；无密钥/PIN 明文 |
 | entity_type | TEXT | 否 | |
 | entity_id | TEXT | 否 | |
 | detail_json | TEXT | 否 | 无密钥明文 |
