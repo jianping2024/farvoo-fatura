@@ -343,6 +343,19 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 	if strings.Count(adminHTML, "withBusy(btn, '重打中…'") != 1 {
 		t.Fatal("reprint withBusy must exist exactly once in handleReprintClick")
 	}
+	staticBtnDelegationMarkers := []string{
+		"btnInvoiceDetailCredit').dataset.credit",
+		"btnInvoiceDetailDebit').dataset.debit",
+		"creditBtn.dataset.credit",
+		"debitBtn.dataset.debit",
+		"btnInvLinkedOpen').dataset.openOriginal",
+		"linkBtn.dataset.openOriginal",
+	}
+	for _, forbidden := range staticBtnDelegationMarkers {
+		if strings.Contains(adminHTML, forbidden) {
+			t.Fatalf("static Admin buttons must not use delegation data-* markers: %q", forbidden)
+		}
+	}
 	if strings.Count(adminHTML, `id="invoiceDetailModal"`) != 1 {
 		t.Fatal("invoiceDetailModal must exist exactly once")
 	}

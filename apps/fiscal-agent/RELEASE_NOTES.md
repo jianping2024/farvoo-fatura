@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.38
+
+**Admin 固定按钮：冲销/借记/已关联发票去掉 data-* 双绑风险**
+
+- 详情 `#btnInvoiceDetailCredit` / `#btnInvoiceDetailDebit` 改用 `_creditDocId` / `_debitDocId`（不再写 `data-credit` / `data-debit`）。
+- 手工开票 `#btnInvLinkedOpen` 改用 `_openOriginalDocId`（不再写 `data-open-original`）。
+- NC/ND 详情正文内「原票」链接仍仅用 `#invoiceDetailBody` 委托 + `data-open-original`（动态行，无 onclick）。
+- 单测：禁止固定 `#btn*` 再写会被委托匹配的 `data-*`。
+
 ## 0.4.37
 
 **Admin 重打：去掉双重点击，详情/订单不再双打**

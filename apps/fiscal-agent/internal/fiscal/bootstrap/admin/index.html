@@ -944,13 +944,23 @@
     const creditBtn = $('#btnInvoiceDetailCredit');
     const canCredit = invoiceCanCredit(inv);
     creditBtn.classList.toggle('hidden', !canCredit);
-    creditBtn.dataset.credit = canCredit ? inv.document_id : '';
-    if (canCredit) creditBtn._creditDetail = inv;
+    if (canCredit) {
+      creditBtn._creditDocId = inv.document_id;
+      creditBtn._creditDetail = inv;
+    } else {
+      delete creditBtn._creditDocId;
+      delete creditBtn._creditDetail;
+    }
     const debitBtn = $('#btnInvoiceDetailDebit');
     const canDebit = invoiceCanDebit(inv);
     debitBtn.classList.toggle('hidden', !canDebit);
-    debitBtn.dataset.debit = canDebit ? inv.document_id : '';
-    if (canDebit) debitBtn._debitDetail = inv;
+    if (canDebit) {
+      debitBtn._debitDocId = inv.document_id;
+      debitBtn._debitDetail = inv;
+    } else {
+      delete debitBtn._debitDocId;
+      delete debitBtn._debitDetail;
+    }
   }
 
   /** ONLY credit-button gate (matches setup ready_to_credit). */
@@ -1424,7 +1434,7 @@
       hint.textContent = '本单已开票；可查看关联发票或重打。';
       linkRow.style.display = '';
       linkBtn.textContent = order.invoiceNo || order.documentId;
-      linkBtn.dataset.openOriginal = order.documentId;
+      linkBtn._openOriginalDocId = order.documentId;
       issueBtn.classList.add('hidden');
       reprintBtn.classList.remove('hidden');
       reprintBtn._reprintDocId = order.documentId;
@@ -1432,7 +1442,7 @@
     } else {
       hint.textContent = '本单已确认，选择发票类型与购方信息后签发。';
       linkRow.style.display = 'none';
-      linkBtn.removeAttribute('data-open-original');
+      delete linkBtn._openOriginalDocId;
       issueBtn.classList.remove('hidden');
       reprintBtn.classList.add('hidden');
       delete reprintBtn._reprintDocId;
@@ -2754,13 +2764,13 @@
   $('#btnInvoiceDetailCredit').onclick = () => {
     const btn = $('#btnInvoiceDetailCredit');
     const detail = btn._creditDetail;
-    if (!btn.dataset.credit || !detail) return;
+    if (!btn._creditDocId || !detail) return;
     openAdjustModal('credit', detail);
   };
   $('#btnInvoiceDetailDebit').onclick = () => {
     const btn = $('#btnInvoiceDetailDebit');
     const detail = btn._debitDetail;
-    if (!btn.dataset.debit || !detail) return;
+    if (!btn._debitDocId || !detail) return;
     openAdjustModal('debit', detail);
   };
 
@@ -2822,7 +2832,8 @@
     handleReprintClick($('#btnOrderReprint'), $('#btnOrderReprint')._reprintDocId);
   };
   $('#btnInvLinkedOpen').onclick = () => {
-    const id = $('#btnInvLinkedOpen').dataset.openOriginal;
+    const btn = $('#btnInvLinkedOpen');
+    const id = btn._openOriginalDocId;
     if (!id) return;
     openInvoiceDetail(id).catch(er => toast(errText(er), 'error'));
   };
