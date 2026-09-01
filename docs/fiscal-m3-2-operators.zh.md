@@ -1,8 +1,8 @@
 # M3.2：开票员身份（Agent 本地创建）
 
-> **状态：定稿**（M3.2 已实施）  
-> **权威：是**（开票员名册、PIN 登录、会话、角色与 `operators` 列口径；DDL 仍以 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/001_init.sql` 为准）  
-> **对应实现：** `apps/fiscal-agent` M3.2（owner/cashier + 会话 Cookie；已移除 `op-demo-cashier` 生产路径）  
+> **状态：定稿**（M3.2 已实施；**§3.3 / §3.7.2 / §3.10 / §4** 增量 **M3.2b** 待实现）  
+> **权威：是**（开票员名册、PIN 登录、会话、角色与 `operators` 列口径；DDL 以 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/*.sql` 为准）  
+> **对应实现：** `apps/fiscal-agent` M3.2（owner/cashier + 会话 Cookie；cashier 不可见设置 §3.3.1）；M3.2b（`session_epoch`、开票员管理 UI、停用吊销）**待实现**  
 > **计划：** [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) M3.2  
 > **前置：** M2.6 开票 Web、M3.1 `can_issue_nc` enforce（0.4.26）
 
@@ -65,7 +65,8 @@
 | `display_name` | 手填（如「张三」「前台 1」） |
 | `pin_hash` | 创建或改 PIN 时写入 argon2id；**未设则不可登录** |
 | `synced_at` | 本地创建路径 **写 NULL**（列保留，不表示云同步） |
-| `active` | 禁用 = 0；不可登录、不可作 `operator_id` |
+| `active` | 禁用 = 0；不可登录、不可作 `operator_id`；**须**同步吊销会话（§3.10） |
+| `session_epoch` | 非负整数，默认 0；登录 Cookie 携带当前值；吊销时 +1（§3.7.2） |
 
 **PIN 格式（P0 定法）：** **6 位数字**；禁止字母与可变长度。
 
@@ -73,24 +74,57 @@
 
 | 操作 | 唯一入口 |
 |------|----------|
-| 创建/更新开票员 | `store.UpsertOperator` / `service.UpsertOperator`（扩展 PIN、`active`） |
-| 设/重置 PIN | `store.SetOperatorPIN`（禁止 handler 直写 SQL） |
-| 本人改 PIN | `store.ChangeOperatorPIN`（验旧 PIN + 写新 hash） |
-| 改 `can_issue_nc` | `store.SetOperatorCanIssueNC`（已有） |
+| 创建/更新开票员（名称、角色） | `store.UpsertOperator` / `service.UpsertOperator` |
+| 停用/启用 | `store.SetOperatorActive`（**禁止** `UpsertOperator` 隐式写 `active`） |
+| 设/重置 PIN | `store.SetOperatorPIN`；**须**调用 `BumpOperatorSessionEpoch`（§3.7.2） |
+| 本人改 PIN | `store.ChangeOperatorPIN`；**须**调用 `BumpOperatorSessionEpoch` |
+| 改 `can_issue_nc` | `store.SetOperatorCanIssueNC` |
+| 吊销会话代数 | `store.BumpOperatorSessionEpoch`（禁止 handler 直写 SQL） |
 | 登录校验 | `store.VerifyOperatorPIN` → 建会话 |
-| 审计 | `store.InsertAuditLog`（LOGIN / LOGIN_FAILED / PIN_RESET / PIN_CHANGE / LOGOUT） |
+| 会话中间件读库 | `store.GetOperatorSessionState`（`active`、`role`、`session_epoch`） |
+| 审计 | `store.InsertAuditLog`（LOGIN / LOGIN_FAILED / PIN_RESET / PIN_CHANGE / LOGOUT / OPERATOR_DEACTIVATE / OPERATOR_ACTIVATE） |
 
 ### 3.3 开票 Web UI
 
+**用语：** 产品界面称 **开票员** / **开票员管理**；**禁止**称 Farvoo「员工」或暗示与云端员工同步。
+
+#### 3.3.1 导航与设置可见性（P0 定法 · 已实施）
+
+| 角色 | 侧栏菜单 | 设置页 |
+|------|----------|--------|
+| `owner` | 工作台、手工开票、收银账单（餐馆）、发票、商品、客户、**设置** | 可进入 |
+| `cashier` | 同上 **除设置** | **不可见、不可进入**（`showView('settings')` 守卫） |
+
+| 项 | 定法 |
+|----|------|
+| 修改我的 PIN | **侧栏**入口（`owner` / `cashier` 均可）；**不**放在设置内 |
+| 角色判断唯一写法 | Admin JS：`isLoggedInOwner()` + `applyOperatorAccess()` |
+
+#### 3.3.2 开票员管理（设置 §5 · M3.2b）
+
+与商品/客户同级：`admin-list-panel` + 表格（P0 不分页）。
+
+| 列 | 内容 |
+|----|------|
+| 姓名 | `display_name` |
+| 角色 | UI：**店长** / **店员**（值仍 `owner` / `cashier`） |
+| PIN | 已设置 / 未设置 |
+| 可冲销 | 开关 → `can_issue_nc` |
+| 状态 | 启用 / 已停用 |
+| 操作 | 编辑 · 重置 PIN · 停用/启用 |
+
+| 操作 | 行为 |
+|------|------|
+| 添加开票员 | 顶栏按钮 → 弹窗：姓名、角色、初始 6 位 PIN（仅 `owner`） |
+| 编辑 | 弹窗：改姓名、角色 |
+| 重置 PIN | 弹窗：新 PIN × 2；**不**验被重置者旧 PIN |
+| 停用 | 确认框；成功后目标 **所有端** 会话失效（§3.10） |
+| 启用 | `active=1`；**不**恢复旧 Cookie，须重新登录 |
+
 | 区域 | 行为 |
 |------|------|
-| 登录页 | 选开票员（`display_name` 列表）+ 6 位 PIN → `POST /setup/login` |
-| 侧栏 | 显示当前 `display_name`；**锁定**（清会话，回登录页） |
-| 设置 §5 名册 | `display_name`、角色（`owner` / `cashier`）、是否可冲销、是否已设 PIN |
-| 添加 | 名称 + 角色 + 初始 PIN（仅 **`owner`**） |
-| 编辑 | 改名称/角色/禁用；**重置 PIN**（仅 `owner`，不验被重置者旧 PIN） |
-| 冲销开关 | 每行 checkbox → `can_issue_nc`（仅 `owner`） |
-| 修改我的 PIN | 旧 PIN + 新 PIN × 2（**`owner` / `cashier` 均可**）；`cashier` **无**自改以外路径 |
+| 登录页 | 选开票员（仅 `active=1` 且已设 PIN）+ 6 位 PIN → `POST /setup/login` |
+| 侧栏 | 当前 `display_name`；**退出**；**修改 PIN** |
 
 **禁止：** 生产路径写死 `OPERATOR_ID = 'op-demo-cashier'`（可保留 seed/UAT）。
 
@@ -116,8 +150,8 @@ M3.1 单 checkbox 改 **`op-demo-cashier`** 为 **临时 demo**；M3.2 落地后
 
 | 操作 | 执行者 | 验旧 PIN | 说明 |
 |------|--------|----------|------|
-| **重置 PIN** | 已登录 `owner` | 否 | 对任意开票员（含其他 `owner`、`cashier`）设新 6 位 PIN；写 `audit_log` `PIN_RESET` |
-| **修改我的 PIN** | 当前会话本人 | **是** | 旧 PIN + 新 PIN × 2；写 `PIN_CHANGE` |
+| **重置 PIN** | 已登录 `owner` | 否 | 对任意开票员设新 6 位 PIN；`PIN_RESET`；**须** `BumpOperatorSessionEpoch` |
+| **修改我的 PIN** | 当前会话本人 | **是** | 旧 PIN + 新 PIN × 2；`PIN_CHANGE`；**须** `BumpOperatorSessionEpoch` |
 | **cashier 自改** | — | P0 **仅**「修改我的 PIN」 | 忘 PIN → 找 `owner` 重置 |
 | **登录** | 任何人知 PIN | — | 连续 **5 次**失败 → 该 `operator_id` 锁定 **15 分钟**；写 `LOGIN_FAILED` |
 
@@ -148,13 +182,46 @@ M3.1 单 checkbox 改 **`op-demo-cashier`** 为 **临时 demo**；M3.2 落地后
 | 项 | 定法 |
 |----|------|
 | 载体 | **HttpOnly** Cookie（`SameSite=Lax`；绑 Agent 主机，本机与局域网 IP 访问通用） |
+| Payload | `operator_id`、`role`、`display_name`、`issued_at`、`last_seen`、**`epoch`**（= 登录时 `operators.session_epoch`） |
 | 多端 | 本机与 `http://<AgentIP>:17880` **同一套** login/logout；禁止仅 `sessionStorage` 手填 token |
 | 绝对 / 空闲过期 | 8h / 30min |
-| 注销 | `POST /setup/logout`；侧栏「锁定」 |
+| 注销 | `POST /setup/logout`；侧栏「退出」 |
+| 运行时校验 | 每次受保护请求 **查库** `active`、`session_epoch`；`authOwner` **以库中 `role` 为准**（§3.7.2） |
 
-**登录限速：** 按 `operator_id`（5 失败 / 15min）+ 按 **来源 IP**（防局域网撞库）。
+**登录限速：** 按 `operator_id`（5 失败 / 15min）。按 **来源 IP** 防撞库 → **P1**（§7 备选）。
 
 **备份：** `pin_hash` 离线可撞 6 位 PIN；备份 ACL + 店网不对公网。
+
+#### 3.7.2 会话吊销：`session_epoch`（P0 定法 · M3.2b）
+
+| 项 | 定法 |
+|----|------|
+| 存储 | `operators.session_epoch` INTEGER NOT NULL DEFAULT 0 |
+| Cookie | 登录写入 `epoch`；middleware 比较 `cookie.epoch` 与库值 |
+| `cookie.epoch < db.session_epoch` | **401** `session_revoked` |
+| `active != 1` | **401** `operator_inactive` |
+| 服务端 | **不能**主动删除他端浏览器 Cookie；靠下一请求 401 + 客户端 `forceLogout` |
+
+**`session_epoch += 1`（唯一入口 `BumpOperatorSessionEpoch`）：**
+
+| 事件 | bump |
+|------|------|
+| 停用 `active=0` | **是** |
+| owner 重置他人 PIN | **是** |
+| 本人 `change-pin` | **是** |
+| 改 `role` | **是** |
+| 启用 `active=1` | **否**（旧 Cookie 仍无效，须重登） |
+| 改 `display_name` | **否** |
+| 改 `can_issue_nc` | **否** |
+
+#### 3.7.3 停用硬约束（P0 定法）
+
+执行停用或降权前，service **必须**断言（违反 → **409** `last_owner_constraint`）：
+
+1. 全店至少 **1** 名 `active=1` 且 `role=owner`  
+2. 全店至少 **1** 名 `active=1` 且 `role=owner` 且 `can_issue_nc=1`（§3.1.1）  
+
+**唯一判定：** `store` 层（`ErrLastOwnerConstraint`）；禁止 UI 单独挡而不写库。
 
 #### 3.7.1 实现硬约束
 
@@ -164,6 +231,34 @@ M3.1 单 checkbox 改 **`op-demo-cashier`** 为 **临时 demo**；M3.2 落地后
 | H2 | bind 两档 | 非 loopback **须** `FISCAL_ALLOW_LAN=1`，否则拒绝启动（§3.8） |
 | H3 | bootstrap 事务 | `BEGIN IMMEDIATE`（`LevelSerializable`）+ `COUNT(operators)=0` 再 INSERT，防双 owner |
 | H4 | bootstrap 网络 | **仅 loopback** 可调 `bootstrap-owner`；LAN 其它 PC 只能登录已有 owner |
+| H5 | 会话查库 | 受保护请求 **禁止** 仅信 Cookie 内 `role`；须 `GetOperatorSessionState` |
+| H6 | 停用吊销 | `SetOperatorActive(false)` **必须** bump `session_epoch` |
+
+### 3.10 停用与客户端清场（P0 定法 · M3.2b）
+
+```text
+owner 停用开票员
+  → DB: active=0; session_epoch+=1; audit OPERATOR_DEACTIVATE
+  → 目标端下一 API 请求: 401 (operator_inactive | session_revoked)
+  → Admin forceLogout(): 清 Cookie + 本地缓存 + SSE
+```
+
+**`forceLogout` 唯一清场路径（Admin JS）：**
+
+| 清理项 | 说明 |
+|--------|------|
+| `POST /setup/logout` | 清 `fiscal_session` Cookie |
+| `loggedInOperator` | `null` |
+| `setupStatusCache` | `null` |
+| `document.body.operator-owner` | 移除 |
+| 账单 SSE | `stopBillDraftEvents()` |
+| PIN 垫 | 清空 |
+| `#app-shell` | 隐藏；显示登录页 |
+| 会话相关 `sessionStorage` | 清空（如发票 Tab） |
+
+**触发：** 用户点退出；或 `j()` 收到 401 且 `error` ∈ `session_revoked`、`operator_inactive`、`unauthorized`。
+
+**P0 定法：** 禁止各页面分散清缓存；**唯一** HTTP 封装处理 401 吊销。
 
 ### 3.8 多端开票（一 Agent · 多开票电脑）
 
@@ -286,28 +381,36 @@ activate-from-cloud / 定期 pull → Agent 缓存 max + 同步终端吊销
 | 方法 | 路径 | 会话 | 说明 |
 |------|------|------|------|
 | GET | `/local/v1/setup/status` | 否 | 含只读 `fiscal_profile`、`terminals_used`、`max_fiscal_terminals` |
-| GET | `/local/v1/setup/operators` | 否 | 登录页列表：`id`、`display_name`、`role`（**无** `pin_hash`） |
-| POST | `/local/v1/setup/bootstrap-owner` | 否 | 仅 `operators` 为空；`display_name` + `pin` |
-| POST | `/local/v1/setup/login` | 否 | `operator_id` + `pin` → Set-Cookie |
-| POST | `/local/v1/setup/logout` | 是 | 清会话 |
-| POST | `/local/v1/setup/change-pin` | 是 | `old_pin` + `new_pin`（本人） |
-| PUT | `/local/v1/setup/operator` | **owner** | 创建/更新：`display_name`、`role`、`pin`（可选重置）、`active`、`can_issue_nc` |
-| *写业务* | 见 §3.7 | **是** | `operator_id` 由会话注入 |
+| GET | `/local/v1/setup/operators` | 否 | **登录页专用**：`active=1` 且已设 PIN；`id`、`display_name`、`role`（**无** `pin_hash`） |
+| GET | `/local/v1/setup/operators/manage` | **owner** | 管理列表：`id`、`display_name`、`role`、`active`、`has_pin`、`can_issue_nc` |
+| POST | `/local/v1/setup/bootstrap-owner` | 否 | 仅 `operators` 为空；**仅 loopback**；`display_name` + `pin` |
+| POST | `/local/v1/setup/login` | 否 | `operator_id` + `pin` → Set-Cookie（含 `epoch`） |
+| POST | `/local/v1/setup/logout` | 是 | 清本会话 Cookie |
+| POST | `/local/v1/setup/change-pin` | 是 | `old_pin` + `new_pin`（本人）；成功后 bump `session_epoch` |
+| PUT | `/local/v1/setup/operator` | **owner** | 创建/更新：`display_name`、`role`、`pin`（可选重置）、`can_issue_nc`；`active` 经 `SetOperatorActive` |
+| POST | `/local/v1/saft/exports` | **owner** | SAF-T 导出 |
+| GET | `/local/v1/saft/exports` | **owner** | SAF-T 列表 |
+| GET | `/local/v1/saft/exports/{exportId}` | **owner** | SAF-T 详情 |
+| GET | `/local/v1/saft/exports/{exportId}/download` | **owner** | SAF-T 下载 |
+| *写业务* | 见 §3.7 | **是** | `operator_id` 由会话注入；middleware 校验 §3.7.2 |
+
+**401 错误码（会话）：** `session_revoked`、`operator_inactive`、`unauthorized`。
 
 ## 5. 验收清单
 
 1. **冷启动：** 空库走完激活向导 → 创建首个 `owner` + PIN → 登录成功。  
-2. **名册：** `owner` 再建 1 `owner` + 1 `cashier`，各设 PIN。  
-3. **权限：** `cashier` 登录 → 可开票 → **不可**冲销（409）；`owner` 为其开 `can_issue_nc` 后可冲销。  
-4. **PIN：** `owner` 重置 `cashier` PIN 成功；`cashier`「修改我的 PIN」须旧 PIN；`cashier` **无**重置他人入口。  
+2. **名册：** `owner` 再建 1 `owner` + 1 `cashier`，各设 PIN；管理表可编辑/冲销开关/重置 PIN。  
+3. **权限：** `cashier` 登录 → 可开票 → **不可**见设置 → **不可**冲销（409）；`owner` 为其开 `can_issue_nc` 后可冲销。  
+4. **PIN：** `owner` 重置 `cashier` PIN 成功且目标旧会话失效；`cashier`「修改我的 PIN」须旧 PIN且旧会话失效。  
 5. **锁定：** 连续 5 次错误 PIN → 15 分钟内拒绝；审计有 `LOGIN_FAILED`。  
 6. **会话：** 未登录 `POST /fiscal-documents` → 401；登录后签发 `source_id` = 会话 `operators.id`；body 伪造 `operator_id` **无效**。  
-7. **约束：** 禁止禁用全店最后一个 `active` 且 `can_issue_nc=1` 的 `owner`。  
-8. **禁用：** `active=0` → 登录失败；以其 id 调写 API 403。  
-9. **回归：** 无 Farvoo `fiscal-operators` 调用；`fiscal-m3-operators-regression.mjs` 全绿。  
-10. **多端：** `FISCAL_ALLOW_LAN=1`；另一 PC 连 Agent IP → PIN 登录开票；不同 `station_id`。  
-11. **端数（纯 Ops）：** Ops 下发 `max=2`；配对码登记 2 台成功；第 3 台 403；Ops 吊销后 pull 可再配对；**无** `/support/*`。  
-12. **发票模式（纯 Ops）：** Ops 未配 `fiscal_profile` → `activate-from-cloud` 返回 `fiscal_profile_missing`；§4 同步按钮在 **已配对 + 门店信息已保存** 时可用（不要求本机先有业态）；进入设置自动尝试同步。
+7. **约束：** 禁止停用/降权导致违反 §3.7.3（409 `last_owner_constraint`）。  
+8. **停用：** `active=0` + bump epoch → 登录失败；**已持有 Cookie** 的下一写/读受保护请求 → **401**；Admin `forceLogout` 清缓存。  
+9. **多端吊销：** 同一开票员在 PC-A、PC-B 登录；停用后 **两台** 均 401。  
+10. **回归：** 无 Farvoo `fiscal-operators` 调用；`fiscal-m3-operators-regression.mjs` 全绿。  
+11. **多端：** `FISCAL_ALLOW_LAN=1`；另一 PC 连 Agent IP → PIN 登录开票；不同 `station_id`。  
+12. **端数（纯 Ops）：** Ops 下发 `max=2`；配对码登记 2 台成功；第 3 台 403；Ops 吊销后 pull 可再配对；**无** `/support/*`。  
+13. **发票模式（纯 Ops）：** Ops 未配 `fiscal_profile` → `activate-from-cloud` 返回 `fiscal_profile_missing`；§4 同步按钮在 **已配对 + 门店信息已保存** 时可用。
 
 ## 6. 参考
 
@@ -317,6 +420,17 @@ activate-from-cloud / 定期 pull → Agent 缓存 max + 同步终端吊销
 | [`fiscal-schema-worked-example-identity.zh.md`](fiscal-schema-worked-example-identity.zh.md) §4 | 本地创建示例 |
 | [`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §16 | `can_issue_nc` 与冲销 UI |
 
+## 7. 备选（P1，非 M3.2b 阻塞）
+
+| 项 | 说明 |
+|----|------|
+| 登录按来源 IP 限速 | §3.7 原 P0 描述；实现后置 |
+| `change-pin` 失败锁定 | 与登录锁定同策略 |
+| 收紧 `GET /setup/status` 匿名字段 | 登录页与 owner 详情拆分 |
+| 商品/客户写入是否仅 `owner` | 产品确认后单列 |
+| 生产强制 `FISCAL_SESSION_SECRET` | 运维约束 |
+| 审计日志查看 UI | 不在 M3.2b |
+
 ## 修订记录
 
 | 日期 | 变更 |
@@ -324,3 +438,4 @@ activate-from-cloud / 定期 pull → Agent 缓存 max + 同步终端吊销
 | 2026-08-30 | 定稿：Agent 本地创建；废止 Farvoo 同步 |
 | 2026-09-01 | 角色 UI 统一 `owner`/`cashier`；`can_issue_nc` 按账号 |
 | 2026-09-01 | §3.9：**激活开票前**须 Ops 已配 `fiscal_profile`；`ready_to_issue` 增加校验 |
+| 2026-09-01 | **M3.2b 定稿：** `session_epoch`、停用吊销、`forceLogout`、开票员管理 UI、`/operators/manage`；cashier 不可见设置；SAFT owner-only；§7 P1 备选 |

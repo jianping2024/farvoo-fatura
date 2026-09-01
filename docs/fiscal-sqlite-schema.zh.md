@@ -2,7 +2,7 @@
 
 > **状态：定稿**  
 > **权威：是**（库表设计；与 DDL 冲突时以 DDL 为准并回改本文）  
-> **对应实现：** `apps/fiscal-agent/internal/fiscal/store/migrations/001_init.sql` + `002_bill_sync_drafts.sql`  
+> **对应实现：** `apps/fiscal-agent/internal/fiscal/store/migrations/*.sql`（首版 `001_init.sql`）  
 > **写作规范：** [`docs/design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 > 权威库：门店本机 Agent **唯一** SQLite（**全部已签发票**的税务权威）。  
@@ -11,7 +11,7 @@
 
 配套：
 
-- 实现迁移：`apps/fiscal-agent/internal/fiscal/store/migrations/001_init.sql`、`002_bill_sync_drafts.sql`
+- 实现迁移：`apps/fiscal-agent/internal/fiscal/store/migrations/*.sql`（含 `006_operators_session_epoch.sql`）
 - 包内摘要：`apps/fiscal-agent/internal/fiscal/store/SCHEMA.md`
 
 ---
@@ -322,6 +322,7 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | pin_hash | TEXT | 否 | 设 PIN → argon2id（**6 位数字**，见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.2）；未设则不可登录 |
 | can_issue_nc | INTEGER | 是 | 默认 0；新建 `owner` 时默认 1；**按账号**存储，由 `owner` 在设置页按人修改 |
 | synced_at | TEXT | 否 | P0 本地创建 **写 NULL**（列保留；不表示云同步） |
+| session_epoch | INTEGER | 是 | 默认 0；吊销会话时 +1；见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.7.2 |
 | created_at | TEXT | 是 | UTC |
 | updated_at | TEXT | 是 | UTC |
 

@@ -87,6 +87,8 @@ open docs/fiscal-admin-ui-prototype/index.html
 | 设置 | ✓ | ✓ | ✓ | — |
 | 修改 PIN（侧栏） | ✓ | ✓ | ✓ | ✓ |
 
+**设置 · 开票员管理**（仅 `owner`，见 [`fiscal-m3-2-operators.zh.md`](../fiscal-m3-2-operators.zh.md) §3.3.2）：表格 + 添加/编辑/重置 PIN/冲销开关/停用。
+
 ## 可点路径
 
 | 步骤 | 餐馆 | 商超 |
