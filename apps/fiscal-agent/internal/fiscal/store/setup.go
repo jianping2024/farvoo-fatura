@@ -379,8 +379,10 @@ func (d *DB) GetSetupStatus(storeID string) (*SetupStatus, error) {
 	}
 	_ = d.SQL.QueryRow(`SELECT COUNT(1) FROM signing_keys WHERE status='ACTIVE'`).Scan(&n)
 	s.ActivatedOK = n > 0
-	_ = d.SQL.QueryRow(`SELECT COUNT(1) FROM operators WHERE store_id=? AND active=1`, storeID).Scan(&n)
-	s.OperatorOK = n > 0
+	n, err = d.CountActiveOperatorsWithPIN(storeID)
+	if err == nil {
+		s.OperatorOK = n > 0
+	}
 	profileOK, profile, maxTerm, err := d.FiscalProfileOK(storeID)
 	if err == nil {
 		s.FiscalProfileOK = profileOK

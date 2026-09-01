@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"database/sql"
@@ -192,12 +193,24 @@ func (d *DB) CountOperators(storeID string) (int, error) {
 	return n, err
 }
 
+// CountActiveOperatorsWithPIN returns operators that can log in (operator_ok gate).
+func (d *DB) CountActiveOperatorsWithPIN(storeID string) (int, error) {
+	var n int
+	err := d.SQL.QueryRow(`SELECT COUNT(1) FROM operators
+		WHERE store_id=? AND active=1 AND pin_hash IS NOT NULL AND pin_hash != ''`, storeID).Scan(&n)
+	return n, err
+}
+
+func (d *DB) beginImmediateTx(ctx context.Context) (*sql.Tx, error) {
+	return d.SQL.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+}
+
 // BootstrapOwner creates first owner when operators empty — ONLY bootstrap write path (H3).
 func (d *DB) BootstrapOwner(storeID, displayName, pin string) (string, error) {
 	if strings.TrimSpace(displayName) == "" {
 		return "", errors.New("store: display_name required")
 	}
-	tx, err := d.SQL.Begin()
+	tx, err := d.beginImmediateTx(context.Background())
 	if err != nil {
 		return "", err
 	}

@@ -103,9 +103,9 @@ M3.1 单 checkbox 改 **`op-demo-cashier`** 为 **临时 demo**；M3.2 落地后
 | 项 | 定法 |
 |----|------|
 | 触发条件 | `operators` 表 **0 行**（本店） |
-| 入口 | **设置 → 激活/门店就绪** 向导 **最后一步**（与纳税人/系列/激活同流） |
-| 表单 | `display_name` + 6 位 PIN × 2 |
-| API | `POST /local/v1/setup/bootstrap-owner`（**无会话**；handler 内断言 `COUNT(operators)=0`，否则 403） |
+| 入口 | **登录页**（仅 Agent 本机 `127.0.0.1` / `::1`）；设置 §5 **无** bootstrap（已登录后由 owner 维护名册） |
+| 表单 | `display_name` + 6 位 PIN |
+| API | `POST /local/v1/setup/bootstrap-owner`（**无会话**；**仅 loopback**；handler 内断言 `COUNT(operators)=0`，否则 403） |
 | 写入 | 1 行 `role=owner`、`can_issue_nc=1`、`pin_hash` 已设 |
 | 完成后 | 立即要求 `POST /login`；禁止长期无 PIN / demo 操作员生产路径 |
 | 换机 | 拷库则名册随库；**新机空库**再走本流程 |
@@ -140,7 +140,7 @@ M3.1 单 checkbox 改 **`op-demo-cashier`** 为 **临时 demo**；M3.2 落地后
 **可无会话：**
 
 - `GET /health`、`GET /setup/status`、`GET /setup/operators`（登录页；无 `pin_hash`）
-- `POST /setup/login`、`POST /setup/bootstrap-owner`（仅空库）
+- `POST /setup/login`、`POST /setup/bootstrap-owner`（仅空库 + **仅 loopback**）
 - bill-sync ingest
 
 **会话：**
@@ -162,7 +162,8 @@ M3.1 单 checkbox 改 **`op-demo-cashier`** 为 **临时 demo**；M3.2 落地后
 |---|------|------|
 | H1 | 默认拒绝 middleware | 除白名单外 401；setup **写**路径必须在内 |
 | H2 | bind 两档 | 非 loopback **须** `FISCAL_ALLOW_LAN=1`，否则拒绝启动（§3.8） |
-| H3 | bootstrap 事务 | `BEGIN IMMEDIATE` + `COUNT=0` 再 INSERT，防双 owner |
+| H3 | bootstrap 事务 | `BEGIN IMMEDIATE`（`LevelSerializable`）+ `COUNT(operators)=0` 再 INSERT，防双 owner |
+| H4 | bootstrap 网络 | **仅 loopback** 可调 `bootstrap-owner`；LAN 其它 PC 只能登录已有 owner |
 
 ### 3.8 多端开票（一 Agent · 多开票电脑）
 

@@ -210,16 +210,24 @@
   <section id="view-login">
     <div class="login-card">
       <p class="brand">Farvoo 开票</p>
-      <p class="hint">选择开票员并输入 6 位 PIN（业态由 Ops 配置）。</p>
-      <label class="hint" for="loginOperator">开票员</label>
-      <select id="loginOperator" style="width:100%;margin-bottom:0.75rem;padding:0.5rem;border-radius:8px;border:1px solid #2a3d32;background:#0f1612;color:#e8f0eb"></select>
-      <p class="hint" style="text-align:center">开票员 PIN（6 位）</p>
-      <div class="pin-dots" id="pinDots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      <div class="pin-pad" id="pinPad">
-        <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
-        <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
-        <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
-        <button type="button" data-k="C" class="secondary">C</button><button type="button" data-k="0">0</button><button type="button" data-k="OK">进入</button>
+      <div id="loginExisting">
+        <p class="hint">选择开票员并输入 6 位 PIN（业态由 Ops 配置）。</p>
+        <label class="hint" for="loginOperator">开票员</label>
+        <select id="loginOperator" style="width:100%;margin-bottom:0.75rem;padding:0.5rem;border-radius:8px;border:1px solid #2a3d32;background:#0f1612;color:#e8f0eb"></select>
+        <p class="hint" style="text-align:center">开票员 PIN（6 位）</p>
+        <div class="pin-dots" id="pinDots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="pin-pad" id="pinPad">
+          <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+          <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+          <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+          <button type="button" data-k="C" class="secondary">C</button><button type="button" data-k="0">0</button><button type="button" data-k="OK">进入</button>
+        </div>
+      </div>
+      <div id="loginBootstrap" class="hidden">
+        <p class="hint">本机首次使用：创建首位 <strong>owner</strong>（须在 Agent 主机操作）。</p>
+        <div class="field"><label class="hint">显示名称</label><input id="loginBootstrapName" placeholder="如：店长" style="width:100%;margin-bottom:0.5rem;padding:0.5rem;border-radius:8px;border:1px solid #2a3d32;background:#0f1612;color:#e8f0eb" /></div>
+        <div class="field"><label class="hint">6 位 PIN</label><input id="loginBootstrapPin" inputmode="numeric" maxlength="6" style="width:100%;margin-bottom:0.75rem;padding:0.5rem;border-radius:8px;border:1px solid #2a3d32;background:#0f1612;color:#e8f0eb" /></div>
+        <button type="button" id="btnLoginBootstrapOwner" style="width:100%">创建 owner 并登录</button>
       </div>
       <p class="brand-note">Farvoo 开票</p>
     </div>
@@ -597,12 +605,6 @@
           <h2>5. 开票员名册</h2>
           <p class="hint">角色仅 <strong>owner</strong> / <strong>cashier</strong>；仅 owner 可增删改 PIN 与冲销权限。</p>
           <p class="hint" id="fiscalProfileHint">门店业态：加载中…</p>
-          <div id="bootstrapOwnerBlock" class="hidden" style="margin-top:0.75rem">
-            <p class="hint">尚无开票员，先创建首位 owner：</p>
-            <div class="field"><label>显示名称</label><input id="bootstrapOwnerName" placeholder="如：店长" /></div>
-            <div class="field"><label>6 位 PIN</label><input id="bootstrapOwnerPin" inputmode="numeric" maxlength="6" /></div>
-            <button type="button" id="btnBootstrapOwner">创建 owner</button>
-          </div>
           <ul id="operatorsList" class="checklist" style="margin-top:0.75rem"></ul>
           <div id="addOperatorBlock" class="hidden" style="margin-top:0.75rem">
             <h3 style="font-size:0.95rem;margin:0 0 0.5rem">添加开票员</h3>
@@ -1067,6 +1069,30 @@
       : '商超 · 新建开票 → 发票';
   }
 
+  function setLoginBootstrapMode(showBootstrap) {
+    const existing = $('#loginExisting');
+    const bootstrap = $('#loginBootstrap');
+    if (existing) existing.classList.toggle('hidden', !!showBootstrap);
+    if (bootstrap) bootstrap.classList.toggle('hidden', !showBootstrap);
+  }
+
+  /** ONLY bootstrap-owner UI path (login page on agent host). */
+  async function bootstrapOwnerAndLogin(displayName, pin) {
+    const name = String(displayName || '').trim();
+    const pinVal = String(pin || '').trim();
+    if (!name || !/^\d{6}$/.test(pinVal)) {
+      toast('请填写名称与 6 位 PIN', 'error');
+      return false;
+    }
+    const created = await j('POST', '/local/v1/setup/bootstrap-owner', { display_name: name, pin: pinVal });
+    await loadLoginOperators();
+    if ($('#loginOperator')) $('#loginOperator').value = created.operator_id || '';
+    pin = pinVal;
+    $$('#pinDots i').forEach((d, i) => d.classList.toggle('on', i < pin.length));
+    await tryLogin();
+    return true;
+  }
+
   async function loadLoginOperators() {
     const sel = $('#loginOperator');
     sel.innerHTML = '';
@@ -1074,9 +1100,10 @@
       const data = await j('GET', '/local/v1/setup/operators');
       const ops = (data.operators || []).filter(o => o.has_pin);
       if (!ops.length) {
-        sel.innerHTML = '<option value="">请先在设置中创建 owner</option>';
+        setLoginBootstrapMode(true);
         return;
       }
+      setLoginBootstrapMode(false);
       for (const o of ops) {
         const opt = document.createElement('option');
         opt.value = o.id;
@@ -1084,6 +1111,7 @@
         sel.appendChild(opt);
       }
     } catch (_) {
+      setLoginBootstrapMode(false);
       sel.innerHTML = '<option value="">无法加载开票员</option>';
     }
   }
@@ -3237,21 +3265,17 @@
 
   async function refreshOperatorsPanel() {
     const list = $('#operatorsList');
-    const boot = $('#bootstrapOwnerBlock');
     const add = $('#addOperatorBlock');
     if (!list) return;
     try {
       const data = await j('GET', '/local/v1/setup/operators');
       const ops = data.operators || [];
       const isOwner = loggedInOperator && loggedInOperator.role === 'owner';
+      if (add) add.classList.toggle('hidden', !isOwner);
       if (!ops.length) {
-        list.innerHTML = '';
-        if (boot) boot.classList.remove('hidden');
-        if (add) add.classList.add('hidden');
+        list.innerHTML = '<li class="hint">无开票员 · 请退出后在登录页创建 owner</li>';
         return;
       }
-      if (boot) boot.classList.add('hidden');
-      if (add) add.classList.toggle('hidden', !isOwner);
       list.innerHTML = ops.map(o =>
         '<li>' + o.display_name + ' · <code>' + o.role + '</code>' +
         (o.has_pin ? '' : ' · <span class="hint">未设 PIN</span>') + '</li>'
@@ -3261,18 +3285,9 @@
     }
   }
 
-  $('#btnBootstrapOwner').onclick = () => withBusy($('#btnBootstrapOwner'), '创建中…', async () => {
-    const name = $('#bootstrapOwnerName').value.trim();
-    const pin = $('#bootstrapOwnerPin').value.trim();
-    if (!name || !/^\d{6}$/.test(pin)) {
-      toast('请填写名称与 6 位 PIN', 'error');
-      return;
-    }
+  $('#btnLoginBootstrapOwner').onclick = () => withBusy($('#btnLoginBootstrapOwner'), '创建中…', async () => {
     try {
-      await j('POST', '/local/v1/setup/bootstrap-owner', { display_name: name, pin });
-      await refreshOperatorsPanel();
-      await refreshSetupStatus();
-      toast('owner 已创建，请重新登录', 'success');
+      await bootstrapOwnerAndLogin($('#loginBootstrapName').value, $('#loginBootstrapPin').value);
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 

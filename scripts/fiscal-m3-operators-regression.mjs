@@ -66,7 +66,10 @@ async function main() {
   try {
     await waitHealth();
 
-    // 1 bootstrap + login
+    // 1 cold start: operator_ok false until bootstrap
+    const st0 = uatJson(['req', 'GET', '/local/v1/setup/status'], { FISCAL_UAT_BASE: base });
+    record('operator_ok false before bootstrap', st0.operator_ok === false);
+
     const { cookie: ownerCookie } = ensureOwnerSession(base, 'Owner One', DEFAULT_PIN);
     let env = envWithCookie(base, ownerCookie);
 
@@ -88,6 +91,7 @@ async function main() {
     setFiscalProfileViaDb(dbPath, 'retail', 2);
     const st = uatJson(['req', 'GET', '/local/v1/setup/status'], env);
     record('fiscal_profile_ok after Ops policy', st.fiscal_profile_ok && st.fiscal_profile === 'retail');
+    record('operator_ok after bootstrap', st.operator_ok === true, `operator_ok=${st.operator_ok}`);
 
     // 2 create cashier
     const cashierBody = {

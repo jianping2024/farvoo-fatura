@@ -1,0 +1,67 @@
+package store_test
+
+import (
+	"errors"
+	"path/filepath"
+	"testing"
+
+	"farvoo-fiscal-agent/internal/fiscal/store"
+)
+
+func TestBootstrapOwner_EmptyThenRejectSecond(t *testing.T) {
+	dir := t.TempDir()
+	db, err := store.Open(filepath.Join(dir, "fiscal.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	const storeID = "store-bootstrap-1"
+	if err := db.UpsertOperator("op-legacy", storeID, "cashier", "Legacy", "mesa-legacy"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.BootstrapOwner(storeID, "Owner", "123456"); err == nil {
+		t.Fatal("expected bootstrap_not_empty when operators exist")
+	} else if !errors.Is(err, store.ErrBootstrapNotEmpty) {
+		t.Fatalf("got %v", err)
+	}
+
+	if _, err := db.SQL.Exec(`DELETE FROM operators WHERE store_id=?`, storeID); err != nil {
+		t.Fatal(err)
+	}
+	id, err := db.BootstrapOwner(storeID, "Owner One", "123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id == "" {
+		t.Fatal("expected operator id")
+	}
+	n, err := db.CountActiveOperatorsWithPIN(storeID)
+	if err != nil || n != 1 {
+		t.Fatalf("CountActiveOperatorsWithPIN=%d err=%v", n, err)
+	}
+	if _, err := db.BootstrapOwner(storeID, "Owner Two", "654321"); !errors.Is(err, store.ErrBootstrapNotEmpty) {
+		t.Fatalf("second bootstrap: %v", err)
+	}
+}
+
+func TestCountActiveOperatorsWithPIN_IgnoresUnpinned(t *testing.T) {
+	dir := t.TempDir()
+	db, err := store.Open(filepath.Join(dir, "fiscal.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	const storeID = "store-pin-gate"
+	if err := db.UpsertOperator("op-nopin", storeID, "owner", "No PIN", "mesa-nopin"); err != nil {
+		t.Fatal(err)
+	}
+	n, err := db.CountActiveOperatorsWithPIN(storeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("unpinned operator must not count, got %d", n)
+	}
+}

@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.45
+
+**冷启动安装流：登录页创建 owner**
+
+- 唯一 bootstrap UI：登录页（无 `has_pin` 开票员时）；移除设置 §5 重复入口。
+- `POST /bootstrap-owner` **仅 loopback**（`bootstrap_loopback_only`）；`BEGIN IMMEDIATE` 事务（H3）。
+- `setup.status.operator_ok`：须至少 1 名已设 PIN 的 active 开票员。
+
 ## 0.4.44
 
 **M3.2 开票员 + Ops 门店策略同步**
