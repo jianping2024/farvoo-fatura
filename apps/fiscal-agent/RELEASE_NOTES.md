@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.47
+
+**手工开票列表 + 商品表操作列**
+
+- 手工开票列表仅保留未开票草稿；开票成功后从列表移除并跳转「发票」详情。
+- 商品/客户目录表：操作列右对齐、行内「编辑」缩小按钮，修复与数据行垂直错位。
+
 ## 0.4.46
 
 **开票授权同步简化（P0）**

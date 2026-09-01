@@ -148,8 +148,12 @@
     .flow-step.active .num { background: var(--mode); }
     .flow-step.done .num { background: #1f7a4c; }
     table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    th, td { text-align: left; padding: 0.6rem 0.4rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th, td { text-align: left; padding: 0.6rem 0.4rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
     th { color: var(--muted); font-size: 0.76rem; }
+    .catalog-table th.col-actions, .catalog-table td.col-actions {
+      text-align: right; white-space: nowrap; width: 1%; padding-right: 0.15rem;
+    }
+    button.btn-sm { padding: 0.4rem 0.7rem; font-size: 0.85rem; font-weight: 600; }
     tr.clickable { cursor: pointer; }
     tr.clickable:hover { background: #f7f3ea; }
     .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.85rem; }
@@ -278,7 +282,7 @@
         <div class="topbar">
           <div>
             <h1>手工开票</h1>
-            <p class="hint">未开票前可改商品；开票后生成发票，本单只读。</p>
+            <p class="hint">未开票草稿；开票成功后请至「发票」查看与重打。</p>
           </div>
           <button type="button" data-goto="order-new">新建开票</button>
         </div>
@@ -521,8 +525,8 @@
           <button type="button" id="btnNewProd">新建商品</button>
         </div>
         <div class="panel">
-          <table>
-            <thead><tr><th>编码</th><th>名称</th><th>售价</th><th>IVA</th><th></th></tr></thead>
+          <table class="catalog-table">
+            <thead><tr><th>编码</th><th>名称</th><th>售价</th><th>IVA</th><th class="col-actions">操作</th></tr></thead>
             <tbody id="productsTbody"></tbody>
           </table>
         </div>
@@ -545,8 +549,8 @@
           </div>
         </div>
         <div class="panel">
-          <table>
-            <thead><tr><th>NIF</th><th>名称</th><th></th></tr></thead>
+          <table class="catalog-table">
+            <thead><tr><th>NIF</th><th>名称</th><th class="col-actions">操作</th></tr></thead>
             <tbody id="customersTbody"></tbody>
           </table>
         </div>
@@ -830,8 +834,15 @@
   }
 
   function loadOrders() {
-    try { return JSON.parse(sessionStorage.getItem('fiscal_orders') || '[]'); }
+    try {
+      const list = JSON.parse(sessionStorage.getItem('fiscal_orders') || '[]');
+      return list.filter(o => o && o.status !== 'issued');
+    }
     catch (_) { return []; }
+  }
+
+  function removeOrder(id) {
+    saveOrders(loadOrders().filter(o => o.id !== id));
   }
 
   function saveOrders(list) {
@@ -1465,22 +1476,19 @@
     const tbody = $('#ordersTbody');
     const orders = loadOrders();
     if (!orders.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无手工开票 · 点击「新建开票」</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无未开票草稿 · 点击「新建开票」</td></tr>';
       return;
     }
     tbody.innerHTML = orders.map(o => {
-      const badge = o.status === 'issued'
-        ? '<span class="badge done">已开票</span>'
-        : (o.status === 'confirmed' ? '<span class="badge wait">待开票</span>' : '<span class="badge wait">编辑中</span>');
-      const ticket = (o.status === 'issued' && o.invoiceNo)
-        ? ('<div class="hint">' + o.invoiceNo + '</div>')
-        : '';
-      const action = o.status === 'issued' ? '查看 →' : '继续 →';
+      const badge = o.status === 'confirmed'
+        ? '<span class="badge wait">待开票</span>'
+        : '<span class="badge wait">编辑中</span>';
+      const action = o.status === 'confirmed' ? '去开票 →' : '继续 →';
       return '<tr class="clickable" data-open-order="' + o.id + '">' +
         '<td><strong>' + o.id + '</strong></td>' +
         '<td>' + (o.sourceLabel || '手动创建') + '</td>' +
         '<td>' + fmtMoney(orderTotal(o)) + '</td>' +
-        '<td>' + badge + ticket + '</td>' +
+        '<td>' + badge + '</td>' +
         '<td>' + action + '</td></tr>';
     }).join('');
   }
@@ -1720,9 +1728,9 @@
       const src = (p.source === 'REMOTE_SYNC') ? '收银同步' : '本店维护';
       const editBtn = (p.source === 'REMOTE_SYNC')
         ? '<span class="hint">' + src + '</span>'
-        : '<button type="button" class="secondary" data-edit-prod="' + p.product_code + '">编辑</button>';
+        : '<button type="button" class="secondary btn-sm" data-edit-prod="' + p.product_code + '">编辑</button>';
       return '<tr><td>' + p.product_code + '</td><td>' + p.display_name + '</td><td>' + p.unit_price_gross +
-        '</td><td>' + p.vat_rate + '%</td><td>' + editBtn + '</td></tr>';
+        '</td><td>' + p.vat_rate + '%</td><td class="col-actions">' + editBtn + '</td></tr>';
     }).join('');
   }
 
@@ -2684,16 +2692,18 @@
       lines
     };
     const res = await j('POST', '/local/v1/fiscal-documents/manual', body);
-    currentOrder.status = 'issued';
-    currentOrder.invoiceNo = res.invoice_no || '';
-    currentOrder.documentId = res.document_id || '';
-    currentOrder.requestId = requestId;
-    upsertOrder(currentOrder);
-    await pollPrintJob(res.print_job_id, '已签发 ' + (res.invoice_no || 'FT'));
+    const docId = res.document_id || '';
+    const invNo = res.invoice_no || '';
+    removeOrder(currentOrder.id);
+    currentOrder = null;
+    await pollPrintJob(res.print_job_id, '已签发 ' + (invNo || 'FT'));
     await refreshHomeStats();
     await refreshInvoices();
     renderOrdersList();
-    openOrderForInvoice(currentOrder);
+    if (docId) {
+      await openInvoiceDetail(docId);
+    }
+    showView('invoices');
   }
 
   async function issueBill(mode, scopeId, buyer) {
@@ -2824,8 +2834,7 @@
     if (openOrder) {
       const o = getOrder(openOrder.dataset.openOrder);
       if (!o) return;
-      if (o.status === 'issued') openOrderForInvoice(o);
-      else if (o.status === 'confirmed') openOrderForInvoice(o);
+      if (o.status === 'confirmed') openOrderForInvoice(o);
       else openOrderEditor(o);
       return;
     }
