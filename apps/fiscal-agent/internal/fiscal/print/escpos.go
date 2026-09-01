@@ -23,14 +23,15 @@ var ivaSummaryColWidths = []int{10, 14, 12, 12}
 const escposLineDots = 30
 
 // Receipt vertical padding (software-controlled only; ESC @ top feed is printer-specific).
-// Was 1 LF (30 dots) after LegalName; halved via ESC d n.
+// Was 1 LF (30 dots) after LegalName; halved via ESC J n (dot feed — NOT ESC d, which feeds n lines).
 const receiptTopGapDots byte = escposLineDots / 2
 
 // Bottom after QR: was writeQR LF (30) + 2 LF (60) + GS V 66 80 = 170 dots; halved to 85.
 // writeQR still ends with one LF (30); cut feed supplies the remaining 55 dots.
 const cutFeedDots byte = 85 - escposLineDots
 
-func escFeedDots(n byte) []byte { return []byte{0x1B, 0x64, n} }
+// escFeedDots emits ESC J n — feed n dots (buffer empty → feed only). Do NOT use ESC d (0x64): that feeds n lines.
+func escFeedDots(n byte) []byte { return []byte{0x1B, 0x4A, n} }
 
 // RenderESCPOS is the ONLY fiscal receipt ESC/POS renderer (from frozen Payload).
 // Layout authority: docs/fiscal-ft-receipt-layout.zh.md

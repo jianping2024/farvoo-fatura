@@ -118,9 +118,12 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 		t.Fatal("LegalName must use GS ! 1×2")
 	}
 	mid := raw[nameAt+len(nameEnc) : addrAt]
-	wantMid := []byte{'\n', 0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00, 0x1B, 0x64, receiptTopGapDots}
+	wantMid := []byte{'\n', 0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00, 0x1B, 0x4A, receiptTopGapDots}
 	if !bytes.Equal(mid, wantMid) {
-		t.Fatalf("after LegalName want LF + size/bold reset + half-line feed, got %x", mid)
+		t.Fatalf("after LegalName want LF + size/bold reset + ESC J half-line feed, got %x", mid)
+	}
+	if bytes.Contains(raw, []byte{0x1B, 0x64, receiptTopGapDots}) {
+		t.Fatal("must not use ESC d (feeds n lines); half-line gap must be ESC J (dot feed)")
 	}
 
 	if bytes.Count(raw, []byte{0x1D, 0x21, 0x01}) < 2 {

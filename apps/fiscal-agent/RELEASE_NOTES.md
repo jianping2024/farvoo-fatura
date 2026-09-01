@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.40
+
+**热修：店名后间距误用 ESC d（15 行）→ ESC J（15 点）**
+
+- 0.4.39 用 `ESC d 15` 会进 **15 行**（约 6 cm 空白），非半行；改为 `ESC J 15` 点进纸。
+- 单测禁止 `ESC d` + `receiptTopGapDots`；设计文 P0 #9/#11 已更正。
+
 ## 0.4.39
 
 **Admin 发票按类型 Tab；税票上下留白减半**
