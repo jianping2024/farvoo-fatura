@@ -77,7 +77,7 @@ jobs:
           if [[ "${{ github.ref_type }}" == "tag" && "${{ github.ref_name }}" == fiscal-agent-v* ]]; then
             echo "version=${GITHUB_REF_NAME#fiscal-agent-v}" >> "$GITHUB_OUTPUT"
           else
-            echo "version=$(tr -d '\r\n' < apps/fiscal-agent/VERSION)" >> "$GITHUB_OUTPUT"
+            echo "version=$(tr -d '\r\n' < VERSION)" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Verify VERSION file matches tag
@@ -85,9 +85,9 @@ jobs:
         shell: bash
         run: |
           TAG_VER="${GITHUB_REF_NAME#fiscal-agent-v}"
-          FILE_VER="$(tr -d '\r\n' < apps/fiscal-agent/VERSION)"
+          FILE_VER="$(tr -d '\r\n' < VERSION)"
           if [[ "$TAG_VER" != "$FILE_VER" ]]; then
-            echo "::error::Tag fiscal-agent-v$TAG_VER does not match apps/fiscal-agent/VERSION ($FILE_VER)"
+            echo "::error::Tag fiscal-agent-v$TAG_VER does not match VERSION ($FILE_VER)"
             exit 1
           fi
           echo "Version OK: $TAG_VER"
