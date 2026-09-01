@@ -23,7 +23,7 @@
 PUSH_SKIP_FISCAL_AGENT_TAG=1 ./scripts/push-to-main.sh
 ```
 
-若本次提交改动了 **`apps/fiscal-agent/` 业务代码**（相对上一个 `fiscal-agent-v*` tag），同一批提交须含：
+若本次提交改动了 **`apps/fiscal-agent/` 业务代码**（相对上一个 `fiscal-agent-v*` tag；**不含** `VERSION` / `RELEASE_NOTES.md` / `README.md` / `dev/`），同一批提交须含：
 
 1. **`apps/fiscal-agent/VERSION` 递增**
 2. **`apps/fiscal-agent/RELEASE_NOTES.md`** 对应 `## X.Y.Z` 段落

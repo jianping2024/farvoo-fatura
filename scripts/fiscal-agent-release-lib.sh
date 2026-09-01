@@ -16,7 +16,9 @@ fiscal_agent_code_changed() {
   if [[ -n "$base_tag" ]]; then
     ! git diff --quiet "$base_tag" "$treeish" -- "$FISCAL_AGENT_DIR" \
       ':(exclude)apps/fiscal-agent/VERSION' \
-      ':(exclude)apps/fiscal-agent/RELEASE_NOTES.md'
+      ':(exclude)apps/fiscal-agent/RELEASE_NOTES.md' \
+      ':(exclude)apps/fiscal-agent/README.md' \
+      ':(exclude)apps/fiscal-agent/dev'
     return
   fi
 
@@ -24,7 +26,8 @@ fiscal_agent_code_changed() {
   while IFS= read -r path; do
     [[ -z "$path" ]] && continue
     case "$path" in
-      apps/fiscal-agent/VERSION | apps/fiscal-agent/RELEASE_NOTES.md) continue ;;
+      apps/fiscal-agent/VERSION | apps/fiscal-agent/RELEASE_NOTES.md | apps/fiscal-agent/README.md) continue ;;
+      apps/fiscal-agent/dev/*) continue ;;
       *) return 0 ;;
     esac
   done < <(git ls-tree -r --name-only "$treeish" -- "$FISCAL_AGENT_DIR" 2>/dev/null || true)
