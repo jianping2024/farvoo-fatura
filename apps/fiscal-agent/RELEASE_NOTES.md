@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.46
+
+**开票授权同步简化（P0）**
+
+- §4「从运营同步」：仅在 **已配对 + 门店信息已保存** 时可点；不再要求本机先有 `fiscal_profile`（一次同步拉齐业态 + 密钥）。
+- `setup.status` 增加 `cloud_paired_ok`；进入设置 / 刷新状态时 **自动尝试** `activate-from-cloud`。
+- 启动后若已配对会更新云凭据并重试同步；自动同步失败写日志不再静默吞掉。
+
 ## 0.4.45
 
 **冷启动安装流：登录页创建 owner**

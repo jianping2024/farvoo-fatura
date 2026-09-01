@@ -254,8 +254,8 @@ activate-from-cloud / 定期 pull → Agent 缓存 max + 同步终端吊销
 | 1 | Ops 为门店选定 `fiscal_profile` | **餐馆** 或 **商超**；未选则 Ops **不得**开放该店税务签名激活 |
 | 2 | Agent 拉取门店策略 | `activate-from-cloud` 前或同次响应须含 `fiscal_profile` + `max_fiscal_terminals` → 写入 `taxpayer_settings` |
 | 3 | 店长填纳税人 / 系列等 | 与现 M1 相同 |
-| 4 | 店长点 **「激活开票」** | **仅当** `fiscal_profile` 已落库；否则按钮禁用 + 文案「联系 Farvoo 配置门店模式」 |
-| 5 | `activate-from-cloud` 成功 | 与现网相同拉签名钥；**同时** UI 按 `fiscal_profile` 定型（餐馆/商超菜单） |
+| 4 | 店长点 **「从运营同步开票授权」** | **仅当** 已打印配对且 §1 门店信息已保存；进入设置页会自动尝试一次；一次请求拉齐 `fiscal_profile` + 封装私钥 |
+| 5 | `activate-from-cloud` 成功 | UI 按 `fiscal_profile` 定型（餐馆/商超菜单） |
 
 | 项 | 定法 |
 |----|------|
@@ -307,7 +307,7 @@ activate-from-cloud / 定期 pull → Agent 缓存 max + 同步终端吊销
 9. **回归：** 无 Farvoo `fiscal-operators` 调用；`fiscal-m3-operators-regression.mjs` 全绿。  
 10. **多端：** `FISCAL_ALLOW_LAN=1`；另一 PC 连 Agent IP → PIN 登录开票；不同 `station_id`。  
 11. **端数（纯 Ops）：** Ops 下发 `max=2`；配对码登记 2 台成功；第 3 台 403；Ops 吊销后 pull 可再配对；**无** `/support/*`。  
-12. **发票模式（纯 Ops）：** Ops 未配 `fiscal_profile` → 激活按钮不可用 / `activate-from-cloud` 失败；Ops 配 `retail` 后再激活 → UI 商超形态；**登录页无业态选择**。
+12. **发票模式（纯 Ops）：** Ops 未配 `fiscal_profile` → `activate-from-cloud` 返回 `fiscal_profile_missing`；§4 同步按钮在 **已配对 + 门店信息已保存** 时可用（不要求本机先有业态）；进入设置自动尝试同步。
 
 ## 6. 参考
 

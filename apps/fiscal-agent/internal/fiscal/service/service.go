@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -29,6 +30,7 @@ const (
 	ErrCodeSeriesAlreadyActive  = "series_already_active"
 	ErrCodeSignerNotReady       = "signer_not_ready"
 	ErrCodeOpsActivatePending   = "ops_activate_pending"
+	ErrCodeCloudNotPaired       = "cloud_not_paired"
 	ErrCodeATSOAPFailed         = "at_soap_failed"
 	ErrCodeReprintNotAllowed    = "reprint_not_allowed"
 )
@@ -74,6 +76,13 @@ func (s *FiscalService) SetCloudProvision(c CloudProvision) {
 		return
 	}
 	s.cloud = c
+}
+
+func (s *FiscalService) cloudPaired() bool {
+	if s == nil {
+		return false
+	}
+	return strings.TrimSpace(s.cloud.APIBase) != "" && strings.TrimSpace(s.cloud.JWT) != ""
 }
 
 // SetSigner replaces the in-memory signer after activation.
@@ -299,6 +308,9 @@ func (s *FiscalService) ActivateFromCloud(ctx context.Context, storeID string) (
 	if storeID == "" {
 		storeID = s.storeID
 	}
+	if !s.cloudPaired() {
+		return nil, coded(ErrCodeCloudNotPaired, "pair print agent with restaurant first")
+	}
 	if err := s.RegisterCloudDevice(ctx); err != nil {
 		return nil, err
 	}
@@ -353,7 +365,7 @@ func (s *FiscalService) ActivateFromCloud(ctx context.Context, storeID string) (
 		return nil, err
 	}
 	s.signer = sig
-	return s.db.GetSetupStatus(storeID)
+	return s.SetupStatus(storeID)
 }
 
 // ensureDeviceKey loads or creates the local device keypair — ONLY device-key ensure path.
@@ -375,13 +387,9 @@ func (s *FiscalService) ensureDeviceKey() (*signer.DeviceBundle, error) {
 // - Local active + cloud not_active/revoked → ClearLocalActivation (no per-issue cloud check).
 // - Local not active + taxpayer OK → register + pull when Ops already activated.
 func (s *FiscalService) TryPullCloudProvisionIfNeeded(ctx context.Context) {
-	if s == nil || s.db == nil {
+	if s == nil || s.db == nil || !s.cloudPaired() {
 		return
 	}
-	if strings.TrimSpace(s.cloud.APIBase) == "" || strings.TrimSpace(s.cloud.JWT) == "" {
-		return
-	}
-	_ = s.RegisterCloudDevice(ctx)
 	st, err := s.db.GetSetupStatus(s.storeID)
 	if err != nil {
 		return
@@ -394,12 +402,19 @@ func (s *FiscalService) TryPullCloudProvisionIfNeeded(ctx context.Context) {
 				s.signer = nil
 			}
 		}
+		if !st.FiscalProfileOK {
+			if err := s.PullAndSaveStorePolicy(ctx, s.storeID); err != nil {
+				log.Printf("fiscal: pull store policy: %v", err)
+			}
+		}
 		return
 	}
 	if !st.TaxpayerOK {
 		return
 	}
-	_, _ = s.ActivateFromCloud(ctx, s.storeID)
+	if _, err := s.ActivateFromCloud(ctx, s.storeID); err != nil {
+		log.Printf("fiscal: auto activate-from-cloud: %v", err)
+	}
 }
 
 // SetOperatorPIN sets operator PIN (owner reset path).
@@ -435,12 +450,17 @@ func (s *FiscalService) SetOperatorCanIssueNC(storeID, operatorID string, canIss
 	return s.db.SetOperatorCanIssueNC(storeID, operatorID, canIssue)
 }
 
-// SetupStatus proxies store.
+// SetupStatus proxies store and adds runtime flags (cloud pairing).
 func (s *FiscalService) SetupStatus(storeID string) (*store.SetupStatus, error) {
 	if storeID == "" {
 		storeID = s.storeID
 	}
-	return s.db.GetSetupStatus(storeID)
+	st, err := s.db.GetSetupStatus(storeID)
+	if err != nil {
+		return nil, err
+	}
+	st.CloudPairedOK = s.cloudPaired()
+	return st, nil
 }
 
 // IssueDocument signs a sale snapshot as FT / FS / FR.

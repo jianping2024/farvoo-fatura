@@ -66,6 +66,14 @@ func startEmbeddedFiscal(cfg *config) error {
 	embeddedFiscalMu.Lock()
 	defer embeddedFiscalMu.Unlock()
 	if embeddedFiscal != nil {
+		if cfg != nil && embeddedFiscal.Service != nil {
+			embeddedFiscal.Service.SetCloudProvision(service.CloudProvision{
+				APIBase:  strings.TrimSpace(cfg.APIBase),
+				JWT:      strings.TrimSpace(cfg.AgentJWT),
+				DeviceID: strings.TrimSpace(cfg.DeviceID),
+			})
+			go embeddedFiscal.Service.TryPullCloudProvisionIfNeeded(context.Background())
+		}
 		return nil
 	}
 

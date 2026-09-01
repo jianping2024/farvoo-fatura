@@ -1319,6 +1319,8 @@
       return '等待运营激活 · 设备已上报，请在 Ops 点「激活开票」后再同步';
     }
     if (code === 'taxpayer_missing') return '失败 · 请先保存门店纳税人信息';
+    if (code === 'cloud_not_paired') return '失败 · 请先完成打印助手配对（与门店绑定）';
+    if (code === 'fiscal_profile_missing') return '失败 · Ops 尚未保存门店业态（餐馆/商超），请先在运营后台点「保存策略」';
     if (code === 'unauthorized' || /pairing|not configured|JWT/i.test(msg)) {
       return '失败 · 未配对云端，请先完成打印助手配对';
     }
@@ -1349,6 +1351,10 @@
     ).join('');
     if (st.activated_ok) {
       setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
+    } else if (!st.cloud_paired_ok) {
+      setActCloudStatus('wait', '尚未配对云端 · 请先完成打印助手配对');
+    } else if (!st.taxpayer_ok) {
+      setActCloudStatus('wait', '请先保存 §1 门店信息');
     }
     applySeriesForm(st);
     const prof = $('#fiscalProfileHint');
@@ -1356,15 +1362,65 @@
       if (st.fiscal_profile_ok && st.fiscal_profile) {
         prof.textContent = '门店业态（Ops）：' + (st.fiscal_profile === 'retail' ? '商超' : '餐馆') +
           ' · 终端 ' + (st.terminals_used || 0) + '/' + (st.max_fiscal_terminals || 1);
+      } else if (st.taxpayer_ok) {
+        prof.textContent = '门店业态（Ops）：尚未同步到本机 — 点 §4「从运营同步开票授权」';
       } else {
-        prof.textContent = '门店业态（Ops）：未配置 — 联系 Farvoo 后再同步开票授权';
+        prof.textContent = '门店业态（Ops）：请先保存 §1 门店信息，再同步';
       }
     }
     const cloudBtn = $('#btnActCloud');
-    if (cloudBtn) cloudBtn.disabled = !st.fiscal_profile_ok;
+    if (cloudBtn) cloudBtn.disabled = !st.taxpayer_ok || !st.cloud_paired_ok || st.activated_ok;
+    const actHint = $('#actCloudHint');
+    if (actHint) {
+      if (!st.cloud_paired_ok) {
+        actHint.textContent = '请先完成打印助手配对，再领取开票授权。';
+      } else if (!st.taxpayer_ok) {
+        actHint.textContent = '请先保存 §1 门店信息，再领取开票授权。';
+      } else if (st.activated_ok) {
+        actHint.textContent = '开票授权已同步到本机。';
+      } else {
+        actHint.textContent = 'Ops 激活开票后，点下方领取（进入设置页会自动尝试一次）。';
+      }
+    }
   }
 
-  /** ONLY UI binder for series inputs/buttons from setup status. */
+  /** ONLY cloud activate-from-cloud path (button + settings auto-sync). */
+  async function syncActivateFromCloud(opts) {
+    const quiet = opts && opts.quiet;
+    if (!quiet) setActCloudStatus('', '同步中…');
+    try {
+      await j('POST', '/local/v1/setup/activate-from-cloud', {});
+      await refreshSetupStatus({ autoSync: false });
+      setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
+      if (!quiet) toast('开票授权已从运营同步', 'success');
+    } catch (er) {
+      const code = er && er.error ? String(er.error) : '';
+      const text = cloudSyncFailText(er);
+      if (code === 'ops_activate_pending') {
+        setActCloudStatus('wait', text);
+        if (!quiet) toast('设备已上报，等待运营在 Ops 点击「激活开票」', 'info');
+      } else {
+        setActCloudStatus('fail', text);
+        if (!quiet) toast(text, 'error');
+      }
+      throw er;
+    }
+  }
+
+  async function refreshSetupStatus(opts) {
+    const st = await j('GET', '/local/v1/setup/status');
+    setupStatusCache = st;
+    renderSetupChecklist(st);
+    const pemBlock = $('#localPemBlock');
+    if (pemBlock) pemBlock.classList.toggle('hidden', !st.local_provision_allowed);
+    if (opts && opts.autoSync && !st.activated_ok && st.taxpayer_ok && st.cloud_paired_ok) {
+      try {
+        await syncActivateFromCloud({ quiet: true });
+      } catch (_) { /* status line updated in syncActivateFromCloud */ }
+      return refreshSetupStatus({ autoSync: false });
+    }
+    return setupStatusCache;
+  }
   function applySeriesForm(st) {
     if (!st) return;
     const rows = [
@@ -1389,15 +1445,6 @@
         if (hint) hint.textContent = '';
       }
     });
-  }
-
-  async function refreshSetupStatus() {
-    const st = await j('GET', '/local/v1/setup/status');
-    setupStatusCache = st;
-    renderSetupChecklist(st);
-    const pemBlock = $('#localPemBlock');
-    if (pemBlock) pemBlock.classList.toggle('hidden', !st.local_provision_allowed);
-    return st;
   }
 
   /** ONLY loader for setupStatusCache (enterApp + invoice detail + settings). */
@@ -2705,7 +2752,7 @@
     }
     if (name === 'bills') refreshBills().catch(e => toast(errText(e), 'error'));
     if (name === 'settings') {
-      refreshSetupStatus().catch(e => toast(errText(e), 'error'));
+      refreshSetupStatus({ autoSync: true }).catch(e => toast(errText(e), 'error'));
       refreshOperatorsPanel().catch(() => {});
       refreshPrinters().catch(() => {});
       refreshSAFTExports().catch(() => {});
@@ -3153,7 +3200,7 @@
   $('#saftMonth').value = String(new Date().getMonth() + 1);
 
   $('#btnRefreshSetup').onclick = () => withBusy($('#btnRefreshSetup'), '刷新中…', async () => {
-    try { await refreshSetupStatus(); toast('状态已刷新', 'success'); }
+    try { await refreshSetupStatus({ autoSync: true }); toast('状态已刷新', 'success'); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
@@ -3233,24 +3280,7 @@
     if (setupStatusCache) applySeriesForm(setupStatusCache);
   }
   $('#btnActCloud').onclick = () => withBusy($('#btnActCloud'), '同步中…', async () => {
-    setActCloudStatus('', '同步中…');
-    try {
-      await j('POST', '/local/v1/setup/activate-from-cloud', {});
-      await refreshSetupStatus();
-      setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
-      toast('开票授权已从运营同步', 'success');
-    } catch (er) {
-      const code = er && er.error ? String(er.error) : '';
-      const text = cloudSyncFailText(er);
-      if (code === 'ops_activate_pending') {
-        setActCloudStatus('wait', text);
-        toast('设备已上报，等待运营在 Ops 点击「激活开票」', 'info');
-      } else {
-        setActCloudStatus('fail', text);
-        toast(text, 'error');
-      }
-      throw er;
-    }
+    await syncActivateFromCloud();
   });
 
   $('#btnAct').onclick = () => withBusy($('#btnAct'), '激活中…', async () => {

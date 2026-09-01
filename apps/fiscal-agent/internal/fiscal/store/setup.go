@@ -322,6 +322,7 @@ type SetupStatus struct {
 	FiscalProfile         string `json:"fiscal_profile,omitempty"`
 	MaxFiscalTerminals    int    `json:"max_fiscal_terminals"`
 	TerminalsUsed         int    `json:"terminals_used"`
+	CloudPairedOK         bool   `json:"cloud_paired_ok"`
 }
 
 // GetSetupStatus summarizes readiness for storeID.
