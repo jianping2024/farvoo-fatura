@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.44
+
+**M3.2 开票员 + Ops 门店策略同步**
+
+- 开票员角色仅 **owner / cashier**；PIN 登录与会话门闩（默认拒绝未登录 API）。
+- 首次 **bootstrap-owner**、改 PIN、开票员名册（Admin §5）；移除 demo `op-demo-cashier` 路径。
+- 云端激活拉取 Ops `fiscal_profile` / 终端策略；未配置 `fiscal_profile` 时激活失败 `fiscal_profile_missing`。
+- 本地迁移 `005_store_policy_terminals`；`setup.status` 增加 `fiscal_profile_ok`。
+
 ## 0.4.43
 
 **档口出品单 / 预结单 / 账单：底部留白减半**
