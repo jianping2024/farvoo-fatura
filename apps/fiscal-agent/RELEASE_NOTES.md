@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.49
+
+**M3.2b 开票员会话吊销 + 设置页改版**
+
+- `session_epoch`：停用 / PIN 重置 / 角色变更吊销 Cookie；Admin `forceLogout` 唯一清场。
+- 设置 §5：开票员管理表格（添加 / 编辑 / 重置 PIN / 停启用 / 可冲销）。
+- 设置页改版：就绪仪表板、分区导航、折叠记忆、未完成配置向导、系列 2×2 网格、inline 校验。
+
 ## 0.4.48
 
 **Admin 列表统一（分页 + 搜索 + 操作列）**
