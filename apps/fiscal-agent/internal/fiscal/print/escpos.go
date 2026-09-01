@@ -19,8 +19,18 @@ const receiptWidth = 48
 // Resumo IVA column band widths (sum = receiptWidth).
 var ivaSummaryColWidths = []int{10, 14, 12, 12}
 
-// cutFeedDots — GS V 66 n; enough paper past knife so last line is not bisected.
-const cutFeedDots byte = 80
+// Default ESC/POS line height (ESC 2) on most 80mm printers.
+const escposLineDots = 30
+
+// Receipt vertical padding (software-controlled only; ESC @ top feed is printer-specific).
+// Was 1 LF (30 dots) after LegalName; halved via ESC d n.
+const receiptTopGapDots byte = escposLineDots / 2
+
+// Bottom after QR: was writeQR LF (30) + 2 LF (60) + GS V 66 80 = 170 dots; halved to 85.
+// writeQR still ends with one LF (30); cut feed supplies the remaining 55 dots.
+const cutFeedDots byte = 85 - escposLineDots
+
+func escFeedDots(n byte) []byte { return []byte{0x1B, 0x64, n} }
 
 // RenderESCPOS is the ONLY fiscal receipt ESC/POS renderer (from frozen Payload).
 // Layout authority: docs/fiscal-ft-receipt-layout.zh.md
@@ -53,7 +63,7 @@ func RenderESCPOS(p *Payload) []byte {
 	w(p.Merchant.LegalName)
 	b.Write([]byte{0x1D, 0x21, 0x00})
 	bold(false)
-	w("")
+	b.Write(escFeedDots(receiptTopGapDots))
 	if p.Merchant.BusinessName != "" && p.Merchant.BusinessName != p.Merchant.LegalName {
 		w(p.Merchant.BusinessName)
 	}
@@ -143,8 +153,7 @@ func RenderESCPOS(p *Payload) []byte {
 	}
 	align(0)
 
-	// feed-then-cut (same family as kitchen GS V 66); no business text after QR
-	b.Write([]byte{'\n', '\n'})
+	// feed-then-cut: writeQR already LF (30 dots); + cutFeedDots = 85 total (half of prior 170).
 	b.Write([]byte{0x1D, 0x56, 0x42, cutFeedDots})
 	return b.Bytes()
 }

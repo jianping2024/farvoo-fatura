@@ -46,7 +46,7 @@ func TestAdminHTMLInvoiceFiltersUnique(t *testing.T) {
 	if !strings.Contains(adminHTML, "FiscalUI.createDateRangeFilter('#invoiceDateFilter'") {
 		t.Fatal("invoice date filter must use FiscalUI.createDateRangeFilter only")
 	}
-	if !strings.Contains(adminHTML, "未找到匹配的发票") || !strings.Contains(adminHTML, "该时段暂无发票") {
+	if !strings.Contains(adminHTML, "未找到匹配的") || !strings.Contains(adminHTML, "该时段暂无") {
 		t.Fatal("invoice list must distinguish empty range vs empty search")
 	}
 	if !strings.Contains(adminHTML, "加载中") {

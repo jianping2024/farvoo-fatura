@@ -56,4 +56,18 @@ func TestAdminHTMLInvoiceListPaginationUnique(t *testing.T) {
 	if !strings.Contains(adminHTML, "data.total") || !strings.Contains(adminHTML, "data.gross_total_sum") {
 		t.Fatal("home stats must use API total and gross_total_sum")
 	}
+	if strings.Count(adminHTML, `id="invoiceTypeTabs"`) != 1 {
+		t.Fatal("invoiceTypeTabs must exist exactly once")
+	}
+	for _, dt := range []string{"FT", "FS", "NC", "ND"} {
+		if !strings.Contains(adminHTML, `data-invoice-type="`+dt+`"`) {
+			t.Fatalf("invoice type tab %s missing", dt)
+		}
+	}
+	if !strings.Contains(adminHTML, "params.set('document_type'") {
+		t.Fatal("invoice list must filter by document_type query param")
+	}
+	if !strings.Contains(adminHTML, "function setInvoiceListDocType") {
+		t.Fatal("invoice list must use setInvoiceListDocType for type tabs")
+	}
 }

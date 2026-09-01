@@ -40,12 +40,23 @@ func handleListFiscalDocuments(w http.ResponseWriter, r *http.Request, deps Hand
 		writeErr(w, http.StatusBadRequest, "invalid_to", "to must be YYYY-MM-DD")
 		return
 	}
+	docTypeRaw := strings.TrimSpace(r.URL.Query().Get("document_type"))
+	var docType string
+	if docTypeRaw != "" {
+		parsed, err := domain.ParseInvoiceListDocumentType(docTypeRaw)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, "invalid_document_type", err.Error())
+			return
+		}
+		docType = string(parsed)
+	}
 	result, err := deps.Fiscal.ListInvoices(store.InvoiceListQuery{
-		Page:     page,
-		PageSize: pageSize,
-		From:     from,
-		To:       to,
-		Q:        strings.TrimSpace(r.URL.Query().Get("q")),
+		Page:         page,
+		PageSize:     pageSize,
+		From:         from,
+		To:           to,
+		Q:            strings.TrimSpace(r.URL.Query().Get("q")),
+		DocumentType: docType,
 	})
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "list_failed", err.Error())
@@ -64,6 +75,7 @@ func handleListFiscalDocuments(w http.ResponseWriter, r *http.Request, deps Hand
 		"from":            from,
 		"to":              to,
 		"q":               strings.TrimSpace(r.URL.Query().Get("q")),
+		"document_type":   docType,
 	})
 }
 

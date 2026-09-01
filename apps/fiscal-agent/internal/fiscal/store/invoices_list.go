@@ -30,12 +30,13 @@ type InvoiceListItem struct {
 
 // InvoiceListQuery filters GET /local/v1/fiscal-documents (invoice_date + search + pagination).
 type InvoiceListQuery struct {
-	StoreID  string
-	Page     int
-	PageSize int
-	From     string // invoice_date YYYY-MM-DD inclusive
-	To       string // invoice_date YYYY-MM-DD inclusive
-	Q        string // invoice_no, customer, source
+	StoreID      string
+	Page         int
+	PageSize     int
+	From         string // invoice_date YYYY-MM-DD inclusive
+	To           string // invoice_date YYYY-MM-DD inclusive
+	Q            string // invoice_no, customer, source
+	DocumentType string // FT / FS / NC / ND (empty = all types)
 }
 
 // InvoiceListResult is the ONLY paginated invoice list payload from store.
@@ -81,12 +82,13 @@ func normalizeInvoiceListQuery(q InvoiceListQuery) (InvoiceListQuery, int, int) 
 		pageSize = 10
 	}
 	return InvoiceListQuery{
-		StoreID:  storeID,
-		Page:     page,
-		PageSize: pageSize,
-		From:     strings.TrimSpace(q.From),
-		To:       strings.TrimSpace(q.To),
-		Q:        strings.TrimSpace(q.Q),
+		StoreID:      storeID,
+		Page:         page,
+		PageSize:     pageSize,
+		From:         strings.TrimSpace(q.From),
+		To:           strings.TrimSpace(q.To),
+		Q:            strings.TrimSpace(q.Q),
+		DocumentType: strings.TrimSpace(q.DocumentType),
 	}, page, pageSize
 }
 
@@ -112,6 +114,10 @@ func invoiceListWhere(q InvoiceListQuery) (string, []any) {
 			OR IFNULL(i.display_meta_json,'') LIKE ? ESCAPE '\'
 			OR IFNULL(i.source_sale_id,'') LIKE ? ESCAPE '\')`
 		args = append(args, like, like, like, like, like)
+	}
+	if q.DocumentType != "" {
+		query += ` AND i.document_type = ?`
+		args = append(args, q.DocumentType)
 	}
 	return query, args
 }

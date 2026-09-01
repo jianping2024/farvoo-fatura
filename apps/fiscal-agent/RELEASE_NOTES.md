@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.39
+
+**Admin 发票按类型 Tab；税票上下留白减半**
+
+- 发票列表：FT / FS / NC / ND 分 Tab；`GET /local/v1/fiscal-documents?document_type=` 服务端过滤；选中 Tab 记 `sessionStorage`。
+- 税票打印：店名后 `ESC d 15`（半行进纸）；QR 后切前进纸 **85 点**（`writeQR` LF 30 + `GS V 66` 55，原 170 点之半）。权威 `docs/fiscal-ft-receipt-layout.zh.md` P0 #11。
+
 ## 0.4.38
 
 **Admin 固定按钮：冲销/借记/已关联发票去掉 data-* 双绑风险**

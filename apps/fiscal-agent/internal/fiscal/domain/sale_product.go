@@ -26,6 +26,25 @@ func IsAdjustableOriginalDocumentType(dt DocumentType) bool {
 	return IsSaleScopeDocumentType(dt)
 }
 
+// AdminInvoiceListDocumentTypes is the tab order on Admin invoice list (FT/FS/NC/ND).
+var AdminInvoiceListDocumentTypes = []DocumentType{
+	DocumentFT, DocumentFS, DocumentNC, DocumentND,
+}
+
+// ParseInvoiceListDocumentType validates document_type for GET /local/v1/fiscal-documents.
+func ParseInvoiceListDocumentType(s string) (DocumentType, error) {
+	dt := DocumentType(strings.ToUpper(strings.TrimSpace(s)))
+	if dt == "" {
+		return "", fmt.Errorf("document_type required")
+	}
+	for _, allowed := range AdminInvoiceListDocumentTypes {
+		if dt == allowed {
+			return dt, nil
+		}
+	}
+	return "", fmt.Errorf("document_type must be FT, FS, NC, or ND")
+}
+
 // ParseSaleDocumentType resolves product sale document type; empty → DefaultSaleDocumentType.
 func ParseSaleDocumentType(s string) (DocumentType, error) {
 	dt := DocumentType(strings.ToUpper(strings.TrimSpace(s)))

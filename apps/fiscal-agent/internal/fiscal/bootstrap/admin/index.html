@@ -185,6 +185,10 @@
     .credit-tabs { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
     .credit-tabs button { flex: 1; }
     .credit-tabs button.active { border-color: var(--mode); font-weight: 600; }
+    .invoice-type-tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .invoice-type-tabs button { min-width: 5.5rem; padding: 0.45rem 0.65rem; line-height: 1.2; }
+    .invoice-type-tabs button small { display: block; font-size: 0.72rem; font-weight: 400; opacity: 0.85; }
+    .invoice-type-tabs button.active { border-color: var(--mode); font-weight: 600; }
     .credit-lines-table { width: 100%; font-size: 0.85rem; margin: 0.5rem 0; }
     .credit-lines-table th, .credit-lines-table td { padding: 0.35rem 0.25rem; text-align: left; }
     .adjust-line-amt { width: 5rem; padding: 0.25rem; }
@@ -479,6 +483,12 @@
           <button type="button" class="secondary" id="btnRefreshInvoices">刷新</button>
         </div>
         <div class="panel invoice-list-panel">
+          <div class="invoice-type-tabs" id="invoiceTypeTabs" role="tablist">
+            <button type="button" class="secondary active" data-invoice-type="FT" role="tab">FT<small>完整发票</small></button>
+            <button type="button" class="secondary" data-invoice-type="FS" role="tab">FS<small>简式发票</small></button>
+            <button type="button" class="secondary" data-invoice-type="NC" role="tab">NC<small>冲销单</small></button>
+            <button type="button" class="secondary" data-invoice-type="ND" role="tab">ND<small>借记单</small></button>
+          </div>
           <div class="invoice-filter-row">
             <div id="invoiceDateFilter"></div>
             <div class="field invoice-search-field">
@@ -864,6 +874,16 @@
   let invoiceListPageSize = FiscalUI.LIST_DEFAULT_PAGE_SIZE;
   /** ONLY pagination bar for invoice list (FiscalUI.createListPaginationBar). */
   let invoiceListPaginationCtrl = null;
+  /** ONLY active document-type tab on invoice list (FT / FS / NC / ND). */
+  const INVOICE_LIST_DOC_TYPES = ['FT', 'FS', 'NC', 'ND'];
+  const INVOICE_LIST_DOC_TYPE_LABELS = {
+    FT: '完整发票',
+    FS: '简式发票',
+    NC: '冲销单',
+    ND: '借记单',
+  };
+  let invoiceListDocType = sessionStorage.getItem('fiscal_invoice_doc_type') || 'FT';
+  if (!INVOICE_LIST_DOC_TYPES.includes(invoiceListDocType)) invoiceListDocType = 'FT';
 
   /** ONLY Hash display truncator (detail drawer preview: 前 8 … 后 4). */
   function truncateHash(h) {
@@ -1811,7 +1831,7 @@
   }
 
   /** ONLY query builder for invoice list + home today stats. */
-  function buildInvoicesQueryPath(range, q, page, pageSize) {
+  function buildInvoicesQueryPath(range, q, page, pageSize, documentType) {
     const params = new URLSearchParams();
     params.set('page', String(page || 1));
     params.set('page_size', String(pageSize || FiscalUI.LIST_DEFAULT_PAGE_SIZE));
@@ -1819,16 +1839,45 @@
     if (range && range.to) params.set('to', range.to);
     const term = String(q || '').trim();
     if (term) params.set('q', term);
+    const docType = String(documentType || '').trim();
+    if (docType) params.set('document_type', docType);
     return '/local/v1/fiscal-documents?' + params.toString();
+  }
+
+  /** ONLY invoice type tab UI sync (active state + sessionStorage). */
+  function setInvoiceListDocType(nextType) {
+    const t = String(nextType || '').trim().toUpperCase();
+    if (!INVOICE_LIST_DOC_TYPES.includes(t)) return;
+    invoiceListDocType = t;
+    sessionStorage.setItem('fiscal_invoice_doc_type', t);
+    $$('#invoiceTypeTabs [data-invoice-type]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.invoiceType === t);
+    });
   }
 
   function resetInvoiceListPage() {
     invoiceListPage = 1;
   }
 
+  /** ONLY invoice type tab initializer. */
+  function initInvoiceTypeTabs() {
+    setInvoiceListDocType(invoiceListDocType);
+    const tabs = $('#invoiceTypeTabs');
+    if (!tabs || tabs._bound) return;
+    tabs._bound = true;
+    tabs.addEventListener('click', e => {
+      const btn = e.target.closest('[data-invoice-type]');
+      if (!btn || btn.classList.contains('active')) return;
+      setInvoiceListDocType(btn.dataset.invoiceType);
+      resetInvoiceListPage();
+      refreshInvoices().catch(err => toast(errText(err), 'error'));
+    });
+  }
+
   /** ONLY invoice filter initializer (date presets + search). */
   function initInvoiceFilters() {
     if (invoiceFiltersReady) return;
+    initInvoiceTypeTabs();
     invoiceDateFilterCtrl = FiscalUI.createDateRangeFilter('#invoiceDateFilter', {
       storageKey: 'fiscal_invoice_date_range',
       timezone: INVOICE_TZ,
@@ -1877,7 +1926,7 @@
     }
     const range = invoiceDateFilterCtrl.getRange();
     const q = ($('#invoiceSearch') && $('#invoiceSearch').value) || '';
-    const data = await j('GET', buildInvoicesQueryPath(range, q, invoiceListPage, invoiceListPageSize));
+    const data = await j('GET', buildInvoicesQueryPath(range, q, invoiceListPage, invoiceListPageSize, invoiceListDocType));
     const list = data.invoices || [];
     invoiceListCache = list;
     invoiceListPage = data.page || invoiceListPage;
@@ -1891,8 +1940,11 @@
     }
     if (!list.length) {
       const term = String(q || '').trim();
-      tbody.innerHTML = '<tr><td colspan="6" class="hint">' +
-        (term ? '未找到匹配的发票' : '该时段暂无发票') + '</td></tr>';
+      const typeLabel = INVOICE_LIST_DOC_TYPE_LABELS[invoiceListDocType] || invoiceListDocType;
+      const emptyMsg = term
+        ? ('未找到匹配的' + typeLabel)
+        : ('该时段暂无' + typeLabel);
+      tbody.innerHTML = '<tr><td colspan="6" class="hint">' + emptyMsg + '</td></tr>';
     } else {
       tbody.innerHTML = list.map(inv => {
         const when = inv.system_entry_date || inv.issued_at || '';

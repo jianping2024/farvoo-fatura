@@ -7,6 +7,7 @@
 //   POST /local/v1/products                  (LOCAL only)
 //   GET  /local/v1/customers
 //   POST /local/v1/customers                 (LOCAL only; not consumidor final)
+//   GET  /local/v1/fiscal-documents            (?page & page_size & from & to & q & document_type)
 //   GET  /local/v1/fiscal-documents/by-request/{requestId}
 //   POST /local/v1/fiscal-documents/{documentId}/reprints
 //   POST /local/v1/fiscal-documents/{documentId}/credit-notes

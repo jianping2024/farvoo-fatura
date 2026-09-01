@@ -105,7 +105,7 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 		t.Fatalf("long cert must wrap to 2 lines:\n%s", plain)
 	}
 
-	// Store name: 1×2 bold, reset to 1×1, one blank LF, then address at 1×1
+	// Store name: 1×2 bold, reset to 1×1, half-line gap, then address at 1×1
 	nameEnc := escposenc.Windows1252("Farvoo Demo Lda")
 	addrEnc := escposenc.Windows1252("Rua Demo 1, 1000-001 Lisboa")
 	nameAt := bytes.Index(raw, nameEnc)
@@ -118,9 +118,9 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 		t.Fatal("LegalName must use GS ! 1×2")
 	}
 	mid := raw[nameAt+len(nameEnc) : addrAt]
-	wantMid := []byte{'\n', 0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00, '\n'}
+	wantMid := []byte{'\n', 0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00, 0x1B, 0x64, receiptTopGapDots}
 	if !bytes.Equal(mid, wantMid) {
-		t.Fatalf("after LegalName want LF + size/bold reset + blank LF, got %x", mid)
+		t.Fatalf("after LegalName want LF + size/bold reset + half-line feed, got %x", mid)
 	}
 
 	if bytes.Count(raw, []byte{0x1D, 0x21, 0x01}) < 2 {
