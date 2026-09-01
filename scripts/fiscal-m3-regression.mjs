@@ -197,10 +197,12 @@ async function main() {
   }
 
   try {
-    const st = await uatJson('req', 'GET', '/local/v1/setup/status');
-    record('setup-nc-series-ok', st.nc_series_ok === true && !!st.nc_series_code);
-    // ready_to_credit requires operator_can_issue_nc (aligned with Admin credit button).
-    record('setup-ready-to-credit-needs-perm', st.ready_to_credit === false && st.nc_series_ok === true);
+    const stAnon = JSON.parse((await run(process.execPath, [uat, 'req', 'GET', '/local/v1/setup/status'], {
+      env: { ...process.env, FISCAL_UAT_BASE: base },
+    })).trim());
+    record('setup-nc-series-ok', stAnon.nc_series_ok === true && !!stAnon.nc_series_code);
+    // Anonymous status must not expose session can_issue_nc.
+    record('setup-ready-to-credit-needs-perm', stAnon.ready_to_credit === false && stAnon.nc_series_ok === true);
   } catch (e) {
     record('setup-nc-series-ok', false, String(e));
     record('setup-ready-to-credit-needs-perm', false, String(e));

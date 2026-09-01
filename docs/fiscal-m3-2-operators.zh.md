@@ -1,10 +1,10 @@
 # M3.2：开票员身份（Agent 本地创建）
 
-> **状态：定稿后置**（方案已定；**暂不实施**，以免改动登录/回归；现网继续 demo 操作员 + PIN 占位）  
+> **状态：定稿**（M3.2 已实施）  
 > **权威：是**（开票员名册、PIN 登录、会话、角色与 `operators` 列口径；DDL 仍以 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/001_init.sql` 为准）  
-> **对应实现：** 待 M3.2 刀；当前仍为 `op-demo-cashier` + Admin PIN 占位  
+> **对应实现：** `apps/fiscal-agent` M3.2（owner/cashier + 会话 Cookie；已移除 `op-demo-cashier` 生产路径）  
 > **计划：** [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) M3.2  
-> **前置：** M2.6 Admin、M3.1 `can_issue_nc` enforce（0.4.26）
+> **前置：** M2.6 开票 Web、M3.1 `can_issue_nc` enforce（0.4.26）
 
 ## 1. 目标
 
@@ -42,7 +42,7 @@
 
 **P0：** 每店至少 **1 名** `active=1` 的 `owner`；可有多名 `cashier`；`owner` 可再创建 `owner`。
 
-**用语：** 「Fiscal Admin」仅指开票 **Web 界面**（工程/产品壳名），与角色 `owner` **不是**同一概念。
+**用语：** 「开票 Web」指店员使用的开票界面（工程路径 `bootstrap/admin`），与角色 `owner` **不是**同一概念。
 
 ### 3.1.1 冲销权限：`can_issue_nc`（按账号，非按角色）
 

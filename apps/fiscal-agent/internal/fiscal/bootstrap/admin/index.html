@@ -213,7 +213,7 @@
       <p class="hint">选择开票员并输入 6 位 PIN（业态由 Ops 配置）。</p>
       <label class="hint" for="loginOperator">开票员</label>
       <select id="loginOperator" style="width:100%;margin-bottom:0.75rem;padding:0.5rem;border-radius:8px;border:1px solid #2a3d32;background:#0f1612;color:#e8f0eb"></select>
-      <p class="hint" style="text-align:center">操作员 PIN</p>
+      <p class="hint" style="text-align:center">开票员 PIN（6 位）</p>
       <div class="pin-dots" id="pinDots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
       <div class="pin-pad" id="pinPad">
         <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
@@ -237,7 +237,7 @@
       <button type="button" class="nav-btn" data-nav="customers">客户<small>常用购方</small></button>
       <button type="button" class="nav-btn" data-nav="settings">设置<small>店名 / 打印机</small></button>
       <div class="foot">
-        <div id="operatorName">操作员</div>
+        <div id="operatorName">开票员</div>
         <button type="button" class="ghost" id="btnLogout" style="color:#cfe3d7;padding-left:0">退出</button>
       </div>
     </aside>
@@ -593,14 +593,26 @@
             <button type="button" id="btnAct">本地 PEM 激活</button>
           </div>
         </div>
-        <div class="panel">
-          <h2>5. 操作员</h2>
-          <button type="button" id="btnOp">确保收银操作员</button>
-          <label class="check-row" for="chkCanIssueNC">
-            <input type="checkbox" id="chkCanIssueNC" />
-            <span>允许冲销 NC / 借记 ND</span>
-          </label>
-          <p class="hint" style="margin:0.35rem 0 0">收银员默认不可冲销/借记；勾选后当前操作员可签发 NC 与 ND。</p>
+        <div class="panel" id="panelOperators">
+          <h2>5. 开票员名册</h2>
+          <p class="hint">角色仅 <strong>owner</strong> / <strong>cashier</strong>；仅 owner 可增删改 PIN 与冲销权限。</p>
+          <p class="hint" id="fiscalProfileHint">门店业态：加载中…</p>
+          <div id="bootstrapOwnerBlock" class="hidden" style="margin-top:0.75rem">
+            <p class="hint">尚无开票员，先创建首位 owner：</p>
+            <div class="field"><label>显示名称</label><input id="bootstrapOwnerName" placeholder="如：店长" /></div>
+            <div class="field"><label>6 位 PIN</label><input id="bootstrapOwnerPin" inputmode="numeric" maxlength="6" /></div>
+            <button type="button" id="btnBootstrapOwner">创建 owner</button>
+          </div>
+          <ul id="operatorsList" class="checklist" style="margin-top:0.75rem"></ul>
+          <div id="addOperatorBlock" class="hidden" style="margin-top:0.75rem">
+            <h3 style="font-size:0.95rem;margin:0 0 0.5rem">添加开票员</h3>
+            <div class="field"><label>显示名称</label><input id="newOpName" /></div>
+            <div class="field"><label>角色</label>
+              <select id="newOpRole"><option value="cashier">cashier</option><option value="owner">owner</option></select>
+            </div>
+            <div class="field"><label>6 位 PIN</label><input id="newOpPin" inputmode="numeric" maxlength="6" /></div>
+            <button type="button" id="btnAddOperator">添加</button>
+          </div>
         </div>
         <div class="panel">
           <h2>6. 打印机</h2>
@@ -737,8 +749,7 @@
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const toast = FiscalUI.showToast;
   const errText = FiscalUI.formatError;
-  const STATION_LS = 'fiscal_admin_station_id';
-  const OPERATOR_ID = 'op-demo-cashier';
+  const STATION_LS = 'fiscal_station_id';
   const INVOICE_TZ = 'Europe/Lisbon';
   const DEFAULT_SALE_DOC = 'FS';
   const SALE_DOC_TYPES = ['FT', 'FS'];
@@ -1299,7 +1310,7 @@
       ['NC 系列', st.nc_series_ok, st.nc_series_code || ''],
       ['ND 系列', st.nd_series_ok, st.nd_series_code || ''],
       ['开票授权', st.activated_ok, ''],
-      ['操作员', st.operator_ok, ''],
+      ['开票员', st.operator_ok, ''],
       ['可开票', st.ready_to_issue, ''],
       ['可冲销', st.ready_to_credit, ''],
       ['可借记', st.ready_to_debit, '']
@@ -1312,6 +1323,17 @@
       setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
     }
     applySeriesForm(st);
+    const prof = $('#fiscalProfileHint');
+    if (prof) {
+      if (st.fiscal_profile_ok && st.fiscal_profile) {
+        prof.textContent = '门店业态（Ops）：' + (st.fiscal_profile === 'retail' ? '商超' : '餐馆') +
+          ' · 终端 ' + (st.terminals_used || 0) + '/' + (st.max_fiscal_terminals || 1);
+      } else {
+        prof.textContent = '门店业态（Ops）：未配置 — 联系 Farvoo 后再同步开票授权';
+      }
+    }
+    const cloudBtn = $('#btnActCloud');
+    if (cloudBtn) cloudBtn.disabled = !st.fiscal_profile_ok;
   }
 
   /** ONLY UI binder for series inputs/buttons from setup status. */
@@ -1345,8 +1367,6 @@
     const st = await j('GET', '/local/v1/setup/status');
     setupStatusCache = st;
     renderSetupChecklist(st);
-    const chk = $('#chkCanIssueNC');
-    if (chk) chk.checked = !!st.operator_can_issue_nc;
     const pemBlock = $('#localPemBlock');
     if (pemBlock) pemBlock.classList.toggle('hidden', !st.local_provision_allowed);
     return st;
@@ -1649,7 +1669,6 @@
   async function reprintInvoice(documentId) {
     const sid = requireStation($('#invStationSel').options.length ? $('#invStationSel') : $('#stationSel'));
     const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/reprints', {
-      operator_id: OPERATOR_ID,
       station_id: sid
     });
     await pollPrintJob(res.print_job_id, '重打已提交');
@@ -1670,8 +1689,7 @@
     const reason = typeof opts === 'string' ? opts : opts.reason;
     const debitFull = typeof opts === 'string' ? true : !!opts.debit_full;
     const body = {
-      request_id: 'admin-debit-' + Date.now(),
-      operator_id: OPERATOR_ID,
+      request_id: 'nd-' + Date.now(),
       station_id: sid,
       reason: reason,
       debit_full: debitFull
@@ -1697,8 +1715,7 @@
     const reason = typeof opts === 'string' ? opts : opts.reason;
     const creditFull = typeof opts === 'string' ? true : !!opts.credit_full;
     const body = {
-      request_id: 'admin-credit-' + Date.now(),
-      operator_id: OPERATOR_ID,
+      request_id: 'nc-' + Date.now(),
       station_id: sid,
       reason: reason,
       credit_full: creditFull
@@ -2583,7 +2600,6 @@
     });
     const body = {
       request_id: requestId,
-      operator_id: OPERATOR_ID,
       station_id: sid,
       document_type: ($('#docType').value || DEFAULT_SALE_DOC),
       customer_nif: nif,
@@ -2619,7 +2635,6 @@
     }
     if (!assertCustomerNifOrToast(nif)) return;
     const body = {
-      operator_id: OPERATOR_ID,
       document_type: ($('#splitDocType').value || DEFAULT_SALE_DOC),
       mode: mode,
       station_id: sid,
@@ -2663,6 +2678,7 @@
     if (name === 'bills') refreshBills().catch(e => toast(errText(e), 'error'));
     if (name === 'settings') {
       refreshSetupStatus().catch(e => toast(errText(e), 'error'));
+      refreshOperatorsPanel().catch(() => {});
       refreshPrinters().catch(() => {});
       refreshSAFTExports().catch(() => {});
     }
@@ -3096,7 +3112,6 @@
     const year = parseInt($('#saftYear').value, 10);
     const month = parseInt($('#saftMonth').value, 10);
     return j('POST', '/local/v1/saft/exports', {
-      operator_id: 'op-demo-cashier',
       year: year,
       month: month
     });
@@ -3220,29 +3235,63 @@
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnOp').onclick = () => withBusy($('#btnOp'), '保存中…', async () => {
+  async function refreshOperatorsPanel() {
+    const list = $('#operatorsList');
+    const boot = $('#bootstrapOwnerBlock');
+    const add = $('#addOperatorBlock');
+    if (!list) return;
     try {
-      await j('PUT', '/local/v1/setup/operator', {
-        id: OPERATOR_ID,
-        role: 'cashier',
-        display_name: 'Demo Cashier',
-        can_issue_nc: $('#chkCanIssueNC').checked
-      });
+      const data = await j('GET', '/local/v1/setup/operators');
+      const ops = data.operators || [];
+      const isOwner = loggedInOperator && loggedInOperator.role === 'owner';
+      if (!ops.length) {
+        list.innerHTML = '';
+        if (boot) boot.classList.remove('hidden');
+        if (add) add.classList.add('hidden');
+        return;
+      }
+      if (boot) boot.classList.add('hidden');
+      if (add) add.classList.toggle('hidden', !isOwner);
+      list.innerHTML = ops.map(o =>
+        '<li>' + o.display_name + ' · <code>' + o.role + '</code>' +
+        (o.has_pin ? '' : ' · <span class="hint">未设 PIN</span>') + '</li>'
+      ).join('');
+    } catch (e) {
+      list.innerHTML = '<li class="hint">无法加载开票员</li>';
+    }
+  }
+
+  $('#btnBootstrapOwner').onclick = () => withBusy($('#btnBootstrapOwner'), '创建中…', async () => {
+    const name = $('#bootstrapOwnerName').value.trim();
+    const pin = $('#bootstrapOwnerPin').value.trim();
+    if (!name || !/^\d{6}$/.test(pin)) {
+      toast('请填写名称与 6 位 PIN', 'error');
+      return;
+    }
+    try {
+      await j('POST', '/local/v1/setup/bootstrap-owner', { display_name: name, pin });
+      await refreshOperatorsPanel();
       await refreshSetupStatus();
-      toast('操作员已保存', 'success');
+      toast('owner 已创建，请重新登录', 'success');
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#chkCanIssueNC').onchange = () => withBusy($('#btnOp'), '保存中…', async () => {
+  $('#btnAddOperator').onclick = () => withBusy($('#btnAddOperator'), '添加中…', async () => {
+    const name = $('#newOpName').value.trim();
+    const role = $('#newOpRole').value;
+    const pin = $('#newOpPin').value.trim();
+    if (!name || !/^\d{6}$/.test(pin)) {
+      toast('请填写名称与 6 位 PIN', 'error');
+      return;
+    }
+    const id = 'op-' + Date.now().toString(36);
     try {
-      await j('PUT', '/local/v1/setup/operator', {
-        id: OPERATOR_ID,
-        role: 'cashier',
-        display_name: 'Demo Cashier',
-        can_issue_nc: $('#chkCanIssueNC').checked
-      });
+      await j('PUT', '/local/v1/setup/operator', { id, role, display_name: name, pin });
+      $('#newOpName').value = '';
+      $('#newOpPin').value = '';
+      await refreshOperatorsPanel();
       await refreshSetupStatus();
-      toast('冲销权限已更新', 'success');
+      toast('开票员已添加', 'success');
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
@@ -3256,8 +3305,7 @@
 
   $('#btnIntegrityVerify').onclick = () => withBusy($('#btnIntegrityVerify'), '校验中…', async () => {
     try {
-      const res = await j('POST', '/local/v1/setup/integrity/verify', {
-        operator_id: OPERATOR_ID,
+      const res =       await j('POST', '/local/v1/setup/integrity/verify', {
         block_on_fail: true,
         heal_on_pass: !!$('#chkIntegrityHeal').checked
       });
@@ -3273,7 +3321,7 @@
   $('#btnPrepareSwap').onclick = () => withBusy($('#btnPrepareSwap'), '处理中…', async () => {
     if (!confirm('确认本机停用开票授权？将自动备份后吊销本机签名钥（换机用）。')) return;
     try {
-      const res = await j('POST', '/local/v1/setup/prepare-swap', { operator_id: OPERATOR_ID, backup: true });
+      const res = await j('POST', '/local/v1/setup/prepare-swap', { backup: true });
       const path = res.backup_path || '';
       $('#integrityResult').textContent = '已停用 · 备份：' + path;
       toast('开票授权已停用' + (path ? '；备份 ' + path : ''), 'success');
