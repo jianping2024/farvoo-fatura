@@ -32,6 +32,15 @@ func bytesIndex(b, sub []byte) int {
 	return -1
 }
 
+func TestTicketBottomMarginConstantsHalvedFromV042(t *testing.T) {
+	if escposBottomMarginLines != 1 || escposBottomMarginLinesV042 != 2 {
+		t.Fatalf("bottom margin lines %d want 1 (half of %d)", escposBottomMarginLines, escposBottomMarginLinesV042)
+	}
+	if escposCutFeedDotsDefault != 0x0C || escposCutFeedDotsTall != 0x1C {
+		t.Fatalf("cut dots default=0x%x tall=0x%x want 0x0C/0x1C", escposCutFeedDotsDefault, escposCutFeedDotsTall)
+	}
+}
+
 func TestCutSequenceUsesFeedThenCut(t *testing.T) {
 	w := newEscpos()
 	w.text("footer")

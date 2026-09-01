@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.43
+
+**档口出品单 / 预结单 / 账单：底部留白减半**
+
+- 唯一 `escposWriter.finish`：切前 LF **2→1** 行；`GS V 66` 进纸 **24→12** 点（倍高票 **56→28**）。
+- 税票 FT（`internal/fiscal/print`）不变。
+
 ## 0.4.42
 
 **重打门闩 + 撕口→店名留白**

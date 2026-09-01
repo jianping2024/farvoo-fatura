@@ -23,16 +23,20 @@ const (
 )
 
 // Top: no extra LF — most printers already feed after ESC @ init.
-// Bottom: 2× single-height "restaurant" row before cut (visible pad only).
+// Bottom pad before GS V 66 cut — single source for station slip, pre-bill, and receipt tickets.
 const (
-	escposTopMarginLines    = 0
-	escposBottomMarginLines = 2
+	escposTopMarginLines = 0
+
+	escposBottomMarginLinesV042 = 2
+	escposCutFeedDotsDefaultV042 = 0x18 // 24 dots
+	escposCutFeedDotsTallV042    = 0x38 // 56 dots — tickets with double-height blocks
 )
 
-// Minimal feed before blade after bottom pad (not part of visible margin).
+// Halved from v0.4.42 baselines (integer dot math).
 const (
-	escposCutFeedDotsDefault = 0x18
-	escposCutFeedDotsTall    = 0x38 // tickets with double-height blocks
+	escposBottomMarginLines    = escposBottomMarginLinesV042 / 2              // 1 LF
+	escposCutFeedDotsDefault   = escposCutFeedDotsDefaultV042 / 2             // 12 dots
+	escposCutFeedDotsTall      = escposCutFeedDotsTallV042 / 2                // 28 dots
 )
 
 type ticketLabels struct {
