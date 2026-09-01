@@ -1,6 +1,9 @@
 package print
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
 func TestReceiptVerticalPaddingConstants(t *testing.T) {
 	if receiptTopGapDotsV040 != 15 {
@@ -20,5 +23,22 @@ func TestReceiptVerticalPaddingConstants(t *testing.T) {
 	}
 	if cutFeedDots != 26 || receiptTopGapDots != 7 {
 		t.Fatalf("got top=%d cut=%d want top=7 cut=26", receiptTopGapDots, cutFeedDots)
+	}
+}
+
+func TestRenderESCPOS_SoftStreamBeginNoEscAt(t *testing.T) {
+	raw := RenderESCPOS(&Payload{
+		Merchant: MerchantBlock{LegalName: "Demo"},
+		InvoiceNo: "FT FT2026DEMO01/1",
+		PrintPurpose: "ORIGINAL",
+	})
+	if len(raw) >= 2 && raw[0] == 0x1B && raw[1] == 0x40 {
+		t.Fatal("normal receipt must not start with ESC @; use receiptStreamBegin only")
+	}
+	if !bytes.HasPrefix(raw, receiptStreamBegin()) {
+		t.Fatalf("stream must begin with receiptStreamBegin prefix, got %x", raw[:min(12, len(raw))])
+	}
+	if bytes.Contains(raw, []byte{0x1B, 0x40}) {
+		t.Fatal("normal receipt must not contain ESC @ anywhere")
 	}
 }

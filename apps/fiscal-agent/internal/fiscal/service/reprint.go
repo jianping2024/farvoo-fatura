@@ -21,6 +21,12 @@ func (s *FiscalService) ReprintDocument(_ context.Context, documentID, operatorI
 	if errors.Is(err, store.ErrNotFound) {
 		return nil, coded("not_found", "invoice not found")
 	}
+	if errors.Is(err, store.ErrReprintNotAllowed) {
+		return nil, coded(ErrCodeReprintNotAllowed, "document cannot be reprinted")
+	}
+	if errors.Is(err, store.ErrReprintOriginalMissing) {
+		return nil, coded(ErrCodeReprintNotAllowed, "original print job not found")
+	}
 	if err != nil {
 		return nil, err
 	}

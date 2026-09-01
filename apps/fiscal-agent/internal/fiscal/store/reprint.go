@@ -12,6 +12,12 @@ import (
 	"github.com/google/uuid"
 )
 
+// ErrReprintNotAllowed is returned when document_status blocks REPRINT (see domain.IsReprintableDocumentStatus).
+var ErrReprintNotAllowed = errors.New("store: reprint not allowed")
+
+// ErrReprintOriginalMissing is returned when no ORIGINAL local_print_jobs row exists for the invoice.
+var ErrReprintOriginalMissing = errors.New("store: original print job not found")
+
 // ReprintResult is the outcome of CreateReprintPrintJob.
 type ReprintResult struct {
 	PrintJobID  string
@@ -38,8 +44,8 @@ func (d *DB) CreateReprintPrintJob(invoiceID, operatorID, stationID string) (*Re
 	if err != nil {
 		return nil, err
 	}
-	if docStatus != string(domain.DocumentSigned) {
-		return nil, fmt.Errorf("store: document not signed")
+	if !domain.IsReprintableDocumentStatus(docStatus) {
+		return nil, ErrReprintNotAllowed
 	}
 
 	var origPayload string
@@ -48,7 +54,7 @@ func (d *DB) CreateReprintPrintJob(invoiceID, operatorID, stationID string) (*Re
 		WHERE invoice_id = ? AND print_purpose = 'ORIGINAL' ORDER BY created_at LIMIT 1`, invoiceID).
 		Scan(&origPayload, &docType)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("store: original print job not found")
+		return nil, ErrReprintOriginalMissing
 	}
 	if err != nil {
 		return nil, err

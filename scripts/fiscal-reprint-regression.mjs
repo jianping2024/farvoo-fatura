@@ -154,6 +154,43 @@ async function main() {
     const list = JSON.parse(listRaw.split('\n').pop() || listRaw);
     const found = (list.invoices || []).some((i) => i.document_id === docId);
     record('list-invoices', found, `count=${(list.invoices || []).length}`);
+
+    const year = new Date().getFullYear();
+    const ndSeries = `ND${year}REPRINT01`;
+    await uatCmd('assert-db', '--db', dbPath, '--sql',
+      `INSERT OR IGNORE INTO series (id, store_id, document_type, series_code, validation_code, fiscal_year, last_number, last_hash, status, registered_at, created_at, updated_at) VALUES ('series-nd-reprint', 'store-demo-001', 'ND', '${ndSeries}', 'NDVAL1234', ${year}, 0, '', 'ACTIVE', datetime('now'), datetime('now'), datetime('now'))`);
+    await uatCmd('assert-db', '--db', dbPath, '--sql',
+      `SELECT id FROM series WHERE store_id='store-demo-001' AND document_type='ND' AND status='ACTIVE'`,
+      '--expect-count', '1');
+    await uatCmd('assert-db', '--db', dbPath, '--sql',
+      `UPDATE operators SET can_issue_nc=1 WHERE store_id='store-demo-001' AND id='op-demo-cashier'`);
+    record('seed-nd-series', true, ndSeries);
+
+    const ndRaw = await uatCmd('req', 'POST', `/local/v1/fiscal-documents/${docId}/debit-notes`, '--body', JSON.stringify({
+      request_id: `nd-${requestId}`,
+      operator_id: 'op-demo-cashier',
+      reason: 'Partial debit for reprint test',
+      debit_full: false,
+      lines: [{ original_line_number: 1, line_gross: '5.00' }],
+    }));
+    const nd = JSON.parse(ndRaw.split('\n').pop() || ndRaw);
+    record('issue-nd-partial', nd.document_type === 'ND', nd.invoice_no || ndRaw);
+
+    const origAfterNdRaw = await uatCmd('req', 'GET', `/local/v1/fiscal-documents/${docId}`);
+    const origAfterNd = JSON.parse(origAfterNdRaw.split('\n').pop() || origAfterNdRaw);
+    record('original-debited-partial', origAfterNd.document_status === 'DEBITED_PARTIAL', origAfterNd.document_status);
+
+    const reprint2Raw = await uatCmd('req', 'POST', `/local/v1/fiscal-documents/${docId}/reprints`, '--body', '{"operator_id":"op-demo-cashier"}');
+    const reprint2 = JSON.parse(reprint2Raw.split('\n').pop() || reprint2Raw);
+    const reprint2JobId = reprint2.print_job_id;
+    record('reprint-after-nd', !!reprint2JobId && reprint2.print_purpose === 'REPRINT', reprint2JobId || reprint2Raw);
+
+    await uatCmd('wait-json', 'GET', `/local/v1/print-jobs/${reprint2JobId}`, '--path', 'job_status', '--equals', 'PRINTED', '--timeout-ms', '15000');
+    record('wait-reprint-after-nd-printed', true, reprint2JobId);
+
+    const detail3Raw = await uatCmd('req', 'GET', `/local/v1/fiscal-documents/${docId}`);
+    const detail3 = JSON.parse(detail3Raw.split('\n').pop() || detail3Raw);
+    record('hash-unchanged-after-nd-reprint', detail3.hash === hashBefore, detail3.hash);
   } catch (e) {
     record('reprint-flow', false, String(e.message || e).slice(0, 200));
   } finally {

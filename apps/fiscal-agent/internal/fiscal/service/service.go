@@ -30,6 +30,7 @@ const (
 	ErrCodeSignerNotReady       = "signer_not_ready"
 	ErrCodeOpsActivatePending   = "ops_activate_pending"
 	ErrCodeATSOAPFailed         = "at_soap_failed"
+	ErrCodeReprintNotAllowed    = "reprint_not_allowed"
 )
 
 // CodedError carries a stable error code for HTTP.

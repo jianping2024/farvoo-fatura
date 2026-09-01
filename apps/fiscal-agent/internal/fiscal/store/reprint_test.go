@@ -103,3 +103,50 @@ func TestCreateReprintPrintJob(t *testing.T) {
 		t.Fatalf("print_status %q", recAfter.PrintStatus)
 	}
 }
+
+func TestCreateReprintPrintJobAfterND(t *testing.T) {
+	dir := t.TempDir()
+	db, err := store.Open(filepath.Join(dir, "fiscal.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	sig, err := signer.LoadPEMFile(filepath.Join("..", "testdata", "dev_signing_key.pem"), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedDemoM6(t, db, sig)
+
+	ftID := issueDemoFT(t, db, sig, domain.DocumentFT, "ft-reprint-nd")
+	mem := &worker.MemorySink{}
+	w := &worker.Worker{DB: db, Sink: mem}
+	ok, err := w.RunOnce(context.Background())
+	if err != nil || !ok {
+		t.Fatalf("print original: ok=%v err=%v", ok, err)
+	}
+
+	_, err = db.IssueND(context.Background(), sig, store.IssueNDParams{
+		StoreID: "store-demo-001", RequestID: "nd-reprint-1", OriginalInvoiceID: ftID,
+		OperatorID: "op-demo-cashier", Reason: "Partial debit", DebitFull: false,
+		Lines: []store.CreditLineInput{{OriginalLineNumber: 1, LineGross: "5.00"}},
+		NowUTC: time.Date(2026, 8, 23, 10, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var status string
+	if err := db.SQL.QueryRow(`SELECT document_status FROM invoices WHERE id=?`, ftID).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if status != string(domain.DocumentDebitedPartial) {
+		t.Fatalf("status %q want DEBITED_PARTIAL", status)
+	}
+
+	reprint, err := db.CreateReprintPrintJob(ftID, "op-demo-cashier", "")
+	if err != nil {
+		t.Fatalf("reprint after ND: %v", err)
+	}
+	if reprint.PrintJobID == "" {
+		t.Fatal("missing reprint job id")
+	}
+}

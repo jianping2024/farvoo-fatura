@@ -642,7 +642,7 @@ func writeCoded(w http.ResponseWriter, err error) {
 		case service.ErrCodeSignerNotReady, service.ErrCodeOpsActivatePending, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing,
 			service.ErrCodeSeriesAlreadyActive,
 			service.ErrCodeCreditNotAllowed, service.ErrCodeCreditAmountExceeded, service.ErrCodeIdempotencyConflict,
-			service.ErrCodeNoInvoices:
+			service.ErrCodeNoInvoices, service.ErrCodeReprintNotAllowed:
 			status = http.StatusConflict
 		case "scope_mutex", "allocation_conflict", "draft_not_open", "already_invoiced":
 			status = http.StatusConflict

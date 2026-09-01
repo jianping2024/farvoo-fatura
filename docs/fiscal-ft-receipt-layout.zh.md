@@ -35,7 +35,7 @@
 
 四字 = `compliance.QRHashChars`（已有）；斜杠是否出现取决于 Hash，不硬插。
 
-**注：** `ESC @` 初始化后打印机自检进纸（约 3～5 mm）由固件决定，不在本文列数内。
+**注：** 正常票面**不发 `ESC @`**（唯一 `receiptStreamBegin`：选码表 + `ESC 2`），避免固件自检进纸（约 3～5 mm）。`nil` payload 测试切刀仍可用 `ESC @`。
 
 ---
 
@@ -68,7 +68,8 @@
 | 票号标签行 | 仅 `formatFaturaNoLine` |
 | 拉丁编码 | 仅 `escposenc.Windows1252` |
 | 店名后间距 | 仅 `escFeedDots` → **`ESC J`** + `receiptTopGapDots`（禁止 `ESC d`） |
-| 切前进纸 | 仅 `GS V 66` + `cutFeedDots`（与 `writeQR` 末尾 LF 合计 85 点） |
+| 流前缀（撕口→内容） | 仅 `receiptStreamBegin`（禁止正常票面 `ESC @`） |
+| 切前进纸 | 仅 `GS V 66` + `cutFeedDots`（与 `writeQR` 末尾 LF 合计 56 点） |
 
 ---
 
@@ -81,6 +82,7 @@
 5. `rg 'func RenderESCPOS'`=1；`Hash:` 拼接在 Render 中不存在  
 6. `receiptWidth=48`；虚线与 `moneyRow` 行宽均为 48  
 7. 店名后字节序含 **`ESC J`** + `receiptTopGapDots`（7 点），**不得**出现 `ESC d`
+8. 正常票面流前缀为 **`receiptStreamBegin`**，**不得**含 `ESC @`
 
 ---
 
@@ -92,6 +94,7 @@
 | **Fatura No. 整行加粗** | **已落地**（`RenderESCPOS`：`ESC E` 包 `formatFaturaNoLine`） |
 | **MESA + 认证超宽两行** | **已落地**（`formatMesaLine` / `formatCertificationFaceLines`） |
 | **纵向留白减半** | **已落地**（`receiptTopGapDots` / `cutFeedDots`；`TestRenderESCPOS_LayoutP0`） |
+| **撕口→店名软前缀** | **已落地**（`receiptStreamBegin` 无 `ESC @`；`TestRenderESCPOS_SoftStreamBeginNoEscAt`） |
 
 ## 修订记录
 
@@ -102,3 +105,4 @@
 | 2026-08-25 | 实现落地：`RenderESCPOS` + `TestRenderESCPOS_FaturaNoBoldOnly` |
 | 2026-08-25 | P0 #2/#10：认证超宽故意两行；Via 后 `MESA:` |
 | 2026-09-01 | P0 #11：店名后 **7 点**（15 之半）；QR 后合计 **56 点**（85 之 ⅔）；`cutFeedDots=26` |
+| 2026-09-01 | 撕口→店名：正常票面唯一 `receiptStreamBegin`（无 `ESC @`）；重打允许 `CREDITED_*`/`DEBITED_*` |

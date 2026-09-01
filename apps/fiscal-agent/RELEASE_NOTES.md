@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.42
+
+**重打门闩 + 撕口→店名留白**
+
+- 重打：允许 `SIGNED` / `CREDITED_*` / `DEBITED_*`（唯一 `domain.IsReprintableDocumentStatus`）；API 错误码 `reprint_not_allowed`（不再误报 `issue_failed`）。
+- 票面：正常票唯一 `receiptStreamBegin`（无 `ESC @`），减少撕口→店名固件进纸；`nil` payload 测试切刀仍用 `ESC @`。
+- 回归：`fiscal-reprint-regression.mjs` 增补 ND 后重打；`TestCreateReprintPrintJobAfterND`。
+
 ## 0.4.41
 
 **税票留白：顶 ×½、底 ×⅔（相对 0.4.40 软件进纸）**

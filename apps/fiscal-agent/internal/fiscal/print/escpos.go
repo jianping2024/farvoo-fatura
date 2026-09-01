@@ -38,6 +38,14 @@ const (
 // escFeedDots emits ESC J n — feed n dots (buffer empty → feed only). Do NOT use ESC d (0x64): that feeds n lines.
 func escFeedDots(n byte) []byte { return []byte{0x1B, 0x4A, n} }
 
+// receiptStreamBegin is the ONLY fiscal receipt stream prefix (tear-to-content).
+// Skips ESC @ to avoid firmware self-test feed (~24–30 dots); sets code page + default line spacing instead.
+func receiptStreamBegin() []byte {
+	out := escposenc.SelectCodeTable(escposenc.CodeTableWPC1252)
+	out = append(out, 0x1B, 0x32) // ESC 2 — default line spacing
+	return out
+}
+
 // RenderESCPOS is the ONLY fiscal receipt ESC/POS renderer (from frozen Payload).
 // Layout authority: docs/fiscal-ft-receipt-layout.zh.md
 func RenderESCPOS(p *Payload) []byte {
@@ -45,8 +53,7 @@ func RenderESCPOS(p *Payload) []byte {
 		return []byte{0x1B, 0x40, 0x1D, 0x56, 0x42, cutFeedDots}
 	}
 	var b bytes.Buffer
-	b.Write([]byte{0x1B, 0x40}) // init
-	b.Write(escposenc.SelectCodeTable(escposenc.CodeTableWPC1252))
+	b.Write(receiptStreamBegin())
 
 	align := func(n byte) { b.Write([]byte{0x1B, 0x61, n}) }
 	bold := func(on bool) {

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"farvoo-fiscal-agent/internal/fiscal/domain"
+
 	"github.com/google/uuid"
 )
 
@@ -282,7 +284,7 @@ func (d *DB) ListSignedSaleScopesForSale(storeID, sourceSystem, sourceSaleID str
 		FROM invoices
 		WHERE source_sale_id = ? AND IFNULL(source_system,'') = ?
 		  AND document_type IN ('FT','FS')
-		  AND document_status IN ('SIGNED','CREDITED_PARTIAL','CREDITED_FULL','DEBITED_PARTIAL','DEBITED_FULL')`
+		  AND document_status IN (` + domain.IssuedOriginalDocumentStatusSQLIn() + `)`
 	args := []any{sourceSaleID, sourceSystem}
 	if storeID != "" {
 		q += ` AND store_id = ?`
