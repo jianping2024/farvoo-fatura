@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.60
+
+**修复 Inno 安装包编译（UTF-8 BOM）**
+
+- `farvoo-fiscal-agent.iss` / `farvoo-fiscal-client.iss`：UTF-8 BOM，避免 Tasks 含中文时 `Flags` 解析失败（0.4.59 CI 根因）。
+- 任务描述改为 ASCII；桌面快捷方式名称仍为「Farvoo 开票」。
+- 含 0.4.59：WebView/任务栏 `app_icon.ico` + Admin 冗余 hint 清理。
+
 ## 0.4.59
 
 **开票壳图标 + 登录等冗余文案清理**

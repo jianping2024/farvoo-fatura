@@ -1,4 +1,4 @@
-; Farvoo Fiscal Client — Inno Setup (x64). From apps/fiscal-agent:
+﻿; Farvoo Fiscal Client — Inno Setup (x64). From apps/fiscal-agent:
 ;   ISCC /DMyAppVersion=0.1.0 installer\farvoo-fiscal-client.iss
 
 #ifndef MyAppVersion
@@ -38,7 +38,7 @@ UninstallDisplayIcon={app}\{#MyAppExe}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a Farvoo 开票 shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: checked
+Name: "desktopicon"; Description: "Create a Farvoo Fiscal shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: checked
 Name: "desktopsettings"; Description: "Create Agent settings shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: unchecked
 Name: "webview2"; Description: "Install Microsoft Edge WebView2 Runtime if missing (recommended)"; GroupDescription: "Prerequisites:"; Flags: checked
 
