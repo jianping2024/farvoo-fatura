@@ -251,63 +251,19 @@
         return s.name_en || s.name_pt || s.name_zh || s.id;
       }
 
-      function printerDisplayName(p) {
-        var addr = (p && p.addr) || '';
-        if (addr.indexOf('tcp:') === 0) return fmt('printer_lan_label', addr.slice(4));
-        if (addr.indexOf('winspool:') === 0) return addr.slice(9);
-        return (p && p.label) || addr;
-      }
-
-      function savedPrinterAddrs() {
-        var maps = saved.station_printers || {};
-        var seen = {};
-        var out = [];
-        Object.keys(maps).forEach(function (sid) {
-          var addr = String(maps[sid] || '').trim();
-          if (!addr || seen[addr]) return;
-          seen[addr] = true;
-          out.push(addr);
-        });
-        return out;
-      }
-
-      function mergePrinterGroup(scanned, savedAddrs, prefix) {
-        var byAddr = {};
-        (scanned || []).forEach(function (p) {
-          var a = String(p && p.addr || '').trim();
-          if (a) byAddr[a] = p;
-        });
-        var addedFromSaved = 0;
-        var skippedDup = 0;
-        savedAddrs.forEach(function (addr) {
-          if (prefix != null && addr.indexOf(prefix) !== 0) return;
-          if (byAddr[addr]) {
-            skippedDup++;
-            return;
-          }
-          byAddr[addr] = { addr: addr };
-          addedFromSaved++;
-        });
-        return {
-          list: Object.keys(byAddr).map(function (k) { return byAddr[k]; }),
-          addedFromSaved: addedFromSaved,
-          skippedDup: skippedDup
-        };
-      }
-
       function rebuildPrinterLists() {
-        var saved = savedPrinterAddrs();
+        var addrs = MesaWizardUI.savedPrinterAddrs(saved.station_printers);
         var tcpSaved = [];
         var winSaved = [];
         var otherSaved = [];
-        saved.forEach(function (addr) {
+        addrs.forEach(function (addr) {
           if (addr.indexOf('tcp:') === 0) tcpSaved.push(addr);
           else if (addr.indexOf('winspool:') === 0) winSaved.push(addr);
           else otherSaved.push(addr);
         });
-        var tcpM = mergePrinterGroup(cache.tcp, tcpSaved, 'tcp:');
-        var winM = mergePrinterGroup(cache.winspool, winSaved, 'winspool:');
-        if (otherSaved.length) winM = mergePrinterGroup(winM.list, otherSaved, null);
+        var tcpM = MesaWizardUI.mergePrinterGroup(cache.tcp, tcpSaved, 'tcp:');
+        var winM = MesaWizardUI.mergePrinterGroup(cache.winspool, winSaved, 'winspool:');
+        if (otherSaved.length) winM = MesaWizardUI.mergePrinterGroup(winM.list, otherSaved, null);
         printerLists.tcp = tcpM.list;
         printerLists.winspool = winM.list;
       }
@@ -332,7 +288,7 @@
             list.forEach(function (p) {
               var o = document.createElement('option');
               o.value = p.addr;
-              o.textContent = printerDisplayName(p);
+              o.textContent = MesaWizardUI.printerDisplayName(p, ui);
               o.title = p.addr;
               if (selected && selected === p.addr) o.selected = true;
               g.appendChild(o);
@@ -347,7 +303,7 @@
         if (selected && !optionExists(selectEl, selected)) {
           var orphan = document.createElement('option');
           orphan.value = selected;
-          orphan.textContent = printerDisplayName({ addr: selected });
+          orphan.textContent = MesaWizardUI.printerDisplayName({ addr: selected }, ui);
           orphan.title = t('printer_saved_missing') + ' — ' + selected;
           orphan.selected = true;
           var anchor = selectEl.querySelector('optgroup');

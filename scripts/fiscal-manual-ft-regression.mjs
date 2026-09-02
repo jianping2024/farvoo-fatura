@@ -7,12 +7,14 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ensureAdminSession, envWithCookie, setFiscalProfileViaDb } from './fiscal-session-helper.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 const agent = join(root, 'apps', 'fiscal-agent');
 const base = 'http://127.0.0.1:17884';
 const dbPath = join(agent, 'data', 'fiscal-manual-ft.db');
+const dataDir = join(agent, 'data', 'fiscal-manual-ft-secure');
 const uat = join(root, 'scripts', 'fiscal-local-uat.mjs');
 const pemPath = join(agent, 'internal', 'fiscal', 'testdata', 'dev_signing_key.pem');
 const year = new Date().getFullYear();
@@ -30,9 +32,10 @@ function run(cmd, args, opts = {}) {
   });
 }
 
+let uatEnv = {};
 async function uatCmd(...args) {
   return (await run(process.execPath, [uat, ...args], {
-    env: { ...process.env, FISCAL_UAT_BASE: base },
+    env: { ...process.env, FISCAL_UAT_BASE: base, ...uatEnv },
   })).trim();
 }
 
@@ -50,6 +53,7 @@ async function main() {
 
   mkdirSync(join(agent, 'data'), { recursive: true });
   if (existsSync(dbPath)) rmSync(dbPath);
+  if (existsSync(dataDir)) rmSync(dataDir, { recursive: true, force: true });
 
   const childEnv = { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` };
   for (const k of Object.keys(childEnv)) {
@@ -57,14 +61,16 @@ async function main() {
   }
   Object.assign(childEnv, {
     FISCAL_DB: dbPath,
+    FISCAL_DATA_DIR: dataDir,
     FISCAL_BIND: '127.0.0.1:17884',
     FISCAL_STORE_ID: 'store-demo-001',
     FISCAL_ALLOW_DEV_KEY: '1',
     FISCAL_AT_ENV: 'mock',
     FISCAL_ALLOW_LOCAL_PROVISION: '1',
+    FISCAL_SEED: '0',
   });
 
-  const child = spawn('go', ['run', './cmd/fiscal-local'], {
+  const child = spawn('go', ['run', './cmd/fiscal-local', '-fiscal-standalone'], {
     cwd: agent, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'],
   });
   let boot = '';
@@ -87,6 +93,10 @@ async function main() {
     process.exit(1);
   }
 
+  const sess = ensureAdminSession(base);
+  uatEnv = envWithCookie(base, sess.cookie);
+  setFiscalProfileViaDb(dbPath, 'restaurant', 3);
+
   const pem = readFileSync(pemPath, 'utf8');
   await uatCmd('req', 'PUT', '/local/v1/setup/taxpayer', '--body', JSON.stringify({
     tax_registration_number: '517535009', legal_name: 'Farvoo Demo Lda',
@@ -97,7 +107,6 @@ async function main() {
   await uatCmd('req', 'POST', '/local/v1/setup/series/register', '--body', JSON.stringify({ series_code: `FT${year}MAN001`, document_type: 'FT', fiscal_year: year }));
   await uatCmd('req', 'POST', '/local/v1/setup/series/register', '--body', JSON.stringify({ series_code: `FS${year}MAN001`, document_type: 'FS', fiscal_year: year }));
   await uatCmd('req', 'POST', '/local/v1/setup/activate', '--body', JSON.stringify({ product_private_key_pem: pem.trim() }));
-  await uatCmd('req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({ id: 'op-demo-cashier', role: 'cashier', display_name: 'Demo' }));
   record('fiscal-setup', true, 'taxpayer/series/activate');
 
   const prod = await uatCmd('req', 'POST', '/local/v1/products', '--body', JSON.stringify({
@@ -114,7 +123,7 @@ async function main() {
   const reqId = `req-manual-${Date.now()}`;
   const manualBody = {
     request_id: reqId,
-    operator_id: 'op-demo-cashier',
+    operator_id: sess.operatorId,
     customer_nif: '123456789',
     customer_name: 'Manual Client',
     payment_method: 'CASH',

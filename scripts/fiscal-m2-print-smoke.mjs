@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ensureAdminSession, envWithCookie, setFiscalProfileViaDb } from './fiscal-session-helper.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
@@ -33,10 +34,11 @@ function run(cmd, args, opts = {}) {
   });
 }
 
+let uatEnv = {};
 async function uatCmd(...args) {
   return (
     await run(process.execPath, [uat, ...args], {
-      env: { ...process.env, FISCAL_UAT_BASE: base },
+      env: { ...process.env, FISCAL_UAT_BASE: base, ...uatEnv },
     })
   ).trim();
 }
@@ -122,6 +124,7 @@ async function main() {
       FISCAL_STORE_ID: 'store-demo-001',
       FISCAL_AT_ENV: 'mock',
       FISCAL_ALLOW_LOCAL_PROVISION: '1',
+      FISCAL_ALLOW_DEV_KEY: '1',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: true,
@@ -158,7 +161,11 @@ async function main() {
 
   const pem = readFileSync(pemPath, 'utf8');
   const y = year;
+  let issue;
   try {
+    const sess = ensureAdminSession(base);
+    uatEnv = envWithCookie(base, sess.cookie);
+    setFiscalProfileViaDb(dbPath, 'restaurant', 3);
     await uatCmd(
       'req',
       'PUT',
@@ -190,32 +197,9 @@ async function main() {
       JSON.stringify({ series_code: `FT${y}DEMO01`, document_type: 'FT', fiscal_year: y }),
     );
     await uatCmd('req', 'POST', '/local/v1/setup/activate', '--body', JSON.stringify({ product_private_key_pem: pem }));
-    await uatCmd(
-      'req',
-      'PUT',
-      '/local/v1/setup/operator',
-      '--body',
-      JSON.stringify({ id: 'op-demo-cashier', role: 'cashier', display_name: 'C' }),
-    );
     record('m2-setup', true);
-  } catch (e) {
-    record('m2-setup', false, String(e));
-    try {
-      process.kill(-child.pid, 'SIGTERM');
-    } catch {
-      child.kill('SIGTERM');
-    }
-    try {
-      process.kill(-fake.pid, 'SIGTERM');
-    } catch {
-      fake.kill('SIGTERM');
-    }
-    process.exit(1);
-  }
 
-  const requestId = `m2-${Date.now()}`;
-  let issue;
-  try {
+    const requestId = `m2-${Date.now()}`;
     const raw = await uatCmd(
       'req',
       'POST',
@@ -223,7 +207,7 @@ async function main() {
       '--body',
       JSON.stringify({
         request_id: requestId,
-        operator_id: 'op-demo-cashier',
+        operator_id: sess.operatorId,
         station_id: stationId,
         document_type: 'FT',
         snapshot: {

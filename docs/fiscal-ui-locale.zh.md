@@ -27,9 +27,13 @@
 | UI normalize | `locale.NormalizeUILocale` |
 | 发票语言派生 | `locale.InvoiceLocaleFromUI` |
 | 票面业务标签 | `print.receiptLabels` |
-| Admin 读/写 | `GET\|PUT /local/v1/setup/ui-locale` |
-| Agent config 读写 | `loadAgentUILocale` / `setAgentUILocale` |
+| Admin 读/写 HTTP | `GET\|PUT /local/v1/setup/ui-locale` |
+| Agent `config.json` 读写 | `loadAgentUILocale` / `setAgentUILocale`（默认路径） |
+| `config.UILocale` 赋值 | **唯一** `applyUILocaleToConfig`（Admin/托盘/wizard 同函数） |
+| Wizard 写 HTTP | `POST /api/ui-locale`（可同请求写 `text_encoding`；**不**与 Admin 端点合并） |
+| fiscal-local 文件 | `locale.PrefsFile`（`DataDir/ui_locale.json`；无 Agent 回调时） |
 | Admin 文案字典 | `FiscalAdminI18n`（`admin-i18n.js`） |
+| 支付方式 code 表 | `domain.KnownPaymentMethods`（Admin `pay.*` / 票面 `Pay*` 分表，仅 key 对齐） |
 
 ---
 

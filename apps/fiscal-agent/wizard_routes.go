@@ -108,6 +108,8 @@ func writeConfigureState(w http.ResponseWriter, cfg *config) {
 }
 
 func registerUILocaleRoute(mux *http.ServeMux, configPath string, cfg **config) {
+	// Wizard companion to Admin PUT /local/v1/setup/ui-locale: same applyUILocaleToConfig
+	// mutation; may also persist text_encoding. Do not merge HTTP surfaces.
 	mux.HandleFunc("/api/ui-locale", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -123,7 +125,7 @@ func registerUILocaleRoute(mux *http.ServeMux, configPath string, cfg **config) 
 		}
 		c := reloadConfig(configPath, *cfg)
 		if strings.TrimSpace(body.Locale) != "" {
-			c.UILocale = normalizeUILocale(body.Locale)
+			applyUILocaleToConfig(c, body.Locale)
 		}
 		if strings.TrimSpace(body.TextEncoding) != "" {
 			c.TextEncoding = normalizeTextEncoding(body.TextEncoding)
@@ -217,7 +219,7 @@ func registerPrinterWizardRoutes(mux *http.ServeMux, configPath string, cfg **co
 			return
 		}
 		if loc := strings.TrimSpace(body.UILocale); loc != "" {
-			c.UILocale = normalizeUILocale(loc)
+			applyUILocaleToConfig(c, loc)
 		}
 		if enc := strings.TrimSpace(body.TextEncoding); enc != "" {
 			c.TextEncoding = normalizeTextEncoding(enc)

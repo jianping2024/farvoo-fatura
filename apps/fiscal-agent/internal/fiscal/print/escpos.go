@@ -330,23 +330,24 @@ func formatVATPercent(raw string) string {
 }
 
 func formatPaymentMethod(L ReceiptLabels, method string) string {
-	switch strings.ToUpper(strings.TrimSpace(method)) {
-	case "CASH":
+	raw := strings.TrimSpace(method)
+	if raw == "" {
+		return L.PayFallback
+	}
+	switch domain.NormalizePaymentMethod(raw) {
+	case domain.PaymentCash:
 		return L.PayCash
-	case "CARD":
+	case domain.PaymentCard:
 		return L.PayCard
-	case "MBWAY":
+	case domain.PaymentMBWay:
 		return L.PayMBWay
-	case "MULTIBANCO":
+	case domain.PaymentMultibanco:
 		return L.PayMultibanco
-	case "MIXED":
+	case domain.PaymentMixed:
 		return L.PayMixed
-	case "OTHER":
+	case domain.PaymentOther:
 		return L.PayOther
 	default:
-		if method == "" {
-			return L.PayFallback
-		}
 		return method
 	}
 }

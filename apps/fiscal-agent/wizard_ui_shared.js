@@ -107,6 +107,56 @@
     });
   }
 
+  /** Display label for a discovered/saved printer addr (LAN / winspool / raw). */
+  function printerDisplayName(p, ui) {
+    var addr = (p && p.addr) || '';
+    if (addr.indexOf('tcp:') === 0) return fmt(ui, 'printer_lan_label', addr.slice(4));
+    if (addr.indexOf('winspool:') === 0) return addr.slice(9);
+    return (p && p.label) || addr;
+  }
+
+  /** Unique printer addrs from a station_printers map. */
+  function savedPrinterAddrs(maps) {
+    maps = maps || {};
+    var seen = {};
+    var out = [];
+    Object.keys(maps).forEach(function (sid) {
+      var addr = String(maps[sid] || '').trim();
+      if (!addr || seen[addr]) return;
+      seen[addr] = true;
+      out.push(addr);
+    });
+    return out;
+  }
+
+  /**
+   * Merge scanned printers with saved addrs for one prefix (tcp:/winspool:/null=any).
+   * Returns { list, addedFromSaved, skippedDup }.
+   */
+  function mergePrinterGroup(scanned, savedAddrs, prefix) {
+    var byAddr = {};
+    (scanned || []).forEach(function (p) {
+      var a = String(p && p.addr || '').trim();
+      if (a) byAddr[a] = p;
+    });
+    var addedFromSaved = 0;
+    var skippedDup = 0;
+    (savedAddrs || []).forEach(function (addr) {
+      if (prefix != null && addr.indexOf(prefix) !== 0) return;
+      if (byAddr[addr]) {
+        skippedDup++;
+        return;
+      }
+      byAddr[addr] = { addr: addr };
+      addedFromSaved++;
+    });
+    return {
+      list: Object.keys(byAddr).map(function (k) { return byAddr[k]; }),
+      addedFromSaved: addedFromSaved,
+      skippedDup: skippedDup
+    };
+  }
+
   global.MesaWizardUI = {
     DEFAULT_TEST_BLOCK_IDS: DEFAULT_TEST_BLOCK_IDS,
     t: t,
@@ -122,5 +172,8 @@
     postSetup: postSetup,
     setTakeoverVisible: setTakeoverVisible,
     setTestBlockVisible: setTestBlockVisible,
+    printerDisplayName: printerDisplayName,
+    savedPrinterAddrs: savedPrinterAddrs,
+    mergePrinterGroup: mergePrinterGroup,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

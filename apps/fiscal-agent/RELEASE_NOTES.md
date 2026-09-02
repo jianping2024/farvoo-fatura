@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.63
+
+**P1 收冗余：支付 code 门禁、ui_locale 赋值唯一、wizard 打印机 helper 共用**
+
+- `domain.KnownPaymentMethods` 为支付方式唯一 code 表；Admin `pay.*` / 票面 `formatPaymentMethod` 仅 key 对齐断言（文案表不合并）。
+- `applyUILocaleToConfig` 为 `config.UILocale` 唯一赋值；Admin/托盘/`POST /api/ui-locale` 共用（wizard 仍可同请求写 `text_encoding`）。
+- `setup_ui` / `configure_ui` 的 `printerDisplayName` / `savedPrinterAddrs` / `mergePrinterGroup` 收进 `wizard_ui_shared.js`。
+
 ## 0.4.62
 
 **P0 清冗余：死代码删除 + ui_locale 唯一读写**

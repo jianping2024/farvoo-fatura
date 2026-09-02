@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"farvoo-fiscal-agent/internal/escposenc"
+	"farvoo-fiscal-agent/internal/fiscal/domain"
 )
 
 func TestRenderESCPOS_LayoutP0(t *testing.T) {
@@ -415,6 +416,22 @@ func TestRenderESCPOS_RuleFillsWidth(t *testing.T) {
 func TestFormatVATPercent(t *testing.T) {
 	if formatVATPercent("0.23") != "23%" {
 		t.Fatal(formatVATPercent("0.23"))
+	}
+}
+
+func TestFormatPaymentMethodCoversKnownCodes(t *testing.T) {
+	L := receiptLabels("pt")
+	for _, code := range domain.KnownPaymentMethods() {
+		got := formatPaymentMethod(L, code)
+		if got == "" || got == L.PayFallback || got == code {
+			t.Fatalf("%s: got %q (want localized label)", code, got)
+		}
+	}
+	if formatPaymentMethod(L, "") != L.PayFallback {
+		t.Fatal("empty method uses PayFallback")
+	}
+	if formatPaymentMethod(L, "BITCOIN") != "BITCOIN" {
+		t.Fatal("unknown method passthrough")
 	}
 }
 

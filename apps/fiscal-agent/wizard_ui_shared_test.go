@@ -28,6 +28,11 @@ func TestWizardUISharedJSEmbedded(t *testing.T) {
 	if !strings.Contains(body, "save_auth_revoked") {
 		t.Fatal("missing save_auth_revoked key reference")
 	}
+	for _, name := range []string{"printerDisplayName", "savedPrinterAddrs", "mergePrinterGroup"} {
+		if !strings.Contains(body, name+":") && !strings.Contains(body, "function "+name) {
+			t.Fatalf("shared js missing %s", name)
+		}
+	}
 }
 
 func TestConfigureUIUsesSharedWizardJS(t *testing.T) {
@@ -35,8 +40,21 @@ func TestConfigureUIUsesSharedWizardJS(t *testing.T) {
 	if !strings.Contains(html, "/wizard-ui-shared.js") {
 		t.Fatal("configure_ui.html must load /wizard-ui-shared.js")
 	}
-	if strings.Contains(html, "function formatSaveError") {
-		t.Fatal("duplicate formatSaveError should live in wizard_ui_shared.js")
+	for _, fn := range []string{
+		"function formatSaveError",
+		"function printerDisplayName",
+		"function savedPrinterAddrs",
+		"function mergePrinterGroup",
+	} {
+		if strings.Contains(html, fn) {
+			t.Fatalf("duplicate %s should live in wizard_ui_shared.js", fn)
+		}
+	}
+	if !strings.Contains(html, "MesaWizardUI.printerDisplayName") {
+		t.Fatal("configure must call MesaWizardUI.printerDisplayName")
+	}
+	if !strings.Contains(html, "MesaWizardUI.mergePrinterGroup") {
+		t.Fatal("configure must call MesaWizardUI.mergePrinterGroup")
 	}
 }
 
@@ -45,8 +63,21 @@ func TestSetupUIUsesSharedWizardJS(t *testing.T) {
 	if !strings.Contains(html, "/wizard-ui-shared.js") {
 		t.Fatal("setup_ui.html must load /wizard-ui-shared.js")
 	}
-	if strings.Contains(html, "function formatSaveError") {
-		t.Fatal("duplicate formatSaveError should live in wizard_ui_shared.js")
+	for _, fn := range []string{
+		"function formatSaveError",
+		"function printerDisplayName",
+		"function savedPrinterAddrs",
+		"function mergePrinterGroup",
+	} {
+		if strings.Contains(html, fn) {
+			t.Fatalf("duplicate %s should live in wizard_ui_shared.js", fn)
+		}
+	}
+	if !strings.Contains(html, "MesaWizardUI.printerDisplayName") {
+		t.Fatal("setup must call MesaWizardUI.printerDisplayName")
+	}
+	if !strings.Contains(html, "MesaWizardUI.mergePrinterGroup") {
+		t.Fatal("setup must call MesaWizardUI.mergePrinterGroup")
 	}
 }
 
