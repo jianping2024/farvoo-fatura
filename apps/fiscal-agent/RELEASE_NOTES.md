@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.53
+
+**开票员名册表格列宽收紧**
+
+- `#operatorsTable` 改为 `table-layout: auto` + `max-content`，列宽随内容收缩，消除列间大空档与多余横向滚动。
+- 可冲销列 checkbox 行去掉多余 margin；单元格 padding 略收紧。
+
 ## 0.4.52
 
 **Admin / 向导：去掉原生 `confirm()`，统一应用内确认**
