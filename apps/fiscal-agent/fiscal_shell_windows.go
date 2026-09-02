@@ -25,7 +25,7 @@ func openFiscalShellWindow(baseURL string) {
 		DataPath: agentFiscalWebViewDataDir(),
 	}); err != nil {
 		log.Println("fiscal shell:", err)
-		loc := loadTrayUILocale()
+		loc := loadAgentUILocale()
 		messageBoxOK(uiT(loc, "about_title"), err.Error())
 	}
 }

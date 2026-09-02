@@ -31,21 +31,6 @@ func hasHan(s string) bool {
 	return false
 }
 
-func payloadNeedsBitmap(p jobPayload) bool {
-	if printLocaleIsZh(p.Locale) {
-		return true
-	}
-	if hasHan(p.RestaurantName) || hasHan(p.stationName()) {
-		return true
-	}
-	for _, ln := range p.Lines {
-		if hasHan(ln.DisplayName) || hasHan(ln.Note) {
-			return true
-		}
-	}
-	return false
-}
-
 // stationTicketNeedsBitmap — internal station slips use a fixed English header, but menu text may be Chinese.
 func stationTicketNeedsBitmap(p jobPayload) bool {
 	if printLocaleIsZh(p.Locale) {
@@ -91,32 +76,6 @@ func connectionTestNeedsBitmap(p jobPayload) bool {
 		return true
 	}
 	return hasHan(p.venueName()) || hasHan(labelsFor(p.Locale).connectionTest)
-}
-
-// labelsASCII strips accents for printers when headers stay Latin (pt/en).
-func labelsASCII(lab ticketLabels) ticketLabels {
-	return ticketLabels{
-		connectionTest: "TESTE IMPRESSAO",
-		guestOrder:     "Pedido",
-		receipt:        "Recibo",
-		preBill:        "Pre-Conta",
-		tableNo:        "Mesa n.",
-		guest:          "Conv.",
-		items:          "Artigos",
-		qty:            "Qtd",
-		originalPrice:  "Preco",
-		feeDetails:     "Detalhe taxas",
-		originalTotal:  "Preco original",
-		subtotal:       "Subtotal",
-		amountDue:      "A pagar",
-		orderTime:      "Hora pedido",
-		printedBy:      "Impresso por",
-		printTime:      "Hora impressao",
-		printedByVal:   "Cliente/Estabelecimento",
-		orderedBy:      "Pedido por",
-		amountPaid:     "Valor pago",
-		station:        "Estacao",
-	}
 }
 
 func encodeWindows1252(s string) []byte {

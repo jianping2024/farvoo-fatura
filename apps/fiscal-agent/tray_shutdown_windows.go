@@ -41,7 +41,7 @@ func requestTrayRestart(rt *trayRuntime) {
 	log.Println("tray: restart requested")
 	if err := spawnAgentRestart(); err != nil {
 		log.Printf("tray: restart spawn failed: %v", err)
-		loc := loadTrayUILocale()
+		loc := loadAgentUILocale()
 		messageBoxOK(uiT(loc, "about_title"), fmt.Sprintf(uiT(loc, "restart_failed"), err.Error()))
 		return
 	}

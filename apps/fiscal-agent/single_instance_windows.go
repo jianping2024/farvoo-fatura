@@ -53,7 +53,7 @@ func acquireAgentSingleInstance() bool {
 }
 
 func exitAlreadyRunning() {
-	loc := loadTrayUILocale()
+	loc := loadAgentUILocale()
 	messageBoxOK(uiT(loc, "instance_running_title"), uiT(loc, "instance_running_body"))
 	os.Exit(0)
 }

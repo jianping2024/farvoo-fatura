@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.62
+
+**P0 清冗余：死代码删除 + ui_locale 唯一读写**
+
+- 删除未使用的 `WrapWithSessionAuth`、`guard`，以及厨房打印死符号 `labelsASCII` / `hanQtyColWidthPx` / `payloadNeedsBitmap`（位图判定仅保留 `station|receipt|connectionTest`NeedsBitmap）。
+- 折叠 `loadTrayUILocale` / `setTrayUILocale` 别名层；托盘与 embed 一律走 `loadAgentUILocale` / `setAgentUILocale`（与方案 A「唯一写法」一致）。
+
 ## 0.4.61
 
 **修复 Inno Tasks：去掉无效 `Flags: checked`**

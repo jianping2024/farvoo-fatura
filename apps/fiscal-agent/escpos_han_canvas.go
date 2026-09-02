@@ -73,10 +73,6 @@ func hanQtyColStartPx() int {
 	return escposDisplayColToPx(stationSlipQtyColStart(escposWidth))
 }
 
-func hanQtyColWidthPx() int {
-	return escposDisplayColToPx(stationSlipQtyColWidth)
-}
-
 func hanQtyFieldEndPx() int {
 	return escposDisplayColToPx(stationSlipQtyColStart(escposWidth) + stationSlipQtyColWidth)
 }

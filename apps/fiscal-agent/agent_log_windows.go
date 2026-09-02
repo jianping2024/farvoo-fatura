@@ -38,7 +38,7 @@ func initWindowsAgentLog() {
 		return
 	}
 	log.SetOutput(io.MultiWriter(f))
-	agentLogLocale(loadTrayUILocale(), "log_agent_start", Version)
+	agentLogLocale(loadAgentUILocale(), "log_agent_start", Version)
 }
 
 func rotateAgentLog(path string) {

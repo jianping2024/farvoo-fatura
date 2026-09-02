@@ -13,7 +13,7 @@ import (
 // uninstallAgentWithUserData is the sole tray uninstall path: wipe local config+logs,
 // launch Setup uninstaller when present, then exit so files can be removed.
 func uninstallAgentWithUserData(rt *trayRuntime) {
-	loc := loadTrayUILocale()
+	loc := loadAgentUILocale()
 	removed := removeAgentUserDataDirs()
 	unins := findFiscalAgentUninstallCommand()
 	if unins == "" {

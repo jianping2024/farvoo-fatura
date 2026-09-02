@@ -38,7 +38,7 @@ func (rt *trayRuntime) snapshot() (*agentSession, error, bool) {
 
 func (rt *trayRuntime) uiLocale() string {
 	// Configure/setup write config.json; do not use stale sess.cfg from agent startup.
-	return loadTrayUILocale()
+	return loadAgentUILocale()
 }
 
 func (rt *trayRuntime) syncConfigFromDisk() {
@@ -151,7 +151,7 @@ func runAgentTrayFirst(args []string) {
 				return
 			}
 			rt.status.set("Error", err.Error())
-			loc := loadTrayUILocale()
+			loc := loadAgentUILocale()
 			messageBoxOK(uiT(loc, "about_title"), err.Error())
 			requestTrayExit(rt)
 			return
@@ -251,7 +251,7 @@ func onTrayReady(rt *trayRuntime) {
 		if cur == code {
 			return
 		}
-		if err := setTrayUILocale(code); err != nil {
+		if err := setAgentUILocale(code); err != nil {
 			messageBoxOK(uiT(cur, "about_title"), err.Error())
 			return
 		}

@@ -12,12 +12,15 @@ func TestEncodeWindows1252Portuguese(t *testing.T) {
 	}
 }
 
-func TestPayloadNeedsBitmap(t *testing.T) {
-	if !payloadNeedsBitmap(jobPayload{Locale: "pt", RestaurantName: "川味"}) {
-		t.Fatal("expected bitmap for Chinese restaurant name")
+func TestStationTicketNeedsBitmap(t *testing.T) {
+	if !stationTicketNeedsBitmap(jobPayload{Locale: "pt", Lines: []jobLine{{DisplayName: "宫保鸡丁"}}}) {
+		t.Fatal("expected bitmap for Chinese dish on station slip")
 	}
-	if payloadNeedsBitmap(jobPayload{Locale: "pt", RestaurantName: "Mesa"}) {
-		t.Fatal("expected Latin for ASCII-only pt payload")
+	if stationTicketNeedsBitmap(jobPayload{Locale: "pt", RestaurantName: "川味", Lines: []jobLine{{DisplayName: "Soup"}}}) {
+		t.Fatal("station slip ignores restaurant_name; ASCII dish stays Latin")
+	}
+	if !stationTicketNeedsBitmap(jobPayload{Locale: "zh", Lines: []jobLine{{DisplayName: "Soup"}}}) {
+		t.Fatal("zh locale station slip needs bitmap")
 	}
 }
 

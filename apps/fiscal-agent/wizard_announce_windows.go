@@ -8,7 +8,7 @@ import "fmt"
 // No modal when the browser opens — the page itself has instructions (avoids dialog hidden behind the browser).
 func announceWizardURL(_ string, url string) {
 	if err := openBrowser(url); err != nil {
-		loc := loadTrayUILocale()
+		loc := loadAgentUILocale()
 		messageBoxOK(
 			uiT(loc, "wizard_browser_fail_title"),
 			fmt.Sprintf(uiT(loc, "wizard_browser_fail_body"), url),

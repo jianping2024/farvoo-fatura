@@ -68,37 +68,6 @@ func (deps HandlerDeps) guardAuto(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (deps HandlerDeps) guard(h http.HandlerFunc, minAuth routeAuth) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if minAuth == authPublic {
-			h(w, r)
-			return
-		}
-		sess, err := deps.Sessions.ParseRequest(r)
-		if err != nil || sess == nil {
-			writeErr(w, http.StatusUnauthorized, "unauthorized", "session required")
-			return
-		}
-		ctx, ok := deps.sessionContext(w, r, sess)
-		if !ok {
-			return
-		}
-		sess = SessionFromContext(ctx)
-		if !roleAllowed(minAuth, sess.Role) {
-			switch minAuth {
-			case authAdmin:
-				forbiddenRole(w, "admin required")
-			case authManager:
-				forbiddenRole(w, "admin or owner required")
-			default:
-				forbiddenRole(w, "forbidden")
-			}
-			return
-		}
-		h(w, r.WithContext(ctx))
-	}
-}
-
 func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	g := deps.guardAuto
 	mux.HandleFunc("GET /local/v1/health", g(func(w http.ResponseWriter, r *http.Request) {

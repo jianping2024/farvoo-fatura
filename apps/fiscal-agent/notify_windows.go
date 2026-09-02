@@ -11,7 +11,7 @@ import (
 func maybeNotifyTrayReady() {
 	logDir := filepath.Join(agentDataDir(), "agent.log")
 	cfg, err := loadConfig(defaultConfigPath())
-	loc := loadTrayUILocale()
+	loc := loadAgentUILocale()
 	bodyKey := "tray_startup_body_unpaired"
 	if err == nil && cfg != nil && cfg.AgentJWT != "" {
 		loc = cfg.uiLocale()
