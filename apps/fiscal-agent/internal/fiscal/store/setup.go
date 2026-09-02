@@ -166,7 +166,7 @@ func (d *DB) UpsertOperator(id, storeID, role, displayName, mesaUserID string) e
 		mesaUserID = "mesa-" + id
 	}
 	canNC := 0
-	if role == "owner" {
+	if role == "owner" || role == "admin" {
 		canNC = 1
 	}
 	var oldRole sql.NullString
@@ -181,7 +181,7 @@ func (d *DB) UpsertOperator(id, storeID, role, displayName, mesaUserID string) e
 		id, mesa_user_id, store_id, role, display_name, active, pin_hash, can_issue_nc, synced_at, created_at, updated_at
 	) VALUES (?, ?, ?, ?, ?, 1, NULL, ?, NULL, ?, ?)
 	ON CONFLICT(id) DO UPDATE SET display_name=excluded.display_name, role=excluded.role,
-		can_issue_nc=CASE WHEN excluded.role='owner' THEN 1 ELSE operators.can_issue_nc END,
+		can_issue_nc=CASE WHEN excluded.role IN ('owner','admin') THEN 1 ELSE operators.can_issue_nc END,
 		updated_at=excluded.updated_at`,
 		id, mesaUserID, storeID, role, displayName, canNC, now, now)
 	if err != nil {

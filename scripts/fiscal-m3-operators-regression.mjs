@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * M3.2 operators + Ops policy regression (local fiscal agent).
+ * M3.2 operators + M3.2c RBAC + Ops policy regression (local fiscal agent).
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
@@ -8,7 +8,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   loginOperator, envWithCookie, DEFAULT_PIN, runUat, uatJson,
-  setFiscalProfileViaDb, ensureOwnerSession,
+  setFiscalProfileViaDb, ensureAdminSession,
 } from './fiscal-session-helper.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -20,11 +20,17 @@ const storeId = 'store-m32-001';
 const dbPath = join(agent, 'data', 'fiscal-m32.db');
 const dataDir = join(agent, 'data', 'fiscal-m32-secure');
 const pemPath = join(agent, 'internal', 'fiscal', 'testdata', 'dev_signing_key.pem');
+const uat = join(__dirname, 'fiscal-local-uat.mjs');
 
 const results = [];
 function record(name, ok, note) {
   results.push({ name, status: ok ? 'pass' : 'fail', note: note || '' });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${note ? ' — ' + note : ''}`);
+}
+
+function uatFail(args, env) {
+  const r = spawnSync(process.execPath, [uat, ...args], { encoding: 'utf8', env: { ...process.env, ...env } });
+  return r.status !== 0;
 }
 
 function startAgent() {
@@ -66,12 +72,15 @@ async function main() {
   try {
     await waitHealth();
 
-    // 1 cold start: operator_ok false until bootstrap
     const st0 = uatJson(['req', 'GET', '/local/v1/setup/status'], { FISCAL_UAT_BASE: base });
     record('operator_ok false before bootstrap', st0.operator_ok === false);
 
-    const { cookie: ownerCookie, operatorId: ownerId } = ensureOwnerSession(base, 'Owner One', DEFAULT_PIN);
-    let env = envWithCookie(base, ownerCookie);
+    const { cookie: adminCookie, operatorId: adminId } = ensureAdminSession(base, 'Admin One', DEFAULT_PIN);
+    let env = envWithCookie(base, adminCookie);
+
+    const manage0 = uatJson(['req', 'GET', '/local/v1/setup/operators/manage'], env);
+    const bootOp = (manage0.operators || []).find((o) => o.id === adminId);
+    record('bootstrap creates admin', bootOp && bootOp.role === 'admin', bootOp ? bootOp.role : 'missing');
 
     const unauth = await fetch(`${base}/local/v1/fiscal-documents`, {
       method: 'POST',
@@ -80,7 +89,6 @@ async function main() {
     });
     record('unauthenticated issue → 401', unauth.status === 401, `status ${unauth.status}`);
 
-    // setup minimal store
     runUat(['req', 'PUT', '/local/v1/setup/taxpayer', '--body', JSON.stringify({
       tax_registration_number: '517535009', legal_name: 'Demo', address_detail: 'Rua 1',
       city: 'Lisboa', postal_code: '1000-001', country: 'PT', timezone: 'Europe/Lisbon',
@@ -93,33 +101,45 @@ async function main() {
     record('fiscal_profile_ok after Ops policy', st.fiscal_profile_ok && st.fiscal_profile === 'retail');
     record('operator_ok after bootstrap', st.operator_ok === true, `operator_ok=${st.operator_ok}`);
 
-    // 2 create cashier
+    uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
+      id: 'owner-test-1', role: 'owner', display_name: 'Store Owner', pin: '234567',
+    })], env);
+
     const cashierBody = {
       id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', pin: '654321',
     };
     uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify(cashierBody)], env);
     const cashierCookie = loginOperator(base, 'cashier-test-1', '654321');
     const cashierEnv = envWithCookie(base, cashierCookie);
+    const ownerCookie = loginOperator(base, 'owner-test-1', '234567');
+    const ownerEnv = envWithCookie(base, ownerCookie);
 
-    // cashier cannot enable nc on self via owner endpoint
-    const forbid = spawnSync(process.execPath, [
-      join(__dirname, 'fiscal-local-uat.mjs'), 'req', 'PUT', '/local/v1/setup/operator',
-      '--body', JSON.stringify({ id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', can_issue_nc: true }),
-    ], { encoding: 'utf8', env: cashierEnv });
-    record('cashier cannot owner PUT', forbid.status !== 0);
+    record('cashier cannot operator PUT', uatFail(['req', 'PUT', '/local/v1/setup/operator',
+      '--body', JSON.stringify({ id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', can_issue_nc: true })], cashierEnv));
+    record('cashier cannot SAFT export', uatFail(['req', 'POST', '/local/v1/saft/exports',
+      '--body', JSON.stringify({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 })], cashierEnv));
+    record('owner cannot at-credentials', uatFail(['req', 'PUT', '/local/v1/setup/at-credentials',
+      '--body', JSON.stringify({ username: 'x', password: 'y' })], ownerEnv));
+    record('owner cannot series register', uatFail(['req', 'POST', '/local/v1/setup/series/register',
+      '--body', JSON.stringify({ series_code: 'FS2026X', document_type: 'FS', fiscal_year: 2026 })], ownerEnv));
+    record('owner can taxpayer PUT', !uatFail(['req', 'PUT', '/local/v1/setup/taxpayer', '--body', JSON.stringify({
+      tax_registration_number: '517535009', legal_name: 'Demo Updated', address_detail: 'Rua 1',
+      city: 'Lisboa', postal_code: '1000-001', country: 'PT', timezone: 'Europe/Lisbon',
+    })], ownerEnv));
+    record('owner can SAFT list', !uatFail(['req', 'GET', '/local/v1/saft/exports'], ownerEnv));
+    record('owner cannot create owner', uatFail(['req', 'PUT', '/local/v1/setup/operator',
+      '--body', JSON.stringify({ id: 'owner-test-2', role: 'owner', display_name: 'Bad', pin: '345678' })], ownerEnv));
 
-    const saftForbid = spawnSync(process.execPath, [
-      join(__dirname, 'fiscal-local-uat.mjs'), 'req', 'POST', '/local/v1/saft/exports',
-      '--body', JSON.stringify({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 }),
-    ], { encoding: 'utf8', env: cashierEnv });
-    record('cashier cannot SAFT export', saftForbid.status !== 0);
+    const ownerManage = uatJson(['req', 'GET', '/local/v1/setup/operators/manage'], ownerEnv);
+    const ownerRows = ownerManage.operators || [];
+    record('owner manage list cashiers only', ownerRows.length >= 1 && ownerRows.every((o) => o.role === 'cashier'),
+      `rows=${ownerRows.length}`);
 
-    // owner resets cashier pin
     uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
       id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', pin: '111111',
     })], env);
     let newCashierCookie = loginOperator(base, 'cashier-test-1', '111111');
-    record('owner pin reset', !!newCashierCookie);
+    record('admin pin reset', !!newCashierCookie);
 
     const changePin = uatJson(['req', 'POST', '/local/v1/setup/change-pin', '--body', JSON.stringify({
       old_pin: '111111', new_pin: '222222',
@@ -133,7 +153,6 @@ async function main() {
     })], env);
     newCashierCookie = loginOperator(base, 'cashier-test-1', '111111');
 
-    // activate local signing
     const pem = await import('node:fs').then((m) => m.readFileSync(pemPath, 'utf8'));
     runUat(['req', 'POST', '/local/v1/setup/series/register', '--body', JSON.stringify({
       series_code: `FS${new Date().getFullYear()}M32`, document_type: 'FS', fiscal_year: new Date().getFullYear(),
@@ -153,16 +172,16 @@ async function main() {
     };
     const issued = uatJson(['req', 'POST', '/local/v1/fiscal-documents', '--body', JSON.stringify(issueBody)], envWithCookie(base, newCashierCookie));
     record('cashier issue with session', !!issued.document_id);
+    const adminIssued = uatJson(['req', 'POST', '/local/v1/fiscal-documents', '--body', JSON.stringify({
+      ...issueBody,
+      request_id: `m32-admin-${Date.now()}`,
+    })], env);
+    record('admin issue with session', !!adminIssued.document_id);
 
-    // M3.2b: manage list owner-only
     const manage = uatJson(['req', 'GET', '/local/v1/setup/operators/manage'], env);
-    record('owner can list operators/manage', Array.isArray(manage.operators) && manage.operators.length >= 2);
-    const manageForbid = spawnSync(process.execPath, [
-      join(__dirname, 'fiscal-local-uat.mjs'), 'req', 'GET', '/local/v1/setup/operators/manage',
-    ], { encoding: 'utf8', env: cashierEnv });
-    record('cashier cannot operators/manage', manageForbid.status !== 0);
+    record('admin can list operators/manage', Array.isArray(manage.operators) && manage.operators.length >= 3);
+    record('cashier cannot operators/manage', uatFail(['req', 'GET', '/local/v1/setup/operators/manage'], cashierEnv));
 
-    // deactivate cashier → old cookie 401
     uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
       id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', active: false,
     })], env);
@@ -172,12 +191,10 @@ async function main() {
     });
     record('deactivated cashier cookie → 401', deactivated.status === 401, `status ${deactivated.status}`);
 
-    // reactivate for further tests
     uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
       id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', active: true, pin: '111111',
     })], env);
 
-    // pin reset bumps epoch → old cookie revoked
     const epochCookie = loginOperator(base, 'cashier-test-1', '111111');
     uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
       id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', pin: '333333',
@@ -187,16 +204,11 @@ async function main() {
     });
     record('pin reset revokes old cookie', epochRevoked.status === 401, `status ${epochRevoked.status}`);
 
-    // last owner deactivate → 409
-    let lastOwnerBlocked = false;
-    try {
-      uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
-        id: ownerId, role: 'owner', display_name: 'Owner One', active: false,
-      })], env);
-    } catch {
-      lastOwnerBlocked = true;
-    }
-    record('cannot deactivate last owner', lastOwnerBlocked);
+    record('cannot deactivate admin', uatFail(['req', 'PUT', '/local/v1/setup/operator',
+      '--body', JSON.stringify({ id: adminId, role: 'admin', display_name: 'Admin One', active: false })], env));
+
+    record('cannot deactivate last owner', uatFail(['req', 'PUT', '/local/v1/setup/operator',
+      '--body', JSON.stringify({ id: 'owner-test-1', role: 'owner', display_name: 'Store Owner', active: false })], env));
 
     const failed = results.filter((r) => r.status === 'fail');
     console.log('\nSummary:', results.length - failed.length, '/', results.length, 'passed');

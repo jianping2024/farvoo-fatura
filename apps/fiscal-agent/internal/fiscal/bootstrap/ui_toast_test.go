@@ -388,17 +388,28 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 }
 
 func TestAdminHTMLOperatorAccessSinglePath(t *testing.T) {
-	if n := strings.Count(adminHTML, "function isLoggedInOwner"); n != 1 {
-		t.Fatalf("isLoggedInOwner must appear exactly once, got %d", n)
+	for _, fn := range []string{
+		"function operatorRole()",
+		"function canAccessSettings",
+		"function canManageProvisioning",
+		"function canManageOperators",
+		"function applyOperatorAccess",
+	} {
+		if n := strings.Count(adminHTML, fn); n != 1 {
+			t.Fatalf("%s must appear exactly once, got %d", fn, n)
+		}
 	}
-	if n := strings.Count(adminHTML, "function applyOperatorAccess"); n != 1 {
-		t.Fatalf("applyOperatorAccess must appear exactly once, got %d", n)
+	if strings.Contains(adminHTML, "function isLoggedInOwner") {
+		t.Fatal("remove isLoggedInOwner; use canAccessSettings/canManageProvisioning")
 	}
-	if strings.Count(adminHTML, "loggedInOperator.role === 'owner'") != 1 {
-		t.Fatal("loggedInOperator.role check must live only inside isLoggedInOwner()")
+	if strings.Contains(adminHTML, "operator-owner") || strings.Contains(adminHTML, "owner-only") {
+		t.Fatal("remove M3.2b operator-owner/owner-only; use settings-access/admin/manager classes")
 	}
-	if !strings.Contains(adminHTML, `id="navSettings"`) || !strings.Contains(adminHTML, "owner-only") {
-		t.Fatal("settings nav must be owner-only")
+	if !strings.Contains(adminHTML, `id="navSettings"`) || !strings.Contains(adminHTML, "settings-access-only") {
+		t.Fatal("settings nav must use settings-access-only")
+	}
+	if strings.Count(adminHTML, "settings-admin-only") < 4 {
+		t.Fatal("settings must gate admin-only sections")
 	}
 	if strings.Count(adminHTML, `id="changePinModal"`) != 1 {
 		t.Fatal("changePinModal must exist exactly once")

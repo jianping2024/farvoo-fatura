@@ -10,7 +10,8 @@ type routeAuth int
 const (
 	authPublic routeAuth = iota
 	authSession
-	authOwner
+	authManager
+	authAdmin
 )
 
 type routeSpec struct {
@@ -41,27 +42,47 @@ func routeAuthFor(r *http.Request) routeAuth {
 			return authPublic
 		}
 	}
-	ownerPaths := map[string]bool{
-		"/local/v1/setup/taxpayer":              true,
+	adminPaths := map[string]bool{
 		"/local/v1/setup/at-credentials":        true,
-		"/local/v1/setup/series/register":         true,
-		"/local/v1/setup/activate":                true,
-		"/local/v1/setup/activate-from-cloud":     true,
-		"/local/v1/setup/operator":                true,
-		"/local/v1/setup/backup":                  true,
-		"/local/v1/setup/integrity/verify":        true,
-		"/local/v1/setup/prepare-swap":              true,
+		"/local/v1/setup/series/register":       true,
+		"/local/v1/setup/activate":              true,
+		"/local/v1/setup/activate-from-cloud":   true,
+		"/local/v1/setup/backup":                true,
+		"/local/v1/setup/integrity/verify":      true,
+		"/local/v1/setup/prepare-swap":          true,
 	}
-	if ownerPaths[p] {
-		return authOwner
+	if adminPaths[p] {
+		return authAdmin
+	}
+	managerPaths := map[string]bool{
+		"/local/v1/setup/taxpayer": true,
+		"/local/v1/setup/operator": true,
+	}
+	if managerPaths[p] {
+		return authManager
 	}
 	if p == "/local/v1/setup/operators/manage" {
-		return authOwner
+		return authManager
 	}
 	if strings.HasPrefix(p, "/local/v1/saft/exports") {
-		return authOwner
+		return authManager
 	}
 	return authSession
+}
+
+func roleAllowed(mode routeAuth, role string) bool {
+	switch mode {
+	case authAdmin:
+		return role == "admin"
+	case authManager:
+		return role == "admin" || role == "owner"
+	default:
+		return true
+	}
+}
+
+func forbiddenRole(w http.ResponseWriter, need string) {
+	writeErr(w, http.StatusForbidden, "forbidden", need)
 }
 
 // WrapWithSessionAuth applies default-deny session middleware (H1).
@@ -86,8 +107,15 @@ func WrapWithSessionAuth(deps HandlerDeps, inner http.Handler) http.Handler {
 			return
 		}
 		sess = SessionFromContext(ctx)
-		if mode == authOwner && sess.Role != "owner" {
-			writeErr(w, http.StatusForbidden, "forbidden", "owner required")
+		if !roleAllowed(mode, sess.Role) {
+			switch mode {
+			case authAdmin:
+				forbiddenRole(w, "admin required")
+			case authManager:
+				forbiddenRole(w, "admin or owner required")
+			default:
+				forbiddenRole(w, "forbidden")
+			}
 			return
 		}
 		inner.ServeHTTP(w, r.WithContext(ctx))

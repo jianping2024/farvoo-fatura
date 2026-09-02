@@ -33,13 +33,16 @@ export function extractCookieFromOutput(text) {
   return line.slice('FISCAL_UAT_COOKIE='.length).trim();
 }
 
-export function bootstrapOwner(base, displayName = 'Owner UAT', pin = DEFAULT_PIN) {
+export function bootstrapAdmin(base, displayName = 'Admin UAT', pin = DEFAULT_PIN) {
   const json = uatJson(
     ['req', 'POST', '/local/v1/setup/bootstrap-owner', '--body', JSON.stringify({ display_name: displayName, pin })],
     { FISCAL_UAT_BASE: base },
   );
   return json.operator_id;
 }
+
+/** @deprecated use bootstrapAdmin */
+export const bootstrapOwner = bootstrapAdmin;
 
 export function loginOperator(base, operatorId, pin = DEFAULT_PIN) {
   const out = runUat(
@@ -51,22 +54,27 @@ export function loginOperator(base, operatorId, pin = DEFAULT_PIN) {
   return cookie;
 }
 
-export function ensureOwnerSession(base, displayName = 'Owner UAT', pin = DEFAULT_PIN) {
+export function ensureAdminSession(base, displayName = 'Admin UAT', pin = DEFAULT_PIN) {
   let operatorId;
   try {
     const ops = uatJson(['req', 'GET', '/local/v1/setup/operators'], { FISCAL_UAT_BASE: base });
-    const owners = (ops.operators || []).filter((o) => o.role === 'owner' && o.has_pin);
-    if (owners.length) {
-      operatorId = owners[0].id;
+    const admins = (ops.operators || []).filter((o) => o.role === 'admin' && o.has_pin);
+    if (admins.length) {
+      operatorId = admins[0].id;
     }
   } catch {
-    operatorId = bootstrapOwner(base, displayName, pin);
+    operatorId = bootstrapAdmin(base, displayName, pin);
   }
   if (!operatorId) {
-    operatorId = bootstrapOwner(base, displayName, pin);
+    operatorId = bootstrapAdmin(base, displayName, pin);
   }
   const cookie = loginOperator(base, operatorId, pin);
   return { cookie, operatorId };
+}
+
+/** @deprecated use ensureAdminSession */
+export function ensureOwnerSession(base, displayName = 'Admin UAT', pin = DEFAULT_PIN) {
+  return ensureAdminSession(base, displayName, pin);
 }
 
 export function envWithCookie(base, cookie) {

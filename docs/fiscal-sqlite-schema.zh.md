@@ -11,7 +11,7 @@
 
 配套：
 
-- 实现迁移：`apps/fiscal-agent/internal/fiscal/store/migrations/*.sql`（含 `006_operators_session_epoch.sql`）
+- 实现迁移：`apps/fiscal-agent/internal/fiscal/store/migrations/*.sql`（含 `006_operators_session_epoch.sql`、`007_operators_bootstrap_admin.sql`）
 - 包内摘要：`apps/fiscal-agent/internal/fiscal/store/SCHEMA.md`
 
 ---
@@ -219,7 +219,7 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | `product_source` | `REMOTE_SYNC` `LOCAL` |
 | `payment_method` | `CASH` `CARD` `MBWAY` `MULTIBANCO` `MIXED` `OTHER` |
 | `completeness_status` | `SYSTEM_DEFAULT` `COMPLETE` `INCOMPLETE` `INVALID` |
-| `operator.role` | `owner` `frontdesk` `cashier` |
+| `operator.role` | `admin` `owner` `cashier` |
 | `taxpayer_settings.fiscal_profile` | `restaurant` `retail`（**Ops 下发**，Agent 只读） |
 | `signing_keys.status` | `ACTIVE` `RETIRED` `COMPROMISED` |
 | `sync_outbox.status` | `PENDING` `SENT` `FAILED` |
@@ -316,11 +316,11 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | id | TEXT PK | 是 | = SourceID |
 | mesa_user_id | TEXT UQ | 是 | P0 **Agent 本地创建**时写占位 `local-{id}`（满足 UNIQUE；**不同步** Farvoo user UUID） |
 | store_id | TEXT | 是 | |
-| role | TEXT | 是 | P0：`owner` 或 `cashier`（DB 与 UI 同名） |
+| role | TEXT | 是 | P0：`admin`、`owner` 或 `cashier`；UI 见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.1 |
 | display_name | TEXT | 是 | Admin 手填 |
 | active | INTEGER | 是 | 默认 1 |
 | pin_hash | TEXT | 否 | 设 PIN → argon2id（**6 位数字**，见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.2）；未设则不可登录 |
-| can_issue_nc | INTEGER | 是 | 默认 0；新建 `owner` 时默认 1；**按账号**存储，由 `owner` 在设置页按人修改 |
+| can_issue_nc | INTEGER | 是 | 默认 0；新建 `admin` 或 `owner` 时默认 1；**按账号**存储，由 `admin` / `owner` 在设置页按人修改 |
 | synced_at | TEXT | 否 | P0 本地创建 **写 NULL**（列保留；不表示云同步） |
 | session_epoch | INTEGER | 是 | 默认 0；吊销会话时 +1；见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.7.2 |
 | created_at | TEXT | 是 | UTC |

@@ -36,6 +36,13 @@ func TestBootstrapOwner_EmptyThenRejectSecond(t *testing.T) {
 	if id == "" {
 		t.Fatal("expected operator id")
 	}
+	var role string
+	if err := db.SQL.QueryRow(`SELECT role FROM operators WHERE id=?`, id).Scan(&role); err != nil {
+		t.Fatal(err)
+	}
+	if role != "admin" {
+		t.Fatalf("bootstrap role=%q want admin", role)
+	}
 	n, err := db.CountActiveOperatorsWithPIN(storeID)
 	if err != nil || n != 1 {
 		t.Fatalf("CountActiveOperatorsWithPIN=%d err=%v", n, err)

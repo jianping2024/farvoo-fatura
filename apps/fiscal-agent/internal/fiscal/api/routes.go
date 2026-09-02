@@ -51,8 +51,15 @@ func (deps HandlerDeps) guardAuto(h http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		sess = SessionFromContext(ctx)
-		if mode == authOwner && sess.Role != "owner" {
-			writeErr(w, http.StatusForbidden, "forbidden", "owner required")
+		if !roleAllowed(mode, sess.Role) {
+			switch mode {
+			case authAdmin:
+				forbiddenRole(w, "admin required")
+			case authManager:
+				forbiddenRole(w, "admin or owner required")
+			default:
+				forbiddenRole(w, "forbidden")
+			}
 			return
 		}
 		h(w, r.WithContext(ctx))
@@ -75,8 +82,15 @@ func (deps HandlerDeps) guard(h http.HandlerFunc, minAuth routeAuth) http.Handle
 			return
 		}
 		sess = SessionFromContext(ctx)
-		if minAuth == authOwner && sess.Role != "owner" {
-			writeErr(w, http.StatusForbidden, "forbidden", "owner required")
+		if !roleAllowed(minAuth, sess.Role) {
+			switch minAuth {
+			case authAdmin:
+				forbiddenRole(w, "admin required")
+			case authManager:
+				forbiddenRole(w, "admin or owner required")
+			default:
+				forbiddenRole(w, "forbidden")
+			}
 			return
 		}
 		h(w, r.WithContext(ctx))
@@ -487,6 +501,15 @@ func handleListOperatorsManage(w http.ResponseWriter, r *http.Request, deps Hand
 	if rows == nil {
 		rows = []store.OperatorManageRow{}
 	}
+	if s := SessionFromContext(r.Context()); s != nil && s.Role == "owner" {
+		filtered := make([]store.OperatorManageRow, 0, len(rows))
+		for _, row := range rows {
+			if row.Role == "cashier" {
+				filtered = append(filtered, row)
+			}
+		}
+		rows = filtered
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"operators": rows})
 }
 
@@ -528,12 +551,16 @@ func handleOperator(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		writeErr(w, http.StatusBadRequest, "id_required", "operator id required")
 		return
 	}
-	if err := deps.Fiscal.UpsertOperator(body.ID, body.StoreID, body.Role, body.DisplayName); err != nil {
+	actorRole := ""
+	if s := SessionFromContext(r.Context()); s != nil {
+		actorRole = s.Role
+	}
+	if err := deps.Fiscal.UpsertOperatorWithActor(actorRole, body.ID, body.StoreID, body.Role, body.DisplayName); err != nil {
 		writeCoded(w, err)
 		return
 	}
 	if body.Active != nil {
-		if err := deps.Fiscal.SetOperatorActive(body.StoreID, body.ID, *body.Active); err != nil {
+		if err := deps.Fiscal.SetOperatorActiveWithActor(actorRole, body.StoreID, body.ID, *body.Active); err != nil {
 			writeCoded(w, err)
 			return
 		}
@@ -557,7 +584,7 @@ func handleOperator(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		}
 	}
 	if body.CanIssueNC != nil {
-		if err := deps.Fiscal.SetOperatorCanIssueNC(body.StoreID, body.ID, *body.CanIssueNC); err != nil {
+		if err := deps.Fiscal.SetOperatorCanIssueNCWithActor(actorRole, body.StoreID, body.ID, *body.CanIssueNC); err != nil {
 			writeCoded(w, err)
 			return
 		}
@@ -810,10 +837,16 @@ func writeCoded(w http.ResponseWriter, err error) {
 		writeErr(w, http.StatusConflict, "last_owner_constraint", err.Error())
 		return
 	}
+	if errors.Is(err, store.ErrLastAdminConstraint) {
+		writeErr(w, http.StatusConflict, "last_admin_constraint", err.Error())
+		return
+	}
 	var ce *service.CodedError
 	if errors.As(err, &ce) {
 		status := http.StatusBadRequest
 		switch ce.Code {
+		case service.ErrCodeForbidden:
+			status = http.StatusForbidden
 		case service.ErrCodeATSOAPFailed:
 			status = http.StatusBadGateway
 		case service.ErrCodeSignerNotReady, service.ErrCodeOpsActivatePending, service.ErrCodeFiscalProfileMissing, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing,

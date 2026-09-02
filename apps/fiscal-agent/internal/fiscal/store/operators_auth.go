@@ -24,6 +24,7 @@ var (
 	ErrOperatorLocked      = errors.New("store: operator locked")
 	ErrBootstrapNotEmpty   = errors.New("store: bootstrap not empty")
 	ErrLastOwnerConstraint = errors.New("store: cannot remove last owner with nc")
+	ErrLastAdminConstraint = errors.New("store: cannot deactivate admin")
 )
 
 // OperatorLoginRow is safe for login page listing.
@@ -249,7 +250,7 @@ func (d *DB) BootstrapOwner(storeID, displayName, pin string) (string, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err = tx.Exec(`INSERT INTO operators (
 		id, mesa_user_id, store_id, role, display_name, active, pin_hash, can_issue_nc, synced_at, created_at, updated_at
-	) VALUES (?, ?, ?, 'owner', ?, 1, ?, 1, NULL, ?, ?)`,
+	) VALUES (?, ?, ?, 'admin', ?, 1, ?, 1, NULL, ?, ?)`,
 		id, mesaID, storeID, displayName, h, now, now)
 	if err != nil {
 		return "", err
@@ -347,6 +348,16 @@ func (d *DB) assertCanRemoveActiveOwner(storeID, operatorID string) error {
 // SetOperatorActive enables/disables operator — ONLY active write path.
 func (d *DB) SetOperatorActive(storeID, operatorID string, active bool) error {
 	if !active {
+		var role string
+		if err := d.SQL.QueryRow(`SELECT role FROM operators WHERE store_id=? AND id=?`, storeID, operatorID).Scan(&role); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
+			return err
+		}
+		if role == "admin" {
+			return ErrLastAdminConstraint
+		}
 		if err := d.assertCanRemoveActiveOwner(storeID, operatorID); err != nil {
 			return err
 		}
@@ -414,6 +425,19 @@ func (d *DB) ListOperatorsForLogin(storeID string) ([]OperatorLoginRow, error) {
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+// GetOperatorPolicyRole returns role for RBAC checks regardless of active flag.
+func (d *DB) GetOperatorPolicyRole(storeID, operatorID string) (string, error) {
+	var role string
+	err := d.SQL.QueryRow(`SELECT role FROM operators WHERE store_id=? AND id=?`, storeID, operatorID).Scan(&role)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+	return role, nil
 }
 
 // GetOperatorRole returns role for operator.

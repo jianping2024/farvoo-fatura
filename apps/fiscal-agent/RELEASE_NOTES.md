@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.51
+
+**M3.2c 三档 RBAC（admin / owner / cashier）**
+
+- Bootstrap 创建 `admin`；`authAdmin` / `authManager` API 档位。
+- 店长设置子集：门店信息、店员、打印机、SAFT；不可见 AT 凭证 / 系列 / 激活 / 备份。
+- 迁移 `007_operators_bootstrap_admin.sql`（首位 owner → admin）。
+
 ## 0.4.50
 
 **开票员名册浮层菜单（方案 A）**
