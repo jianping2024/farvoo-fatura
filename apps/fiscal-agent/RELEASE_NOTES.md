@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.52
+
+**Admin / 向导：去掉原生 `confirm()`，统一应用内确认**
+
+- Admin 唯一 `#confirmActionModal` + `openConfirmAction` / `runConfirmAction`（停用开票员、换机准备、放弃未开票部分）。
+- `setup_ui.html`：`#finishConfirmBlock` 替代关闭前浏览器确认框。
+- Go 测试门禁：`TestAdminHTMLConfirmActionSinglePath`、`TestSetupUINoNativeConfirm`。
+
 ## 0.4.51
 
 **M3.2c 三档 RBAC（admin / owner / cashier）**
