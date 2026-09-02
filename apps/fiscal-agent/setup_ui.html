@@ -92,6 +92,13 @@
         </div>
       </div>
       <p class="ok-msg hidden" id="testDone">已确认出纸。</p>
+      <div id="finishConfirmBlock" class="hidden">
+        <p class="confirm-q" id="finishConfirmQ">尚未确认测试条已出纸。仍要关闭此页吗？</p>
+        <div class="btn-row">
+          <button type="button" id="finishConfirmYes" class="no">仍要关闭</button>
+          <button type="button" id="finishConfirmNo" class="yes">返回继续测试</button>
+        </div>
+      </div>
       <button type="button" id="finishBtn" class="secondary" style="margin-top:16px">完成 — 关闭此页</button>
       <p id="finishHint" style="color:#9aa5b1;font-size:12px;margin-top:10px">以后修改映射：托盘 → 打印机设置，或 FarvooFiscalAgent.exe configure</p>
     </div>
@@ -154,6 +161,9 @@
         document.getElementById('ts2').textContent = t('ts_queue');
         document.getElementById('ts3').textContent = t('ts_feed') + ' ' + t('ts_spool');
         document.getElementById('testDone').textContent = t('test_done');
+        document.getElementById('finishConfirmQ').textContent = t('close_unconfirmed');
+        document.getElementById('finishConfirmYes').textContent = t('finish_close_anyway');
+        document.getElementById('finishConfirmNo').textContent = t('finish_back_to_test');
         document.getElementById('finishBtn').textContent = t('done_btn');
         document.getElementById('finishHint').textContent = t('setup_finish_hint');
         document.title = t('setup_page_title');
@@ -610,9 +620,22 @@
         testConfirmed = false;
         document.getElementById('testTroubleshoot').classList.remove('hidden');
       });
-      document.getElementById('finishBtn').addEventListener('click', function () {
-        if (!savedMappingEmpty && !testConfirmed && !confirm(t('close_unconfirmed'))) return;
+      function closeSetupPage() {
         fetch('/api/setup-done', { method: 'POST' }).finally(function () { window.close(); });
+      }
+      document.getElementById('finishConfirmYes').addEventListener('click', function () {
+        document.getElementById('finishConfirmBlock').classList.add('hidden');
+        closeSetupPage();
+      });
+      document.getElementById('finishConfirmNo').addEventListener('click', function () {
+        document.getElementById('finishConfirmBlock').classList.add('hidden');
+      });
+      document.getElementById('finishBtn').addEventListener('click', function () {
+        if (savedMappingEmpty || testConfirmed) {
+          closeSetupPage();
+          return;
+        }
+        document.getElementById('finishConfirmBlock').classList.remove('hidden');
       });
 
       loadSaved();

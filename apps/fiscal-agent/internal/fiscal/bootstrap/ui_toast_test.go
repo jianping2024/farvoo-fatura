@@ -507,3 +507,27 @@ func TestAdminHTMLOperatorMenuSinglePath(t *testing.T) {
 		t.Fatal("row template must not embed inline menu actions; use #operatorMenuPop")
 	}
 }
+
+func TestAdminHTMLConfirmActionSinglePath(t *testing.T) {
+	if strings.Contains(adminHTML, "confirm(") {
+		t.Fatal("admin must not use native confirm(); use openConfirmAction")
+	}
+	if strings.Contains(adminHTML, "alert(") || strings.Contains(adminHTML, "prompt(") {
+		t.Fatal("admin must not use native alert() or prompt()")
+	}
+	for _, fn := range []string{
+		"function openConfirmAction",
+		"function closeConfirmActionModal",
+		"async function runConfirmAction",
+	} {
+		if n := strings.Count(adminHTML, fn); n != 1 {
+			t.Fatalf("%s must appear exactly once, got %d", fn, n)
+		}
+	}
+	if n := strings.Count(adminHTML, `id="confirmActionModal"`); n != 1 {
+		t.Fatalf("confirmActionModal must exist exactly once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "    openConfirmAction({"); n != 3 {
+		t.Fatalf("openConfirmAction must be called from exactly 3 sites, got %d", n)
+	}
+}

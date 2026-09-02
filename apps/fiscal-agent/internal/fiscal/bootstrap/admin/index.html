@@ -998,6 +998,17 @@
     </div>
   </div>
 
+  <div id="confirmActionModal" class="modal-backdrop hidden">
+    <div class="modal" style="max-width:440px">
+      <h2 id="confirmActionTitle">确认操作</h2>
+      <p class="hint" id="confirmActionBody"></p>
+      <div class="actions">
+        <button type="button" id="btnConfirmActionSubmit">确认</button>
+        <button type="button" class="secondary" id="btnConfirmActionCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
   <div id="changePinModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:400px">
       <h2>修改 PIN</h2>
@@ -1217,6 +1228,28 @@
 
   function closeChangePinModal() {
     $('#changePinModal').classList.add('hidden');
+  }
+
+  /** ONLY destructive/generic confirm path (replaces native browser dialog). */
+  let confirmActionHandler = null;
+
+  function openConfirmAction({ title, body, submitLabel, onConfirm }) {
+    $('#confirmActionTitle').textContent = title || '确认操作';
+    $('#confirmActionBody').textContent = body || '';
+    $('#btnConfirmActionSubmit').textContent = submitLabel || '确认';
+    confirmActionHandler = onConfirm;
+    $('#confirmActionModal').classList.remove('hidden');
+  }
+
+  function closeConfirmActionModal() {
+    $('#confirmActionModal').classList.add('hidden');
+    confirmActionHandler = null;
+  }
+
+  async function runConfirmAction() {
+    const fn = confirmActionHandler;
+    closeConfirmActionModal();
+    if (fn) await fn();
   }
 
   async function submitChangePin() {
@@ -3972,16 +4005,22 @@
 
   $('#btnSplitBack').onclick = () => showView('bills');
 
-  $('#btnSplitDiscard').onclick = () => withBusy($('#btnSplitDiscard'), '处理中…', async () => {
+  $('#btnSplitDiscard').onclick = () => {
     if (!currentBill) return;
-    if (!confirm('未开票部分将不再处理（已开发票保留）。确认？')) return;
-    try {
-      await j('POST', '/local/v1/bill-drafts/' + encodeURIComponent(currentBill) + '/discard', {});
-      toast('已移除未开部分', 'success');
-      showView('bills');
-      await refreshBills();
-    } catch (er) { toast(errText(er), 'error'); throw er; }
-  });
+    openConfirmAction({
+      title: '放弃未开票部分',
+      body: '未开票部分将不再处理（已开发票保留）。确认？',
+      submitLabel: '确认放弃',
+      onConfirm: () => withBusy($('#btnSplitDiscard'), '处理中…', async () => {
+        try {
+          await j('POST', '/local/v1/bill-drafts/' + encodeURIComponent(currentBill) + '/discard', {});
+          toast('已移除未开部分', 'success');
+          showView('bills');
+          await refreshBills();
+        } catch (er) { toast(errText(er), 'error'); throw er; }
+      })
+    });
+  };
 
   $('#splitPersonName').addEventListener('blur', () => {
     try { applySplitMarkerNameFromInput(); }
@@ -4451,11 +4490,21 @@
     const op = operatorManageCache.find(x => x.id === operatorId);
     if (!op) return;
     if (!active) {
-      if (!confirm('确认停用「' + op.display_name + '」？其所有端会话将立即失效。')) return;
+      openConfirmAction({
+        title: '停用开票员',
+        body: '确认停用「' + op.display_name + '」？其所有端会话将立即失效。',
+        submitLabel: '确认停用',
+        onConfirm: async () => {
+          await putOperator({ id: operatorId, role: op.role, display_name: op.display_name, active: false });
+          await refreshOperatorsPanel();
+          toast('开票员已停用', 'success');
+        }
+      });
+      return;
     }
-    await putOperator({ id: operatorId, role: op.role, display_name: op.display_name, active: !!active });
+    await putOperator({ id: operatorId, role: op.role, display_name: op.display_name, active: true });
     await refreshOperatorsPanel();
-    toast(active ? '开票员已启用' : '开票员已停用', 'success');
+    toast('开票员已启用', 'success');
   }
 
   $('#btnOperatorAdd').onclick = async () => {
@@ -4498,7 +4547,19 @@
     closeOperatorMenuPop();
   });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeOperatorMenuPop();
+    if (e.key !== 'Escape') return;
+    if ($('#confirmActionModal') && !$('#confirmActionModal').classList.contains('hidden')) {
+      closeConfirmActionModal();
+      return;
+    }
+    closeOperatorMenuPop();
+  });
+  $('#btnConfirmActionCancel').onclick = () => closeConfirmActionModal();
+  $('#confirmActionModal').addEventListener('click', e => {
+    if (e.target.id === 'confirmActionModal') closeConfirmActionModal();
+  });
+  $('#btnConfirmActionSubmit').onclick = () => withBusy($('#btnConfirmActionSubmit'), '处理中…', async () => {
+    try { await runConfirmAction(); } catch (er) { toast(errText(er), 'error'); throw er; }
   });
   $('#operatorsTbody').addEventListener('change', async e => {
     const nc = e.target.closest('[data-op-nc]');
@@ -4545,17 +4606,23 @@
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnPrepareSwap').onclick = () => withBusy($('#btnPrepareSwap'), '处理中…', async () => {
-    if (!confirm('确认本机停用开票授权？将自动备份后吊销本机签名钥（换机用）。')) return;
-    try {
-      const res = await j('POST', '/local/v1/setup/prepare-swap', { backup: true });
-      const path = res.backup_path || '';
-      $('#integrityResult').textContent = '已停用 · 备份：' + path;
-      toast('开票授权已停用' + (path ? '；备份 ' + path : ''), 'success');
-      setActCloudStatus('wait', '换机后请在新机同步开票授权');
-      await refreshSetupStatus();
-    } catch (er) { toast(errText(er), 'error'); throw er; }
-  });
+  $('#btnPrepareSwap').onclick = () => {
+    openConfirmAction({
+      title: '换机准备',
+      body: '确认本机停用开票授权？将自动备份后吊销本机签名钥（换机用）。',
+      submitLabel: '确认停用',
+      onConfirm: () => withBusy($('#btnPrepareSwap'), '处理中…', async () => {
+        try {
+          const res = await j('POST', '/local/v1/setup/prepare-swap', { backup: true });
+          const path = res.backup_path || '';
+          $('#integrityResult').textContent = '已停用 · 备份：' + path;
+          toast('开票授权已停用' + (path ? '；备份 ' + path : ''), 'success');
+          setActCloudStatus('wait', '换机后请在新机同步开票授权');
+          await refreshSetupStatus();
+        } catch (er) { toast(errText(er), 'error'); throw er; }
+      })
+    });
+  };
 
   void loadLoginOperators();
 
