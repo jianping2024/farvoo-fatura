@@ -71,7 +71,8 @@ func TestClientInnoSetup(t *testing.T) {
 		"OutputBaseFilename=FarvooFiscalClient-Setup-amd64",
 		`Parameters: "--settings"`,
 		"Tasks: webview2",
-		"Flags: checked",
+		"Name: \"webview2\"",
+		"SetupIconFile=..\\assets\\app_icon.ico",
 		"function NeedsWebView2",
 		"Farvoo 开票",
 	}
@@ -79,6 +80,10 @@ func TestClientInnoSetup(t *testing.T) {
 		if !strings.Contains(iss, s) {
 			t.Fatalf("client installer missing %q", s)
 		}
+	}
+	// Inno [Tasks] has no "checked" flag (default is checked); "Flags: checked" fails ISCC.
+	if strings.Contains(iss, "Flags: checked") {
+		t.Fatal(`client installer must not use invalid Tasks flag "checked"`)
 	}
 }
 
@@ -92,11 +97,16 @@ func TestAgentInstallerFiscalShortcut(t *testing.T) {
 		`Parameters: "fiscal"`,
 		"desktopfiscal",
 		"Tasks: webview2",
+		"Name: \"webview2\"",
+		"SetupIconFile=..\\assets\\app_icon.ico",
 		"function NeedsWebView2",
 	} {
 		if !strings.Contains(iss, s) {
 			t.Fatalf("agent installer missing %q", s)
 		}
+	}
+	if strings.Contains(iss, "Flags: checked") {
+		t.Fatal(`agent installer must not use invalid Tasks flag "checked"`)
 	}
 }
 
