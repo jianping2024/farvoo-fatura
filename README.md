@@ -44,20 +44,20 @@ git push origin fiscal-agent-v0.3.86
 
 里程碑与每步交付物（权威）：[`docs/fiscal-dev-plan.zh.md`](docs/fiscal-dev-plan.zh.md)
 
-当前：**M0–M2 + M4（白云 bill-sync 联调）已完成**；下一刀 **M3**（NC 冲销）。权威安装包：**v0.4.20**（勿用已撤下的 0.4.21）。
+当前：**M0–M6 + M3.2 已完成**；**P0 认证阶段已关闭**（2026-09-02）。权威安装包：**v0.4.56**。下一步：**P1 待选型**（见开发计划 §P1 待选型）。
 
 ## 当前阶段
 
-**M4（bill-sync）**：Farvoo 同步关台 → `bill_sync_jobs` ingest → Admin 收银账单开票 → FT 签发/打印（**不做桌台直连 Local API**）。Fiscal Core 仍内嵌主 Agent（`-fiscal-standalone` / 托盘）。
+**P0 认证已关闭**：自动回归 + 手测 H1–H3 已通过；制品 **0.4.56**。日常开票路径：Farvoo 同步关台 → 收银账单 → Admin PIN 登录 → FS/FT 签发/打印。
 
 ```bash
 cd apps/fiscal-agent
 # 主进程内嵌 Fiscal（Mac UAT）
 FISCAL_ALLOW_LOCAL_PROVISION=1 FISCAL_AT_ENV=mock go run . -fiscal-standalone
-# 回归（SQLite 断言；本仓无 Supabase / npm run dev）
-node scripts/fiscal-m1-regression.mjs
-node scripts/fiscal-m2-print-smoke.mjs          # Agent + fake TCP :9100
-FISCAL_SEED=1 node scripts/fiscal-local-regression.mjs  # M0 兼容
+# 认证回归（SQLite 断言）
+node scripts/fiscal-d62-cert-regression.mjs
+node scripts/fiscal-m3-operators-regression.mjs
+node scripts/fiscal-bill-sync-regression.mjs
 ```
 
 - Setup API：`/local/v1/setup/*`（见 `docs/fiscal-m1-identity-series.zh.md`）

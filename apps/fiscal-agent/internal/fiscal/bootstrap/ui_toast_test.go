@@ -557,6 +557,32 @@ func TestAdminHTMLConfirmActionSinglePath(t *testing.T) {
 	}
 }
 
+func TestAdminHTMLAuditLogSinglePath(t *testing.T) {
+	for _, fn := range []string{
+		"function auditLogQueryUrl",
+		"function renderAuditFilterOptions",
+		"function renderAuditLogTable",
+		"async function refreshAuditLog",
+		"function initAuditLogPanel",
+	} {
+		if n := strings.Count(adminHTML, fn); n != 1 {
+			t.Fatalf("%s must appear exactly once, got %d", fn, n)
+		}
+	}
+	if n := strings.Count(adminHTML, "/local/v1/audit-log"); n != 1 {
+		t.Fatalf("audit-log API must be called from auditLogQueryUrl only, got %d", n)
+	}
+	if !strings.Contains(adminHTML, `data-settings-section="audit"`) {
+		t.Fatal("audit panel must use data-settings-section=audit")
+	}
+	if !strings.Contains(adminHTML, "settings-manager-only") || !strings.Contains(adminHTML, ">操作记录<") {
+		t.Fatal("audit nav must be settings-manager-only 操作记录")
+	}
+	if strings.Contains(adminHTML, "auditActionLabels") || strings.Contains(adminHTML, "OWNER_AUDIT_ACTIONS") {
+		t.Fatal("do not duplicate action labels in admin JS; use API filter_actions")
+	}
+}
+
 func TestAdminHTMLOperatorsTableLayout(t *testing.T) {
 	if !strings.Contains(adminHTML, "#operatorsTable.list-table { table-layout: fixed; width: 100%; }") {
 		t.Fatal("operators table must use full-width fixed layout")

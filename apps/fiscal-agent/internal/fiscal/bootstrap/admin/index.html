@@ -788,6 +788,7 @@
             <a href="#settings-section-store" data-settings-nav="store">门店与税务</a>
             <a href="#settings-section-series" data-settings-nav="series">系列与授权</a>
             <a href="#settings-section-operators" data-settings-nav="operators">人员</a>
+            <a href="#settings-section-audit" data-settings-nav="audit" class="settings-manager-only">操作记录</a>
             <a href="#settings-section-printers" data-settings-nav="printers">设备</a>
             <a href="#settings-section-saft" data-settings-nav="saft">合规</a>
             <a href="#settings-section-advanced" data-settings-nav="advanced">高级</a>
@@ -797,6 +798,7 @@
             <a href="#settings-section-store" data-settings-nav="store">门店</a>
             <a href="#settings-section-series" data-settings-nav="series">授权</a>
             <a href="#settings-section-operators" data-settings-nav="operators">人员</a>
+            <a href="#settings-section-audit" data-settings-nav="audit" class="settings-manager-only">操作记录</a>
             <a href="#settings-section-printers" data-settings-nav="printers">设备</a>
             <a href="#settings-section-saft" data-settings-nav="saft">合规</a>
             <a href="#settings-section-advanced" data-settings-nav="advanced">高级</a>
@@ -890,6 +892,31 @@
                   </table>
                 </div>
                 <p class="hint hidden" id="operatorsEmptyHint">无开票员 · 请退出后在登录页创建管理员</p>
+              </div>
+            </details>
+
+            <details class="settings-panel settings-manager-only admin-list-panel" id="settings-section-audit" data-settings-section="audit">
+              <summary>操作记录</summary>
+              <div class="settings-panel-body">
+                <p class="hint">登录、PIN 与运维操作留痕；不含开票明细（见「发票」）。</p>
+                <div class="admin-list-filter-row">
+                  <div class="field admin-list-search-field">
+                    <label for="auditActionFilter">操作类型</label>
+                    <select id="auditActionFilter"><option value="">全部</option></select>
+                  </div>
+                  <div class="field admin-list-search-field">
+                    <label for="auditOperatorFilter">开票员</label>
+                    <select id="auditOperatorFilter"><option value="">全部</option></select>
+                  </div>
+                  <button type="button" class="secondary" id="btnAuditRefresh">刷新</button>
+                </div>
+                <div class="table-scroll">
+                  <table class="list-table" id="auditLogTable">
+                    <thead><tr><th>时间</th><th>开票员</th><th>操作</th><th>说明</th></tr></thead>
+                    <tbody id="auditLogTbody"></tbody>
+                  </table>
+                </div>
+                <div id="auditLogPagination"></div>
               </div>
             </details>
 
@@ -1408,6 +1435,11 @@
   let customerListPage = 1;
   let customerListPageSize = FiscalUI.LIST_DEFAULT_PAGE_SIZE;
   let customerListPaginationCtrl = null;
+  let auditLogPaginationCtrl = null;
+  let auditFilterActions = [];
+  let auditLogPage = 1;
+  let auditLogPageSize = 50;
+  let auditFiltersReady = false;
   let customerSearchDebounce = null;
   let customerFiltersReady = false;
   let ordersListState = { page: 1, pageSize: FiscalUI.LIST_DEFAULT_PAGE_SIZE, filter: '' };
@@ -1893,8 +1925,8 @@
     const saved = loadSettingsSectionState();
     const ready = !!(st && st.ready_to_issue);
     const defaults = ready
-      ? { store: false, series: false, operators: true, printers: true, saft: true, advanced: false }
-      : { store: true, series: true, operators: true, printers: false, saft: false, advanced: false };
+      ? { store: false, series: false, operators: true, audit: false, printers: true, saft: true, advanced: false }
+      : { store: true, series: true, operators: true, audit: false, printers: false, saft: false, advanced: false };
     $$('[data-settings-section]').forEach(el => {
       const key = el.dataset.settingsSection;
       if (key in saved) el.open = !!saved[key];
@@ -2411,6 +2443,123 @@
       },
     });
     customerFiltersReady = true;
+  }
+
+  function formatAuditLogTime(at) {
+    if (!at) return '';
+    try {
+      const d = new Date(at);
+      if (Number.isNaN(d.getTime())) return at;
+      return new Intl.DateTimeFormat('zh-CN', {
+        timeZone: INVOICE_TZ,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      }).format(d);
+    } catch (_) {
+      return at;
+    }
+  }
+
+  function auditLogQueryUrl() {
+    const params = new URLSearchParams();
+    params.set('page', String(auditLogPage));
+    params.set('page_size', String(auditLogPageSize));
+    const action = ($('#auditActionFilter') && $('#auditActionFilter').value) || '';
+    const op = ($('#auditOperatorFilter') && $('#auditOperatorFilter').value) || '';
+    if (action) params.set('action', action);
+    if (op) params.set('operator_id', op);
+    return '/local/v1/audit-log?' + params.toString();
+  }
+
+  function renderAuditFilterOptions(data) {
+    const actionSel = $('#auditActionFilter');
+    const opSel = $('#auditOperatorFilter');
+    if (!actionSel || !opSel) return;
+    const prevAction = actionSel.value;
+    const prevOp = opSel.value;
+    const actions = data.filter_actions || auditFilterActions || [];
+    auditFilterActions = actions;
+    actionSel.innerHTML = '<option value="">全部</option>' + actions.map(a =>
+      '<option value="' + escHtml(a.value) + '">' + escHtml(a.label) + '</option>'
+    ).join('');
+    if (prevAction && actions.some(a => a.value === prevAction)) actionSel.value = prevAction;
+
+    const ops = operatorManageCache || [];
+    opSel.innerHTML = '<option value="">全部</option>' + ops.map(o =>
+      '<option value="' + escHtml(o.id) + '">' + escHtml(o.display_name || o.id) + '</option>'
+    ).join('');
+    if (prevOp && ops.some(o => o.id === prevOp)) opSel.value = prevOp;
+  }
+
+  function renderAuditLogTable(data) {
+    const tbody = $('#auditLogTbody');
+    if (!tbody) return;
+    const items = data.items || [];
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="hint">暂无操作记录</td></tr>';
+      return;
+    }
+    tbody.innerHTML = items.map(row => {
+      const summary = row.summary || '';
+      return '<tr>' +
+        '<td>' + escHtml(formatAuditLogTime(row.at)) + '</td>' +
+        '<td>' + escHtml(row.operator_display_name || '系统') + '</td>' +
+        '<td>' + escHtml(row.action_label || row.action || '') + '</td>' +
+        '<td title="' + escHtml(summary) + '">' + escHtml(summary) + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  /** ONLY audit log list load path. */
+  async function refreshAuditLog() {
+    if (!canAccessSettings()) return;
+    await loadOperatorManageCache().catch(() => {});
+    const data = await j('GET', auditLogQueryUrl());
+    renderAuditFilterOptions(data);
+    renderAuditLogTable(data);
+    if (auditLogPaginationCtrl) {
+      auditLogPaginationCtrl.update({
+        page: data.page || auditLogPage,
+        pageSize: data.page_size || auditLogPageSize,
+        total: data.total || 0
+      });
+    }
+  }
+
+  function initAuditLogPanel() {
+    if (auditFiltersReady) return;
+    const actionSel = $('#auditActionFilter');
+    const opSel = $('#auditOperatorFilter');
+    if (actionSel) {
+      actionSel.addEventListener('change', () => {
+        auditLogPage = 1;
+        refreshAuditLog().catch(e => toast(errText(e), 'error'));
+      });
+    }
+    if (opSel) {
+      opSel.addEventListener('change', () => {
+        auditLogPage = 1;
+        refreshAuditLog().catch(e => toast(errText(e), 'error'));
+      });
+    }
+    $('#btnAuditRefresh').addEventListener('click', () => {
+      refreshAuditLog().catch(e => toast(errText(e), 'error'));
+    });
+    auditLogPaginationCtrl = FiscalUI.createListPaginationBar('#auditLogPagination', {
+      labels: { pageInfo: LIST_PAGE_INFO_ROWS },
+      pageSizes: [10, 20, 50, 100],
+      onPageChange: (nextPage) => {
+        auditLogPage = nextPage;
+        refreshAuditLog().catch(e => toast(errText(e), 'error'));
+      },
+      onPageSizeChange: (nextSize) => {
+        auditLogPageSize = nextSize;
+        auditLogPage = 1;
+        refreshAuditLog().catch(e => toast(errText(e), 'error'));
+      },
+    });
+    auditFiltersReady = true;
   }
 
   async function loadCatalogProductsForPicker() {
@@ -3769,6 +3918,8 @@
       initSettingsView(setupStatusCache);
       refreshSetupStatus({ autoSync: true }).catch(e => toast(errText(e), 'error'));
       refreshOperatorsPanel().catch(() => {});
+      initAuditLogPanel();
+      refreshAuditLog().catch(() => {});
       refreshPrinters().catch(() => {});
       refreshSAFTExports().catch(() => {});
     } else {

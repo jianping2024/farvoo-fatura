@@ -1,9 +1,11 @@
 # Fiscal 认证检查清单
 
-> **状态：草稿**（M6 D6.2–D6.4：检查项已分类；自动化以本页 + runner 出具）  
+> **状态：定稿**（M6 D6.2–D6.4 + P0 认证阶段关闭）  
 > **权威范围：** 产品认证单据 **FT + FS + NC + ND**（FR 内核保留，不进产品 UI）  
+> **权威制品：** **0.4.55**（`fiscal-agent-v0.4.55`）  
 > **出具命令：** `node scripts/fiscal-d62-cert-regression.mjs`（逐项 pass/fail）；运维细测 `fiscal-d63-d64-regression.mjs`  
 > **分类：** `自动` = runner/单测可判；`手测` = 真机/扫枪/UI 肉眼  
+> **手测：** H1–H3 **已通过**（2026-09-02；步骤见 [`fiscal-m6-manual-uat.zh.md`](fiscal-m6-manual-uat.zh.md)）  
 > **设计：** [`fiscal-m6-backup-swap.zh.md`](fiscal-m6-backup-swap.zh.md)（D6.3/D6.4）
 
 ## 如何读本表
@@ -91,11 +93,11 @@
 
 ---
 
-## 你（产品）只需手测的项
+## 你（产品）手测项 — 已通过（2026-09-02）
 
 逐步操作见 [`fiscal-m6-manual-uat.zh.md`](fiscal-m6-manual-uat.zh.md)。摘要：
 
-1. **C2.2-UI** — Admin 手工开票类型只见 FT / FS  
-2. **C2.6-scan** — 扫枪能读出纸 QR  
-3. **C5.3-hw** — 真热敏 ORIGINAL 出纸含 ATCUD  
+1. **C2.2-UI** — Admin 手工开票类型只见 FT / FS — **通过**
+2. **C2.6-scan** — 扫枪能读出纸 QR — **通过**
+3. **C5.3-hw** — 真热敏 ORIGINAL 出纸含 ATCUD — **通过**
 4. **C7.2-hw** —（可选）真机换机：备份 → 新 PC 换库 → 校验 → 运营同步授权  

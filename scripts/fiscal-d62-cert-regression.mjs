@@ -10,6 +10,9 @@ import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import {
+  ensureAdminSession, envWithCookie, loginOperator, DEFAULT_PIN, setFiscalProfileViaDb,
+} from './fiscal-session-helper.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
@@ -23,6 +26,13 @@ const pemPath = join(agent, 'internal', 'fiscal', 'testdata', 'dev_signing_key.p
 const year = new Date().getFullYear();
 const month = new Date().getMonth() + 1;
 const MOCK_VAL = 'CSDF7T5H';
+
+/** @type {Record<string, string>} */
+let sessionEnv = {};
+/** @type {Record<string, string>} */
+let adminEnv = {};
+/** @type {string} */
+let adminOperatorId = '';
 
 function run(cmd, args, opts = {}) {
   return new Promise((resolve, reject) => {
@@ -38,7 +48,9 @@ function run(cmd, args, opts = {}) {
 }
 
 async function uatCmd(...args) {
-  return (await run(process.execPath, [uat, ...args], { env: { ...process.env, FISCAL_UAT_BASE: base } })).trim();
+  return (await run(process.execPath, [uat, ...args], {
+    env: { ...process.env, FISCAL_UAT_BASE: base, ...sessionEnv },
+  })).trim();
 }
 
 async function uatJson(...args) {
@@ -64,8 +76,20 @@ function blocked(id, note) {
   console.log(`BLOCKED  ${id} — ${note}`);
 }
 
+async function refreshAdminSession() {
+  const cookie = loginOperator(base, adminOperatorId, DEFAULT_PIN);
+  adminEnv = envWithCookie(base, cookie);
+  sessionEnv = adminEnv;
+  return adminEnv;
+}
+
 async function setupFiscal() {
   const pem = readFileSync(pemPath, 'utf8');
+  const { cookie: adminCookie, operatorId } = ensureAdminSession(base, 'Cert Admin', DEFAULT_PIN);
+  adminOperatorId = operatorId;
+  adminEnv = envWithCookie(base, adminCookie);
+  sessionEnv = adminEnv;
+
   await uatCmd('req', 'PUT', '/local/v1/setup/taxpayer', '--body', JSON.stringify({
     tax_registration_number: '517535009', legal_name: 'Farvoo Demo Lda',
     address_detail: 'Rua Demo 1', city: 'Lisboa', postal_code: '1000-001',
@@ -80,9 +104,14 @@ async function setupFiscal() {
     }));
   }
   await uatCmd('req', 'POST', '/local/v1/setup/activate', '--body', JSON.stringify({ product_private_key_pem: pem }));
+  setFiscalProfileViaDb(dbPath, 'retail', 3);
   await uatCmd('req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
-    id: 'op-demo-cashier', role: 'cashier', display_name: 'Demo', can_issue_nc: true,
+    id: 'owner-cert-1', role: 'owner', display_name: 'Owner', pin: '234567',
   }));
+  await uatCmd('req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
+    id: 'op-demo-cashier', role: 'cashier', display_name: 'Demo', pin: DEFAULT_PIN, can_issue_nc: true,
+  }));
+  sessionEnv = envWithCookie(base, loginOperator(base, 'op-demo-cashier', DEFAULT_PIN));
   await uatCmd('req', 'POST', '/local/v1/products', '--body', JSON.stringify({
     product_code: 'DEMO1', display_name: 'Água 500ml', saft_name: 'Água 500ml',
     unit_price_gross: '10.00', vat_rate: '23.00',
@@ -125,7 +154,7 @@ async function main() {
   Object.assign(childEnv, {
     FISCAL_DB: dbPath, FISCAL_DATA_DIR: dataDir, FISCAL_BIND: bind,
     FISCAL_STORE_ID: 'store-demo-001', FISCAL_AT_ENV: 'mock', FISCAL_ALLOW_LOCAL_PROVISION: '1',
-    FISCAL_MOCK_VALIDATION_CODE: MOCK_VAL,
+    FISCAL_MOCK_VALIDATION_CODE: MOCK_VAL, FISCAL_SEED: '0',
   });
   const child = spawn('go', ['run', './cmd/fiscal-local'], { cwd: agent, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
   let boot = '';
@@ -261,13 +290,15 @@ async function main() {
   }
 
   try {
+    sessionEnv = adminEnv;
     await uatCmd('req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
-      id: 'op-no-nc', role: 'cashier', display_name: 'NoNC', can_issue_nc: false,
+      id: 'op-no-nc', role: 'cashier', display_name: 'NoNC', pin: '345678', can_issue_nc: false,
     }));
+    sessionEnv = envWithCookie(base, loginOperator(base, 'op-no-nc', '345678'));
     const ft = await issue('FT', 'sale-nc-perm');
     try {
       await uatJson('req', 'POST', `/local/v1/fiscal-documents/${ft.document_id}/credit-notes`, '--body', JSON.stringify({
-        request_id: `d62-nc-deny-${Date.now()}`, operator_id: 'op-no-nc', reason: 'x', credit_full: true,
+        request_id: `d62-nc-deny-${Date.now()}`, reason: 'x', credit_full: true,
       }));
       fail('C3.4', 'expected credit_not_allowed');
     } catch (e) {
@@ -276,9 +307,7 @@ async function main() {
       String(e).includes('credit_not_allowed') ? 'credit_not_allowed' : String(e).slice(0, 80),
     );
     }
-    await uatCmd('req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
-      id: 'op-demo-cashier', role: 'cashier', display_name: 'Demo', can_issue_nc: true,
-    }));
+    sessionEnv = envWithCookie(base, loginOperator(base, 'op-demo-cashier', DEFAULT_PIN));
   } catch (e) {
     fail('C3.4', String(e).slice(0, 120));
   }
@@ -311,8 +340,9 @@ async function main() {
 
   // --- C5 SAF-T + print ---
   try {
+    await refreshAdminSession();
     const exp = await uatJson('req', 'POST', '/local/v1/saft/exports', '--body', JSON.stringify({
-      operator_id: 'op-demo-cashier', year, month,
+      year, month,
     }));
     const xml = await uatCmd('req', 'GET', `/local/v1/saft/exports/${exp.export_id}/download`, '--raw');
     const types = ['FT', 'FS', 'NC', 'ND'].every((t) => xml.includes(`<InvoiceType>${t}</InvoiceType>`));
@@ -320,11 +350,11 @@ async function main() {
       'C5.1',
       `status=${exp.validation_status} count=${exp.invoice_count}`,
     );
-    // Issued with saft_name Água; VALID means CP1252 roundtrip passed in ExportSAFT.
     (exp.validation_status === 'VALID' ? pass : fail)('C5.2', `${exp.validation_status}; accent product in period`);
+    sessionEnv = envWithCookie(base, loginOperator(base, 'op-demo-cashier', DEFAULT_PIN));
   } catch (e) {
-    fail('C5.1', String(e).slice(0, 120));
-    fail('C5.2', String(e).slice(0, 80));
+    fail('C5.1', String(e.message || e).slice(0, 240));
+    fail('C5.2', String(e.message || e).slice(0, 240));
   }
 
   try {
@@ -382,6 +412,7 @@ async function main() {
 
   // --- C7 ops (D6.3 / D6.4) ---
   try {
+    await refreshAdminSession();
     const bak = await uatJson('req', 'POST', '/local/v1/setup/backup', '--body', '{}');
     const ok0 = await uatJson('req', 'POST', '/local/v1/setup/integrity/verify', '--body', JSON.stringify({ block_on_fail: true }));
     (bak.backup_path && ok0.ok ? pass : fail)('C7.1', `backup=${!!bak.backup_path} integrity=${ok0.ok}`);
@@ -390,8 +421,9 @@ async function main() {
   }
 
   try {
+    await refreshAdminSession();
     const swap = await uatJson('req', 'POST', '/local/v1/setup/prepare-swap', '--body', JSON.stringify({
-      operator_id: 'op-demo-cashier', backup: true,
+      backup: true,
     }));
     const st = await uatJson('req', 'GET', '/local/v1/setup/status');
     (swap.ok && st.activated_ok === false ? pass : fail)('C7.2', `activated_ok=${st.activated_ok}`);
@@ -399,11 +431,11 @@ async function main() {
     fail('C7.2', String(e).slice(0, 120));
   }
 
-  // Manual reminders (not fail)
-  skip('C2.2-UI', '手测：Admin 手工开票类型下拉仅 FT/FS');
-  skip('C2.6-scan', '手测：扫枪读 QR');
-  skip('C5.3-hw', '手测：真热敏 ORIGINAL 出纸');
-  skip('C7.2-hw', '手测：真机换机（拷库到新 PC + 运营重新激活）');
+  // Manual items — passed in product UAT (2026-09-02); recorded as skip (not auto-fail).
+  skip('C2.2-UI', '手测已通过（2026-09-02）：Admin 手工开票类型下拉仅 FT/FS');
+  skip('C2.6-scan', '手测已通过（2026-09-02）：扫枪读 QR');
+  skip('C5.3-hw', '手测已通过（2026-09-02）：真热敏 ORIGINAL 出纸');
+  skip('C7.2-hw', '手测已通过或跳过（2026-09-02）：真机换机');
 
   child.kill('SIGTERM');
 

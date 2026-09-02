@@ -186,22 +186,18 @@ func (d *DB) VerifyOperatorPIN(storeID, operatorID, pin string) error {
 }
 
 func (d *DB) recordLoginFailure(storeID, operatorID string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	key := "login_fail:" + storeID + ":" + operatorID
-	_, err := d.SQL.Exec(`INSERT INTO audit_log (id, at, operator_id, action, entity_type, entity_id, detail_json)
-		VALUES (?, ?, ?, 'LOGIN_FAILED', 'operator', ?, '{}')`,
-		uuid.NewString(), now, operatorID, key)
-	return err
+	key := LoginFailureEntityKey(storeID, operatorID)
+	return d.InsertLoginFailureAudit(operatorID, key)
 }
 
 func (d *DB) clearLoginFailures(storeID, operatorID string) error {
-	key := "login_fail:" + storeID + ":" + operatorID
+	key := LoginFailureEntityKey(storeID, operatorID)
 	_, err := d.SQL.Exec(`DELETE FROM audit_log WHERE action='LOGIN_FAILED' AND entity_id=?`, key)
 	return err
 }
 
 func (d *DB) isOperatorLocked(storeID, operatorID string) (bool, error) {
-	key := "login_fail:" + storeID + ":" + operatorID
+	key := LoginFailureEntityKey(storeID, operatorID)
 	var n int
 	err := d.SQL.QueryRow(`SELECT COUNT(1) FROM audit_log WHERE action='LOGIN_FAILED' AND entity_id=? AND at > datetime('now', '-15 minutes')`,
 		key).Scan(&n)

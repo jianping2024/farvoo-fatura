@@ -1,8 +1,8 @@
 # Fiscal Agent 开发计划（里程碑与交付物）
 
-> **状态：定稿**（里程碑顺序与每步交付物；排期日期未定）  
+> **状态：定稿**（里程碑顺序与每步交付物；**P0 认证阶段已关闭**）  
 > **权威：是**（本仓工程推进顺序以本文为准）  
-> **对应实现：** 按里程碑落地；**M3.1 已完成**（0.4.26）；**M5 已完成**（0.4.28）；**M6 D6.1–D6.4 已完成**（0.4.32：FS/FR/ND + 认证 runner + 备份/换机）；**下一步：认证窗口前手测**（UI/扫枪/真机出纸；可选真机换机）。**M3.2** 开票员身份 [定稿后置](fiscal-m3-2-operators.zh.md)，不挡现网开发/回归（继续 `op-demo-cashier` + PIN 占位）  
+> **对应实现：** **M0–M6 + M3.2（含 M3.2b/M3.2c）已完成**（权威制品 **0.4.55**）；**认证自动项 + 手测已通过**（2026-09-02）。**下一步：P1 待选型**（见 §P1 待选型；新开里程碑前须拍板优先级）。  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 ## 依据（只读，不替代本文交付定义）
@@ -46,10 +46,11 @@
 | **M2.5** | 待开票账单 / 分单开票（整桌/按人/NIF） | **已完成**（回归见 `fiscal-bill-sync-regression.mjs`） |
 | **M2.6** | 正式 Admin + FT 日常收口 | **已完成**（0.4.0；`fiscal-reprint-regression.mjs`） |
 | **M3** | NC（冲销） | **已完成**（0.4.25）；**M3.1 Admin 补强** **已完成**（0.4.26，[`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §16） |
-| **M3.2** | 开票员身份（Agent 本地创建 + PIN 登录） | **定稿后置**（[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)；不挡开发/回归） |
+| **M3.2** | 开票员身份（Agent 本地创建 + PIN 登录 + 三档 RBAC） | **已完成**（0.4.44–0.4.55；[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)） |
 | **M4** | Farvoo 账单同步联调（同步关台 → 收银账单 → Admin 开票） | **已完成**（D4.5 白云 UAT；0.4.20） |
 | **M5** | SAF-T 月报导出 | **已完成**（0.4.28） |
-| **M6** | FS/FR/ND + 加固（认证扫尾） | **已完成**（0.4.32）；手测项见认证清单 |
+| **M6** | FS/FR/ND + 加固（认证扫尾） | **已完成**（0.4.32） |
+| **认证** | 自动项 + 手测（H1–H3 必做；H4 可选） | **已通过**（2026-09-02；制品 **0.4.55**） |
 
 ```text
 M0 开 FT（seed）
@@ -58,10 +59,11 @@ M0 开 FT（seed）
            ├─► M2.5 待开票账单 / 分单（整桌/按人）
            ├─► M2.6 正式 Admin + 重打 + 商品/客户/手动 FT 收口
            ├─► M4 账单同步联调 ← 已完成（白云）
-           ├─► M3 NC + M3.1 ← **已完成**（0.4.26）
-           ├─► M3.2 开票员（后置，定稿已有）
-           ├─► M6 FS/FR/ND + 认证扫尾 ← **已完成**（0.4.32）
-                └─► 认证窗口前手测（UI / 扫枪 / 真机）
+           ├─► M3 NC + M3.1 ← 已完成（0.4.26）
+           ├─► M6 FS/FR/ND + 认证扫尾 ← 已完成（0.4.32）
+           ├─► M3.2 开票员 + RBAC ← 已完成（0.4.55）
+                └─► 认证手测 ← **已通过**（2026-09-02）
+                     └─► **P1 待选型**（新开里程碑）
 ```
 
 ---
@@ -292,7 +294,7 @@ M2.5（待开票账单 issue）；M2（打印）；M1（系列）。**M3 NC 依�
 
 ## M3 — NC（冲销）
 
-> **状态：M3 已完成**（0.4.25）；**M3.1 已完成**（0.4.26，[`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §16）；**M3.2 定稿待实现**（[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)）  
+> **状态：M3 已完成**（0.4.25）；**M3.1 已完成**（0.4.26，[`fiscal-m3-nc.zh.md`](fiscal-m3-nc.zh.md) §16）；**M3.2 已完成**（0.4.55，[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)）  
 
 ### 目标
 
@@ -339,10 +341,8 @@ M1（NC 系列也要 validation_code）；M2 建议已完成以便真打 NC；**
 
 ## M3.2 — 开票员身份（Agent 本地创建）
 
-> **状态：定稿后置**（不挡 M5 及现网开发/回归）  
+> **状态：已完成**（0.4.44 bootstrap + 会话；0.4.49 M3.2b；0.4.51 M3.2c 三档 RBAC；0.4.55 收拢）  
 > **权威：** [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)
-
-**P0 排期定法：** 文档与 schema 口径先锁定（Agent 本地创建、不同步 Farvoo）；**实现刀延后**。在 M3.2 落地前，开发/UAT **继续**使用 `op-demo-cashier`、Admin 任意 4 位 PIN 占位、M3.1 单用户冲销 checkbox——**不得**因 M3.2 未做而阻塞 M5 或其它刀。
 
 ### 目标
 
@@ -354,14 +354,14 @@ Farvoo `fiscal-operators` 拉取；Mesa 密码复用；`operator_token` / LAN �
 
 ### 交付物
 
-| # | 交付物 | 定义「完成」 |
-|---|--------|----------------|
-| D3.11 | **设计** `fiscal-m3-2-operators.zh.md` | P0 角色、冷启动、PIN、会话安全、唯一写路径 |
-| D3.12 | **Store/Service** | `SetOperatorPIN`、`ChangeOperatorPIN`、`VerifyOperatorPIN`；登录限速；`mesa_user_id=local-{id}`；审计 LOGIN/PIN_* |
-| D3.13 | **API 会话** | 写路径 middleware；`bootstrap-owner` / `login` / `logout` / `change-pin`；`operator_id` 仅来自会话 |
-| D3.14 | **Admin** | 登录页 bootstrap 首个 **`admin`**；§5 名册；登录/锁定/修改我的 PIN；移除 `op-demo-cashier` 生产路径 |
-| D3.15 | **Ops 门店策略** | `max_fiscal_terminals` + `fiscal_profile` 仅 Ops 下发；`FISCAL_ALLOW_LAN`；配对码 `terminals/pair` |
-| D3.16 | **回归** | `fiscal-m3-operators-regression.mjs`：双角色、401、跨 PC、Ops 端数、**Ops 切换 fiscal_profile** |
+| # | 交付物 | 定义「完成」 | 状态 |
+|---|--------|----------------|------|
+| D3.11 | **设计** `fiscal-m3-2-operators.zh.md` | P0 角色、冷启动、PIN、会话安全、唯一写路径 | **已完成** |
+| D3.12 | **Store/Service** | `SetOperatorPIN`、`ChangeOperatorPIN`、`VerifyOperatorPIN`；登录限速；`mesa_user_id=local-{id}`；审计 LOGIN/PIN_* | **已完成**（0.4.44） |
+| D3.13 | **API 会话** | 写路径 middleware；`bootstrap-owner` / `login` / `logout` / `change-pin`；`operator_id` 仅来自会话 | **已完成**（0.4.44） |
+| D3.14 | **Admin** | 登录页 bootstrap 首个 **`admin`**；§5 名册；登录/锁定/修改我的 PIN；移除 `op-demo-cashier` 生产路径 | **已完成**（0.4.49–0.4.55） |
+| D3.15 | **Ops 门店策略** | `max_fiscal_terminals` + `fiscal_profile` 仅 Ops 下发；`FISCAL_ALLOW_LAN`；配对码 `terminals/pair` | **已完成**（0.4.44） |
+| D3.16 | **回归** | `fiscal-m3-operators-regression.mjs`：双角色、401、跨 PC、Ops 端数、**Ops 切换 fiscal_profile** | **已完成**（0.4.51+） |
 
 ### 验收清单
 
@@ -504,6 +504,40 @@ M1–M5 主路径稳定。
 
 ---
 
+## P0 认证阶段 — 已关闭
+
+> **状态：已完成**（2026-09-02）  
+> **权威制品：** **0.4.55**（`fiscal-agent-v0.4.55`）
+
+| # | 项 | 状态 | 证据 |
+|---|-----|------|------|
+| A1 | 自动项 | **通过** | `node scripts/fiscal-d62-cert-regression.mjs` |
+| A2 | 开票员 RBAC | **通过** | `node scripts/fiscal-m3-operators-regression.mjs` |
+| A3 | 手测 H1–H3 | **通过** | [`fiscal-m6-manual-uat.zh.md`](fiscal-m6-manual-uat.zh.md)（2026-09-02） |
+| A4 | 手测 H4 换机 | 可选 | 产品 UAT 记录 |
+
+**认证提交：** 窗口开放时以 **0.4.55** 制品 + [`fiscal-certification-checklist.zh.md`](fiscal-certification-checklist.zh.md) 出具报告；P0 阶段 **冻结行为变更**（仅 bugfix / 文档）。
+
+---
+
+## P1 待选型（新开里程碑前须拍板）
+
+以下 **不在 P0 计划内**；选型后须补设计文（状态头 + 交付物 + 回归）再动刀。
+
+| 优先级（建议） | 项 | 出处 | 说明 |
+|----------------|-----|------|------|
+| ★★★ | ~~混合付款~~ | bill-draft P1 | **已否决**（整单 `MIXED` 够用） |
+| ★★ | **操作记录（审计日志 UI）** | [`fiscal-audit-log-ui.zh.md`](fiscal-audit-log-ui.zh.md) | 设置 → **操作记录**；admin 全量 / owner 子集；只读现有 audit |
+| — | ~~NIF → 客户主档~~ | bill-draft P1 | **基本已有**（`ensureCustomerIDTx`） |
+| — | ~~客户地址字段~~ | — | **已否决**（餐馆占位 `Desconhecido` 够用） |
+| ★ | 登录 IP 限速 | M3.2 §7 | 防 PIN 撞库 |
+| ★ | 生产强制 `FISCAL_SESSION_SECRET` | M3.2 §7 | 运维约束 |
+| — | Print Agent UX/打包 | README 引用（设计文待写） | 托盘、安装引导、心跳、i18n |
+
+**明确不在计划内（除非新开里程碑）：** 见下节。
+
+---
+
 ## 跨里程碑工程规范（每刀都要）
 
 | 项 | 要求 |
@@ -546,3 +580,5 @@ M1–M5 主路径稳定。
 | 2026-08-31 | **D6.2 清单填实**：分类自动/手测/blocked；`fiscal-d62-cert-regression.mjs` 出具；下一步 **D6.3–D6.4** |
 | 2026-08-31 | **D6.3/D6.4 完成**（0.4.32）：[`fiscal-m6-backup-swap.zh.md`](fiscal-m6-backup-swap.zh.md)；`fiscal-d63-d64-regression.mjs`；M6 关闭；下一步认证手测 |
 | 2026-09-01 | **M3.2**：端数 + 餐馆/商超模式 **纯 Ops**；去掉本地支持账号与登录页选业态 |
+| 2026-09-02 | **操作记录 UI 草稿**：[`fiscal-audit-log-ui.zh.md`](fiscal-audit-log-ui.zh.md)（设置分区 + API） |
+| 2026-09-02 | **认证阶段关闭**：自动项 + 手测 H1–H3 通过；下一步 **P1 待选型** |

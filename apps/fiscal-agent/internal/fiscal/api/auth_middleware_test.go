@@ -15,6 +15,7 @@ func TestRouteAuthFor_M32cTiers(t *testing.T) {
 		{"GET", "/local/v1/saft/exports", authManager},
 		{"GET", "/local/v1/saft/exports/exp-1", authManager},
 		{"GET", "/local/v1/saft/exports/exp-1/download", authManager},
+		{"GET", "/local/v1/audit-log", authManager},
 		{"PUT", "/local/v1/setup/taxpayer", authManager},
 		{"PUT", "/local/v1/setup/at-credentials", authAdmin},
 		{"POST", "/local/v1/setup/series/register", authAdmin},

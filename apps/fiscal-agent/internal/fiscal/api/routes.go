@@ -156,6 +156,9 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/setup/prepare-swap", g(func(w http.ResponseWriter, r *http.Request) {
 		handlePrepareSwap(w, r, deps)
 	}))
+	mux.HandleFunc("GET /local/v1/audit-log", g(func(w http.ResponseWriter, r *http.Request) {
+		handleListAuditLog(w, r, deps)
+	}))
 	mux.HandleFunc("POST /local/v1/fiscal-documents", g(func(w http.ResponseWriter, r *http.Request) {
 		handleIssue(w, r, deps)
 	}))

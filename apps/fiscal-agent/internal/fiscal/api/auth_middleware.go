@@ -67,6 +67,9 @@ func routeAuthFor(r *http.Request) routeAuth {
 	if strings.HasPrefix(p, "/local/v1/saft/exports") {
 		return authManager
 	}
+	if p == "/local/v1/audit-log" {
+		return authManager
+	}
 	return authSession
 }
 

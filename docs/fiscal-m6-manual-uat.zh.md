@@ -1,7 +1,8 @@
 # Fiscal Agent 认证手测步骤（M6）
 
 > **状态：定稿**（配合 [`fiscal-certification-checklist.zh.md`](fiscal-certification-checklist.zh.md) 手测项）  
-> **制品：** `0.4.32`（`fiscal-agent-v0.4.32`）  
+> **制品：** **0.4.55**（`fiscal-agent-v0.4.55`）  
+> **手测结果：** **H1–H3 已通过**（2026-09-02）；H4 可选  
 > **前提：** 自动项已绿（`node scripts/fiscal-d62-cert-regression.mjs`）；本页只做人眼 / 真机项
 
 ## 环境
@@ -78,9 +79,9 @@
 
 | # | 项 | 结果 |
 |---|-----|------|
-| H1 | UI 仅 FT/FS + 默认 FS | |
-| H2 | 扫枪 QR / ATCUD | |
-| H3 | 真机 ORIGINAL + 重打 Hash | |
-| H4 | 换机（可选） | |
+| H1 | UI 仅 FT/FS + 默认 FS | **通过**（2026-09-02） |
+| H2 | 扫枪 QR / ATCUD | **通过**（2026-09-02） |
+| H3 | 真机 ORIGINAL + 重打 Hash | **通过**（2026-09-02） |
+| H4 | 换机（可选） | 跳过 / 可选 |
 
-测试人：________  日期：________  版本：`0.4.32`
+测试人：Will  日期：2026-09-02  版本：`0.4.55`
