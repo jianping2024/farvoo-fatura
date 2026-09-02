@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.58
+
+**开票 WebView2 壳 + LAN Client**
+
+- 托盘「开票 / Fiscal…」与 `FarvooFiscalAgent fiscal` 打开 **WebView2** 专用窗口（`http://127.0.0.1:17880/`），不再调系统浏览器。
+- 新增 **`FarvooFiscalClient.exe`**（LAN 其它 PC）：设置 Agent IP → WebView2 壳；`--settings` 改 IP。
+- 共用模块：`internal/fiscalwebview`；Agent IPC：`\\.\pipe\FarvooFiscalAgent-v1`（`open-fiscal`）。
+- 安装器：Agent / Client 均默认勾选 WebView2 Runtime；Agent 默认桌面「Farvoo 开票」快捷方式。
+- 设计：[`docs/fiscal-client-webview.zh.md`](../../docs/fiscal-client-webview.zh.md)。
+
 ## 0.4.57
 
 **P1-S：Admin 安全加固（登录 IP 限速、会话密钥、匿名 status）**

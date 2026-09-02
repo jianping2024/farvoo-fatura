@@ -6,6 +6,9 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  DEFAULT_PIN, ensureAdminSession, envWithCookie, fiscalAgentTestEnv, loginOperator, runUat,
+} from './fiscal-session-helper.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
@@ -15,6 +18,7 @@ const base = `http://${bind}`;
 const dbPath = join(agent, 'data', 'fiscal-m6-product.db');
 const dataDir = join(agent, 'data', 'fiscal-m6-product-secure');
 const uat = join(root, 'scripts', 'fiscal-local-uat.mjs');
+let uatEnv = { FISCAL_UAT_BASE: base };
 const pemPath = join(agent, 'internal', 'fiscal', 'testdata', 'dev_signing_key.pem');
 const year = new Date().getFullYear();
 
@@ -32,7 +36,7 @@ function run(cmd, args, opts = {}) {
 }
 
 async function uatCmd(...args) {
-  return (await run(process.execPath, [uat, ...args], { env: { ...process.env, FISCAL_UAT_BASE: base } })).trim();
+  return (await run(process.execPath, [uat, ...args], { env: { ...process.env, ...uatEnv } })).trim();
 }
 
 async function uatJson(...args) {
@@ -46,24 +50,33 @@ function record(name, ok, note) {
 }
 
 async function setupFiscal() {
+  const { cookie } = ensureAdminSession(base, 'M6 Admin', DEFAULT_PIN);
+  const env = envWithCookie(base, cookie);
   const pem = readFileSync(pemPath, 'utf8');
-  await uatCmd('req', 'PUT', '/local/v1/setup/taxpayer', '--body', JSON.stringify({
+  runUat(['req', 'PUT', '/local/v1/setup/taxpayer', '--body', JSON.stringify({
     tax_registration_number: '517535009', legal_name: 'Farvoo Demo Lda',
     address_detail: 'Rua Demo 1', city: 'Lisboa', postal_code: '1000-001',
     country: 'PT', timezone: 'Europe/Lisbon', software_certificate_number: '0',
-  }));
-  await uatCmd('req', 'PUT', '/local/v1/setup/at-credentials', '--body', JSON.stringify({
+  })], env);
+  runUat(['req', 'PUT', '/local/v1/setup/at-credentials', '--body', JSON.stringify({
     username: '517535009/37', password: 'demo-secret',
-  }));
+  })], env);
   for (const [docType, suffix] of [['FT', 'PFT'], ['FS', 'PFS'], ['NC', 'PNC'], ['ND', 'PND']]) {
-    await uatCmd('req', 'POST', '/local/v1/setup/series/register', '--body', JSON.stringify({
+    runUat(['req', 'POST', '/local/v1/setup/series/register', '--body', JSON.stringify({
       series_code: `${docType}${year}M6${suffix}`, document_type: docType, fiscal_year: year,
-    }));
+    })], env);
   }
-  await uatCmd('req', 'POST', '/local/v1/setup/activate', '--body', JSON.stringify({ product_private_key_pem: pem }));
-  await uatCmd('req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
-    id: 'op-demo-cashier', role: 'cashier', display_name: 'Demo', can_issue_nc: true,
-  }));
+  runUat(['req', 'POST', '/local/v1/setup/activate', '--body', JSON.stringify({ product_private_key_pem: pem })], env);
+  runUat(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
+    id: 'op-demo-cashier', role: 'cashier', display_name: 'Demo', can_issue_nc: true, pin: DEFAULT_PIN,
+  })], env);
+  runUat(['req', 'POST', '/local/v1/products', '--body', JSON.stringify({
+    product_code: 'DEMO1', display_name: 'Demo Item', saft_name: 'Demo Item',
+    unit_price_gross: '10.00', vat_rate: '23.00',
+  })], env);
+  const cashierCookie = loginOperator(base, 'op-demo-cashier', DEFAULT_PIN);
+  uatEnv = envWithCookie(base, cashierCookie);
+  return uatEnv;
 }
 
 function saleSnapshot(saleId, payMethod = 'CASH') {
@@ -87,9 +100,7 @@ async function main() {
   if (existsSync(dbPath)) rmSync(dbPath);
   if (existsSync(dataDir)) rmSync(dataDir, { recursive: true, force: true });
 
-  const childEnv = { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` };
-  for (const k of Object.keys(childEnv)) if (k.startsWith('FISCAL_')) delete childEnv[k];
-  Object.assign(childEnv, {
+  const childEnv = fiscalAgentTestEnv({
     FISCAL_DB: dbPath, FISCAL_DATA_DIR: dataDir, FISCAL_BIND: bind,
     FISCAL_STORE_ID: 'store-demo-001', FISCAL_AT_ENV: 'mock', FISCAL_ALLOW_LOCAL_PROVISION: '1',
   });
@@ -109,10 +120,6 @@ async function main() {
 
   try {
     await setupFiscal();
-    await uatCmd('req', 'POST', '/local/v1/products', '--body', JSON.stringify({
-      product_code: 'DEMO1', display_name: 'Demo Item', saft_name: 'Demo Item',
-      unit_price_gross: '10.00', vat_rate: '23.00',
-    }));
     record('setup-fiscal', true);
   } catch (e) {
     record('setup-fiscal', false, String(e));

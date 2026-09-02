@@ -14,6 +14,7 @@ func TestIsMainAgentInvocation(t *testing.T) {
 		{[]string{"FarvooFiscalAgent.exe", "pair"}, false},
 		{[]string{"FarvooFiscalAgent.exe", "discover"}, false},
 		{[]string{"FarvooFiscalAgent.exe", "version"}, false},
+		{[]string{"FarvooFiscalAgent.exe", "fiscal"}, false},
 	}
 	for _, tc := range cases {
 		if got := isMainAgentInvocation(tc.args); got != tc.want {

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"farvoo-fiscal-agent/internal/fiscalipc"
 )
 
 // Sole upgrade story in farvoo-fiscal-agent.iss — fail if AppMutex / CloseApplications
@@ -58,9 +60,51 @@ func TestInnoSetupUpgradeStory(t *testing.T) {
 	}
 }
 
+func TestClientInnoSetup(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("installer", "farvoo-fiscal-client.iss"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	iss := string(raw)
+	mustContain := []string{
+		`#define MyAppExe "FarvooFiscalClient.exe"`,
+		"OutputBaseFilename=FarvooFiscalClient-Setup-amd64",
+		`Parameters: "--settings"`,
+		"Tasks: webview2",
+		"Flags: checked",
+		"function NeedsWebView2",
+		"Farvoo 开票",
+	}
+	for _, s := range mustContain {
+		if !strings.Contains(iss, s) {
+			t.Fatalf("client installer missing %q", s)
+		}
+	}
+}
+
+func TestAgentInstallerFiscalShortcut(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("installer", "farvoo-fiscal-agent.iss"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	iss := string(raw)
+	for _, s := range []string{
+		`Parameters: "fiscal"`,
+		"desktopfiscal",
+		"Tasks: webview2",
+		"function NeedsWebView2",
+	} {
+		if !strings.Contains(iss, s) {
+			t.Fatalf("agent installer missing %q", s)
+		}
+	}
+}
+
 func TestAgentMutexNameStable(t *testing.T) {
-	const want = `Global\FarvooFiscalAgent-SingleInstance-v1`
-	if agentMutexName != want {
+	if agentMutexName != fiscalipc.AgentMutexName {
+		t.Fatalf("agentMutexName must match fiscalipc.AgentMutexName")
+	}
+	if agentMutexName != `Global\FarvooFiscalAgent-SingleInstance-v1` {
 		t.Fatalf("agentMutexName is tray single-instance only; changed to %q", agentMutexName)
 	}
 }

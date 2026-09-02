@@ -351,7 +351,7 @@ admin 或 owner 停用 cashier
 | 项 | P0 定法 |
 |----|---------|
 | 人员 | `operators` **按人**；张三在 A 或 B 登录均为同一账号 |
-| 客户端 | `http://<Agent局域网IP>:17880/` → 选开票员 + PIN（同 §3.3） |
+| 客户端 | Agent 本机：托盘 / `FarvooFiscalAgent fiscal`（WebView2 → `127.0.0.1:17880`）；LAN 其它 PC：**FarvooFiscalClient**（设置 Agent IP → WebView2）；浏览器直开 URL 仍可用 |
 | 打印机 | 每 PC 选 **档口 / `station_id`**（已有 `station_printers`） |
 | 开启多端 | 安装向导或设置：「允许店内其它电脑开票」→ `FISCAL_ALLOW_LAN=1` + `FISCAL_BIND=0.0.0.0:17880`（或店网 IP） |
 | 仅本机 | 默认 `127.0.0.1:17880`，不开 `FISCAL_ALLOW_LAN` |

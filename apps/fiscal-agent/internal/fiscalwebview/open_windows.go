@@ -1,0 +1,151 @@
+//go:build windows
+
+package fiscalwebview
+
+import (
+	"fmt"
+	"strings"
+	"sync"
+	"unsafe"
+
+	"github.com/jchv/go-webview2"
+	"golang.org/x/sys/windows"
+)
+
+var (
+	windowMu   sync.Mutex
+	activeHWND uintptr
+	opening    bool
+)
+
+// HTMLWindowOptions configures a small HTML dialog shell (settings, etc.).
+type HTMLWindowOptions struct {
+	Title    string
+	HTML     string
+	DataPath string
+	Width    uint
+	Height   uint
+	Bind     map[string]interface{}
+}
+
+// RequestOpen focuses an existing shell window or starts one in a new goroutine.
+func RequestOpen(opts Options) error {
+	opts.URL = strings.TrimSpace(opts.URL)
+	if opts.URL == "" {
+		return fmt.Errorf("fiscal webview: url required")
+	}
+	windowMu.Lock()
+	if activeHWND != 0 {
+		hwnd := activeHWND
+		windowMu.Unlock()
+		focusHWND(hwnd)
+		return nil
+	}
+	if opening {
+		windowMu.Unlock()
+		return nil
+	}
+	opening = true
+	windowMu.Unlock()
+
+	go func() {
+		_ = RunWindow(opts)
+		windowMu.Lock()
+		opening = false
+		windowMu.Unlock()
+	}()
+	return nil
+}
+
+// RunWindow opens a blocking fiscal UI window until the user closes it.
+func RunWindow(opts Options) error {
+	opts.URL = strings.TrimSpace(opts.URL)
+	if opts.URL == "" {
+		return fmt.Errorf("fiscal webview: url required")
+	}
+	wv := newWebView(webview2.WindowOptions{
+		Title:  WindowTitle,
+		Width:  1280,
+		Height: 860,
+		Center: true,
+	}, opts.DataPath)
+	if wv == nil {
+		return webView2MissingError()
+	}
+	trackHWND(wv)
+	wv.Navigate(opts.URL)
+	wv.Run()
+	return nil
+}
+
+// RunHTMLWindow opens a blocking HTML dialog window.
+func RunHTMLWindow(opts HTMLWindowOptions) error {
+	if strings.TrimSpace(opts.HTML) == "" {
+		return fmt.Errorf("fiscal webview: html required")
+	}
+	width := opts.Width
+	if width == 0 {
+		width = 480
+	}
+	height := opts.Height
+	if height == 0 {
+		height = 360
+	}
+	title := strings.TrimSpace(opts.Title)
+	if title == "" {
+		title = WindowTitle
+	}
+	wv := newWebView(webview2.WindowOptions{
+		Title:  title,
+		Width:  width,
+		Height: height,
+		Center: true,
+	}, opts.DataPath)
+	if wv == nil {
+		return webView2MissingError()
+	}
+	for name, fn := range opts.Bind {
+		if err := wv.Bind(name, fn); err != nil {
+			return err
+		}
+	}
+	wv.SetHtml(opts.HTML)
+	wv.Run()
+	return nil
+}
+
+func newWebView(win webview2.WindowOptions, dataPath string) webview2.WebView {
+	return webview2.NewWithOptions(webview2.WebViewOptions{
+		DataPath:  dataPath,
+		AutoFocus: true,
+		WindowOptions: win,
+	})
+}
+
+func trackHWND(wv webview2.WebView) {
+	if ptr := wv.Window(); ptr != nil {
+		windowMu.Lock()
+		activeHWND = uintptr(ptr)
+		windowMu.Unlock()
+		defer func() {
+			windowMu.Lock()
+			activeHWND = 0
+			windowMu.Unlock()
+		}()
+	}
+}
+
+func focusHWND(hwnd uintptr) {
+	const swRestore = 9
+	showWindow := windows.NewLazyDLL("user32.dll").NewProc("ShowWindow")
+	setForeground := windows.NewLazyDLL("user32.dll").NewProc("SetForegroundWindow")
+	_, _, _ = showWindow.Call(hwnd, swRestore)
+	_, _, _ = setForeground.Call(hwnd)
+}
+
+func webView2MissingError() error {
+	return fmt.Errorf("fiscal webview: failed to create WebView2 — install Microsoft Edge WebView2 Runtime")
+}
+
+// unused import guard for unsafe if needed later
+var _ = unsafe.Pointer(nil)

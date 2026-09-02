@@ -51,24 +51,37 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a Farvoo Fiscal Agent shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: unchecked
+Name: "desktopfiscal"; Description: "Create a Farvoo 开票 shortcut on the desktop (WebView2 fiscal UI)"; GroupDescription: "Desktop shortcut:"; Flags: checked
 Name: "autostart"; Description: "Start Farvoo Fiscal Agent when you sign in to Windows"; GroupDescription: "Sign-in startup:"; Flags: unchecked
+Name: "webview2"; Description: "Install Microsoft Edge WebView2 Runtime if missing (recommended for fiscal UI)"; GroupDescription: "Prerequisites:"; Flags: checked
 
 [Files]
 Source: "..\dist\amd64\{#MyAppExe}"; DestDir: "{app}"; Flags: ignoreversion restartreplace
 Source: "..\dist\amd64\VERSION.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "WINDOWS-README.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "deps\MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Tasks: webview2
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
+Name: "{group}\Farvoo 开票"; Filename: "{app}\{#MyAppExe}"; Parameters: "fiscal"
 Name: "{group}\Printer settings"; Filename: "{app}\{#MyAppExe}"; Parameters: "configure"
 Name: "{group}\Read me"; Filename: "{app}\WINDOWS-README.txt"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon
+Name: "{autodesktop}\Farvoo 开票"; Filename: "{app}\{#MyAppExe}"; Parameters: "fiscal"; Tasks: desktopfiscal
 Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: autostart
 
 [Run]
+Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "Installing WebView2 Runtime..."; Tasks: webview2; Check: NeedsWebView2; Flags: waituntilterminated
 Filename: "{app}\{#MyAppExe}"; Description: "Launch Farvoo Fiscal Agent now"; Flags: nowait postinstall skipifsilent
 
 [Code]
+function NeedsWebView2: Boolean;
+begin
+  Result := not RegKeyExists(HKLM, 'SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}');
+  if Result then
+    Result := not RegKeyExists(HKLM, 'SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}');
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;

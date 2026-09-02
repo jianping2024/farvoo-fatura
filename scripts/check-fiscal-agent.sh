@@ -21,7 +21,7 @@ go_version_from_mod() {
 run_go_checks() {
   if agent_go_works; then
     echo "Using local Go..."
-    (cd "$AGENT" && go test ./... && go vet ./... && GOOS=windows GOARCH=amd64 go build -o /dev/null .)
+    (cd "$AGENT" && go test ./... && go vet ./... && GOOS=windows GOARCH=amd64 go build -o /dev/null . && GOOS=windows GOARCH=amd64 go build -o /dev/null ./cmd/fiscal-client)
     return
   fi
   if docker_available; then
@@ -32,7 +32,7 @@ run_go_checks() {
       -v "$AGENT:/app" \
       -w /app \
       "golang:${gv}-bookworm" \
-      sh -ce 'go test ./... && go vet ./... && GOOS=windows GOARCH=amd64 go build -o /dev/null .'
+      sh -ce 'go test ./... && go vet ./... && GOOS=windows GOARCH=amd64 go build -o /dev/null . && GOOS=windows GOARCH=amd64 go build -o /dev/null ./cmd/fiscal-client'
     return
   fi
   echo "Need Go (see apps/fiscal-agent/go.mod) or Docker to run fiscal-agent checks." >&2

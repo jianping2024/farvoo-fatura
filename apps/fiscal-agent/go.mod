@@ -3,11 +3,14 @@ module farvoo-fiscal-agent
 go 1.25.0
 
 require (
+	github.com/Microsoft/go-winio v0.6.2
 	github.com/alexbrainman/printer v0.0.0-20200912035444-f40f26f0bdeb
 	github.com/getlantern/systray v1.2.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.1
+	github.com/jchv/go-webview2 v0.0.0-20260205173254-56598839c808
 	github.com/shopspring/decimal v1.4.0
+	golang.org/x/crypto v0.55.0
 	golang.org/x/sys v0.47.0
 	golang.org/x/text v0.41.0
 	modernc.org/sqlite v1.34.5
@@ -22,11 +25,11 @@ require (
 	github.com/getlantern/hidden v0.0.0-20190325191715-f02dbb02be55 // indirect
 	github.com/getlantern/ops v0.0.0-20190325191751-d70cb0d6f85f // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	modernc.org/libc v1.55.3 // indirect
 	modernc.org/mathutil v1.6.0 // indirect

@@ -135,6 +135,7 @@ func runAgentTrayFirst(args []string) {
 
 	// Local /pair+/configure must be up before unpaired bootstrap and Dashboard probe (17892).
 	startTrayLocalHTTP(rt)
+	startFiscalIPC(ctx, rt.openFiscalShellFromTray)
 
 	go func() {
 		rt.status.set("Setting up", "Complete pairing or printer mapping in the browser if it opened")
@@ -159,6 +160,10 @@ func runAgentTrayFirst(args []string) {
 		rt.status.set("Ready", "Connected to Mesa")
 		log.Println("tray: Connected — accepting print jobs")
 		rt.startTrayAgentWork(sess)
+		if openFiscalOnTrayStart {
+			openFiscalOnTrayStart = false
+			rt.openFiscalShellFromTray()
+		}
 	}()
 
 	runtime.LockOSThread()
@@ -270,16 +275,7 @@ func onTrayReady(rt *trayRuntime) {
 			case <-mSettings.ClickedCh:
 				rt.startTrayConfigureWizard("")
 			case <-mFiscal.ClickedCh:
-				ensureFiscalStarted(rt.ctx, nil)
-				if sess, _, done := rt.snapshot(); done {
-					ensureFiscalStarted(rt.ctx, sess)
-				}
-				url := fiscalAdminBaseURL() + "/"
-				if err := openBrowser(url); err != nil {
-					log.Println("tray fiscal:", err)
-					loc := rt.uiLocale()
-					messageBoxOK(uiT(loc, "about_title"), err.Error())
-				}
+				rt.openFiscalShellFromTray()
 			case <-mOpenLog.ClickedCh:
 				if err := openAgentLog(); err != nil {
 					log.Println("tray:", err)

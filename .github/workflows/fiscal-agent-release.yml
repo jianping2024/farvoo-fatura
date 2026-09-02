@@ -116,6 +116,8 @@ jobs:
           files: |
             apps/fiscal-agent/dist/FarvooFiscalAgent-Setup-amd64.exe
             apps/fiscal-agent/dist/FarvooFiscalAgent-windows-amd64.zip
+            apps/fiscal-agent/dist/FarvooFiscalClient-Setup-amd64.exe
+            apps/fiscal-agent/dist/FarvooFiscalClient-windows-amd64.zip
             apps/fiscal-agent/dist/SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -153,7 +155,7 @@ jobs:
             if echo "$resp" | grep -q '"assets"'; then
               names=$(echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print('\n'.join(a['name'] for a in d.get('assets',[])))")
               echo "$names"
-              for required in FarvooFiscalAgent-Setup-amd64.exe FarvooFiscalAgent-windows-amd64.zip SHA256SUMS; do
+              for required in FarvooFiscalAgent-Setup-amd64.exe FarvooFiscalAgent-windows-amd64.zip FarvooFiscalClient-Setup-amd64.exe FarvooFiscalClient-windows-amd64.zip SHA256SUMS; do
                 echo "$names" | grep -qx "$required" || { echo "Missing asset: $required"; sleep 10; continue 2; }
               done
               echo "All required release assets present."

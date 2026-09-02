@@ -213,6 +213,9 @@ func main() {
 			}
 			fmt.Println("Printer settings saved to", path)
 			return
+		case "fiscal":
+			runFiscalCommand()
+			return
 		case "help", "-h", "--help":
 			fmt.Printf("%s %s\n\n", printAgentName, Version)
 			fmt.Println(`Usage:
@@ -221,10 +224,12 @@ func main() {
   FarvooFiscalAgent configure     Printer/station mapping (http://127.0.0.1:17892/configure; /pair on same port)
   FarvooFiscalAgent pair          Standalone pairing UI only when tray is not running (http://127.0.0.1:17890/pair)
   FarvooFiscalAgent setup         Legacy printer setup wizard (first-run bootstrap; port 17891)
+  FarvooFiscalAgent fiscal          Open fiscal UI (WebView2 shell; desktop shortcut target)
   FarvooFiscalAgent discover      Scan LAN :9100 and list Windows printers
   FarvooFiscalAgent [-api URL] [-code CODE]   Optional CLI pairing (advanced)
 
 Tray / Dashboard: http://127.0.0.1:17892/configure and /pair (up from tray start, including unpaired)
+Fiscal UI: tray → 开票 / Fiscal… or FarvooFiscalAgent fiscal (WebView2 shell on http://127.0.0.1:17880/)
 CLI pair only: http://127.0.0.1:17890/pair
 
 Config: schedule + poll intervals. See README.`)

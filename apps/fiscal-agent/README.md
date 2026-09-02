@@ -37,7 +37,7 @@ Use the printed addresses in `config.json` (see below). Map each **print station
 2. **Double-click `FarvooFiscalAgent`** (or let it start at logon). The agent runs in the **system tray** (taskbar **^** → **FARVOO Fiscal**). **No black console window** — you do **not** need to keep a command prompt open while printing.
 3. **First pairing:** generate a 6-digit code in Farvoo **打印助手**, then **Open settings on this PC** (or tray → **Printer settings…**). Tray serves **`/pair` and `/configure` on port 17892 from startup** (including before Connected). Map stations, **Save** (test print optional).
 4. **Troubleshooting only:** `FarvooFiscalAgent.exe -console`, or tray → **Show debug console**; log file under `%LOCALAPPDATA%\Farvoo Fiscal Agent\agent.log`. Optional advanced: `FarvooFiscalAgent.exe -api URL -code 123456` or `FarvooFiscalAgent pair` (standalone **17890** only when tray is not running).
-5. **Fiscal:** tray → **开票 / Fiscal…** or `http://127.0.0.1:17880/`.
+5. **Fiscal:** tray → **开票 / Fiscal…** or desktop **Farvoo 开票** (`FarvooFiscalAgent.exe fiscal`) — **WebView2 shell** on `http://127.0.0.1:17880/`. LAN other PCs: install **`FarvooFiscalClient-Setup-amd64.exe`** (see [`docs/fiscal-client-webview.zh.md`](../../docs/fiscal-client-webview.zh.md)).
 
 Local HTTP (tray): `http://127.0.0.1:17892/configure` and **`/pair`** on the same port from tray start. CLI-only pairing: `http://127.0.0.1:17890/pair`. Legacy setup-only: `http://127.0.0.1:17891/` (`setup` subcommand).
 

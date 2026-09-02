@@ -1,11 +1,15 @@
 package main
 
-import "os"
+import (
+	"os"
+
+	"farvoo-fiscal-agent/internal/fiscalipc"
+)
 
 // agentMutexName is the sole Windows single-instance mutex for the tray agent process.
 // Setup must not use Inno AppMutex on this name (that blocks install with OK/Cancel);
 // quiet upgrade close is PrepareToInstall taskkill in installer/farvoo-fiscal-agent.iss.
-const agentMutexName = `Global\FarvooFiscalAgent-SingleInstance-v1`
+const agentMutexName = fiscalipc.AgentMutexName
 
 // isMainAgentInvocation is true for the long-running tray/console agent, not helper CLIs.
 func isMainAgentInvocation(args []string) bool {
@@ -13,7 +17,7 @@ func isMainAgentInvocation(args []string) bool {
 		return true
 	}
 	switch args[1] {
-	case "discover", "pair", "configure", "config", "setup",
+	case "discover", "pair", "configure", "config", "setup", "fiscal",
 		"help", "-h", "--help", "version", "-v", "--version", "--restart-wait":
 		return false
 	case "run":
