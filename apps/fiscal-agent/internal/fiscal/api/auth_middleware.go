@@ -92,7 +92,7 @@ func forbiddenRole(w http.ResponseWriter, need string) {
 func WrapWithSessionAuth(deps HandlerDeps, inner http.Handler) http.Handler {
 	sm := deps.Sessions
 	if sm == nil {
-		sm = NewSessionManager(deps.DataDir)
+		sm = MustNewSessionManager(deps.DataDir)
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mode := routeAuthFor(r)

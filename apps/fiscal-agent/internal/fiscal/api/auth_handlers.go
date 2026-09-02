@@ -70,9 +70,11 @@ func handleLogin(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		writeErr(w, http.StatusBadRequest, "operator_id_required", "operator_id required")
 		return
 	}
-	sess, err := deps.Fiscal.LoginOperator(r.Context(), deps.StoreID, opID, body.PIN)
+	sess, err := deps.Fiscal.LoginOperator(r.Context(), deps.StoreID, opID, body.PIN, store.ClientIPFromRemoteAddr(r.RemoteAddr))
 	if err != nil {
 		switch {
+		case errors.Is(err, store.ErrIPRateLimited):
+			writeErr(w, http.StatusTooManyRequests, "ip_rate_limited", "too many failed attempts")
 		case errors.Is(err, store.ErrOperatorLocked):
 			writeErr(w, http.StatusTooManyRequests, "operator_locked", "too many failed attempts")
 		case errors.Is(err, store.ErrPINMismatch), errors.Is(err, store.ErrInvalidPIN):
@@ -86,7 +88,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	}
 	sm := deps.Sessions
 	if sm == nil {
-		sm = NewSessionManager(deps.DataDir)
+		sm = MustNewSessionManager(deps.DataDir)
 	}
 	_ = sm.SetSessionCookie(w, Session{
 		OperatorID:  sess.OperatorID,
@@ -107,7 +109,7 @@ func handleLogout(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	}
 	sm := deps.Sessions
 	if sm == nil {
-		sm = NewSessionManager(deps.DataDir)
+		sm = MustNewSessionManager(deps.DataDir)
 	}
 	sm.ClearSessionCookie(w)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})

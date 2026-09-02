@@ -12,6 +12,17 @@ const uat = join(__dirname, 'fiscal-local-uat.mjs');
 
 export const DEFAULT_PIN = '123456';
 
+/** UAT session secret (≥32 bytes); required when FISCAL_ALLOW_DEV_KEY is unset. */
+export const FISCAL_UAT_SESSION_SECRET = 'farvoo-fiscal-uat-session-secret-32b!!';
+
+export function fiscalAgentTestEnv(extra = {}) {
+  return {
+    ...process.env,
+    FISCAL_SESSION_SECRET: FISCAL_UAT_SESSION_SECRET,
+    ...extra,
+  };
+}
+
 export function runUat(args, env = {}) {
   const r = spawnSync(process.execPath, [uat, ...args], {
     env: { ...process.env, ...env },

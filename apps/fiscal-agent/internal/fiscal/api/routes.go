@@ -29,7 +29,7 @@ type HandlerDeps struct {
 // Mount registers fiscal local routes. Prefix: /local/v1
 func Mount(mux *http.ServeMux, deps HandlerDeps) {
 	if deps.Sessions == nil {
-		deps.Sessions = NewSessionManager(deps.DataDir)
+		deps.Sessions = MustNewSessionManager(deps.DataDir)
 	}
 	registerFiscalRoutes(mux, deps)
 }
@@ -292,22 +292,27 @@ func handleSetupStatus(w http.ResponseWriter, r *http.Request, deps HandlerDeps)
 		writeErr(w, http.StatusInternalServerError, "status_failed", err.Error())
 		return
 	}
-	if s := SessionFromContext(r.Context()); s != nil && deps.Fiscal.DB() != nil {
-		if can, err := deps.Fiscal.DB().OperatorCanIssueNC(deps.StoreID, s.OperatorID); err == nil {
+	sess := SessionFromContext(r.Context())
+	if sess == nil && deps.Sessions != nil {
+		if parsed, err := deps.Sessions.ParseRequest(r); err == nil && parsed != nil {
+			sess = parsed
+		}
+	}
+	if sess != nil && deps.Fiscal.DB() != nil {
+		if can, err := deps.Fiscal.DB().OperatorCanIssueNC(deps.StoreID, sess.OperatorID); err == nil {
 			st.OperatorCanIssueNC = can
 			st.ReadyToCredit = st.NCSeriesOK && st.ActivatedOK && st.OperatorOK && can
 			st.ReadyToDebit = st.NDSeriesOK && st.ActivatedOK && st.OperatorOK && can
 		}
-	} else if deps.Sessions != nil && deps.Fiscal.DB() != nil {
-		if sess, err := deps.Sessions.ParseRequest(r); err == nil && sess != nil {
-			if can, err := deps.Fiscal.DB().OperatorCanIssueNC(deps.StoreID, sess.OperatorID); err == nil {
-				st.OperatorCanIssueNC = can
-				st.ReadyToCredit = st.NCSeriesOK && st.ActivatedOK && st.OperatorOK && can
-				st.ReadyToDebit = st.NDSeriesOK && st.ActivatedOK && st.OperatorOK && can
-			}
-		}
+		writeJSON(w, http.StatusOK, st)
+		return
 	}
-	writeJSON(w, http.StatusOK, st)
+	pub, err := BuildSetupStatusPublic(deps.StoreID, st, deps.Fiscal.DB())
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "status_failed", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, pub)
 }
 
 func handleBackupFiscalDB(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
@@ -519,7 +524,7 @@ func handleListOperatorsManage(w http.ResponseWriter, r *http.Request, deps Hand
 func setSessionCookieFromState(w http.ResponseWriter, deps HandlerDeps, operatorID string) {
 	sm := deps.Sessions
 	if sm == nil {
-		sm = NewSessionManager(deps.DataDir)
+		sm = MustNewSessionManager(deps.DataDir)
 	}
 	st, err := deps.Fiscal.DB().GetOperatorSessionState(deps.StoreID, operatorID)
 	if err != nil || st == nil || !st.Active {

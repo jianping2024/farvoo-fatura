@@ -154,13 +154,20 @@ func (d *DB) ChangeOperatorPIN(storeID, operatorID, oldPIN, newPIN string) error
 }
 
 // VerifyOperatorPIN checks PIN and records lockout — ONLY login verify path.
-func (d *DB) VerifyOperatorPIN(storeID, operatorID, pin string) error {
+func (d *DB) VerifyOperatorPIN(storeID, operatorID, pin, clientIP string) error {
+	ipLimited, err := d.IsLoginIPRateLimited(clientIP)
+	if err != nil {
+		return err
+	}
+	if ipLimited {
+		return ErrIPRateLimited
+	}
 	if locked, _ := d.isOperatorLocked(storeID, operatorID); locked {
 		return ErrOperatorLocked
 	}
 	var hash sql.NullString
 	var active int
-	err := d.SQL.QueryRow(`SELECT pin_hash, active FROM operators WHERE store_id=? AND id=?`,
+	err = d.SQL.QueryRow(`SELECT pin_hash, active FROM operators WHERE store_id=? AND id=?`,
 		storeID, operatorID).Scan(&hash, &active)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
@@ -175,33 +182,23 @@ func (d *DB) VerifyOperatorPIN(storeID, operatorID, pin string) error {
 		return ErrInvalidPIN
 	}
 	if verifyPINHash(pin, hash.String) {
-		_ = d.clearLoginFailures(storeID, operatorID)
+		_ = d.ClearOperatorLoginFailures(storeID, operatorID)
 		return nil
 	}
-	_ = d.recordLoginFailure(storeID, operatorID)
+	_ = d.RecordLoginFailures(storeID, operatorID, clientIP)
 	if locked, _ := d.isOperatorLocked(storeID, operatorID); locked {
 		return ErrOperatorLocked
 	}
 	return ErrPINMismatch
 }
 
-func (d *DB) recordLoginFailure(storeID, operatorID string) error {
-	key := LoginFailureEntityKey(storeID, operatorID)
-	return d.InsertLoginFailureAudit(operatorID, key)
-}
-
-func (d *DB) clearLoginFailures(storeID, operatorID string) error {
-	key := LoginFailureEntityKey(storeID, operatorID)
-	_, err := d.SQL.Exec(`DELETE FROM audit_log WHERE action='LOGIN_FAILED' AND entity_id=?`, key)
-	return err
-}
-
 func (d *DB) isOperatorLocked(storeID, operatorID string) (bool, error) {
 	key := LoginFailureEntityKey(storeID, operatorID)
 	var n int
-	err := d.SQL.QueryRow(`SELECT COUNT(1) FROM audit_log WHERE action='LOGIN_FAILED' AND entity_id=? AND at > datetime('now', '-15 minutes')`,
-		key).Scan(&n)
-	return n >= 5, err
+	err := d.SQL.QueryRow(`SELECT COUNT(1) FROM audit_log
+		WHERE action=? AND entity_type=? AND entity_id=? AND at > `+loginFailureWindowSQL,
+		loginFailureAction, loginFailureEntityOp, key).Scan(&n)
+	return n >= loginFailureOperatorMax, err
 }
 
 // CountOperators returns operator count for store.

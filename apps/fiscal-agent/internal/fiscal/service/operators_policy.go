@@ -32,8 +32,8 @@ func (s *FiscalService) BootstrapOwner(storeID, displayName, pin string) (string
 }
 
 // LoginOperator verifies PIN and returns operator metadata.
-func (s *FiscalService) LoginOperator(ctx context.Context, storeID, operatorID, pin string) (*LoginResult, error) {
-	if err := s.db.VerifyOperatorPIN(storeID, operatorID, pin); err != nil {
+func (s *FiscalService) LoginOperator(ctx context.Context, storeID, operatorID, pin, clientIP string) (*LoginResult, error) {
+	if err := s.db.VerifyOperatorPIN(storeID, operatorID, pin, clientIP); err != nil {
 		return nil, err
 	}
 	var name, role string

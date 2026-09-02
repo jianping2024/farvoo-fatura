@@ -1,6 +1,6 @@
 # Farvoo Fiscal Agent
 
-Local **print + fiscal** agent for Farvoo: pulls `print_jobs` and prints via **LAN TCP :9100** or **Windows USB** (WinSpool RAW, UNYKA UK56009), and embeds Fiscal Core for AT invoices. ESC/POS.
+Local **print** agent for Farvoo: pulls `print_jobs` and prints via **LAN TCP :9100** or **Windows USB** (WinSpool RAW, UNYKA UK56009). ESC/POS. **Fiscal is optional** — see [`docs/fiscal-dev-plan.zh.md`](../../docs/fiscal-dev-plan.zh.md) §9 and [`docs/print-agent-ux-packaging.zh.md`](../../docs/print-agent-ux-packaging.zh.md).
 
 ## Job payload — table fields
 
@@ -12,8 +12,6 @@ All job types that reference a table (`station_ticket`, `order_receipt`, `pre_bi
 | `table_id` | **No** — never print UUID | Logs, queue filtering, correlation with orders/sessions |
 
 See [`docs/restaurant-tables-design.zh.md`](../../docs/restaurant-tables-design.zh.md) §8 and [`docs/print-agent-plan.md`](../../docs/print-agent-plan.md). Legacy `table_number` in payload is **not** supported after the table migration.
-
-**Product UX / packaging roadmap (tray, onboarding, heartbeat, i18n):** [`docs/print-agent-ux-packaging.zh.md`](../../docs/print-agent-ux-packaging.zh.md).
 
 **End-to-end print flow + Windows spooler rules (do not use `PRINTER_STATUS_*` preflight):** [`docs/print-agent-flow.zh.md`](../../docs/print-agent-flow.zh.md) — especially **§1 开发约束**.
 
@@ -122,6 +120,14 @@ Set `poll.fixed_interval_sec` to disable dynamic tiers and use a single interval
 See **[dev/config.example.json](./dev/config.example.json)** for a Pirata-style template.
 
 Get station UUIDs from **Dashboard → 餐厅设置 → 出品档口** (`print_stations.id`).
+
+## Production environment (Fiscal Admin)
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `FISCAL_SESSION_SECRET` | **Yes** (production) | ≥32 bytes; signs `fiscal_session` cookie. Omit only when `FISCAL_ALLOW_DEV_KEY=1` (local UAT). |
+| `FISCAL_ALLOW_DEV_KEY` | No | Set `1` for dev/UAT (dev bill-sync pull, derived session secret). **Do not** set on store PCs. |
+| `FISCAL_ALLOW_LAN` | No | `1` to bind Admin on LAN (`FISCAL_BIND=0.0.0.0:17880`); use with IP login rate limit (P1-S). |
 
 ## Windows release (installers)
 

@@ -8,7 +8,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   loginOperator, envWithCookie, DEFAULT_PIN, runUat, uatJson,
-  setFiscalProfileViaDb, ensureAdminSession,
+  setFiscalProfileViaDb, ensureAdminSession, fiscalAgentTestEnv,
 } from './fiscal-session-helper.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -36,8 +36,7 @@ function uatFail(args, env) {
 function startAgent() {
   return spawn('go', ['run', './cmd/fiscal-local', '-fiscal-standalone'], {
     cwd: agent,
-    env: {
-      ...process.env,
+    env: fiscalAgentTestEnv({
       FISCAL_BIND: bind,
       FISCAL_DB: dbPath,
       FISCAL_DATA_DIR: dataDir,
@@ -45,7 +44,7 @@ function startAgent() {
       FISCAL_ALLOW_LOCAL_PROVISION: '1',
       FISCAL_AT_ENV: 'mock',
       FISCAL_SEED: '0',
-    },
+    }),
     stdio: 'ignore',
   });
 }
@@ -73,7 +72,7 @@ async function main() {
     await waitHealth();
 
     const st0 = uatJson(['req', 'GET', '/local/v1/setup/status'], { FISCAL_UAT_BASE: base });
-    record('operator_ok false before bootstrap', st0.operator_ok === false);
+    record('bootstrap_required before bootstrap', st0.bootstrap_required === true && st0.operators_count === 0);
 
     const { cookie: adminCookie, operatorId: adminId } = ensureAdminSession(base, 'Admin One', DEFAULT_PIN);
     let env = envWithCookie(base, adminCookie);

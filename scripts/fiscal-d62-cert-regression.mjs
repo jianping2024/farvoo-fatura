@@ -155,6 +155,7 @@ async function main() {
     FISCAL_DB: dbPath, FISCAL_DATA_DIR: dataDir, FISCAL_BIND: bind,
     FISCAL_STORE_ID: 'store-demo-001', FISCAL_AT_ENV: 'mock', FISCAL_ALLOW_LOCAL_PROVISION: '1',
     FISCAL_MOCK_VALIDATION_CODE: MOCK_VAL, FISCAL_SEED: '0',
+    FISCAL_SESSION_SECRET: 'farvoo-fiscal-uat-session-secret-32b!!',
   });
   const child = spawn('go', ['run', './cmd/fiscal-local'], { cwd: agent, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
   let boot = '';

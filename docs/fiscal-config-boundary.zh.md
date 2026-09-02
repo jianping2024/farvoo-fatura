@@ -25,6 +25,11 @@
 
 未配置时 Worker 仅 MemorySink（开发可开票，不出网）。
 
+| 项 | 定法 |
+|----|------|
+| `FISCAL_SESSION_SECRET` | 生产店机 **必填**（≥32 字节 UTF-8）；`FISCAL_ALLOW_DEV_KEY=1` 的 UAT 可省略（派生密钥） |
+| 未设且非 dev | `NewSessionManager` 失败 → 进程退出（`MustNewSessionManager`） |
+
 ## 进程内端口
 
 | 服务 | 默认 |

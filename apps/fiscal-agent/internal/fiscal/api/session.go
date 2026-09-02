@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -40,17 +41,23 @@ type SessionManager struct {
 	secret []byte
 }
 
-// NewSessionManager derives or loads HMAC secret.
-func NewSessionManager(dataDir string) *SessionManager {
+// NewSessionManager derives or loads HMAC secret — ONLY session secret read path.
+func NewSessionManager(dataDir string) (*SessionManager, error) {
 	if v := strings.TrimSpace(os.Getenv("FISCAL_SESSION_SECRET")); v != "" {
-		return &SessionManager{secret: []byte(v)}
+		if len(v) < 32 {
+			return nil, fmt.Errorf("FISCAL_SESSION_SECRET must be at least 32 bytes")
+		}
+		return &SessionManager{secret: []byte(v)}, nil
+	}
+	if !IsFiscalDevMode() {
+		return nil, ErrSessionSecretRequired
 	}
 	path := strings.TrimSpace(dataDir)
 	if path == "" {
 		path = os.TempDir()
 	}
 	sum := sha256.Sum256([]byte("fiscal-session:" + path))
-	return &SessionManager{secret: sum[:]}
+	return &SessionManager{secret: sum[:]}, nil
 }
 
 type sessionPayload struct {

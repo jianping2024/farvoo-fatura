@@ -1,7 +1,6 @@
 package store
 
 import (
-	"fmt"
 	"math"
 	"strings"
 
@@ -132,12 +131,3 @@ func (d *DB) ListAuditLog(q AuditLogQuery) (*AuditLogListResult, error) {
 	}, nil
 }
 
-// InsertLoginFailureAudit records a failed login attempt (ONLY LOGIN_FAILED write path).
-func (d *DB) InsertLoginFailureAudit(operatorID, entityKey string) error {
-	return d.InsertAuditLog(operatorID, "LOGIN_FAILED", "operator", entityKey, "{}")
-}
-
-// LoginFailureEntityKey is the ONLY entity_id format for LOGIN_FAILED rows.
-func LoginFailureEntityKey(storeID, operatorID string) string {
-	return fmt.Sprintf("login_fail:%s:%s", storeID, operatorID)
-}

@@ -2,13 +2,22 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.57
+
+**P1-S：Admin 安全加固（登录 IP 限速、会话密钥、匿名 status）**
+
+- 登录：`store.RecordLoginFailures` 唯一写入 `LOGIN_FAILED`（开票员 + `client_ip`）；`IsLoginIPRateLimited` 唯一 IP 限速读路径（15min/30 次 → 429 `ip_rate_limited`）。
+- 生产：`FISCAL_ALLOW_DEV_KEY` 未设时强制 `FISCAL_SESSION_SECRET`（≥32 字节）；`NewSessionManager` 唯一读 env。
+- 匿名 `GET /setup/status`：`SetupStatusPublic` 唯一 JSON（`bootstrap_required`、`operators_count` 等）；会话下仍返回完整 `SetupStatus`。
+- 回归：`scripts/fiscal-p1-security-regression.mjs`。
+
 ## 0.4.56
 
 **设置 → 操作记录（审计日志只读 UI）**
 
 - `GET /local/v1/audit-log`（authManager）：分页、筛选；owner 服务端 action 白名单。
 - `internal/fiscal/audit`：唯一 action 文案 / 摘要 / RBAC 过滤；`store.ListAuditLog` 唯一读路径。
-- Admin 设置分区「操作记录」：表格 + 筛选 + `FiscalUI.createListPaginationBar`；`LOGIN_FAILED` 经 `InsertLoginFailureAudit` 唯一写入。
+- Admin 设置分区「操作记录」：表格 + 筛选 + `FiscalUI.createListPaginationBar`；`LOGIN_FAILED` 经 `store.RecordLoginFailures` 写入。
 - 回归：`scripts/fiscal-audit-log-regression.mjs`。
 
 ## 0.4.55

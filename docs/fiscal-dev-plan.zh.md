@@ -32,7 +32,8 @@
 5. **不做清单**写在各里程碑「非目标」；禁止把非目标偷塞进当刀。  
 6. **界面用业务语言**：产品 UI 不出现「草稿、LOCAL、API、M3」等工程词；内部表名/API 只在代码与本仓设计文出现。用语对照见 [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md) §0、`fiscal-admin-ui-prototype/README.md`。  
 7. **先有订单，后有发票**：手动开票与餐馆同步账单均经 **订单** 四步（创建 → 加商品 → 确认 → 开票）；实现可先 UI 映射现有 API，持久化「订单」见 M2.6 交付物。  
-8. **票库仅本地、不对云同步**：全部已签发票（FT/NC/…）权威在本机 SQLite；**禁止** `sync_outbox` 推票副本；对外合规仅 **M5 SAF-T 按月导出**（见 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §1.1）。
+8. **票库仅本地、不对云同步**：全部已签发票（FT/NC/…）权威在本机 SQLite；**禁止** `sync_outbox` 推票副本；对外合规仅 **M5 SAF-T 按月导出**（见 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) §1.1）。  
+9. **打票（Fiscal）为可选产品**：门店 **可仅使用厨打**（配对 + 映射打印机）；合规开票须 **另行开通**（Ops 套餐 / Dashboard 授权 + Admin 激活）。正式 Agent **同进程嵌入** Fiscal 能力 ≠ 每店必做开票配置；装机、configure、托盘 **不得**把 Fiscal 当必做步骤。拍板 [`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md)。
 
 ---
 
@@ -530,9 +531,8 @@ M1–M5 主路径稳定。
 | ★★ | **操作记录（审计日志 UI）** | [`fiscal-audit-log-ui.zh.md`](fiscal-audit-log-ui.zh.md) | 设置 → **操作记录**；admin 全量 / owner 子集；只读现有 audit |
 | — | ~~NIF → 客户主档~~ | bill-draft P1 | **基本已有**（`ensureCustomerIDTx`） |
 | — | ~~客户地址字段~~ | — | **已否决**（餐馆占位 `Desconhecido` 够用） |
-| ★ | 登录 IP 限速 | M3.2 §7 | 防 PIN 撞库 |
-| ★ | 生产强制 `FISCAL_SESSION_SECRET` | M3.2 §7 | 运维约束 |
-| — | Print Agent UX/打包 | README 引用（设计文待写） | 托盘、安装引导、心跳、i18n |
+| ★ | **P1-S 安全加固** | [`fiscal-p1-security-hardening.zh.md`](fiscal-p1-security-hardening.zh.md) | 登录 IP 限速、`FISCAL_SESSION_SECRET`、匿名 status 收紧 |
+| — | ~~**P1-U 托盘/安装体验**~~ | [`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) | **已否决**（2026-09-02）：无 checklist/进度/托盘开票就绪；托盘=厨打状态；Fiscal 见 Admin `17880` |
 
 **明确不在计划内（除非新开里程碑）：** 见下节。
 
@@ -582,3 +582,6 @@ M1–M5 主路径稳定。
 | 2026-09-01 | **M3.2**：端数 + 餐馆/商超模式 **纯 Ops**；去掉本地支持账号与登录页选业态 |
 | 2026-09-02 | **操作记录 UI 草稿**：[`fiscal-audit-log-ui.zh.md`](fiscal-audit-log-ui.zh.md)（设置分区 + API） |
 | 2026-09-02 | **认证阶段关闭**：自动项 + 手测 H1–H3 通过；下一步 **P1 待选型** |
+| 2026-09-02 | **P1 里程碑草案**：[`fiscal-p1-security-hardening.zh.md`](fiscal-p1-security-hardening.zh.md)、[`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) |
+| 2026-09-02 | **P1-U 已否决**：拍板记录见 [`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) |
+| 2026-09-02 | **P1-U 已关闭**：文档瘦身定稿见 [`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) |

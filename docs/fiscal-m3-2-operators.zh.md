@@ -521,12 +521,13 @@ activate-from-cloud / 定期 pull → Agent 缓存 max + 同步终端吊销
 
 | 项 | 说明 |
 |----|------|
-| 登录按来源 IP 限速 | §3.7 原 P0 描述；实现后置 |
-| `change-pin` 失败锁定 | 与登录锁定同策略 |
-| 收紧 `GET /setup/status` 匿名字段 | 登录页与 owner 详情拆分 |
+| 登录按来源 IP 限速 | 见 [`fiscal-p1-security-hardening.zh.md`](fiscal-p1-security-hardening.zh.md) §2.1 |
+| `change-pin` 失败锁定 | 同上 §6 备选 |
+| 收紧 `GET /setup/status` 匿名字段 | 同上 §2.3 |
 | 商品/客户写入是否仅 `owner` | 产品确认后单列 |
-| 生产强制 `FISCAL_SESSION_SECRET` | 运维约束 |
+| 生产强制 `FISCAL_SESSION_SECRET` | 同上 §2.2 |
 | 审计日志查看 UI | 见 [`fiscal-audit-log-ui.zh.md`](fiscal-audit-log-ui.zh.md)（设置 → 操作记录） |
+| ~~托盘/安装开店 checklist~~ | **已否决**（2026-09-02）：Fiscal 开通见 Admin `17880` wizard；Print 见 `17892`。口径 [`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) |
 
 ## 修订记录
 
