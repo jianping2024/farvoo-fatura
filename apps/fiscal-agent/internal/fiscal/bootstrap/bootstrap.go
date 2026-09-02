@@ -34,6 +34,7 @@ type Options struct {
 	PrintBytesFn              worker.PrintBytesFn      // Agent: parsePrinterTarget+printToTarget ONLY
 	UILocaleGet               func() string            // nil → file prefs under DataDir
 	UILocaleSet               func(string) error
+	AutoSessionSecretFile     bool                     // Agent embed: persist session_hmac.key when env unset
 }
 
 // Runtime is a started fiscal stack (HTTP optional).
@@ -143,14 +144,19 @@ func StartCore(opts Options) (*Runtime, error) {
 			Kind:             kind,
 		})
 	}
-	MountRoutes(mux, api.HandlerDeps{
+	if err := MountRoutes(mux, api.HandlerDeps{
 		Fiscal: svc, StoreID: opts.StoreID, DataDir: opts.DataDir,
-		StationPrintersFn: opts.StationPrintersFn,
-		StationMetaFn:     opts.StationMetaFn,
-		UIEvents:          hub,
-		UILocaleGet:       uiGet,
-		UILocaleSet:       uiSet,
-	})
+		StationPrintersFn:     opts.StationPrintersFn,
+		StationMetaFn:         opts.StationMetaFn,
+		UIEvents:              hub,
+		UILocaleGet:           uiGet,
+		UILocaleSet:           uiSet,
+		AutoSessionSecretFile: opts.AutoSessionSecretFile,
+	}); err != nil {
+		cancel()
+		_ = db.Close()
+		return nil, err
+	}
 
 	return &Runtime{
 		DB: db, Service: svc, Worker: w, Sink: mem, Mux: mux,
@@ -159,13 +165,16 @@ func StartCore(opts Options) (*Runtime, error) {
 }
 
 // MountRoutes registers fiscal API + Admin UI on mux (ONLY HTTP mount path).
-func MountRoutes(mux *http.ServeMux, deps api.HandlerDeps) {
-	api.Mount(mux, deps)
+func MountRoutes(mux *http.ServeMux, deps api.HandlerDeps) error {
+	if err := api.Mount(mux, deps); err != nil {
+		return err
+	}
 	registerFiscalUIRoutes(mux)
 	mux.HandleFunc("GET /", serveAdminHTML)
 	mux.HandleFunc("GET /admin", serveAdminHTML)
 	mux.HandleFunc("GET /fiscal", serveAdminHTML)
 	mux.HandleFunc("GET /fiscal/", serveAdminHTML)
+	return nil
 }
 
 // Listen starts HTTP on BindAddr using rt.Mux.

@@ -22,7 +22,12 @@ func TestSetupStatusPublic_Anonymous(t *testing.T) {
 
 	storeID := "store-pub-001"
 	svc := service.New(db, nil, nil, dir, storeID)
-	deps := HandlerDeps{Fiscal: svc, StoreID: storeID, DataDir: dir, Sessions: MustNewSessionManager(dir)}
+	deps := HandlerDeps{Fiscal: svc, StoreID: storeID, DataDir: dir}
+	sm, err := NewSessionManager(dir, false)
+	if err != nil || sm == nil {
+		t.Fatalf("session: err=%v sm=%v", err, sm)
+	}
+	deps.Sessions = sm
 
 	req := httptest.NewRequest(http.MethodGet, "/local/v1/setup/status", nil)
 	rec := httptest.NewRecorder()

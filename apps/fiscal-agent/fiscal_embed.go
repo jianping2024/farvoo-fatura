@@ -135,8 +135,9 @@ func startEmbeddedFiscal(cfg *config) error {
 		StationMetaFn:     stationMetaFnForConfigPath(configPath),
 		PrintBytesFn:      printBytes,
 		Seed:              os.Getenv("FISCAL_SEED") == "1",
-		UILocaleGet:       loadAgentUILocale,
-		UILocaleSet:       setAgentUILocale,
+		UILocaleGet:           loadAgentUILocale,
+		UILocaleSet:           setAgentUILocale,
+		AutoSessionSecretFile: true,
 	}
 	if opts.Seed {
 		cwd, _ := os.Getwd()

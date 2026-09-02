@@ -11,9 +11,14 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
+
+// ErrSessionSecretRequired is returned when production lacks FISCAL_SESSION_SECRET
+// and autoFile is false (fiscal-local / ops without env).
+var ErrSessionSecretRequired = errors.New("api: FISCAL_SESSION_SECRET required when FISCAL_ALLOW_DEV_KEY is not 1")
 
 const (
 	sessionCookieName  = "fiscal_session"
@@ -41,13 +46,68 @@ type SessionManager struct {
 	secret []byte
 }
 
+const sessionSecretFileName = "session_hmac.key"
+
+func sessionSecretPath(dataDir string) string {
+	dir := strings.TrimSpace(dataDir)
+	if dir == "" {
+		dir = os.TempDir()
+	}
+	return filepath.Join(dir, sessionSecretFileName)
+}
+
+func loadPersistedSessionSecret(dataDir string) ([]byte, error) {
+	raw, err := os.ReadFile(sessionSecretPath(dataDir))
+	if err != nil {
+		return nil, err
+	}
+	s := strings.TrimSpace(string(raw))
+	if secret, err := base64.RawStdEncoding.DecodeString(s); err == nil && len(secret) >= 32 {
+		return secret, nil
+	}
+	if len(s) >= 32 {
+		return []byte(s), nil
+	}
+	return nil, fmt.Errorf("session secret file invalid")
+}
+
+func createPersistedSessionSecret(dataDir string) ([]byte, error) {
+	dir := strings.TrimSpace(dataDir)
+	if dir == "" {
+		dir = os.TempDir()
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, err
+	}
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		return nil, err
+	}
+	line := base64.RawStdEncoding.EncodeToString(secret) + "\n"
+	if err := os.WriteFile(sessionSecretPath(dir), []byte(line), 0o600); err != nil {
+		return nil, err
+	}
+	return secret, nil
+}
+
 // NewSessionManager derives or loads HMAC secret — ONLY session secret read path.
-func NewSessionManager(dataDir string) (*SessionManager, error) {
+// autoFile: Agent embed may persist {DataDir}/session_hmac.key when env unset (retail installer).
+func NewSessionManager(dataDir string, autoFile bool) (*SessionManager, error) {
 	if v := strings.TrimSpace(os.Getenv("FISCAL_SESSION_SECRET")); v != "" {
 		if len(v) < 32 {
 			return nil, fmt.Errorf("FISCAL_SESSION_SECRET must be at least 32 bytes")
 		}
 		return &SessionManager{secret: []byte(v)}, nil
+	}
+	if autoFile {
+		if secret, err := loadPersistedSessionSecret(dataDir); err == nil {
+			return &SessionManager{secret: secret}, nil
+		}
+		if secret, err := createPersistedSessionSecret(dataDir); err == nil {
+			return &SessionManager{secret: secret}, nil
+		} else {
+			return nil, err
+		}
 	}
 	if !IsFiscalDevMode() {
 		return nil, ErrSessionSecretRequired

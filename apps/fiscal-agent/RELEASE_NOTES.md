@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.65
+
+**修复安装后 Launch 闪退（嵌入 Fiscal 缺 session secret）**
+
+- 0.4.64 起生产模式嵌入 Fiscal 在 `Mount` 时 `log.Fatal`（无 `FISCAL_SESSION_SECRET`）；已有配对 config 的店机 Launch 后整进程退出。
+- Agent 嵌入路径：`AutoSessionSecretFile` → 首次启动在 `{DataDir}/session_hmac.key` 持久化 HMAC secret（仍可用 env 覆盖）。
+- 去掉 `MustNewSessionManager` 进程级 Fatal；`fiscal-local` 无 env 且无 autoFile 仍拒绝启动（P1-S 不变）。
+
 ## 0.4.64
 
 **P2：Mesa print_locale 驱动热敏票固定栏（zh/en/pt）**

@@ -26,14 +26,20 @@ type HandlerDeps struct {
 	UIEvents          *uievents.Hub            // Admin SSE; may be nil in unit tests
 	UILocaleGet       func() string            // live ui_locale; nil → zh
 	UILocaleSet       func(string) error       // persist ui_locale; required for PUT
+	AutoSessionSecretFile bool                 // Agent embed: persist session_hmac.key when env unset
 }
 
 // Mount registers fiscal local routes. Prefix: /local/v1
-func Mount(mux *http.ServeMux, deps HandlerDeps) {
+func Mount(mux *http.ServeMux, deps HandlerDeps) error {
 	if deps.Sessions == nil {
-		deps.Sessions = MustNewSessionManager(deps.DataDir)
+		sm, err := NewSessionManager(deps.DataDir, deps.AutoSessionSecretFile)
+		if err != nil {
+			return err
+		}
+		deps.Sessions = sm
 	}
 	registerFiscalRoutes(mux, deps)
+	return nil
 }
 
 func (deps HandlerDeps) guardAuto(h http.HandlerFunc) http.HandlerFunc {
@@ -501,7 +507,7 @@ func handleListOperatorsManage(w http.ResponseWriter, r *http.Request, deps Hand
 func setSessionCookieFromState(w http.ResponseWriter, deps HandlerDeps, operatorID string) {
 	sm := deps.Sessions
 	if sm == nil {
-		sm = MustNewSessionManager(deps.DataDir)
+		return
 	}
 	st, err := deps.Fiscal.DB().GetOperatorSessionState(deps.StoreID, operatorID)
 	if err != nil || st == nil || !st.Active {

@@ -88,7 +88,8 @@ func handleLogin(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	}
 	sm := deps.Sessions
 	if sm == nil {
-		sm = MustNewSessionManager(deps.DataDir)
+		writeErr(w, http.StatusServiceUnavailable, "session_unavailable", "session manager not configured")
+		return
 	}
 	_ = sm.SetSessionCookie(w, Session{
 		OperatorID:  sess.OperatorID,
@@ -109,7 +110,8 @@ func handleLogout(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	}
 	sm := deps.Sessions
 	if sm == nil {
-		sm = MustNewSessionManager(deps.DataDir)
+		writeErr(w, http.StatusServiceUnavailable, "session_unavailable", "session manager not configured")
+		return
 	}
 	sm.ClearSessionCookie(w)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})

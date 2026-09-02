@@ -27,8 +27,9 @@
 
 | 项 | 定法 |
 |----|------|
-| `FISCAL_SESSION_SECRET` | 生产店机 **必填**（≥32 字节 UTF-8）；`FISCAL_ALLOW_DEV_KEY=1` 的 UAT 可省略（派生密钥） |
-| 未设且非 dev | `NewSessionManager` 失败 → 进程退出（`MustNewSessionManager`） |
+| `FISCAL_SESSION_SECRET` | 生产 **推荐**（≥32 字节 UTF-8）；`FISCAL_ALLOW_DEV_KEY=1` 的 UAT 可省略（派生密钥） |
+| Agent 嵌入（Installer） | 未设 env 时 **自动**写入 `{DataDir}/session_hmac.key`（`AutoSessionSecretFile`）；`fiscal-local` 无此行为 |
+| 未设且非 dev、非 Agent embed | `NewSessionManager(..., autoFile=false)` 失败；`fiscal-local` 不提供 health |
 
 ## 进程内端口
 
