@@ -53,9 +53,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a Farvoo Fiscal Agent shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: unchecked
-Name: "desktopfiscal"; Description: "Create a Farvoo Fiscal (WebView2) shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: checked
+Name: "desktopfiscal"; Description: "Create a Farvoo Fiscal (WebView2) shortcut on the desktop"; GroupDescription: "Desktop shortcut:"
 Name: "autostart"; Description: "Start Farvoo Fiscal Agent when you sign in to Windows"; GroupDescription: "Sign-in startup:"; Flags: unchecked
-Name: "webview2"; Description: "Install Microsoft Edge WebView2 Runtime if missing (recommended for fiscal UI)"; GroupDescription: "Prerequisites:"; Flags: checked
+Name: "webview2"; Description: "Install Microsoft Edge WebView2 Runtime if missing (recommended for fiscal UI)"; GroupDescription: "Prerequisites:"
 
 [Files]
 Source: "..\dist\amd64\{#MyAppExe}"; DestDir: "{app}"; Flags: ignoreversion restartreplace

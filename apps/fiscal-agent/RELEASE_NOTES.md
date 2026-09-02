@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.61
+
+**修复 Inno Tasks：去掉无效 `Flags: checked`**
+
+- Inno `[Tasks]` 默认已勾选，合法标志只有 `unchecked` 等；`Flags: checked` 会 ISCC 报 unknown flag（0.4.59/0.4.60 失败根因，随 0.4.58 WebView 任务引入）。
+- 保留 UTF-8 BOM；桌面快捷方式名仍为「Farvoo 开票」。
+
 ## 0.4.60
 
 **修复 Inno 安装包编译（UTF-8 BOM）**

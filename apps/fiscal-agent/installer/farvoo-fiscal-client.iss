@@ -38,9 +38,9 @@ UninstallDisplayIcon={app}\{#MyAppExe}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a Farvoo Fiscal shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: checked
+Name: "desktopicon"; Description: "Create a Farvoo Fiscal shortcut on the desktop"; GroupDescription: "Desktop shortcut:"
 Name: "desktopsettings"; Description: "Create Agent settings shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: unchecked
-Name: "webview2"; Description: "Install Microsoft Edge WebView2 Runtime if missing (recommended)"; GroupDescription: "Prerequisites:"; Flags: checked
+Name: "webview2"; Description: "Install Microsoft Edge WebView2 Runtime if missing (recommended)"; GroupDescription: "Prerequisites:"
 
 [Files]
 Source: "..\dist\amd64\{#MyAppExe}"; DestDir: "{app}"; Flags: ignoreversion restartreplace
