@@ -443,20 +443,3 @@ func (d *DB) GetOperatorPolicyRole(storeID, operatorID string) (string, error) {
 	}
 	return role, nil
 }
-
-// GetOperatorRole returns role for operator.
-func (d *DB) GetOperatorRole(storeID, operatorID string) (string, error) {
-	var role string
-	var active int
-	err := d.SQL.QueryRow(`SELECT role, active FROM operators WHERE store_id=? AND id=?`, storeID, operatorID).Scan(&role, &active)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", ErrNotFound
-	}
-	if err != nil {
-		return "", err
-	}
-	if active != 1 {
-		return "", ErrNotFound
-	}
-	return role, nil
-}

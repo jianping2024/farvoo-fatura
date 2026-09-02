@@ -91,7 +91,7 @@
 
 | 操作 | 唯一入口 |
 |------|----------|
-| 创建/更新开票员（名称、角色） | `store.UpsertOperator` / `service.UpsertOperator` |
+| 创建/更新开票员（名称、角色） | `store.UpsertOperator` / `service.UpsertOperatorWithActor` |
 | 停用/启用 | `store.SetOperatorActive`（**禁止** `UpsertOperator` 隐式写 `active`） |
 | 设/重置 PIN | `store.SetOperatorPIN`；**须**调用 `BumpOperatorSessionEpoch`（§3.7.2） |
 | 本人改 PIN | `store.ChangeOperatorPIN`；**须**调用 `BumpOperatorSessionEpoch` |

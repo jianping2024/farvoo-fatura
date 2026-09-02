@@ -9,6 +9,20 @@ import (
 
 const ErrCodeForbidden = "forbidden"
 
+func (s *FiscalService) requireOwnerManagesCashier(actorRole, storeID, operatorID string) error {
+	if actorRole != "owner" {
+		return nil
+	}
+	targetRole, err := s.db.GetOperatorPolicyRole(storeID, operatorID)
+	if err != nil {
+		return err
+	}
+	if targetRole != "cashier" {
+		return coded(ErrCodeForbidden, "owner may only manage cashiers")
+	}
+	return nil
+}
+
 // UpsertOperatorWithActor applies M3.2c role write policy — ONLY operator upsert entry from handlers.
 func (s *FiscalService) UpsertOperatorWithActor(actorRole, actorID, id, storeID, role, name string) error {
 	if s == nil || s.db == nil {
@@ -39,6 +53,9 @@ func (s *FiscalService) UpsertOperatorWithActor(actorRole, actorID, id, storeID,
 		if errors.Is(err, store.ErrNotFound) && role != "cashier" {
 			return coded(ErrCodeForbidden, "owner may only create cashiers")
 		}
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
+			return err
+		}
 	}
 	return s.db.UpsertOperator(id, storeID, role, name, "local-"+id)
 }
@@ -48,12 +65,8 @@ func (s *FiscalService) SetOperatorActiveWithActor(actorRole, storeID, operatorI
 	if s == nil || s.db == nil {
 		return errors.New("fiscal: service nil")
 	}
-	targetRole, err := s.db.GetOperatorPolicyRole(storeID, operatorID)
-	if err != nil {
+	if err := s.requireOwnerManagesCashier(actorRole, storeID, operatorID); err != nil {
 		return err
-	}
-	if actorRole == "owner" && targetRole != "cashier" {
-		return coded(ErrCodeForbidden, "owner may only manage cashiers")
 	}
 	return s.db.SetOperatorActive(storeID, operatorID, active)
 }
@@ -63,14 +76,8 @@ func (s *FiscalService) SetOperatorCanIssueNCWithActor(actorRole, storeID, opera
 	if s == nil || s.db == nil {
 		return errors.New("fiscal: service nil")
 	}
-	if actorRole == "owner" {
-		targetRole, err := s.db.GetOperatorPolicyRole(storeID, operatorID)
-		if err != nil {
-			return err
-		}
-		if targetRole != "cashier" {
-			return coded(ErrCodeForbidden, "owner may only manage cashiers")
-		}
+	if err := s.requireOwnerManagesCashier(actorRole, storeID, operatorID); err != nil {
+		return err
 	}
 	return s.db.SetOperatorCanIssueNC(storeID, operatorID, canIssue)
 }
@@ -83,14 +90,8 @@ func (s *FiscalService) SetOperatorPINWithActor(actorRole, actorID, storeID, ope
 	if actorRole != "admin" && actorRole != "owner" {
 		return coded(ErrCodeForbidden, "forbidden")
 	}
-	if actorRole == "owner" {
-		targetRole, err := s.db.GetOperatorPolicyRole(storeID, operatorID)
-		if err != nil {
-			return err
-		}
-		if targetRole != "cashier" {
-			return coded(ErrCodeForbidden, "owner may only manage cashiers")
-		}
+	if err := s.requireOwnerManagesCashier(actorRole, storeID, operatorID); err != nil {
+		return err
 	}
 	return s.db.SetOperatorPIN(storeID, operatorID, pin)
 }

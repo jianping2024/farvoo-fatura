@@ -417,47 +417,6 @@ func (s *FiscalService) TryPullCloudProvisionIfNeeded(ctx context.Context) {
 	}
 }
 
-// SetOperatorActive sets operator active flag — ONLY active service entry.
-func (s *FiscalService) SetOperatorActive(storeID, operatorID string, active bool) error {
-	if storeID == "" {
-		storeID = s.storeID
-	}
-	return s.db.SetOperatorActive(storeID, operatorID, active)
-}
-
-// SetOperatorPIN sets operator PIN (owner reset path).
-func (s *FiscalService) SetOperatorPIN(storeID, operatorID, pin string) error {
-	return s.db.SetOperatorPIN(storeID, operatorID, pin)
-}
-
-// UpsertOperator is the ONLY operator setup entry for M1.
-func (s *FiscalService) UpsertOperator(id, storeID, role, name string) error {
-	if storeID == "" {
-		storeID = s.storeID
-	}
-	if id == "" {
-		id = uuid.NewString()
-	}
-	if role == "" {
-		role = "cashier"
-	}
-	if name == "" {
-		name = "Cashier"
-	}
-	return s.db.UpsertOperator(id, storeID, role, name, "local-"+id)
-}
-
-// SetOperatorCanIssueNC is the ONLY service entry for operators.can_issue_nc updates.
-func (s *FiscalService) SetOperatorCanIssueNC(storeID, operatorID string, canIssue bool) error {
-	if storeID == "" {
-		storeID = s.storeID
-	}
-	if operatorID == "" {
-		operatorID = "op-demo-cashier"
-	}
-	return s.db.SetOperatorCanIssueNC(storeID, operatorID, canIssue)
-}
-
 // SetupStatus proxies store and adds runtime flags (cloud pairing).
 func (s *FiscalService) SetupStatus(storeID string) (*store.SetupStatus, error) {
 	if storeID == "" {

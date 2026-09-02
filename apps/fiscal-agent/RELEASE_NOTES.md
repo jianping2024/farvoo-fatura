@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.55
+
+**设置页：去掉冗余 status 请求；开票员模块死代码清理**
+
+- `applySetupStatusFromResponse`：mutation 响应内嵌 `SetupStatus` 时直接更新 UI，不再额外 `GET /setup/status`（开票员、门店、AT 凭证、系列注册、本地/云端激活）。
+- 删除未使用的 `store.GetOperatorRole` 与 `FiscalService` legacy operator 包装（Handler 仅走 `*WithActor`）。
+- `operator_rbac`：`requireOwnerManagesCashier` 合并 owner→cashier 校验。
+
 ## 0.4.54
 
 **开票员模块收拢：排序、写路径分流、表格 CSS、菜单 RBAC**

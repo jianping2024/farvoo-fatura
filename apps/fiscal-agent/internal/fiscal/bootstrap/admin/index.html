@@ -1234,9 +1234,11 @@
     return '店员';
   }
 
-  /** ONLY operator manage API write path. */
+  /** ONLY operator manage API write path; applies SetupStatus from response (no extra GET). */
   async function putOperator(body) {
-    return j('PUT', '/local/v1/setup/operator', body);
+    const st = await j('PUT', '/local/v1/setup/operator', body);
+    applySetupStatusFromResponse(st);
+    return st;
   }
 
   function openChangePinModal() {
@@ -1950,7 +1952,7 @@
       toast('请修正标红字段', 'error');
       throw { error: 'validation_failed' };
     }
-    await j('PUT', '/local/v1/setup/taxpayer', {
+    const st = await j('PUT', '/local/v1/setup/taxpayer', {
       tax_registration_number: $('#nif').value.trim(),
       legal_name: $('#legal').value.trim(),
       address_detail: $('#addr').value.trim(),
@@ -1960,7 +1962,7 @@
       timezone: 'Europe/Lisbon',
       software_certificate_number: '0'
     });
-    await refreshSetupStatus();
+    applySetupStatusFromResponse(st);
     markSaveSuccess(btn);
     toast('门店信息保存成功', 'success');
   }
@@ -1971,11 +1973,11 @@
       toast('请修正标红字段', 'error');
       throw { error: 'validation_failed' };
     }
-    await j('PUT', '/local/v1/setup/at-credentials', {
+    const st = await j('PUT', '/local/v1/setup/at-credentials', {
       username: $('#atuser').value.trim(),
       password: $('#atpass').value
     });
-    await refreshSetupStatus();
+    applySetupStatusFromResponse(st);
     markSaveSuccess(btn);
     toast('凭证保存成功', 'success');
   }
@@ -2181,13 +2183,22 @@
     }
   }
 
+  /** Apply SetupStatus embedded in mutation responses (avoids redundant GET /setup/status). */
+  function applySetupStatusFromResponse(st) {
+    if (st && typeof st === 'object' && st.taxpayer_ok !== undefined) {
+      setupStatusCache = st;
+      applySettingsStatusUI(st);
+    }
+    return st;
+  }
+
   /** ONLY cloud activate-from-cloud path (button + settings auto-sync). */
   async function syncActivateFromCloud(opts) {
     const quiet = opts && opts.quiet;
     if (!quiet) setActCloudStatus('', '同步中…');
     try {
-      await j('POST', '/local/v1/setup/activate-from-cloud', {});
-      await refreshSetupStatus({ autoSync: false });
+      const st = await j('POST', '/local/v1/setup/activate-from-cloud', {});
+      applySetupStatusFromResponse(st);
       setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
       if (!quiet) toast('开票授权已从运营同步', 'success');
     } catch (er) {
@@ -4275,7 +4286,7 @@
         document_type: docType,
         fiscal_year: y
       });
-      await refreshSetupStatus();
+      applySetupStatusFromResponse(res);
       const shown = res.series_code || code || '';
       if (res.idempotent_hit) {
         toast(label + ' 系列已注册 · ' + shown, 'success');
@@ -4283,8 +4294,6 @@
         toast(label + ' 系列注册成功 · ' + shown, 'success');
       }
     });
-    // withBusy re-enables the button; re-bind from status (disable if already registered).
-    if (setupStatusCache) applySeriesForm(setupStatusCache);
   }
   $('#btnActCloud').onclick = () => withBusy($('#btnActCloud'), '同步中…', async () => {
     await syncActivateFromCloud();
@@ -4299,8 +4308,8 @@
         throw { error: 'validation_failed' };
       }
       setFieldError($('#pem'), $('#pemError'), '');
-      await j('POST', '/local/v1/setup/activate', { product_private_key_pem: pem });
-      await refreshSetupStatus();
+      const st = await j('POST', '/local/v1/setup/activate', { product_private_key_pem: pem });
+      applySetupStatusFromResponse(st);
       setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
       markSaveSuccess($('#btnAct'));
       toast('开票已激活', 'success');
@@ -4419,7 +4428,7 @@
   async function openOperatorFormModal(mode, operatorId) {
     const isEdit = mode === 'edit';
     if (isEdit && !operatorManageCache.find(x => x.id === operatorId)) {
-      await loadOperatorManageCache();
+      await refreshOperatorsPanel();
     }
     const isAdmin = canManageProvisioning();
     const editingSelf = isEdit && isEditingSelf(operatorId);
@@ -4477,7 +4486,6 @@
     await putOperator(body);
     closeOperatorFormModal();
     await refreshOperatorsPanel();
-    await refreshSetupStatus();
     toast(isEdit ? '开票员已更新' : '开票员已添加', 'success');
   }
 

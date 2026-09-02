@@ -487,6 +487,23 @@ func TestAdminHTMLOperatorManageM32bSinglePath(t *testing.T) {
 	if !strings.Contains(adminHTML, "editingSelf") || !strings.Contains(adminHTML, "isEditingSelf($('#operatorFormId').value)") {
 		t.Fatal("operator self-edit must hide role and preserve existing role on submit")
 	}
+	if n := strings.Count(adminHTML, "function applySetupStatusFromResponse"); n != 1 {
+		t.Fatalf("applySetupStatusFromResponse must appear exactly once, got %d", n)
+	}
+	if strings.Contains(adminHTML, "submitOperatorForm") && strings.Contains(adminHTML, "await refreshSetupStatus();") {
+		if strings.Count(adminHTML, "async function submitOperatorForm") > 0 {
+			// submitOperatorForm must not re-fetch status after putOperator applies embedded SetupStatus.
+			idx := strings.Index(adminHTML, "async function submitOperatorForm")
+			end := strings.Index(adminHTML[idx:], "async function submitOperatorResetPin")
+			if end < 0 {
+				end = len(adminHTML) - idx
+			}
+			block := adminHTML[idx : idx+end]
+			if strings.Contains(block, "refreshSetupStatus") {
+				t.Fatal("submitOperatorForm must not call refreshSetupStatus; use applySetupStatusFromResponse via putOperator")
+			}
+		}
+	}
 }
 
 func TestAdminHTMLOperatorMenuSinglePath(t *testing.T) {
