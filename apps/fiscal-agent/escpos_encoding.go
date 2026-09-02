@@ -44,13 +44,10 @@ func stationTicketNeedsBitmap(p jobPayload) bool {
 	return false
 }
 
-// printTicketLabels — station + receipt/pre-bill fixed chrome. zh → Chinese; else English
-// (same rule for all ticket types; dish lines still come from payload).
+// printTicketLabels — ONLY fixed chrome for Mesa thermal tickets (station / pre-bill / receipt).
+// Follows Farvoo restaurants.print_locale via payload.locale (zh | en | pt); independent of ui_locale.
 func printTicketLabels(locale string) ticketLabels {
-	if printLocaleIsZh(locale) {
-		return labelsFor("zh")
-	}
-	return labelsFor("en")
+	return labelsFor(normalizePrintLocale(locale))
 }
 
 // receiptTicketNeedsBitmap — receipt/pre-bill paper does not print restaurant_name; do not switch
@@ -70,12 +67,13 @@ func receiptTicketNeedsBitmap(p jobPayload) bool {
 	return false
 }
 
-// connectionTestNeedsBitmap — local test slips must render「打印测试」for zh UI even when venue is ASCII.
+// connectionTestNeedsBitmap — test slips follow payload.locale (wizard test print uses normalizePrintLocale).
 func connectionTestNeedsBitmap(p jobPayload) bool {
-	if printLocaleIsZh(p.Locale) || normalizeUILocale(p.Locale) == "zh" {
+	if printLocaleIsZh(p.Locale) {
 		return true
 	}
-	return hasHan(p.venueName()) || hasHan(labelsFor(p.Locale).connectionTest)
+	lab := printTicketLabels(p.Locale)
+	return hasHan(p.venueName()) || hasHan(lab.connectionTest)
 }
 
 func encodeWindows1252(s string) []byte {

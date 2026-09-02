@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.64
+
+**P2：Mesa print_locale 驱动热敏票固定栏（zh/en/pt）**
+
+- `printTicketLabels` → `normalizePrintLocale` → `labelsFor` 为 station / pre-bill / receipt **唯一**固定栏入口；修复此前「zh 否则 English」忽略 `pt` 的问题。
+- `connectionTestNeedsBitmap` 与 wizard 测试打票同走 `printTicketLabels`；与 `ui_locale` / `normalizeUILocale` 分轨。
+- 文档：`docs/fiscal-ui-locale.zh.md` 三条语言轨；Admin i18n 范围；React `web/fiscal-admin` 标废弃。
+
 ## 0.4.63
 
 **P1 收冗余：支付 code 门禁、ui_locale 赋值唯一、wizard 打印机 helper 共用**

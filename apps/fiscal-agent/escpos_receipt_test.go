@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestBuildOrderReceiptEnglishLayout(t *testing.T) {
+func TestBuildOrderReceiptPortuguesePrintLocale(t *testing.T) {
 	payloadMap := jobPayload{
 		Locale:           "pt",
 		RestaurantName:   "川味餐厅",
@@ -30,32 +30,66 @@ func TestBuildOrderReceiptEnglishLayout(t *testing.T) {
 	s := string(raw)
 	for _, want := range []string{
 		"restaurant",
-		"Receipt",
-		"Table No.:01",
-		"Guest:4",
-		"Pri",
+		"Recibo",
+		"Mesa n.\xba:01",
+		"Conv.:4",
+		"Pre\xe7o",
 		"Agua 500ml",
-		"Fee Details",
-		"Original price",
-		"Amount Due:13.75",
-		"Amount Paid:13.75",
+		"Detalhe taxas",
+		"Pre\xe7o original",
+		"A pagar:13.75",
+		"Valor pago:13.75",
 		"-Cash Payment:13.75",
-		"Ordered By:Customer/Merchant",
-		"Order Time:2026-05-14 20:05",
-		"Printed By:restaurant",
-		"Print Time:2026-05-14 21:01",
+		"Pedido por:Cliente/Estabelecimento",
+		"Hora pedido:2026-05-14 20:05",
+		"Impresso por:restaurant",
+		"Hora impress\xe3o:2026-05-14 21:01",
 	} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("missing %q in receipt output", want)
 		}
 	}
-	if strings.Contains(s, "Original Price") {
-		t.Fatal("price column header must use Pri, not Original Price")
+	if strings.Contains(s, "Receipt") || strings.Contains(s, "Table No.") {
+		t.Fatalf("pt locale must not use English chrome, got: %q", s)
+	}
+}
+
+func TestBuildOrderReceiptEnglishLayout(t *testing.T) {
+	payloadMap := jobPayload{
+		Locale:           "en",
+		RestaurantName:   "Demo",
+		TableDisplayName: "1",
+		GuestCount:       4,
+		OrderTime:        "2026-05-14 20:05",
+		PrintTime:        "2026-05-14 21:01",
+		Subtotal:         13.75,
+		AmountDue:        13.75,
+		AmountPaid:       13.75,
+		PaymentMethod:    "Cash",
+		ReceiptVariant:   "final",
+		Lines: []jobLine{
+			{ItemIndex: 1, DisplayName: "Water", Qty: 1, UnitPrice: 1.85},
+		},
+	}
+	rawBytes, _ := json.Marshal(payloadMap)
+	raw := escposFromJob(printJob{Type: "order_receipt", Payload: rawBytes})
+	s := string(raw)
+	for _, want := range []string{
+		"Receipt",
+		"Table No.:01",
+		"Guest:4",
+		"Fee Details",
+		"Amount Due:13.75",
+	} {
+		if !strings.Contains(s, want) {
+			t.Fatalf("missing %q in receipt output", want)
+		}
 	}
 }
 
 func TestReceiptItemsHeaderFollowsMenuSeparator(t *testing.T) {
 	payload, _ := json.Marshal(map[string]any{
+		"locale":          "en",
 		"display_name":    "01",
 		"guest_count":     2,
 		"receipt_variant": "pre_bill",
@@ -140,6 +174,7 @@ func TestBuildOrderReceiptSplitPaymentShareQtyLabel(t *testing.T) {
 
 func TestBuildOrderReceiptSplitPaymentGuestNumber(t *testing.T) {
 	payload, _ := json.Marshal(map[string]any{
+		"locale":          "en",
 		"display_name":    "A-05",
 		"table_id":        "550e8400-e29b-41d4-a716-446655440000",
 		"receipt_variant": "split_payment",
@@ -177,6 +212,7 @@ func TestParseJobPayloadDisplayNameFromJSON(t *testing.T) {
 
 func TestCheckoutBillOmitsPaymentLines(t *testing.T) {
 	payload, _ := json.Marshal(map[string]any{
+		"locale":          "en",
 		"display_name":    "A-02",
 		"receipt_variant": "checkout_bill",
 		"subtotal":        100,
@@ -201,6 +237,7 @@ func TestCheckoutBillOmitsPaymentLines(t *testing.T) {
 
 func TestPreBillOmitsPaymentLines(t *testing.T) {
 	payload, _ := json.Marshal(map[string]any{
+		"locale":       "pt",
 		"display_name": "A-02",
 		"subtotal":     10,
 		"amount_due":   10,
@@ -208,8 +245,8 @@ func TestPreBillOmitsPaymentLines(t *testing.T) {
 	})
 	raw := escposFromJob(printJob{Type: "pre_bill", Payload: payload})
 	s := string(raw)
-	if !strings.Contains(s, "Pre-Bill") {
-		t.Fatalf("pre_bill title must be English Pre-Bill (header/footer labels), got: %q", s)
+	if !strings.Contains(s, "Pr\xe9-conta") {
+		t.Fatalf("pre_bill pt locale must show Pré-conta, got: %q", s)
 	}
 	if strings.Contains(s, "Amount Paid:") || strings.Contains(s, "Payment:") {
 		t.Fatal("pre_bill must not include payment confirmation lines")
@@ -258,6 +295,7 @@ func TestPreBillTitleEnglishLocale(t *testing.T) {
 
 func TestReceiptDoesNotPrintItemNote(t *testing.T) {
 	payload, _ := json.Marshal(jobPayload{
+		Locale:           "en",
 		TableDisplayName: "A-03",
 		Subtotal:         5,
 		AmountDue:        5,
@@ -278,6 +316,7 @@ func TestReceiptDoesNotPrintItemNote(t *testing.T) {
 
 func TestReceiptMenuHeaderAndAmountDueUse1x2Bold(t *testing.T) {
 	payload, _ := json.Marshal(map[string]any{
+		"locale":          "en",
 		"display_name":    "A-01",
 		"receipt_variant": "pre_bill",
 		"subtotal":        5.0,

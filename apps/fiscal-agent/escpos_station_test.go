@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestBuildStationTicketEnglishLayout(t *testing.T) {
+func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
 	payload, err := json.Marshal(jobPayload{
 		Locale:           "pt",
 		RestaurantName:   "川味餐厅",
@@ -43,24 +43,24 @@ func TestBuildStationTicketEnglishLayout(t *testing.T) {
 	}
 	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
 	s := string(raw)
-	for _, bad := range []string{"Mesa", "Pedido", "Estacao", "Estação", "Artigos", "Hora impressao", "Print Time"} {
+	for _, bad := range []string{"Guest Order", "Table No.", "Items", "Qty", "Order Time:", "Printed By:"} {
 		if strings.Contains(s, bad) {
-			t.Fatalf("station ticket must not contain %q", bad)
+			t.Fatalf("pt station ticket must not contain English chrome %q", bad)
 		}
 	}
 	for _, want := range []string{
 		"restaurant",
-		"Guest Order",
-		"Table No.:A-32",
-		"Guest:4",
-		"Items",
-		"Qty",
+		"Pedido",
+		"Mesa n.\xba:A-32",
+		"Conv.:4",
+		"Artigos",
+		"Qtd",
 		"(Bebidas/ Drinks2)",
 		"001-",
 		"500ml",
 		"007-Coca Cola Zero",
-		"Order Time:",
-		"Printed By:restaurant",
+		"Hora pedido:",
+		"Impresso por:restaurant",
 	} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("missing %q in ticket output", want)
@@ -73,15 +73,49 @@ func TestBuildStationTicketEnglishLayout(t *testing.T) {
 		t.Fatalf("expected Windows-1252 accented bytes in ticket output")
 	}
 
-	idx := bytes.Index(raw, []byte("Items"))
+	idx := bytes.Index(raw, []byte("Artigos"))
 	if idx < 0 {
-		t.Fatal(`missing "Items" column header`)
+		t.Fatal(`missing "Artigos" column header`)
 	}
 	if !bytes.Contains(raw[idx:], []byte{0x1D, 0x21, 0x01}) {
 		t.Fatal("menu body must use GS ! 1×2 after column headers")
 	}
 	if bytes.Contains(raw[idx:], []byte{0x1D, 0x21, 0x11}) {
 		t.Fatal("menu body must not use GS ! 2×2 after column headers")
+	}
+}
+
+func TestBuildStationTicketEnglishPrintLocale(t *testing.T) {
+	payload, err := json.Marshal(jobPayload{
+		Locale:           "en",
+		RestaurantName:   "川味餐厅",
+		TableDisplayName: "A-32",
+		GuestCount:       4,
+		OrderTime:        "2026-05-14 20:15",
+		StationSlipOptions: &stationSlipOptions{
+			ShowCategoryGroup: true,
+		},
+		Lines: []jobLine{
+			{
+				ItemIndex:           1,
+				ItemCode:            "001",
+				ItemName:            "Água 500ml",
+				DisplayName:         "001-Água 500ml",
+				Qty:                 1,
+				CategoryGroupSort:   0,
+				CategoryGroupHeader: "(Bebidas/ Drinks2)",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
+	s := string(raw)
+	for _, want := range []string{"Guest Order", "Table No.:A-32", "Guest:4", "Items", "Qty", "Order Time:"} {
+		if !strings.Contains(s, want) {
+			t.Fatalf("missing %q in en station ticket", want)
+		}
 	}
 }
 

@@ -11,8 +11,8 @@ func normalizeUILocale(raw string) string {
 	return locale.NormalizeUILocale(raw)
 }
 
-// normalizePrintLocale normalizes payload.locale from Mesa print jobs (default pt).
-// Kitchen/guest tickets only — not fiscal FT chrome (see locale.InvoiceLocaleFromUI).
+// normalizePrintLocale is the ONLY normalizer for Mesa payload.locale (Farvoo print_locale; default pt).
+// Kitchen/guest thermal tickets only — not fiscal FT chrome (see locale.InvoiceLocaleFromUI).
 func normalizePrintLocale(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "en", "english":

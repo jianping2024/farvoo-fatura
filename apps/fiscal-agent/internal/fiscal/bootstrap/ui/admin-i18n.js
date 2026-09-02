@@ -1,4 +1,5 @@
-/* Fiscal Admin UI i18n — ONLY dictionary + apply for Admin chrome (scheme A). */
+/* Fiscal Admin UI i18n — ONLY dictionary for Admin **screen** chrome: nav, settings, pay labels (scheme A).
+ * Does NOT drive Mesa thermal ticket fixed labels; those follow payload.locale → printTicketLabels. */
 (function (global) {
   'use strict';
 

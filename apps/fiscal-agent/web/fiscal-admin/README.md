@@ -6,8 +6,8 @@
 ## 现状
 
 - **店员路径：** 按 [`docs/fiscal-admin-ui-prototype/README.md`](../../../docs/fiscal-admin-ui-prototype/README.md) v2（**方案 A 用语**）落地正式 Admin。  
-- **当前入口：** bootstrap 嵌入的 `admin/index.html`（工作台 / 手工开票 / 收银账单 / 发票 / 商品 / 客户 / 设置）。  
-- **本目录：** 可选静态 React 构建；与 bootstrap 嵌入二选一，以 [`fiscal-dev-plan.zh.md`](../../../docs/fiscal-dev-plan.zh.md) M2.6 验收为准。
+- **当前入口（P0 定法）：** bootstrap 嵌入的 `internal/fiscal/bootstrap/ui/admin/`（工作台 / 手工开票 / 收银账单 / 发票 / 商品 / 客户 / 设置）。
+- **本目录（`web/fiscal-admin/`）：** 早期 React 静态原型路径，**已废弃**；勿再维护或二选一部署。验收以 bootstrap Admin + [`docs/fiscal-admin-ui-prototype/README.md`](../../../docs/fiscal-admin-ui-prototype/README.md) 为准。
 
 ## P0 屏幕（与 v2 原型一致）
 

@@ -2,7 +2,7 @@
 
 > **状态：定稿**（**流程、导航、业务用语**；视觉与组件库非最终）  
 > **权威：是**（产品 UI 流程与导航以本文 + 静态页为准；工程里程碑见 [`fiscal-dev-plan.zh.md`](../fiscal-dev-plan.zh.md) **M2.6**）  
-> **对应实现：** 正式 Admin 以本文为验收参照；用语改版后实现须跟齐（见修订记录）。
+> **对应实现：** 正式 Admin = **`internal/fiscal/bootstrap/ui/admin/`**（bootstrap 嵌入）；本文仅作**流程/导航/用语**验收参照（非 React `web/fiscal-admin`）。用语改版后实现须跟齐（见修订记录）。
 
 ## 设计原则（v2）
 

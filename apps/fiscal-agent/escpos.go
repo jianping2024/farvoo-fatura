@@ -207,7 +207,7 @@ func (p jobPayload) tableNoLabel(lab ticketLabels) string {
 	return formatTableNoLabel(lab, p.TableDisplayName)
 }
 
-// receiptHeaderTitle — receipts use English labels (lab); dish lines keep menu display names.
+// receiptHeaderTitle — fixed title from printTicketLabels (payload.locale); dish lines keep menu names.
 func receiptHeaderTitle(variant string, lab ticketLabels) string {
 	if variant == "pre_bill" {
 		if t := strings.TrimSpace(lab.preBill); t != "" {
@@ -738,7 +738,7 @@ func (w *escposWriter) writeStationItemNoteLine(note string, width int, p jobPay
 	if note == "" {
 		return
 	}
-	prefix := labelsFor(p.Locale).itemNote
+	prefix := printTicketLabels(p.Locale).itemNote
 	w.writeBody1x2()
 	if stationSlipColumnBlockUsesHanCanvas(p, w) {
 		w.writeHanStationNote(note, prefix)
@@ -906,7 +906,7 @@ func nowLocal() string {
 
 func escposFromJob(job printJob) []byte {
 	p := parseJobPayload(job)
-	lab := labelsFor(p.Locale)
+	lab := printTicketLabels(p.Locale)
 
 	switch job.Type {
 	case "station_ticket":
@@ -929,7 +929,7 @@ func escposFromJob(job printJob) []byte {
 	}
 }
 
-// buildStationTicket — internal station slip; fixed chrome follows print_locale (zh vs en).
+// buildStationTicket — internal station slip; fixed chrome from printTicketLabels(payload.locale).
 func buildStationTicket(p jobPayload) []byte {
 	lab := printTicketLabels(p.Locale)
 	w := newEscposForStationTicket(p)
@@ -939,7 +939,7 @@ func buildStationTicket(p jobPayload) []byte {
 	return w.finish(true)
 }
 
-// buildOrderReceipt — checkout / pre-bill / split-payment / final (English layout per sample).
+// buildOrderReceipt — checkout / pre-bill / split-payment / final; chrome from printTicketLabels.
 func buildOrderReceipt(p jobPayload, lab ticketLabels, withPayment bool, variant string) []byte {
 	w := newEscposForReceiptTicket(p)
 	isSplit := variant == "split_payment"
