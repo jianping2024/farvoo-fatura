@@ -1,21 +1,18 @@
 package main
 
-import "strings"
+import (
+	"strings"
 
-// UILocale controls agent UI (tray, configure/setup wizards, local test print only).
-// It does not affect production print_jobs (those use payload.locale from Mesa).
+	"farvoo-fiscal-agent/internal/fiscal/locale"
+)
+
+// normalizeUILocale delegates to locale.NormalizeUILocale — ONLY normalize for UI.
 func normalizeUILocale(raw string) string {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "en", "english":
-		return "en"
-	case "pt", "pt-br", "por", "portuguese", "português":
-		return "pt"
-	default:
-		return "zh"
-	}
+	return locale.NormalizeUILocale(raw)
 }
 
 // normalizePrintLocale normalizes payload.locale from Mesa print jobs (default pt).
+// Kitchen/guest tickets only — not fiscal FT chrome (see locale.InvoiceLocaleFromUI).
 func normalizePrintLocale(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "en", "english":
@@ -31,8 +28,8 @@ func normalizePrintLocale(raw string) string {
 	}
 }
 
-func printLocaleIsZh(locale string) bool {
-	return normalizePrintLocale(locale) == "zh"
+func printLocaleIsZh(loc string) bool {
+	return normalizePrintLocale(loc) == "zh"
 }
 
 func (c *config) uiLocale() string {
@@ -43,6 +40,6 @@ func (c *config) uiLocale() string {
 }
 
 // testPrintPhrase is the headline printed on connection-test slips (must match UI hint).
-func testPrintPhrase(locale string) string {
-	return labelsFor(normalizeUILocale(locale)).connectionTest
+func testPrintPhrase(loc string) string {
+	return labelsFor(normalizeUILocale(loc)).connectionTest
 }

@@ -24,6 +24,8 @@ type HandlerDeps struct {
 	StationPrintersFn func() map[string]string // live Agent station_printers; may be nil
 	StationMetaFn     func() []StationMeta     // cloud print_stations; may be nil
 	UIEvents          *uievents.Hub            // Admin SSE; may be nil in unit tests
+	UILocaleGet       func() string            // live ui_locale; nil → zh
+	UILocaleSet       func(string) error       // persist ui_locale; required for PUT
 }
 
 // Mount registers fiscal local routes. Prefix: /local/v1
@@ -104,6 +106,12 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	}))
 	mux.HandleFunc("GET /local/v1/setup/status", g(func(w http.ResponseWriter, r *http.Request) {
 		handleSetupStatus(w, r, deps)
+	}))
+	mux.HandleFunc("GET /local/v1/setup/ui-locale", g(func(w http.ResponseWriter, r *http.Request) {
+		handleGetUILocale(w, r, deps)
+	}))
+	mux.HandleFunc("PUT /local/v1/setup/ui-locale", g(func(w http.ResponseWriter, r *http.Request) {
+		handlePutUILocale(w, r, deps)
 	}))
 	mux.HandleFunc("PUT /local/v1/setup/taxpayer", g(func(w http.ResponseWriter, r *http.Request) {
 		handleUpsertTaxpayer(w, r, deps)

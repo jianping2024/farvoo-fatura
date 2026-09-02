@@ -119,12 +119,16 @@ func TestAdminHTMLSchemeACopyUnique(t *testing.T) {
 		}
 	}
 	requiredOnce := []string{
-		">手工开票<small>本机新建</small>",
-		">收银账单<small>待开票 · 来自收银</small>",
+		`data-i18n="nav.orders">手工开票</span>`,
+		`data-i18n="nav.orders.sub">本机新建</small>`,
+		`data-i18n="nav.bills">收银账单</span>`,
+		`data-i18n="nav.bills.sub">待开票 · 来自收银</small>`,
 		"＋ 新建开票",
 		"处理收银账单",
 		"有新的收银账单",
 		"暂无收银账单",
+		`id="uiLocaleSelect"`,
+		`/fiscal-ui/admin-i18n.js`,
 	}
 	for _, s := range requiredOnce {
 		if n := strings.Count(adminHTML, s); n != 1 {

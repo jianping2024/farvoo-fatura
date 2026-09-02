@@ -5,21 +5,22 @@ const PayloadVersion = 1
 
 // Payload is the complete fiscal print snapshot written at issue time.
 type Payload struct {
-	Version       int    `json:"payload_version"`
-	PayloadHash   string `json:"payload_hash"`
-	DocumentID    string `json:"document_id"`
-	DocumentType  string `json:"document_type"`
-	PrintPurpose  string `json:"print_purpose"`
-	InvoiceNo     string `json:"invoice_no"`
-	IssuedAt      string `json:"issued_at"`
+	Version          int    `json:"payload_version"`
+	PayloadHash      string `json:"payload_hash"`
+	DocumentID       string `json:"document_id"`
+	DocumentType     string `json:"document_type"`
+	PrintPurpose     string `json:"print_purpose"`
+	InvoiceNo        string `json:"invoice_no"`
+	IssuedAt         string `json:"issued_at"`
+	Locale           string `json:"locale,omitempty"` // invoice chrome: en | pt (scheme A); empty → pt at render
 	TableDisplayName string `json:"table_display_name,omitempty"`
-	Merchant      MerchantBlock `json:"merchant"`
-	Customer      CustomerBlock `json:"customer"`
-	Lines         []LineBlock   `json:"lines"`
-	TaxSummary    []TaxSummaryRow `json:"tax_summary"`
-	Totals        TotalsBlock   `json:"totals"`
-	Payments      []PaymentBlock `json:"payments"`
-	Compliance    ComplianceBlock `json:"compliance"`
+	Merchant         MerchantBlock  `json:"merchant"`
+	Customer         CustomerBlock  `json:"customer"`
+	Lines            []LineBlock    `json:"lines"`
+	TaxSummary       []TaxSummaryRow `json:"tax_summary"`
+	Totals           TotalsBlock    `json:"totals"`
+	Payments         []PaymentBlock `json:"payments"`
+	Compliance       ComplianceBlock `json:"compliance"`
 }
 
 type MerchantBlock struct {

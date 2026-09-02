@@ -24,6 +24,8 @@ func TestRouteAuthFor_M32cTiers(t *testing.T) {
 		{"POST", "/local/v1/fiscal-documents", authSession},
 		{"POST", "/local/v1/setup/change-pin", authSession},
 		{"GET", "/local/v1/setup/status", authPublic},
+		{"GET", "/local/v1/setup/ui-locale", authPublic},
+		{"PUT", "/local/v1/setup/ui-locale", authSession},
 	}
 	for _, tc := range cases {
 		req := httptest.NewRequest(tc.method, tc.path, nil)

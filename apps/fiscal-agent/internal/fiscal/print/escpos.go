@@ -48,10 +48,12 @@ func receiptStreamBegin() []byte {
 
 // RenderESCPOS is the ONLY fiscal receipt ESC/POS renderer (from frozen Payload).
 // Layout authority: docs/fiscal-ft-receipt-layout.zh.md
+// Ticket chrome labels: ONLY receiptLabels(p.Locale) (scheme A).
 func RenderESCPOS(p *Payload) []byte {
 	if p == nil {
 		return []byte{0x1B, 0x40, 0x1D, 0x56, 0x42, cutFeedDots}
 	}
+	L := receiptLabels(p.Locale)
 	var b bytes.Buffer
 	b.Write(receiptStreamBegin())
 
@@ -88,36 +90,36 @@ func RenderESCPOS(p *Payload) []byte {
 	}
 	align(0)
 
-	// ② document identity — Fatura No. bold only (layout P0 #1); date/via regular
+	// ② document identity — invoice no. bold only (layout P0 #1); date/via regular
 	bold(true)
-	w(formatFaturaNoLine(p.InvoiceNo))
+	w(formatFaturaNoLine(L, p.InvoiceNo))
 	bold(false)
 	if dt := formatIssuedAt(p.IssuedAt); dt != "" {
 		w(dt)
 	}
-	w(formatViaLine(p.PrintPurpose))
+	w(formatViaLine(L, p.PrintPurpose))
 	if orig := strings.TrimSpace(p.Compliance.OriginalInvoiceNo); orig != "" {
-		w("Documento original: " + orig)
+		w(L.OriginalDocPrefix + orig)
 	}
 	if reason := strings.TrimSpace(p.Compliance.CreditReason); reason != "" {
-		w("Motivo: " + reason)
+		w(L.ReasonPrefix + reason)
 	}
-	if mesa := formatMesaLine(p.TableDisplayName); mesa != "" {
+	if mesa := formatMesaLine(L, p.TableDisplayName); mesa != "" {
 		w(mesa)
 	}
 
 	// ③ customer
 	if p.Customer.CompanyName != "" {
-		w("Cliente: " + p.Customer.CompanyName)
+		w(L.ClientePrefix + p.Customer.CompanyName)
 	}
 	if p.Customer.TaxID != "" {
-		w("NIF Cliente: " + p.Customer.TaxID)
+		w(L.NIFClientePrefix + p.Customer.TaxID)
 	}
 
 	// ⑤ items table — rule / header / rule / lines.
 	// P0: top & bottom rules hug the header (no blank lines); spacing must stay symmetric.
 	rule()
-	w(moneyRow(formatItemLinesHeader(), "Soma", receiptWidth))
+	w(moneyRow(formatItemLinesHeader(L), L.Sum, receiptWidth))
 	rule()
 	for _, ln := range p.Lines {
 		name := strings.TrimSpace(ln.DisplayName)
@@ -129,21 +131,21 @@ func RenderESCPOS(p *Payload) []byte {
 
 	// ⑦ totals + payments — TOTAL emphasized (sample: larger/bold total line)
 	rule()
-	w(moneyRow("Liquido", p.Totals.NetTotal, receiptWidth))
-	w(moneyRow("IVA", p.Totals.TaxPayable, receiptWidth))
+	w(moneyRow(L.Net, p.Totals.NetTotal, receiptWidth))
+	w(moneyRow(L.VAT, p.Totals.TaxPayable, receiptWidth))
 	bold(true)
 	b.Write([]byte{0x1D, 0x21, 0x01}) // GS ! — double height only (width stays Font A cols)
-	w(moneyRow("TOTAL", p.Totals.GrossTotal, receiptWidth))
+	w(moneyRow(L.Total, p.Totals.GrossTotal, receiptWidth))
 	b.Write([]byte{0x1D, 0x21, 0x00})
 	bold(false)
 	for _, pay := range p.Payments {
-		w(moneyRow(formatPaymentMethod(pay.Method), pay.Amount, receiptWidth))
+		w(moneyRow(formatPaymentMethod(L, pay.Method), pay.Amount, receiptWidth))
 	}
 
 	// ⑧ IVA summary
 	rule()
-	w("Resumo IVA")
-	w(padColumns([]string{"Taxa", "Base", "IVA", "Tot"}, ivaSummaryColWidths))
+	w(L.VATSummaryTitle)
+	w(padColumns([]string{L.ColRate, L.ColBase, L.ColVAT, L.ColTot}, ivaSummaryColWidths))
 	for _, row := range p.TaxSummary {
 		w(padColumns([]string{
 			formatVATPercent(row.VATRate),
@@ -171,18 +173,18 @@ func RenderESCPOS(p *Payload) []byte {
 	return b.Bytes()
 }
 
-// formatFaturaNoLine is the ONLY ticket label for invoice number (sample: "Fatura No.: …").
-func formatFaturaNoLine(invoiceNo string) string {
-	return "Fatura No.: " + strings.TrimSpace(invoiceNo)
+// formatFaturaNoLine is the ONLY ticket label for invoice number (prefix from receiptLabels).
+func formatFaturaNoLine(L ReceiptLabels, invoiceNo string) string {
+	return L.FaturaNoPrefix + strings.TrimSpace(invoiceNo)
 }
 
-// formatMesaLine is the ONLY ticket line for restaurant table (sample: "MESA: 018").
-func formatMesaLine(tableDisplayName string) string {
+// formatMesaLine is the ONLY ticket line for restaurant table (prefix from receiptLabels).
+func formatMesaLine(L ReceiptLabels, tableDisplayName string) string {
 	t := strings.TrimSpace(tableDisplayName)
 	if t == "" {
 		return ""
 	}
-	return "MESA: " + t
+	return L.MesaPrefix + t
 }
 
 // formatCertificationFace is the ONLY ticket face string for cert + control chars (no separate Hash: line).
@@ -242,9 +244,9 @@ const (
 	itemPriceBandW = 8 // right-aligned unit price
 )
 
-// formatItemLinesHeader is the ONLY Items-table header label (Qtd / Preco / Desc).
-func formatItemLinesHeader() string {
-	return padRunesBand("Qtd", itemQtyBandW, false) + padRunesBand("Preco", itemPriceBandW, false) + "IVA%-Desc"
+// formatItemLinesHeader is the ONLY Items-table header label (from receiptLabels).
+func formatItemLinesHeader(L ReceiptLabels) string {
+	return padRunesBand(L.HeaderQty, itemQtyBandW, false) + padRunesBand(L.HeaderPrice, itemPriceBandW, false) + L.HeaderDesc
 }
 
 // formatItemLine builds one item row: "1.00x   19.95 23%-Name……39.90"
@@ -279,12 +281,12 @@ func padRunesBand(s string, width int, rightAlign bool) string {
 	return s + pad
 }
 
-func formatViaLine(purpose string) string {
+func formatViaLine(L ReceiptLabels, purpose string) string {
 	switch strings.TrimSpace(purpose) {
 	case string(domain.PrintReprint):
-		return "2a Via - Reprint"
+		return L.ViaReprint
 	default:
-		return "1a Via - Original"
+		return L.ViaOriginal
 	}
 }
 
@@ -327,23 +329,23 @@ func formatVATPercent(raw string) string {
 	return fmt.Sprintf("%.2f%%", f)
 }
 
-func formatPaymentMethod(method string) string {
+func formatPaymentMethod(L ReceiptLabels, method string) string {
 	switch strings.ToUpper(strings.TrimSpace(method)) {
 	case "CASH":
-		return "Numerario"
+		return L.PayCash
 	case "CARD":
-		return "Cartao"
+		return L.PayCard
 	case "MBWAY":
-		return "MB Way"
+		return L.PayMBWay
 	case "MULTIBANCO":
-		return "Multibanco"
+		return L.PayMultibanco
 	case "MIXED":
-		return "Misto"
+		return L.PayMixed
 	case "OTHER":
-		return "Outro"
+		return L.PayOther
 	default:
 		if method == "" {
-			return "Pagamento"
+			return L.PayFallback
 		}
 		return method
 	}

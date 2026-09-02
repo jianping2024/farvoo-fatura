@@ -31,13 +31,14 @@ type Signer interface {
 
 // IssueParams is input already validated by service.
 type IssueParams struct {
-	StoreID    string
-	RequestID  string
-	DocType    domain.DocumentType
-	Snapshot   domain.SaleSnapshot
-	OperatorID string
-	StationID  string // Agent station_printers key for ORIGINAL print job
-	NowUTC     time.Time // injectable for tests
+	StoreID        string
+	RequestID      string
+	DocType        domain.DocumentType
+	Snapshot       domain.SaleSnapshot
+	OperatorID     string
+	StationID      string // Agent station_printers key for ORIGINAL print job
+	InvoiceLocale  string // en | pt — frozen into print payload (scheme A)
+	NowUTC         time.Time // injectable for tests
 }
 
 // IssueRecord is the committed fiscal document + ORIGINAL print job.
@@ -197,6 +198,7 @@ func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueR
 		QRContent:                 qr,
 		Hash:                      hashB64,
 		HashControl:               hashControl,
+		InvoiceLocale:             p.InvoiceLocale,
 	})
 	if err != nil {
 		return nil, err

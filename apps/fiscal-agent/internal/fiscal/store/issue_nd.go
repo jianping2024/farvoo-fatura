@@ -39,6 +39,7 @@ type IssueNDParams struct {
 	Reason            string
 	DebitFull         bool
 	Lines             []CreditLineInput
+	InvoiceLocale     string
 	NowUTC            time.Time
 }
 
@@ -198,6 +199,7 @@ func (d *DB) IssueND(ctx context.Context, signer Signer, p IssueNDParams) (*Issu
 		HashControl:               hashControl,
 		OriginalInvoiceNo:         orig.InvoiceNo,
 		CreditReason:              p.Reason,
+		InvoiceLocale:             p.InvoiceLocale,
 	})
 	if err != nil {
 		return nil, err

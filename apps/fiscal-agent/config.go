@@ -28,7 +28,7 @@ type config struct {
 	RefreshToken string `json:"refresh_token,omitempty"`
 	// NotificationMode: "realtime" (default) or "polling" (fallback).
 	NotificationMode string `json:"notification_mode,omitempty"`
-	// UILocale: zh | en | pt — tray, wizards, and local test print only (not order tickets).
+	// UILocale: zh | en | pt — Admin + tray UI; invoice chrome via locale.InvoiceLocaleFromUI (scheme A).
 	UILocale string `json:"ui_locale,omitempty"`
 	// ValidUntil: RFC3339 from claim; used for tray renewal hints (half-year credential).
 	ValidUntil string `json:"valid_until,omitempty"`

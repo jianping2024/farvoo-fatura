@@ -71,7 +71,7 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 	}
 	// Symmetric sandwich: rule \n header+Soma \n rule \n — no blank lines either side.
 	ruleLine := strings.Repeat("-", receiptWidth)
-	headerLine := moneyRow(formatItemLinesHeader(), "Soma", receiptWidth)
+	headerLine := moneyRow(formatItemLinesHeader(receiptLabels("pt")), "Soma", receiptWidth)
 	sandwich := ruleLine + "\n" + headerLine + "\n" + ruleLine + "\n"
 	if !strings.Contains(plain, sandwich) {
 		t.Fatalf("item header must be hugged by equal rules (no blank lines):\nwant substring:\n%s\ngot:\n%s", sandwich, plain)
@@ -179,10 +179,11 @@ func TestFormatCertificationFace(t *testing.T) {
 }
 
 func TestFormatMesaLine(t *testing.T) {
-	if formatMesaLine(" 018 ") != "MESA: 018" {
-		t.Fatal(formatMesaLine(" 018 "))
+	L := receiptLabels("pt")
+	if formatMesaLine(L, " 018 ") != "MESA: 018" {
+		t.Fatal(formatMesaLine(L, " 018 "))
 	}
-	if formatMesaLine("") != "" {
+	if formatMesaLine(L, "") != "" {
 		t.Fatal("empty mesa")
 	}
 }
@@ -223,8 +224,13 @@ func TestRenderESCPOS_NCOriginalReference(t *testing.T) {
 }
 
 func TestFormatFaturaNoLine(t *testing.T) {
-	if formatFaturaNoLine("FT FT2026DEMO01/1") != "Fatura No.: FT FT2026DEMO01/1" {
-		t.Fatal(formatFaturaNoLine("FT FT2026DEMO01/1"))
+	L := receiptLabels("pt")
+	if formatFaturaNoLine(L, "FT FT2026DEMO01/1") != "Fatura No.: FT FT2026DEMO01/1" {
+		t.Fatal(formatFaturaNoLine(L, "FT FT2026DEMO01/1"))
+	}
+	Le := receiptLabels("en")
+	if formatFaturaNoLine(Le, "FT FT2026DEMO01/1") != "Invoice No.: FT FT2026DEMO01/1" {
+		t.Fatal(formatFaturaNoLine(Le, "FT FT2026DEMO01/1"))
 	}
 }
 
@@ -290,7 +296,7 @@ func TestFormatItemLine_SingleRow(t *testing.T) {
 }
 
 func TestFormatItemLinesHeader_SeparatedBands(t *testing.T) {
-	h := formatItemLinesHeader()
+	h := formatItemLinesHeader(receiptLabels("pt"))
 	if strings.Contains(h, "Qtd Preco") {
 		t.Fatalf("header still single-spaced: %q", h)
 	}
@@ -299,6 +305,44 @@ func TestFormatItemLinesHeader_SeparatedBands(t *testing.T) {
 	}
 	if utf8.RuneCountInString(h) < itemQtyBandW+itemPriceBandW+len("IVA%-Desc") {
 		t.Fatalf("header too short: %q", h)
+	}
+}
+
+func TestRenderESCPOS_EnglishLocale(t *testing.T) {
+	p := &Payload{
+		DocumentType: "FT", InvoiceNo: "FT FT2026DEMO01/3", PrintPurpose: "ORIGINAL",
+		IssuedAt: "2026-08-21T18:26:25", Locale: "en",
+		TableDisplayName: "018",
+		Merchant: MerchantBlock{
+			LegalName: "Farvoo Demo Lda", Address: "Rua Demo 1",
+			TaxRegistrationNumber: "517535009",
+		},
+		Customer: CustomerBlock{TaxID: "999999990", CompanyName: "Consumidor Final"},
+		Lines: []LineBlock{{
+			DisplayName: "Item", Quantity: "1.00", UnitPriceGross: "10.00",
+			VATRate: "0.23", LineGross: "10.00",
+		}},
+		TaxSummary: []TaxSummaryRow{{VATRate: "0.23", TaxBase: "8.13", TaxAmount: "1.87", Gross: "10.00"}},
+		Totals:     TotalsBlock{NetTotal: "8.13", TaxPayable: "1.87", GrossTotal: "10.00"},
+		Payments:   []PaymentBlock{{Method: "CASH", Amount: "10.00"}},
+		Compliance: ComplianceBlock{
+			ATCUD: "X-1", QR: QRBlock{Content: "A:1"}, HashControlChars: "ABCD",
+			CertificationLine: "Processado por programa certificado n. 0/AT",
+		},
+	}
+	plain := decodeTicketText(RenderESCPOS(p))
+	for _, s := range []string{"Invoice No.:", "Customer:", "Customer NIF:", "TABLE:", "1st Copy - Original", "Net", "VAT summary", "Cash", "Qty", "Price"} {
+		if !strings.Contains(plain, s) {
+			t.Fatalf("missing EN %q in:\n%s", s, plain)
+		}
+	}
+	for _, s := range []string{"Fatura No.:", "Cliente:", "Liquido", "Resumo IVA", "Numerario", "MESA:"} {
+		if strings.Contains(plain, s) {
+			t.Fatalf("unexpected PT %q in EN ticket:\n%s", s, plain)
+		}
+	}
+	if !strings.Contains(plain, "Processado por programa") {
+		t.Fatal("cert must stay Portuguese")
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 
 	"farvoo-fiscal-agent/internal/fiscal/api"
 	"farvoo-fiscal-agent/internal/fiscal/at"
+	"farvoo-fiscal-agent/internal/fiscal/locale"
 	"farvoo-fiscal-agent/internal/fiscal/service"
 	"farvoo-fiscal-agent/internal/fiscal/signer"
 	"farvoo-fiscal-agent/internal/fiscal/store"
@@ -31,6 +32,8 @@ type Options struct {
 	StationPrintersFn         worker.StationPrintersFn // live config.station_printers
 	StationMetaFn             func() []api.StationMeta // cloud print_stations labels; may be nil
 	PrintBytesFn              worker.PrintBytesFn      // Agent: parsePrinterTarget+printToTarget ONLY
+	UILocaleGet               func() string            // nil → file prefs under DataDir
+	UILocaleSet               func(string) error
 }
 
 // Runtime is a started fiscal stack (HTTP optional).
@@ -105,6 +108,19 @@ func StartCore(opts Options) (*Runtime, error) {
 		}
 	}
 
+	uiGet := opts.UILocaleGet
+	uiSet := opts.UILocaleSet
+	if uiGet == nil || uiSet == nil {
+		prefs := &locale.PrefsFile{Path: locale.PathInDataDir(opts.DataDir)}
+		if uiGet == nil {
+			uiGet = prefs.Get
+		}
+		if uiSet == nil {
+			uiSet = prefs.Set
+		}
+	}
+	svc.UILocaleFn = uiGet
+
 	mem := &worker.MemorySink{}
 	sink := opts.PrintSink
 	if sink == nil {
@@ -132,6 +148,8 @@ func StartCore(opts Options) (*Runtime, error) {
 		StationPrintersFn: opts.StationPrintersFn,
 		StationMetaFn:     opts.StationMetaFn,
 		UIEvents:          hub,
+		UILocaleGet:       uiGet,
+		UILocaleSet:       uiSet,
 	})
 
 	return &Runtime{

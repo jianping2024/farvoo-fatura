@@ -21,7 +21,7 @@
 
 | # | 定法 | 依据 |
 |---|------|------|
-| 1 | 票号：`Fatura No.: ` + `invoice_no`；**整行加粗**（`ESC E`）；日期/联次普通 | VOZ / 店内样票：票号行粗；对齐真机观感 |
+| 1 | 票号：`receiptLabels` 前缀 + `invoice_no`（pt=`Fatura No.: ` / en=`Invoice No.: `）；**整行加粗**（`ESC E`）；日期/联次普通 | VOZ / 店内样票：票号行粗；语言见 [`fiscal-ui-locale.zh.md`](fiscal-ui-locale.zh.md) |
 | 2 | 认证句：`{QRHashChars}-` + `Processado por… n. {证号}/AT`（票面无 `º`）；**禁止** `Hash:` 行；**超宽故意两行**（优先在 `programa ` 后折） | VOZ `/IJ6 -- Processado…`；Pingo `XLM/-Processado…` |
 | 3 | 顺序：认证 → ATCUD → QR → 进纸切；QR 下无业务字 | 样票 QR 垫底；切前进纸见 §2.11 |
 | 4 | ATCUD + QR **居中**；QR module **6** | VOZ 居中大 QR |
@@ -75,7 +75,7 @@
 
 ## 5. 验收
 
-1. 输出含 `Fatura No.:`；无独立 `Hash:`  
+1. 输出含票号前缀（`Fatura No.:` 或 `Invoice No.:`，跟 `payload.locale`）；无独立 `Hash:`  
 2. **`Fatura No.` 行前后有 `ESC E` 开/关加粗**；日期与联次行无加粗  
 3. 认证在 ATCUD/QR 之前；含四字 + `Processado`  
 4. QR 后至 cut 无业务 ASCII 行；切前软件进纸合计 **56 点**（30+26）  

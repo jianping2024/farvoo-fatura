@@ -392,7 +392,7 @@
       <p class="brand">Farvoo 开票</p>
       <div id="loginExisting">
         <label class="hint" for="loginOperator">开票员</label>
-        <select id="loginOperator" style="width:100%;margin-bottom:0.75rem;padding:0.5rem;border-radius:8px;border:1px solid #2a3d32;background:#0f1612;color:#e8f0eb"></select>
+        <select id="loginOperator" style="margin-bottom:0.75rem"></select>
         <div class="pin-dots" id="pinDots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
         <div class="pin-pad" id="pinPad">
           <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
@@ -403,8 +403,8 @@
       </div>
       <div id="loginBootstrap" class="hidden">
         <p class="hint">本机首次使用：创建首位 <strong>管理员</strong>（须在 Agent 主机操作）。</p>
-        <div class="field"><label class="hint">显示名称</label><input id="loginBootstrapName" placeholder="如：管理员" style="width:100%;margin-bottom:0.5rem;padding:0.5rem;border-radius:8px;border:1px solid #2a3d32;background:#0f1612;color:#e8f0eb" /></div>
-        <div class="field"><label class="hint">6 位 PIN</label><input id="loginBootstrapPin" inputmode="numeric" maxlength="6" style="width:100%;margin-bottom:0.75rem;padding:0.5rem;border-radius:8px;border:1px solid #2a3d32;background:#0f1612;color:#e8f0eb" /></div>
+        <div class="field"><label class="hint">显示名称</label><input id="loginBootstrapName" placeholder="如：管理员" style="margin-bottom:0.5rem" /></div>
+        <div class="field"><label class="hint">6 位 PIN</label><input id="loginBootstrapPin" inputmode="numeric" maxlength="6" style="margin-bottom:0.75rem" /></div>
         <button type="button" id="btnLoginBootstrapOwner" style="width:100%">创建管理员并登录</button>
       </div>
     </div>
@@ -414,13 +414,13 @@
     <aside class="sidebar">
       <div class="logo">Farvoo 开票</div>
       <div class="mode-tag" id="sidebarMode">餐馆模式</div>
-      <button type="button" class="nav-btn active" data-nav="home">工作台<small>今日概览</small></button>
-      <button type="button" class="nav-btn" data-nav="orders">手工开票<small>本机新建</small></button>
-      <button type="button" class="nav-btn rest-only" data-nav="bills" id="navBills">收银账单<small>待开票 · 来自收银</small><span class="nav-badge" id="navBillsBadge" aria-hidden="true">0</span></button>
-      <button type="button" class="nav-btn" data-nav="invoices">发票<small>查询 / 重打</small></button>
-      <button type="button" class="nav-btn" data-nav="products">商品<small>本店商品维护</small></button>
-      <button type="button" class="nav-btn" data-nav="customers">客户<small>常用购方</small></button>
-      <button type="button" class="nav-btn settings-access-only" data-nav="settings" id="navSettings">设置<small>店名 / 打印机</small></button>
+      <button type="button" class="nav-btn active" data-nav="home"><span data-i18n="nav.home">工作台</span><small data-i18n="nav.home.sub">今日概览</small></button>
+      <button type="button" class="nav-btn" data-nav="orders"><span data-i18n="nav.orders">手工开票</span><small data-i18n="nav.orders.sub">本机新建</small></button>
+      <button type="button" class="nav-btn rest-only" data-nav="bills" id="navBills"><span data-i18n="nav.bills">收银账单</span><small data-i18n="nav.bills.sub">待开票 · 来自收银</small><span class="nav-badge" id="navBillsBadge" aria-hidden="true">0</span></button>
+      <button type="button" class="nav-btn" data-nav="invoices"><span data-i18n="nav.invoices">发票</span><small data-i18n="nav.invoices.sub">查询 / 重打</small></button>
+      <button type="button" class="nav-btn" data-nav="products"><span data-i18n="nav.products">商品</span><small data-i18n="nav.products.sub">本店商品维护</small></button>
+      <button type="button" class="nav-btn" data-nav="customers"><span data-i18n="nav.customers">客户</span><small data-i18n="nav.customers.sub">常用购方</small></button>
+      <button type="button" class="nav-btn settings-access-only" data-nav="settings" id="navSettings"><span data-i18n="nav.settings">设置</span><small data-i18n="nav.settings.sub">店名 / 打印机</small></button>
       <div class="foot">
         <div id="operatorName">开票员</div>
         <button type="button" class="ghost" id="btnChangePin" style="color:#cfe3d7;padding-left:0;margin-top:0.35rem">修改 PIN</button>
@@ -762,8 +762,8 @@
       <section class="view hidden" id="view-settings">
         <div class="topbar settings-topbar">
           <div>
-            <h1>设置</h1>
-            <p class="hint" id="settingsSubtitle">门店与设备</p>
+            <h1 data-i18n="settings.title">设置</h1>
+            <p class="hint" id="settingsSubtitle" data-i18n="settings.subtitle">门店与设备</p>
           </div>
           <div class="settings-topbar-actions">
             <button type="button" class="secondary hidden" id="btnSettingsShowWizard">配置向导</button>
@@ -773,31 +773,41 @@
         <div id="settingsWizardBar" class="settings-wizard-bar hidden" aria-label="配置进度"></div>
         <div class="settings-shell" id="settingsShell">
           <nav class="settings-nav" id="settingsNav" aria-label="设置分区">
-            <a href="#settings-section-overview" data-settings-nav="overview">概览</a>
-            <a href="#settings-section-store" data-settings-nav="store">门店与税务</a>
-            <a href="#settings-section-series" data-settings-nav="series">系列与授权</a>
-            <a href="#settings-section-operators" data-settings-nav="operators">人员</a>
-            <a href="#settings-section-audit" data-settings-nav="audit" class="settings-manager-only">操作记录</a>
-            <a href="#settings-section-printers" data-settings-nav="printers">设备</a>
-            <a href="#settings-section-saft" data-settings-nav="saft">合规</a>
-            <a href="#settings-section-advanced" data-settings-nav="advanced">高级</a>
+            <a href="#settings-section-overview" data-settings-nav="overview" data-i18n="settings.nav.overview">概览</a>
+            <a href="#settings-section-store" data-settings-nav="store" data-i18n="settings.nav.store">门店与税务</a>
+            <a href="#settings-section-series" data-settings-nav="series" data-i18n="settings.nav.series">系列与授权</a>
+            <a href="#settings-section-operators" data-settings-nav="operators" data-i18n="settings.nav.operators">人员</a>
+            <a href="#settings-section-audit" data-settings-nav="audit" class="settings-manager-only" data-i18n="settings.nav.audit">操作记录</a>
+            <a href="#settings-section-printers" data-settings-nav="printers" data-i18n="settings.nav.printers">设备</a>
+            <a href="#settings-section-saft" data-settings-nav="saft" data-i18n="settings.nav.saft">合规</a>
+            <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </nav>
           <div class="settings-nav-mobile" id="settingsNavMobile" aria-label="设置分区">
-            <a href="#settings-section-overview" data-settings-nav="overview">概览</a>
-            <a href="#settings-section-store" data-settings-nav="store">门店</a>
-            <a href="#settings-section-series" data-settings-nav="series">授权</a>
-            <a href="#settings-section-operators" data-settings-nav="operators">人员</a>
-            <a href="#settings-section-audit" data-settings-nav="audit" class="settings-manager-only">操作记录</a>
-            <a href="#settings-section-printers" data-settings-nav="printers">设备</a>
-            <a href="#settings-section-saft" data-settings-nav="saft">合规</a>
-            <a href="#settings-section-advanced" data-settings-nav="advanced">高级</a>
+            <a href="#settings-section-overview" data-settings-nav="overview" data-i18n="settings.nav.overview">概览</a>
+            <a href="#settings-section-store" data-settings-nav="store" data-i18n="settings.nav.store">门店</a>
+            <a href="#settings-section-series" data-settings-nav="series" data-i18n="settings.nav.series">授权</a>
+            <a href="#settings-section-operators" data-settings-nav="operators" data-i18n="settings.nav.operators">人员</a>
+            <a href="#settings-section-audit" data-settings-nav="audit" class="settings-manager-only" data-i18n="settings.nav.audit">操作记录</a>
+            <a href="#settings-section-printers" data-settings-nav="printers" data-i18n="settings.nav.printers">设备</a>
+            <a href="#settings-section-saft" data-settings-nav="saft" data-i18n="settings.nav.saft">合规</a>
+            <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </div>
           <div class="settings-main">
             <div class="settings-panel-flat panel" id="settings-section-overview">
-              <h2>就绪概览</h2>
+              <h2 data-i18n="settings.overview">就绪概览</h2>
               <div class="setup-dashboard" id="setupDashboard" role="status"></div>
               <div class="panel-footer">
-                <button type="button" class="secondary" id="btnRefreshSetup">刷新状态</button>
+                <button type="button" class="secondary" id="btnRefreshSetup" data-i18n="settings.refresh">刷新状态</button>
+              </div>
+              <div class="field" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--line)">
+                <label for="uiLocaleSelect" data-i18n="lang.title">界面语言</label>
+                <select id="uiLocaleSelect" autocomplete="off">
+                  <option value="zh">中文</option>
+                  <option value="en">English</option>
+                  <option value="pt">Português</option>
+                </select>
+                <p class="hint" id="uiLocaleHint" data-i18n="lang.hint">中文界面时发票为葡语；English / Português 时界面与发票同语言。认证句始终葡语。</p>
+                <p class="hint" id="uiLocaleInvoiceHint"></p>
               </div>
             </div>
 
@@ -1111,6 +1121,7 @@
   <script src="/fiscal-ui/date-range.js"></script>
   <script src="/fiscal-ui/list-pagination.js"></script>
   <script src="/fiscal-ui/printer-station.js"></script>
+  <script src="/fiscal-ui/admin-i18n.js"></script>
   <script>
 (function () {
   'use strict';
@@ -1123,14 +1134,7 @@
   const INVOICE_TZ = 'Europe/Lisbon';
   const DEFAULT_SALE_DOC = 'FS';
   const SALE_DOC_TYPES = ['FT', 'FS'];
-  const PAYMENT_METHODS = [
-    ['CASH', 'Numerário / 现金'],
-    ['CARD', 'Cartão / 刷卡'],
-    ['MBWAY', 'MB WAY'],
-    ['MULTIBANCO', 'Multibanco'],
-    ['MIXED', 'Misto / 混合'],
-    ['OTHER', 'Outro / 其他']
-  ];
+  const PAYMENT_METHODS = ['CASH', 'CARD', 'MBWAY', 'MULTIBANCO', 'MIXED', 'OTHER'];
   const y = new Date().getFullYear();
 
   function isAdjustableOriginal(docType) {
@@ -1138,9 +1142,43 @@
   }
 
   function paymentMethodOptionsHtml() {
-    return PAYMENT_METHODS.map(([v, label]) =>
-      '<option value="' + v + '">' + label + '</option>'
+    return PAYMENT_METHODS.map((v) =>
+      '<option value="' + v + '">' + FiscalAdminI18n.t('pay.' + v) + '</option>'
     ).join('');
+  }
+
+  function refreshUILocaleInvoiceHint(invoiceLocale) {
+    const el = $('#uiLocaleInvoiceHint');
+    if (!el) return;
+    el.textContent = FiscalAdminI18n.t(invoiceLocale === 'en' ? 'lang.invoice_en' : 'lang.invoice_pt');
+  }
+
+  async function loadUILocale() {
+    try {
+      const r = await fetch('/local/v1/setup/ui-locale', { credentials: 'include' });
+      if (!r.ok) return;
+      const data = await r.json();
+      const ui = FiscalAdminI18n.normalize(data.ui_locale);
+      FiscalAdminI18n.setLocale(ui);
+      const sel = $('#uiLocaleSelect');
+      if (sel) sel.value = ui;
+      refreshUILocaleInvoiceHint(data.invoice_locale || (ui === 'en' ? 'en' : 'pt'));
+    } catch (_) { /* ignore */ }
+  }
+
+  async function saveUILocale(ui) {
+    const body = JSON.stringify({ ui_locale: ui });
+    const r = await fetch('/local/v1/setup/ui-locale', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.error || err.message || ('HTTP ' + r.status));
+    }
+    return r.json();
   }
 
   function saleDocTypeOptionsHtml(selected) {
@@ -4794,7 +4832,29 @@
     });
   };
 
+  void loadUILocale();
   void loadLoginOperators();
+
+  const uiLocaleSelect = $('#uiLocaleSelect');
+  if (uiLocaleSelect) {
+    uiLocaleSelect.onchange = async () => {
+      const prev = uiLocaleSelect.value;
+      uiLocaleSelect.disabled = true;
+      try {
+        const data = await saveUILocale(uiLocaleSelect.value);
+        FiscalAdminI18n.setLocale(data.ui_locale);
+        uiLocaleSelect.value = data.ui_locale;
+        refreshUILocaleInvoiceHint(data.invoice_locale);
+        toast(FiscalAdminI18n.t('lang.saved'), 'success');
+      } catch (er) {
+        toast(errText(er), 'error');
+        uiLocaleSelect.value = prev;
+        await loadUILocale();
+      } finally {
+        uiLocaleSelect.disabled = false;
+      }
+    };
+  }
 
   if (document.cookie.includes('fiscal_session=')) {
     pin = '******';

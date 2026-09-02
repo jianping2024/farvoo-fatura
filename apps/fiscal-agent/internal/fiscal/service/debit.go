@@ -84,6 +84,7 @@ func (s *FiscalService) IssueDebitNote(ctx context.Context, req domain.DebitNote
 		Reason:            reason,
 		DebitFull:         req.DebitFull,
 		Lines:             lines,
+		InvoiceLocale:     s.invoiceLocale(),
 	})
 	if errors.Is(err, store.ErrConflict) {
 		return nil, coded(ErrCodeIdempotencyConflict, err.Error())

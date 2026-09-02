@@ -28,6 +28,9 @@ var fiscalUIListPaginationCSS []byte
 //go:embed ui/printer-station.js
 var fiscalUIPrinterStationJS []byte
 
+//go:embed ui/admin-i18n.js
+var fiscalUIAdminI18nJS []byte
+
 func registerFiscalUIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /fiscal-ui/toast.js", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
@@ -63,5 +66,10 @@ func registerFiscalUIRoutes(mux *http.ServeMux) {
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 		_, _ = w.Write(fiscalUIPrinterStationJS)
+	})
+	mux.HandleFunc("GET /fiscal-ui/admin-i18n.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		_, _ = w.Write(fiscalUIAdminI18nJS)
 	})
 }

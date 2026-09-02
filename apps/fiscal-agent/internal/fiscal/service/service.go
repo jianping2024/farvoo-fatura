@@ -15,6 +15,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/billsync"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/fiscalsigning"
+	"farvoo-fiscal-agent/internal/fiscal/locale"
 	"farvoo-fiscal-agent/internal/fiscal/protect"
 	"farvoo-fiscal-agent/internal/fiscal/signer"
 	"farvoo-fiscal-agent/internal/fiscal/store"
@@ -47,12 +48,13 @@ func coded(code, msg string) error { return &CodedError{Code: code, Msg: msg} }
 
 // FiscalService orchestrates setup + issuance.
 type FiscalService struct {
-	db      *store.DB
-	signer  store.Signer
-	at      at.Client
-	dataDir string
-	storeID string
-	cloud   CloudProvision
+	db          *store.DB
+	signer      store.Signer
+	at          at.Client
+	dataDir     string
+	storeID     string
+	cloud       CloudProvision
+	UILocaleFn  func() string // live ui_locale; nil → zh → invoice pt (scheme A)
 }
 
 // CloudProvision is Farvoo API identity for Ops-wrapped product key pull.
@@ -76,6 +78,15 @@ func (s *FiscalService) SetCloudProvision(c CloudProvision) {
 		return
 	}
 	s.cloud = c
+}
+
+// invoiceLocale is the ONLY service-side ticket locale (scheme A via locale.InvoiceLocaleFromUI).
+func (s *FiscalService) invoiceLocale() string {
+	ui := "zh"
+	if s != nil && s.UILocaleFn != nil {
+		ui = s.UILocaleFn()
+	}
+	return locale.InvoiceLocaleFromUI(ui)
 }
 
 func (s *FiscalService) cloudPaired() bool {
@@ -466,6 +477,7 @@ func (s *FiscalService) IssueDocument(ctx context.Context, req domain.IssueReque
 	rec, err := s.db.IssueFT(ctx, sig, store.IssueParams{
 		StoreID: req.StoreID, RequestID: req.RequestID, DocType: docType,
 		Snapshot: req.Snapshot, OperatorID: req.OperatorID, StationID: req.StationID,
+		InvoiceLocale: s.invoiceLocale(),
 	})
 	if err != nil {
 		return nil, err

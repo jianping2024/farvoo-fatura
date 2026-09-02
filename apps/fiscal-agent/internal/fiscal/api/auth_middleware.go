@@ -24,6 +24,7 @@ type routeSpec struct {
 var publicRoutes = []routeSpec{
 	{http.MethodGet, "/local/v1/health", authPublic},
 	{http.MethodGet, "/local/v1/setup/status", authPublic},
+	{http.MethodGet, "/local/v1/setup/ui-locale", authPublic},
 	{http.MethodGet, "/local/v1/setup/operators", authPublic},
 	{http.MethodPost, "/local/v1/setup/login", authPublic},
 	{http.MethodPost, "/local/v1/setup/bootstrap-owner", authPublic},

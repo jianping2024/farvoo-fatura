@@ -87,6 +87,7 @@ func (s *FiscalService) IssueCreditNote(ctx context.Context, req domain.CreditNo
 		Reason:            reason,
 		CreditFull:        req.CreditFull,
 		Lines:             lines,
+		InvoiceLocale:     s.invoiceLocale(),
 	})
 	if errors.Is(err, store.ErrConflict) {
 		return nil, coded(ErrCodeIdempotencyConflict, err.Error())

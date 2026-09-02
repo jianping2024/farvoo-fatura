@@ -9,6 +9,7 @@ import (
 
 	"farvoo-fiscal-agent/internal/fiscal/compliance"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
+	"farvoo-fiscal-agent/internal/fiscal/locale"
 )
 
 // BuildInput feeds BuildPayload — the ONLY print snapshot builder at issue time.
@@ -39,6 +40,7 @@ type BuildInput struct {
 	HashControl               int
 	OriginalInvoiceNo         string
 	CreditReason              string
+	InvoiceLocale             string // en | pt from locale.InvoiceLocaleFromUI; empty → pt
 }
 
 // LineAmounts is frozen line money for the print payload.
@@ -98,12 +100,13 @@ func BuildPayload(in BuildInput) (*Payload, string, error) {
 		pays = []PaymentBlock{{Method: "CASH", Amount: in.GrossTotal}}
 	}
 	p := &Payload{
-		Version:      PayloadVersion,
-		DocumentID:   in.DocumentID,
-		DocumentType: in.DocumentType,
-		PrintPurpose: in.PrintPurpose,
-		InvoiceNo:    in.InvoiceNo,
-		IssuedAt:     in.IssuedAt,
+		Version:          PayloadVersion,
+		DocumentID:       in.DocumentID,
+		DocumentType:     in.DocumentType,
+		PrintPurpose:     in.PrintPurpose,
+		InvoiceNo:        in.InvoiceNo,
+		IssuedAt:         in.IssuedAt,
+		Locale:           locale.NormalizeInvoiceLocale(in.InvoiceLocale),
 		TableDisplayName: strings.TrimSpace(in.TableDisplayName),
 		Merchant: MerchantBlock{
 			LegalName:                 in.LegalName,
