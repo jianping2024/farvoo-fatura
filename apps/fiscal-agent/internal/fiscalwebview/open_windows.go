@@ -67,6 +67,7 @@ func RunWindow(opts Options) error {
 		Title:  WindowTitle,
 		Width:  1280,
 		Height: 860,
+		IconId: WindowIconID,
 		Center: true,
 	}, opts.DataPath)
 	if wv == nil {
@@ -99,6 +100,7 @@ func RunHTMLWindow(opts HTMLWindowOptions) error {
 		Title:  title,
 		Width:  width,
 		Height: height,
+		IconId: WindowIconID,
 		Center: true,
 	}, opts.DataPath)
 	if wv == nil {

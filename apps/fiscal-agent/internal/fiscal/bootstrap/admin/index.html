@@ -58,7 +58,6 @@
     .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; background: #e7efe9; color: var(--mode); }
     .badge.wait { background: #fff1d6; color: #9a6700; }
     .badge.done { background: #dff3e7; color: #1f7a4c; }
-    .brand-note { text-align: center; font-size: 0.72rem; color: var(--muted); margin-top: 1rem; opacity: 0.75; }
     .hidden { display: none !important; }
 
     #view-login { min-height: 100vh; display: grid; place-items: center; padding: 2rem 1rem; }
@@ -215,8 +214,8 @@
       color: var(--ink); margin-bottom: 0.75rem;
     }
     .cta-big:focus { outline: 3px solid var(--mode); outline-offset: 2px; }
-    .cta-big strong { display: block; font-size: 1.05rem; margin-bottom: 0.25rem; }
-    .cta-big span { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+    .cta-big strong { display: block; font-size: 1.05rem; }
+    .cta-big span { display: block; font-size: 0.85rem; color: var(--muted); font-weight: 500; margin-top: 0.25rem; }
     .retail-only, .rest-only, .settings-access-only, .settings-admin-only, .settings-manager-only { display: none; }
     body.mode-restaurant .rest-only { display: block; }
     body.mode-retail .retail-only { display: block; }
@@ -392,10 +391,8 @@
     <div class="login-card">
       <p class="brand">Farvoo 开票</p>
       <div id="loginExisting">
-        <p class="hint">选择开票员并输入 6 位 PIN（业态由 Ops 配置）。</p>
         <label class="hint" for="loginOperator">开票员</label>
         <select id="loginOperator" style="width:100%;margin-bottom:0.75rem;padding:0.5rem;border-radius:8px;border:1px solid #2a3d32;background:#0f1612;color:#e8f0eb"></select>
-        <p class="hint" style="text-align:center">开票员 PIN（6 位）</p>
         <div class="pin-dots" id="pinDots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
         <div class="pin-pad" id="pinPad">
           <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
@@ -410,7 +407,6 @@
         <div class="field"><label class="hint">6 位 PIN</label><input id="loginBootstrapPin" inputmode="numeric" maxlength="6" style="width:100%;margin-bottom:0.75rem;padding:0.5rem;border-radius:8px;border:1px solid #2a3d32;background:#0f1612;color:#e8f0eb" /></div>
         <button type="button" id="btnLoginBootstrapOwner" style="width:100%">创建管理员并登录</button>
       </div>
-      <p class="brand-note">Farvoo 开票</p>
     </div>
   </section>
 
@@ -437,7 +433,6 @@
         <div class="topbar">
           <div>
             <h1>工作台</h1>
-            <p class="hint" id="homeSubtitle">餐馆 · 先建单，后发票</p>
           </div>
         </div>
         <div class="stat-row">
@@ -448,11 +443,9 @@
         </div>
         <button type="button" class="cta-big" id="ctaNewOrder" data-goto="order-new">
           <strong>＋ 新建开票</strong>
-          <span>添加商品 → 确认 → 选择开票类型 → 签发发票</span>
         </button>
         <button type="button" class="cta-big rest-only" id="ctaPendingBills" data-nav="bills">
           <strong>处理收银账单</strong>
-          <span>收银已结账、尚未开票的桌台账单（餐馆）</span>
         </button>
       </section>
 
@@ -460,7 +453,6 @@
         <div class="topbar">
           <div>
             <h1>手工开票</h1>
-            <p class="hint">未开票草稿；开票成功后请至「发票」查看与重打。</p>
           </div>
           <button type="button" data-goto="order-new">新建开票</button>
         </div>
@@ -491,7 +483,6 @@
         <div class="topbar">
           <div>
             <h1 id="orderNewTitle">新建开票</h1>
-            <p class="hint">先完成本单，再进入开票步骤。</p>
           </div>
           <button type="button" class="secondary" data-nav="orders">返回列表</button>
         </div>
@@ -542,7 +533,7 @@
         <div class="topbar">
           <div>
             <h1>开票 · <span id="invOrderNo">—</span></h1>
-            <p class="hint" id="invOrderHint">本单已确认，选择发票类型与购方信息后签发。</p>
+            <p class="hint" id="invOrderHint" style="display:none"></p>
           </div>
         </div>
         <div class="split">
@@ -602,7 +593,6 @@
         <div class="topbar">
           <div>
             <h1>收银账单</h1>
-            <p class="hint">收银系统已同步的结账记录；进入后分单并开票（餐馆）。</p>
           </div>
           <button type="button" class="secondary" id="btnRefreshBills">刷新</button>
         </div>
@@ -627,7 +617,6 @@
         <div class="topbar">
           <div>
             <h1>分单开票 · 桌 <span id="splitTable">—</span></h1>
-            <p class="hint">顶：分单人（可点；已开 ✓ 只读）· 中：标记名+份额 · 右：购方开票。签发即提交；切人丢未保存改动。</p>
           </div>
           <div class="actions">
             <button type="button" class="secondary" id="btnSplitBack">返回列表</button>
@@ -717,7 +706,7 @@
 
       <section class="view hidden" id="view-products">
         <div class="topbar">
-          <div><h1>商品</h1><p class="hint">本店可售商品；开票时从本店商品选用。</p></div>
+          <div><h1>商品</h1></div>
           <button type="button" id="btnNewProd">新建商品</button>
         </div>
         <div class="panel admin-list-panel">
@@ -739,7 +728,7 @@
 
       <section class="view hidden" id="view-customers">
         <div class="topbar">
-          <div><h1>客户</h1><p class="hint">常用购方；开票时可快速选择。</p></div>
+          <div><h1>客户</h1></div>
           <button type="button" id="btnNewCustomer">新建客户</button>
         </div>
         <div class="panel hidden" id="customerForm">
@@ -1045,7 +1034,6 @@
   <div id="changePinModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:400px">
       <h2>修改 PIN</h2>
-      <p class="hint">6 位数字；忘记 PIN 请联系店长重置。</p>
       <div class="field"><label>当前 PIN</label><input id="changePinOld" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
       <div class="field"><label>新 PIN</label><input id="changePinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
       <div class="field"><label>确认新 PIN</label><input id="changePinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
@@ -1075,7 +1063,6 @@
   <div id="operatorResetPinModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:400px">
       <h2>重置 PIN</h2>
-      <p class="hint" id="operatorResetPinHint">为开票员设置新 PIN</p>
       <input type="hidden" id="operatorResetPinId" value="" />
       <div class="field"><label>新 PIN</label><input id="operatorResetPinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
       <div class="field"><label>确认新 PIN</label><input id="operatorResetPinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
@@ -1102,7 +1089,7 @@
         <button type="button" class="secondary" id="btnShowProductCreate" style="margin-bottom:0.75rem">没有？新建商品</button>
       </div>
       <div id="productFormFields" class="hidden">
-        <p class="hint" id="productFormHint">填写后保存到本店商品库</p>
+        <p class="hint" id="productFormHint"></p>
         <div class="row split">
           <div class="field"><label>编码</label><input id="pCode" placeholder="TEA-01" /></div>
           <div class="field"><label>名称</label><input id="pName" placeholder="花茶套餐" /></div>
@@ -1622,9 +1609,6 @@
     document.body.classList.toggle('mode-restaurant', mode === 'restaurant');
     document.body.classList.toggle('mode-retail', mode === 'retail');
     $('#sidebarMode').textContent = mode === 'restaurant' ? '餐馆模式' : '商超模式';
-    $('#homeSubtitle').textContent = mode === 'restaurant'
-      ? '餐馆 · 收银账单 → 开票 → 发票'
-      : '商超 · 新建开票 → 发票';
   }
 
   function setLoginBootstrapMode(showBootstrap) {
@@ -2673,7 +2657,10 @@
     const fields = [$('#docType'), $('#invNif'), $('#invName'), $('#invPay')];
     fields.forEach(el => { if (el) el.disabled = issued; });
     if (issued) {
-      hint.textContent = '本单已开票；可查看关联发票或重打。';
+      if (hint) {
+        hint.style.display = '';
+        hint.textContent = '本单已开票；可查看关联发票或重打。';
+      }
       linkRow.style.display = '';
       linkBtn.textContent = order.invoiceNo || order.documentId;
       linkBtn._openOriginalDocId = order.documentId;
@@ -2682,7 +2669,10 @@
       reprintBtn._reprintDocId = order.documentId;
       backBtn.textContent = '返回列表';
     } else {
-      hint.textContent = '本单已确认，选择发票类型与购方信息后签发。';
+      if (hint) {
+        hint.style.display = 'none';
+        hint.textContent = '';
+      }
       linkRow.style.display = 'none';
       delete linkBtn._openOriginalDocId;
       issueBtn.classList.remove('hidden');
@@ -4641,9 +4631,7 @@
   }
 
   function openOperatorResetPinModal(operatorId) {
-    const op = operatorManageCache.find(x => x.id === operatorId);
     $('#operatorResetPinId').value = operatorId;
-    $('#operatorResetPinHint').textContent = '为「' + (op ? op.display_name : operatorId) + '」设置新 PIN';
     $('#operatorResetPinNew').value = '';
     $('#operatorResetPinConfirm').value = '';
     $('#operatorResetPinModal').classList.remove('hidden');

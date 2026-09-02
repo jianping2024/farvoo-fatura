@@ -10,6 +10,8 @@ import (
 	"sync"
 	"text/template"
 
+	"farvoo-fiscal-agent/internal/fiscalwebview"
+
 	"github.com/jchv/go-webview2"
 )
 
@@ -53,6 +55,7 @@ func RunSettings(host, port string) (string, error) {
 			Title:  "Farvoo 开票 · 设置",
 			Width:  520,
 			Height: 420,
+			IconId: fiscalwebview.WindowIconID,
 			Center: true,
 		},
 	})

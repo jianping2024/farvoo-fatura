@@ -45,6 +45,8 @@ SolidCompression=yes
 WizardStyle=modern
 InfoBeforeFile=wizard-before.txt
 InfoAfterFile=wizard-after.txt
+SetupIconFile=..\assets\app_icon.ico
+UninstallDisplayIcon={app}\{#MyAppExe}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

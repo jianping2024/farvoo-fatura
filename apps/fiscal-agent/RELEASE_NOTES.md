@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.59
+
+**开票壳图标 + 登录等冗余文案清理**
+
+- WebView2 / 任务栏 / 安装包：嵌入 `assets/app_icon.ico`（深绿底 + 衬线 F + 橙点）；`fiscalwebview.WindowIconID`；Inno `SetupIconFile`。
+- Admin：去掉登录页与各页多余 hint（保留冷启动创建管理员与状态类提示）。
+- 再生：`scripts/embed-app-icon.sh` / `scripts/gen-app-icon.py`。
+
 ## 0.4.58
 
 **开票 WebView2 壳 + LAN Client**

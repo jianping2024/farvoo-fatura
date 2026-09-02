@@ -42,6 +42,22 @@ if (-not $Amd64Only) {
 
 $ldflags = "-s -w -H windowsgui -X main.Version=$Version"
 
+# Refresh Win32 icon resources (akavel/rsrc) when present — keeps EXE taskbar/title icons in sync.
+$rsrc = Get-Command rsrc -ErrorAction SilentlyContinue
+if ($rsrc) {
+  $ico = Join-Path $Root "assets\app_icon.ico"
+  if (-not (Test-Path $ico)) { throw "missing $ico — run: python3 scripts/gen-app-icon.py" }
+  Write-Host "rsrc embed app_icon.ico"
+  & $rsrc.Source -arch amd64 -ico $ico -o (Join-Path $Root "rsrc_windows_amd64.syso")
+  if ($LASTEXITCODE -ne 0) { throw "rsrc amd64 failed" }
+  & $rsrc.Source -arch arm64 -ico $ico -o (Join-Path $Root "rsrc_windows_arm64.syso")
+  if ($LASTEXITCODE -ne 0) { throw "rsrc arm64 failed" }
+  & $rsrc.Source -arch amd64 -ico $ico -o (Join-Path $Root "cmd\fiscal-client\rsrc_windows_amd64.syso")
+  if ($LASTEXITCODE -ne 0) { throw "rsrc client amd64 failed" }
+} else {
+  Write-Host "rsrc not on PATH — using committed rsrc_windows_*.syso"
+}
+
 foreach ($a in $archs) {
   $outDir = Join-Path $Dist $a.Name
   New-Item -ItemType Directory -Force -Path $outDir | Out-Null

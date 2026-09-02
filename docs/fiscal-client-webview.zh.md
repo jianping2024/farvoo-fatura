@@ -19,6 +19,7 @@
 | 目标 | 说明 |
 |------|------|
 | 产品感 | 无地址栏/标签栏；Farvoo 标题与图标；任务栏独立图标 |
+| 窗口图标 | **P0 定法：** `assets/app_icon.ico`（深绿底 + 奶油色衬线 F + 右下橙点）经 `rsrc` 嵌入 Agent/Client EXE；WebView2 `IconId` = `fiscalwebview.WindowIconID`（1）；Inno `SetupIconFile` 同文件 |
 | 架构不变 | UI 仍为现有 `bootstrap/admin`；会话仍为 Cookie + PIN；**不改** Fiscal API |
 | 一 Agent · 多端 | Agent 本机 + LAN 其它 PC 共用同一 WebView2 模块；**两个 binary 入口** |
 | 运维简单 | LAN 端 **设置里改 Agent IP**；P0 **不做** mDNS / Dashboard 预填安装包 |
