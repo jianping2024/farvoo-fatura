@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.67
+
+**WebView2 开票壳：专用 UI 线程 + IPC 长驻 + 僵窗重建**
+
+- **唯一写法：** WebView2 消息循环 ONLY `fiscalwebview.startUIThread`（`LockOSThread`）；`newWebView` 只在 `open_windows.go`；Client 设置 ONLY `RunHTMLWindow`（去掉 `settings_windows` 直连 webview2）。
+- `RequestOpen` / `RunWindow` 排队到 UI 线程；HWND 无响应（`SendMessageTimeout`）→ 丢弃 stale HWND、允许重建；不再在线程池 `go RunWindow`。
+- Agent IPC：`ServeAgentCommands` pipe **长驻 accept**（连点桌面「Farvoo 开票」不再 accept-once-close）。
+- Admin：去掉 stale `fiscal_session` cookie 假 PIN（`pin='******'`）。
+- 定稿：[`docs/fiscal-client-webview.zh.md`](../../docs/fiscal-client-webview.zh.md) §7 UI 线程；`scripts/verify-fiscal-webview-sole-path.sh`。
+
 ## 0.4.66
 
 **P1-S 方案 A 定稿：Retail `session_hmac.key` + 唯一写法收拢**

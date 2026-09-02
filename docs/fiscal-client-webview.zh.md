@@ -110,7 +110,8 @@
 | 宿主 | **Microsoft WebView2**（Win10+；Win11 通常已带 Runtime） |
 | Go 绑定 | **`github.com/jchv/go-webview2`**（实现阶段若 ABI 问题可换等价 WebView2 封装，但保持「Go + WebView2、无 Electron」） |
 | Client 设置 UI | **原生 Win32 对话框**（`syscall`/轻量 UI）；不另起 HTTP 服务 |
-| 窗口单例 | 同一进程内第二次「开票」→ **聚焦已有窗口**，不叠多个主窗 |
+| UI 线程 | **P0 定法：** WebView2 消息循环 **ONLY** `fiscalwebview.startUIThread`（`LockOSThread` 专用 goroutine）；Agent `RequestOpen` / Client `RunWindow` / Client 设置 `RunHTMLWindow` 均排队到此线程；**禁止**在线程池 `go RunWindow` |
+| 窗口单例 | 同一进程内第二次「开票」→ **聚焦已有窗口**；HWND 无响应 → 丢弃并允许重建 |
 | 失败回退 | WebView2 初始化失败 → 记录 `agent.log` / Client 日志 → 提示安装 [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) |
 
 **Client 安装器：** 检测 WebView2；缺失时可选运行 Evergreen Bootstrapper（Inno `[Run]` 或文档指引，实现时二选一，**P0 至少文档 + 明确错误提示**）。
@@ -198,4 +199,5 @@ apps/fiscal-agent/
 
 | 日期 | 变更 |
 |------|------|
+| 2026-09-03 | **0.4.67 WebView UI 线程 + IPC 长驻 + 僵窗重建**：`startUIThread` 唯一消息循环；HWND 无响应丢弃；pipe accept 长驻；Admin 去掉 stale cookie 假 PIN |
 | 2026-09-02 | **定稿落地（0.4.58）**：WebView2 壳、Client、IPC、`fiscal` 子命令、安装器 |

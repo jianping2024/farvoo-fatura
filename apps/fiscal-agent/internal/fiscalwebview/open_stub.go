@@ -16,13 +16,3 @@ func RunWindow(opts Options) error {
 func RunHTMLWindow(opts HTMLWindowOptions) error {
 	return ErrUnsupportedPlatform
 }
-
-// HTMLWindowOptions configures a small HTML dialog shell (settings, etc.).
-type HTMLWindowOptions struct {
-	Title    string
-	HTML     string
-	DataPath string
-	Width    uint
-	Height   uint
-	Bind     map[string]interface{}
-}

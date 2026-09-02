@@ -42,6 +42,7 @@ func AgentInstanceRunning() bool {
 }
 
 // ServeAgentCommands listens for open-fiscal commands until ctx is cancelled.
+// ONLY Agent IPC entry; listener stays open (accept loop) for concurrent shortcut clicks.
 func ServeAgentCommands(ctx context.Context, onOpenFiscal func()) {
 	if onOpenFiscal == nil {
 		return
@@ -66,19 +67,37 @@ func ServeAgentCommands(ctx context.Context, onOpenFiscal func()) {
 				SecurityDescriptor: "D:P(A;;GA;;;WD)",
 			})
 			if err != nil {
-				return
-			}
-			conn, err := ln.Accept()
-			_ = ln.Close()
-			if err != nil {
 				if ctx.Err() != nil {
 					return
 				}
 				continue
 			}
-			go handleConn(conn, onOpenFiscal)
+			servePipe(ctx, ln, gen, onOpenFiscal)
+			_ = ln.Close()
 		}
 	}()
+}
+
+func servePipe(ctx context.Context, ln net.Listener, gen int, onOpenFiscal func()) {
+	for {
+		if err := ctx.Err(); err != nil {
+			return
+		}
+		serveMu.Lock()
+		stale := gen != serveGen
+		serveMu.Unlock()
+		if stale {
+			return
+		}
+		conn, err := ln.Accept()
+		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			continue
+		}
+		go handleConn(conn, onOpenFiscal)
+	}
 }
 
 func handleConn(conn net.Conn, onOpenFiscal func()) {
@@ -101,7 +120,7 @@ func RequestOpenFiscal() error {
 		return fmt.Errorf("fiscal ipc: agent not reachable: %w", err)
 	}
 	defer conn.Close()
-	if _, err := io.WriteString(conn, CommandOpenFiscal+"\n"); err != nil {
+	if _, err := io.WriteString(conn, CommandOpenFiscal + "\n"); err != nil {
 		return err
 	}
 	line, err := bufio.NewReader(conn).ReadString('\n')

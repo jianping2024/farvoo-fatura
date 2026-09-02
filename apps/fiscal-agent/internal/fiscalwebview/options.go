@@ -19,3 +19,13 @@ type Options struct {
 	// DataPath is the WebView2 user-data directory (cookie session).
 	DataPath string
 }
+
+// HTMLWindowOptions configures a small HTML dialog shell (settings, etc.).
+type HTMLWindowOptions struct {
+	Title    string
+	HTML     string
+	DataPath string
+	Width    uint
+	Height   uint
+	Bind     map[string]interface{}
+}

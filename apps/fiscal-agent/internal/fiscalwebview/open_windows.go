@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"unsafe"
 
 	"github.com/jchv/go-webview2"
 	"golang.org/x/sys/windows"
@@ -18,28 +17,23 @@ var (
 	opening    bool
 )
 
-// HTMLWindowOptions configures a small HTML dialog shell (settings, etc.).
-type HTMLWindowOptions struct {
-	Title    string
-	HTML     string
-	DataPath string
-	Width    uint
-	Height   uint
-	Bind     map[string]interface{}
-}
-
-// RequestOpen focuses an existing shell window or starts one in a new goroutine.
+// RequestOpen focuses an existing shell window or queues one on the UI thread.
 func RequestOpen(opts Options) error {
 	opts.URL = strings.TrimSpace(opts.URL)
 	if opts.URL == "" {
 		return fmt.Errorf("fiscal webview: url required")
 	}
+	startUIThread()
+
 	windowMu.Lock()
 	if activeHWND != 0 {
-		hwnd := activeHWND
-		windowMu.Unlock()
-		focusHWND(hwnd)
-		return nil
+		if hwndResponsive(activeHWND) {
+			hwnd := activeHWND
+			windowMu.Unlock()
+			focusHWND(hwnd)
+			return nil
+		}
+		activeHWND = 0
 	}
 	if opening {
 		windowMu.Unlock()
@@ -48,21 +42,57 @@ func RequestOpen(opts Options) error {
 	opening = true
 	windowMu.Unlock()
 
-	go func() {
-		_ = RunWindow(opts)
-		windowMu.Lock()
-		opening = false
-		windowMu.Unlock()
-	}()
+	uiCmdCh <- uiCmd{opts: opts}
 	return nil
 }
 
-// RunWindow opens a blocking fiscal UI window until the user closes it.
+// RunWindow opens a blocking fiscal UI window until the user closes it (Client main path).
 func RunWindow(opts Options) error {
 	opts.URL = strings.TrimSpace(opts.URL)
 	if opts.URL == "" {
 		return fmt.Errorf("fiscal webview: url required")
 	}
+	startUIThread()
+
+	windowMu.Lock()
+	if activeHWND != 0 {
+		if hwndResponsive(activeHWND) {
+			hwnd := activeHWND
+			windowMu.Unlock()
+			focusHWND(hwnd)
+			return nil
+		}
+		activeHWND = 0
+	}
+	windowMu.Unlock()
+
+	done := make(chan error, 1)
+	uiCmdCh <- uiCmd{opts: opts, done: done}
+	return <-done
+}
+
+// RunHTMLWindow opens a blocking HTML dialog window on the UI thread.
+func RunHTMLWindow(opts HTMLWindowOptions) error {
+	if strings.TrimSpace(opts.HTML) == "" {
+		return fmt.Errorf("fiscal webview: html required")
+	}
+	startUIThread()
+	done := make(chan error, 1)
+	html := opts
+	uiCmdCh <- uiCmd{html: &html, done: done}
+	return <-done
+}
+
+func runWindowOnThread(opts Options) error {
+	windowMu.Lock()
+	opening = true
+	windowMu.Unlock()
+	defer func() {
+		windowMu.Lock()
+		opening = false
+		windowMu.Unlock()
+	}()
+
 	wv := newWebView(webview2.WindowOptions{
 		Title:  WindowTitle,
 		Width:  1280,
@@ -79,11 +109,7 @@ func RunWindow(opts Options) error {
 	return nil
 }
 
-// RunHTMLWindow opens a blocking HTML dialog window.
-func RunHTMLWindow(opts HTMLWindowOptions) error {
-	if strings.TrimSpace(opts.HTML) == "" {
-		return fmt.Errorf("fiscal webview: html required")
-	}
+func runHTMLWindowOnThread(opts HTMLWindowOptions) error {
 	width := opts.Width
 	if width == 0 {
 		width = 480
@@ -148,6 +174,3 @@ func focusHWND(hwnd uintptr) {
 func webView2MissingError() error {
 	return fmt.Errorf("fiscal webview: failed to create WebView2 — install Microsoft Edge WebView2 Runtime")
 }
-
-// unused import guard for unsafe if needed later
-var _ = unsafe.Pointer(nil)

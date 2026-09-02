@@ -2,7 +2,7 @@
 /**
  * M3 + M3.1 NC regression: series, permission, partial credit, idempotency, print payload.
  */
-import { ensureOwnerSession, setFiscalProfileViaDb, envWithCookie, loginOperator } from './fiscal-session-helper.mjs';
+import { ensureOwnerSession, setFiscalProfileViaDb, envWithCookie, loginOperator, fiscalAgentTestEnv } from './fiscal-session-helper.mjs';
 import { spawn } from 'node:child_process';
 import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -159,11 +159,8 @@ async function main() {
   if (existsSync(dbPath)) rmSync(dbPath);
   if (existsSync(dataDir)) rmSync(dataDir, { recursive: true, force: true });
 
-  const childEnv = { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` };
-  for (const k of Object.keys(childEnv)) {
-    if (k.startsWith('FISCAL_')) delete childEnv[k];
-  }
-  Object.assign(childEnv, {
+  const childEnv = fiscalAgentTestEnv({
+    PATH: `/opt/homebrew/bin:${process.env.PATH}`,
     FISCAL_DB: dbPath,
     FISCAL_DATA_DIR: dataDir,
     FISCAL_BIND: bind,
