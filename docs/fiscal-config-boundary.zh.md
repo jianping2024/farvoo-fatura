@@ -27,9 +27,10 @@
 
 | 项 | 定法 |
 |----|------|
-| `FISCAL_SESSION_SECRET` | 生产 **推荐**（≥32 字节 UTF-8）；`FISCAL_ALLOW_DEV_KEY=1` 的 UAT 可省略（派生密钥） |
-| Agent 嵌入（Installer） | 未设 env 时 **自动**写入 `{DataDir}/session_hmac.key`（`AutoSessionSecretFile`）；`fiscal-local` 无此行为 |
-| 未设且非 dev、非 Agent embed | `NewSessionManager(..., autoFile=false)` 失败；`fiscal-local` 不提供 health |
+| `FISCAL_SESSION_SECRET` | **可选** env 覆盖（≥32 字节 UTF-8）；运维轮换用 |
+| Retail Agent | 未设 env 时 **唯一**首启写 `{DataDir}/session_hmac.key`（见 [`fiscal-session-secret.zh.md`](fiscal-session-secret.zh.md)） |
+| `fiscal-local` / UAT | 无 env 且无 Retail 文件时：`FISCAL_ALLOW_DEV_KEY=1` → dataDir 派生；否则不提供 health |
+| 唯一入口 | `api.NewSessionManager`；Retail `autoFile=true` **仅** `fiscal_embed.go` |
 
 ## 进程内端口
 

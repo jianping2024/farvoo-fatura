@@ -34,7 +34,7 @@ type Options struct {
 	PrintBytesFn              worker.PrintBytesFn      // Agent: parsePrinterTarget+printToTarget ONLY
 	UILocaleGet               func() string            // nil → file prefs under DataDir
 	UILocaleSet               func(string) error
-	AutoSessionSecretFile     bool                     // Agent embed: persist session_hmac.key when env unset
+	AutoSessionSecretFile     bool                     // ONLY fiscal_embed sets true (Retail session_hmac.key)
 }
 
 // Runtime is a started fiscal stack (HTTP optional).
@@ -144,14 +144,20 @@ func StartCore(opts Options) (*Runtime, error) {
 			Kind:             kind,
 		})
 	}
+	sessions, err := api.NewSessionManager(opts.DataDir, opts.AutoSessionSecretFile)
+	if err != nil {
+		cancel()
+		_ = db.Close()
+		return nil, fmt.Errorf("bootstrap: session manager: %w", err)
+	}
 	if err := MountRoutes(mux, api.HandlerDeps{
 		Fiscal: svc, StoreID: opts.StoreID, DataDir: opts.DataDir,
-		StationPrintersFn:     opts.StationPrintersFn,
-		StationMetaFn:         opts.StationMetaFn,
-		UIEvents:              hub,
-		UILocaleGet:           uiGet,
-		UILocaleSet:           uiSet,
-		AutoSessionSecretFile: opts.AutoSessionSecretFile,
+		StationPrintersFn: opts.StationPrintersFn,
+		StationMetaFn:     opts.StationMetaFn,
+		UIEvents:          hub,
+		UILocaleGet:       uiGet,
+		UILocaleSet:       uiSet,
+		Sessions:          sessions,
 	}); err != nil {
 		cancel()
 		_ = db.Close()

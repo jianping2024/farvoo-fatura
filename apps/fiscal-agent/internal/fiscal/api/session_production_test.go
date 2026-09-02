@@ -40,7 +40,7 @@ func TestNewSessionManager_AutoFileProvisions(t *testing.T) {
 	if err != nil || sm == nil {
 		t.Fatalf("autoFile err=%v sm=%v", err, sm)
 	}
-	if _, err := os.Stat(filepath.Join(dir, sessionSecretFileName)); err != nil {
+	if _, err := os.Stat(filepath.Join(dir, SessionSecretFileName)); err != nil {
 		t.Fatalf("expected session_hmac.key: %v", err)
 	}
 	sm2, err := NewSessionManager(dir, true)

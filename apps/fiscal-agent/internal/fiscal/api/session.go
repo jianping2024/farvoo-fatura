@@ -46,14 +46,15 @@ type SessionManager struct {
 	secret []byte
 }
 
-const sessionSecretFileName = "session_hmac.key"
+// SessionSecretFileName is persisted under DataDir when Retail Agent embed starts (scheme A).
+const SessionSecretFileName = "session_hmac.key"
 
 func sessionSecretPath(dataDir string) string {
 	dir := strings.TrimSpace(dataDir)
 	if dir == "" {
 		dir = os.TempDir()
 	}
-	return filepath.Join(dir, sessionSecretFileName)
+	return filepath.Join(dir, SessionSecretFileName)
 }
 
 func loadPersistedSessionSecret(dataDir string) ([]byte, error) {

@@ -125,8 +125,8 @@ Get station UUIDs from **Dashboard → 餐厅设置 → 出品档口** (`print_s
 
 | Variable | Required | Notes |
 |----------|----------|-------|
-| `FISCAL_SESSION_SECRET` | **Yes** (production) | ≥32 bytes; signs `fiscal_session` cookie. Omit only when `FISCAL_ALLOW_DEV_KEY=1` (local UAT). |
-| `FISCAL_ALLOW_DEV_KEY` | No | Set `1` for dev/UAT (dev bill-sync pull, derived session secret). **Do not** set on store PCs. |
+| `FISCAL_SESSION_SECRET` | No (Retail) | Optional override (≥32 bytes). If unset, Retail Agent auto-creates `{DataDir}/session_hmac.key` on first embed start. |
+| `FISCAL_ALLOW_DEV_KEY` | No | Set `1` for dev/UAT (`fiscal-local`, regression scripts). **Do not** set on store PCs. |
 | `FISCAL_ALLOW_LAN` | No | `1` to bind Admin on LAN (`FISCAL_BIND=0.0.0.0:17880`); use with IP login rate limit (P1-S). |
 
 ## Windows release (installers)

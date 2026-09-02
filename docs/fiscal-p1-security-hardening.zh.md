@@ -42,16 +42,21 @@
 | 适用范围 | `POST /local/v1/setup/login`；**不** 对 `bootstrap-owner` 加 IP 限速（仍仅 loopback） |
 | 唯一实现 | `store.CheckLoginIPRateLimit` + `store.RecordLoginFailureIP`（或并入现有 `InsertLoginFailureAudit` 扩展） |
 
-### 2.2 生产强制 `FISCAL_SESSION_SECRET`
+### 2.2 Admin 会话 HMAC 密钥（Retail Agent 方案 A）
 
 | 项 | 定法 |
 |----|------|
-| 「生产」判定 | `FISCAL_ALLOW_DEV_KEY` **未**设置为 `1`（与 dev 门铃、DEV_PLAIN 钥门禁一致） |
-| 强制规则 | 生产启动时 `FISCAL_SESSION_SECRET` 须非空且长度 **≥ 32** 字节（UTF-8 字符串） |
-| 失败行为 | Fiscal HTTP 注册前 **Fatal 日志 + 进程退出**（或拒绝挂 Fiscal 路由并托盘提示「配置错误」——**P0 定法：进程退出**，避免半开 Admin） |
-| 开发/UAT | `FISCAL_ALLOW_DEV_KEY=1` 时允许沿用 `dataDir` 派生密钥（现有 `NewSessionManager` 行为） |
-| 运维文档 | `apps/fiscal-agent/README.md` + 安装向导补充：生产店机须设用户级或系统 env |
-| 唯一读路径 | 仍仅 `session.go` `NewSessionManager`；禁止第二处读 env |
+| 「生产」判定 | `FISCAL_ALLOW_DEV_KEY` **未**设置为 `1` |
+| **Retail Agent（Installer / 托盘嵌入）** | **P0 定法：方案 A** — 未设 `FISCAL_SESSION_SECRET` 时，**唯一**在 `{DataDir}/session_hmac.key` 首启随机生成并持久化（0600）；**不要求**店员配置 Windows env |
+| **env 覆盖（可选）** | 运维可设 `FISCAL_SESSION_SECRET`（≥32 字节 UTF-8）覆盖文件；优先级：**env > 文件 >（仅 UAT）dev 派生** |
+| **`fiscal-local` / 纯 CLI** | **不**写 `session_hmac.key`（`AutoSessionSecretFile=false`）；生产无 env 且无 dev key → 不提供 health / Admin |
+| 失败行为（Retail） | 文件不可写 → `bootstrap.Start` 返回 error；`ensureFiscalStarted` 记日志，**不** `log.Fatal` 杀托盘 |
+| 失败行为（fiscal-local 生产） | 无 secret → 进程不监听 `/local/v1/health`（与现回归一致） |
+| 开发/UAT | `FISCAL_ALLOW_DEV_KEY=1` 且无 env/文件 → `sha256("fiscal-session:"+dataDir)` 派生（仅 UAT） |
+| 唯一读路径 | **唯一** `api.NewSessionManager(dataDir, autoFile)`；`autoFile=true` **仅** `fiscal_embed.go` → `bootstrap.Options.AutoSessionSecretFile` |
+| 禁止 | M3.2 旧「生产默认 SHA256 派生」；`MustNewSessionManager` + 进程 Fatal；第二处读 env/文件 |
+
+`DataDir` 默认：`%LOCALAPPDATA%\Farvoo Fiscal Agent\fiscal-secure`（与签名钥同区，非 `config.json`）。
 
 ### 2.3 匿名 `GET /setup/status` 收紧（最小集）
 
@@ -72,7 +77,7 @@
 | D-S.1 | **本文定稿** | 状态头改为定稿；与 `fiscal-dev-plan.zh.md` 里程碑表一致 |
 | D-S.2 | **Store** | IP 限速查询/记录；`LOGIN_FAILED` IP 行写入 |
 | D-S.3 | **Login handler** | 先 IP 限速 → 再 operator 锁定 → 再验 PIN；429/401 稳定 |
-| D-S.4 | **Session secret 门禁** | 生产无 secret 启动失败；UAT 仍可用派生密钥 |
+| D-S.4 | **Session secret 门禁** | Retail：`session_hmac.key` 首启；fiscal-local 生产无 secret 仍失败；UAT dev 派生 |
 | D-S.5 | **Setup status 拆分** | 匿名响应字段按 §2.3；单测断言字段缺失 |
 | D-S.6 | **回归** | `scripts/fiscal-p1-security-regression.mjs` |
 | D-S.7 | **文档** | README 生产 env 表；`fiscal-config-boundary.zh.md` 补 `FISCAL_SESSION_SECRET` |
@@ -83,8 +88,8 @@
 
 1. 同一 IP 对 3 个不同开票员各错 PIN 10 次 → 第 31 次起 **429** `ip_rate_limited`（15 分钟内）。  
 2. 15 分钟后同 IP 可再试；单 `operator_id` 仍受 5 次锁定。  
-3. `FISCAL_ALLOW_DEV_KEY` 未设且无 `FISCAL_SESSION_SECRET` → Agent **不**提供可登录 Admin。  
-4. `FISCAL_ALLOW_DEV_KEY=1` 且无 secret → 行为与现网 UAT 一致。  
+3. Retail Agent 首启无 env → `{DataDir}/session_hmac.key` 存在且 Admin PIN 登录可用；`fiscal-local` 无 env 且无 dev key → **不**提供 health。  
+4. `FISCAL_ALLOW_DEV_KEY=1` 且无 secret/文件 → 行为与现网 UAT 一致。  
 5. 匿名 `GET /setup/status` 无 `at_env` 等敏感字段；已登录 admin 仍可见完整 status。  
 6. `go test ./internal/fiscal/...` + `fiscal-p1-security-regression.mjs` 全绿。  
 7. **不**回归：`fiscal-m3-operators-regression.mjs`、`fiscal-d62-cert-regression.mjs`。
@@ -115,4 +120,5 @@
 
 | 日期 | 变更 |
 |------|------|
+| 2026-09-02 | **方案 A 定稿**：Retail Agent 首启 `{DataDir}/session_hmac.key`；env 可选覆盖；撤销「店机必须手工 env」 |
 | 2026-09-02 | 草稿：IP 限速、SESSION_SECRET、匿名 status 三刀 + 交付物/验收 |

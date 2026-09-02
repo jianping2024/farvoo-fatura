@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.66
+
+**P1-S 方案 A 定稿：Retail `session_hmac.key` + 唯一写法收拢**
+
+- 定稿 [`docs/fiscal-session-secret.zh.md`](../../docs/fiscal-session-secret.zh.md) + 修订 P1-S §2.2：Retail 首启写 `{DataDir}/session_hmac.key`；env 可选覆盖；不要求店机手工 env。
+- `NewSessionManager` **唯一**调用点：`bootstrap.StartCore`；`AutoSessionSecretFile=true` **唯一**赋值：`fiscal_embed.go`。
+- `api.Mount` 不再构造 SessionManager；去掉 `MustNewSessionManager` 进程 Fatal 路径。
+
 ## 0.4.65
 
 **修复安装后 Launch 闪退（嵌入 Fiscal 缺 session secret）**

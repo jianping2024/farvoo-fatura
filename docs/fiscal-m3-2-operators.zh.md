@@ -525,7 +525,7 @@ activate-from-cloud / 定期 pull → Agent 缓存 max + 同步终端吊销
 | `change-pin` 失败锁定 | 同上 §6 备选 |
 | 收紧 `GET /setup/status` 匿名字段 | 同上 §2.3 |
 | 商品/客户写入是否仅 `owner` | 产品确认后单列 |
-| 生产强制 `FISCAL_SESSION_SECRET` | 同上 §2.2 |
+| 生产 Retail session | 同上 §2.2 方案 A：`session_hmac.key` 首启；`FISCAL_SESSION_SECRET` env 可选 |
 | 审计日志查看 UI | 见 [`fiscal-audit-log-ui.zh.md`](fiscal-audit-log-ui.zh.md)（设置 → 操作记录） |
 | ~~托盘/安装开店 checklist~~ | **已否决**（2026-09-02）：Fiscal 开通见 Admin `17880` wizard；Print 见 `17892`。口径 [`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) |
 

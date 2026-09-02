@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -26,17 +27,13 @@ type HandlerDeps struct {
 	UIEvents          *uievents.Hub            // Admin SSE; may be nil in unit tests
 	UILocaleGet       func() string            // live ui_locale; nil → zh
 	UILocaleSet       func(string) error       // persist ui_locale; required for PUT
-	AutoSessionSecretFile bool                 // Agent embed: persist session_hmac.key when env unset
 }
 
 // Mount registers fiscal local routes. Prefix: /local/v1
+// deps.Sessions must be set by bootstrap.StartCore (ONLY session manager construction site).
 func Mount(mux *http.ServeMux, deps HandlerDeps) error {
 	if deps.Sessions == nil {
-		sm, err := NewSessionManager(deps.DataDir, deps.AutoSessionSecretFile)
-		if err != nil {
-			return err
-		}
-		deps.Sessions = sm
+		return fmt.Errorf("api: Sessions required (use bootstrap.StartCore)")
 	}
 	registerFiscalRoutes(mux, deps)
 	return nil

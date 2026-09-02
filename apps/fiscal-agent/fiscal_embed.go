@@ -137,7 +137,7 @@ func startEmbeddedFiscal(cfg *config) error {
 		Seed:              os.Getenv("FISCAL_SEED") == "1",
 		UILocaleGet:           loadAgentUILocale,
 		UILocaleSet:           setAgentUILocale,
-		AutoSessionSecretFile: true,
+		AutoSessionSecretFile: true, // ONLY Retail embed entry; see docs/fiscal-session-secret.zh.md
 	}
 	if opts.Seed {
 		cwd, _ := os.Getwd()
