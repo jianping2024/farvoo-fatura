@@ -323,19 +323,22 @@
     .settings-wizard-actions {
       display: flex; justify-content: space-between; gap: 0.75rem; margin-top: 0.85rem;
     }
-    .op-menu { position: relative; display: inline-block; }
-    .op-menu > summary {
-      list-style: none; cursor: pointer; padding: 0.35rem 0.55rem; border-radius: 8px;
-      font-weight: 700; color: var(--muted); user-select: none;
+    #operatorsTable { table-layout: fixed; width: 100%; }
+    #operatorsTable th:nth-child(1), #operatorsTable td:nth-child(1) {
+      max-width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .op-menu > summary::-webkit-details-marker { display: none; }
-    .op-menu-pop {
-      position: absolute; right: 0; top: 100%; z-index: 5; min-width: 8.5rem;
+    #operatorsTable th:nth-child(2), #operatorsTable td:nth-child(2) { width: 10%; }
+    tr.muted td { opacity: 0.65; }
+    .btn-op-menu-trigger {
+      padding: 0.35rem 0.55rem; border-radius: 8px; font-weight: 700; color: var(--muted);
+      min-width: 2rem; line-height: 1;
+    }
+    #operatorMenuPop {
+      position: fixed; z-index: 50; min-width: 8.5rem;
       background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
       box-shadow: var(--shadow); padding: 0.35rem; display: flex; flex-direction: column; gap: 0.15rem;
     }
-    .op-menu-pop button { width: 100%; text-align: left; padding: 0.45rem 0.55rem; font-size: 0.85rem; }
-    tr.muted td { opacity: 0.65; }
+    #operatorMenuPop button { width: 100%; text-align: left; padding: 0.45rem 0.55rem; font-size: 0.85rem; }
     @media (max-width: 900px) {
       .settings-shell { grid-template-columns: 1fr; }
       .settings-nav { display: none; }
@@ -1028,6 +1031,13 @@
         <button type="button" class="secondary" id="btnOperatorResetPinCancel">取消</button>
       </div>
     </div>
+  </div>
+
+  <div id="operatorMenuPop" class="hidden" role="menu" aria-hidden="true">
+    <button type="button" class="ghost" data-op-action="edit">编辑</button>
+    <button type="button" class="ghost" data-op-action="reset-pin">重置 PIN</button>
+    <button type="button" class="ghost" data-op-action="deactivate">停用</button>
+    <button type="button" class="ghost hidden" data-op-action="activate">启用</button>
   </div>
 
   <div id="productPicker" class="modal-backdrop hidden">
@@ -4208,11 +4218,70 @@
   $('#btnWizardNext').onclick = () => wizardNextStep().catch(er => toast(errText(er), 'error'));
   $('#btnWizardPrev').onclick = () => wizardPrevStep();
 
+  let operatorManageCache = [];
+  let operatorMenuTargetId = null;
+  let operatorMenuAnchor = null;
+
+  function closeOperatorMenuPop() {
+    const pop = $('#operatorMenuPop');
+    if (!pop) return;
+    pop.classList.add('hidden');
+    pop.setAttribute('aria-hidden', 'true');
+    operatorMenuTargetId = null;
+    operatorMenuAnchor = null;
+  }
+
+  function openOperatorMenuPop(anchor, operatorId, active) {
+    const pop = $('#operatorMenuPop');
+    if (!pop || !anchor) return;
+    if (operatorMenuAnchor === anchor && !pop.classList.contains('hidden')) {
+      closeOperatorMenuPop();
+      return;
+    }
+    closeOperatorMenuPop();
+    operatorMenuTargetId = operatorId;
+    operatorMenuAnchor = anchor;
+    pop.querySelector('[data-op-action="edit"]').classList.toggle('hidden', !active);
+    pop.querySelector('[data-op-action="reset-pin"]').classList.toggle('hidden', !active);
+    pop.querySelector('[data-op-action="deactivate"]').classList.toggle('hidden', !active);
+    pop.querySelector('[data-op-action="activate"]').classList.toggle('hidden', !!active);
+    pop.setAttribute('aria-hidden', 'false');
+    const rect = anchor.getBoundingClientRect();
+    const margin = 6;
+    pop.style.visibility = 'hidden';
+    pop.classList.remove('hidden');
+    const popRect = pop.getBoundingClientRect();
+    let top = rect.bottom + margin;
+    let left = rect.right - popRect.width;
+    if (left < margin) left = margin;
+    if (top + popRect.height > window.innerHeight - margin) {
+      top = rect.top - popRect.height - margin;
+    }
+    if (top < margin) top = margin;
+    pop.style.top = top + 'px';
+    pop.style.left = left + 'px';
+    pop.style.visibility = '';
+  }
+
+  async function runOperatorMenuAction(action) {
+    const id = operatorMenuTargetId;
+    closeOperatorMenuPop();
+    if (!id) return;
+    try {
+      await loadOperatorManageCache();
+      if (action === 'edit') openOperatorFormModal('edit', id);
+      else if (action === 'reset-pin') openOperatorResetPinModal(id);
+      else if (action === 'deactivate') await toggleOperatorActive(id, false);
+      else if (action === 'activate') await toggleOperatorActive(id, true);
+    } catch (er) { toast(errText(er), 'error'); }
+  }
+
   async function refreshOperatorsPanel() {
     const tbody = $('#operatorsTbody');
     const empty = $('#operatorsEmptyHint');
     if (!tbody) return;
     if (!isLoggedInOwner()) return;
+    closeOperatorMenuPop();
     try {
       const data = await j('GET', '/local/v1/setup/operators/manage');
       const ops = data.operators || [];
@@ -4226,13 +4295,7 @@
         const ncToggle = o.active
           ? '<label class="check-row"><input type="checkbox" data-op-nc="' + o.id + '"' + (o.can_issue_nc ? ' checked' : '') + ' /><span>可冲销</span></label>'
           : '—';
-        const menuItems = o.active
-          ? '<button type="button" class="ghost" data-op-action="edit" data-op-id="' + o.id + '">编辑</button>' +
-            '<button type="button" class="ghost" data-op-action="reset-pin" data-op-id="' + o.id + '">重置 PIN</button>' +
-            '<button type="button" class="ghost" data-op-action="deactivate" data-op-id="' + o.id + '">停用</button>'
-          : '<button type="button" class="ghost" data-op-action="activate" data-op-id="' + o.id + '">启用</button>';
-        const actions = '<details class="op-menu"><summary aria-label="操作">⋯</summary><div class="op-menu-pop">' +
-          menuItems + '</div></details>';
+        const actions = '<button type="button" class="ghost btn-op-menu-trigger" data-op-menu-trigger data-op-id="' + o.id + '" data-op-active="' + (o.active ? '1' : '0') + '" aria-label="操作">⋯</button>';
         return '<tr' + (o.active ? '' : ' class="muted"') + '>' +
           '<td>' + escHtml(o.display_name) + '</td>' +
           '<td>' + operatorRoleLabel(o.role) + '</td>' +
@@ -4249,8 +4312,6 @@
   function escHtml(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
-
-  let operatorManageCache = [];
 
   async function loadOperatorManageCache() {
     const data = await j('GET', '/local/v1/setup/operators/manage');
@@ -4371,20 +4432,27 @@
   $('#operatorResetPinModal').addEventListener('click', e => {
     if (e.target === $('#operatorResetPinModal')) closeOperatorResetPinModal();
   });
-  $('#operatorsTbody').addEventListener('click', async e => {
+  $('#operatorsTbody').addEventListener('click', e => {
+    const trigger = e.target.closest('[data-op-menu-trigger]');
+    if (!trigger) return;
+    e.stopPropagation();
+    openOperatorMenuPop(trigger, trigger.dataset.opId, trigger.dataset.opActive === '1');
+  });
+  $('#operatorMenuPop').addEventListener('click', e => {
     const btn = e.target.closest('[data-op-action]');
     if (!btn) return;
-    const menu = btn.closest('.op-menu');
-    if (menu) menu.open = false;
-    const id = btn.dataset.opId;
-    const action = btn.dataset.opAction;
-    try {
-      await loadOperatorManageCache();
-      if (action === 'edit') openOperatorFormModal('edit', id);
-      else if (action === 'reset-pin') openOperatorResetPinModal(id);
-      else if (action === 'deactivate') await toggleOperatorActive(id, false);
-      else if (action === 'activate') await toggleOperatorActive(id, true);
-    } catch (er) { toast(errText(er), 'error'); }
+    e.stopPropagation();
+    void runOperatorMenuAction(btn.dataset.opAction);
+  });
+  document.addEventListener('click', e => {
+    const pop = $('#operatorMenuPop');
+    if (!pop || pop.classList.contains('hidden')) return;
+    if (pop.contains(e.target)) return;
+    if (e.target.closest('[data-op-menu-trigger]')) return;
+    closeOperatorMenuPop();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeOperatorMenuPop();
   });
   $('#operatorsTbody').addEventListener('change', async e => {
     const nc = e.target.closest('[data-op-nc]');

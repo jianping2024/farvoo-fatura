@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.50
+
+**开票员名册浮层菜单（方案 A）**
+
+- `#operatorsTable` 列宽收紧（姓名 ellipsis、角色 10%）。
+- 全局唯一 `#operatorMenuPop`（`position: fixed`）；`openOperatorMenuPop` / `closeOperatorMenuPop` / `runOperatorMenuAction` 单路径。
+- 移除 `<details class="op-menu">`；菜单支持点击外部与 Esc 关闭。
+
 ## 0.4.49
 
 **M3.2b 开票员会话吊销 + 设置页改版**

@@ -469,3 +469,30 @@ func TestAdminHTMLOperatorManageM32bSinglePath(t *testing.T) {
 		t.Fatal("j() must handle session_revoked and operator_inactive via forceLogout")
 	}
 }
+
+func TestAdminHTMLOperatorMenuSinglePath(t *testing.T) {
+	for _, fn := range []string{
+		"function openOperatorMenuPop",
+		"function closeOperatorMenuPop",
+		"function runOperatorMenuAction",
+	} {
+		if n := strings.Count(adminHTML, fn); n != 1 {
+			t.Fatalf("%s must appear exactly once, got %d", fn, n)
+		}
+	}
+	if n := strings.Count(adminHTML, `id="operatorMenuPop"`); n != 1 {
+		t.Fatalf("operatorMenuPop must exist exactly once, got %d", n)
+	}
+	if strings.Contains(adminHTML, "class=\"op-menu\"") || strings.Contains(adminHTML, "op-menu-pop") {
+		t.Fatal("remove op-menu; use #operatorMenuPop fixed popover only")
+	}
+	if strings.Contains(adminHTML, `<details class="op-menu"`) {
+		t.Fatal("operator row menu must not use details/op-menu")
+	}
+	if strings.Contains(adminHTML, "menu.open = false") {
+		t.Fatal("remove details menu.open close path")
+	}
+	if strings.Contains(adminHTML, `data-op-action="edit" data-op-id`) {
+		t.Fatal("row template must not embed inline menu actions; use #operatorMenuPop")
+	}
+}
