@@ -136,10 +136,30 @@ async function main() {
       `rows=${ownerRows.length}`);
 
     uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
-      id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', pin: '111111',
+      id: 'cashier-test-1', pin: '111111',
     })], env);
     let newCashierCookie = loginOperator(base, 'cashier-test-1', '111111');
-    record('admin pin reset', !!newCashierCookie);
+    record('admin pin reset (pin-only body)', !!newCashierCookie);
+
+    uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
+      id: 'cashier-test-1', can_issue_nc: true,
+    })], env);
+    record('admin can_issue_nc (nc-only body)', !uatFail(['req', 'GET', '/local/v1/setup/operators/manage'], env));
+
+    const loginList = uatJson(['req', 'GET', '/local/v1/setup/operators'], env);
+    const loginRoles = (loginList.operators || []).map((o) => o.role);
+    record('login list role order cashier→owner→admin',
+      loginRoles.join(',') === ['cashier', 'owner', 'admin'].join(','),
+      loginRoles.join(','));
+
+    const manageList = uatJson(['req', 'GET', '/local/v1/setup/operators/manage'], env);
+    const manageRoles = (manageList.operators || []).filter((o) => o.active).map((o) => o.role);
+    record('manage list role order cashier→owner→admin',
+      manageRoles.join(',') === ['cashier', 'owner', 'admin'].join(','),
+      manageRoles.join(','));
+
+    record('owner cannot pin-reset admin', uatFail(['req', 'PUT', '/local/v1/setup/operator',
+      '--body', JSON.stringify({ id: adminId, pin: '999999' })], ownerEnv));
 
     const changePin = uatJson(['req', 'POST', '/local/v1/setup/change-pin', '--body', JSON.stringify({
       old_pin: '111111', new_pin: '222222',
@@ -183,7 +203,7 @@ async function main() {
     record('cashier cannot operators/manage', uatFail(['req', 'GET', '/local/v1/setup/operators/manage'], cashierEnv));
 
     uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
-      id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', active: false,
+      id: 'cashier-test-1', active: false,
     })], env);
     const deactivated = await fetch(`${base}/local/v1/fiscal-documents`, {
       method: 'GET',
@@ -192,12 +212,12 @@ async function main() {
     record('deactivated cashier cookie → 401', deactivated.status === 401, `status ${deactivated.status}`);
 
     uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
-      id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', active: true, pin: '111111',
+      id: 'cashier-test-1', active: true, pin: '111111',
     })], env);
 
     const epochCookie = loginOperator(base, 'cashier-test-1', '111111');
     uatJson(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
-      id: 'cashier-test-1', role: 'cashier', display_name: 'Cashier A', pin: '333333',
+      id: 'cashier-test-1', pin: '333333',
     })], env);
     const epochRevoked = await fetch(`${base}/local/v1/products`, {
       headers: { Cookie: epochCookie },
@@ -205,10 +225,10 @@ async function main() {
     record('pin reset revokes old cookie', epochRevoked.status === 401, `status ${epochRevoked.status}`);
 
     record('cannot deactivate admin', uatFail(['req', 'PUT', '/local/v1/setup/operator',
-      '--body', JSON.stringify({ id: adminId, role: 'admin', display_name: 'Admin One', active: false })], env));
+      '--body', JSON.stringify({ id: adminId, active: false })], env));
 
     record('cannot deactivate last owner', uatFail(['req', 'PUT', '/local/v1/setup/operator',
-      '--body', JSON.stringify({ id: 'owner-test-1', role: 'owner', display_name: 'Store Owner', active: false })], env));
+      '--body', JSON.stringify({ id: 'owner-test-1', active: false })], env));
 
     const failed = results.filter((r) => r.status === 'fail');
     console.log('\nSummary:', results.length - failed.length, '/', results.length, 'passed');

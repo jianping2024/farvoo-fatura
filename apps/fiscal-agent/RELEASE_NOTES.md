@@ -2,12 +2,20 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.54
+
+**开票员模块收拢：排序、写路径分流、表格 CSS、菜单 RBAC**
+
+- 列表排序（登录下拉 + 设置名册）：店员 → 店长 → 管理员（SQL `operatorRoleOrderSQL` 唯一入口）。
+- `PUT /setup/operator` 按字段分流：meta / `active` / `pin` / `can_issue_nc` 各走对应 `*WithActor`；`SetOperatorPINWithActor` 补全 owner 约束。
+- Admin：`#operatorsTable` 去掉 colgroup，scoped 等宽列；`loadOperatorManageCache` 为唯一 `GET /operators/manage` 路径。
+- 行菜单：`operatorMenuActionVisible` 隐藏 admin 停用与自停用；PIN/停用/冲销请求体只带必要字段。
+
 ## 0.4.53
 
-**开票员名册表格列宽收紧**
+**开票员名册表格列宽（已由 0.4.54 替换为 scoped fixed 等宽列）**
 
-- `#operatorsTable` 改为 `table-layout: auto` + `max-content`，列宽随内容收缩，消除列间大空档与多余横向滚动。
-- 可冲销列 checkbox 行去掉多余 margin；单元格 padding 略收紧。
+- 本节方案废弃；以 0.4.54 为准。
 
 ## 0.4.52
 
@@ -66,9 +74,9 @@ Each release section starts with `## X.Y.Z`. The release workflow reads the matc
 
 ## 0.4.45
 
-**冷启动安装流：登录页创建 owner**
+**冷启动安装流：登录页创建首个开票员**
 
-- 唯一 bootstrap UI：登录页（无 `has_pin` 开票员时）；移除设置 §5 重复入口。
+- 唯一 bootstrap UI：登录页（无 `has_pin` 开票员时）；移除设置 §5 重复入口。（本节发布时写 `role=owner`；**0.4.51** 起 bootstrap 写 **`admin`**。）
 - `POST /bootstrap-owner` **仅 loopback**（`bootstrap_loopback_only`）；`BEGIN IMMEDIATE` 事务（H3）。
 - `setup.status.operator_ok`：须至少 1 名已设 PIN 的 active 开票员。
 
@@ -76,8 +84,8 @@ Each release section starts with `## X.Y.Z`. The release workflow reads the matc
 
 **M3.2 开票员 + Ops 门店策略同步**
 
-- 开票员角色仅 **owner / cashier**；PIN 登录与会话门闩（默认拒绝未登录 API）。
-- 首次 **bootstrap-owner**、改 PIN、开票员名册（Admin §5）；移除 demo `op-demo-cashier` 路径。
+- 开票员角色 **owner / cashier**（**0.4.51** 起三档 **admin / owner / cashier**，bootstrap 写 **admin**）；PIN 登录与会话门闩（默认拒绝未登录 API）。
+- 首次 **bootstrap-owner**（路径名保留）、改 PIN、开票员名册（Admin §5）；移除 demo `op-demo-cashier` 路径。
 - 云端激活拉取 Ops `fiscal_profile` / 终端策略；未配置 `fiscal_profile` 时激活失败 `fiscal_profile_missing`。
 - 本地迁移 `005_store_policy_terminals`；`setup.status` 增加 `fiscal_profile_ok`。
 

@@ -322,6 +322,7 @@
     .wizard-step-chip.active { border-color: var(--mode); color: var(--mode); background: #f0f7f2; }
     .settings-shell.settings-wizard-active .settings-nav,
     .settings-shell.settings-wizard-active .settings-nav-mobile { display: none; }
+    .settings-shell.settings-wizard-active { grid-template-columns: 1fr; }
     .settings-shell.settings-wizard-active .settings-panel[data-wizard-step] { display: none; }
     .settings-shell.settings-wizard-active .settings-panel[data-wizard-step].wizard-current { display: block; }
     .settings-shell.settings-wizard-active .settings-panel:not([data-wizard-step]),
@@ -330,16 +331,16 @@
     .settings-wizard-actions {
       display: flex; justify-content: space-between; gap: 0.75rem; margin-top: 0.85rem;
     }
-    #operatorsTable { table-layout: auto; width: max-content; max-width: 100%; }
-    #operatorsTable th:nth-child(1), #operatorsTable td:nth-child(1) {
-      max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    /* 开票员表：6 等宽列（scoped override，不叠 colgroup / nth-child） */
+    #operatorsTable.list-table { table-layout: fixed; width: 100%; }
+    #operatorsTable.list-table th,
+    #operatorsTable.list-table td { width: calc(100% / 6); }
+    #operatorsTable.list-table th.col-actions,
+    #operatorsTable.list-table td.col-actions {
+      text-align: center;
+      width: calc(100% / 6);
     }
-    #operatorsTable th:nth-child(2), #operatorsTable td:nth-child(2),
-    #operatorsTable th:nth-child(3), #operatorsTable td:nth-child(3),
-    #operatorsTable th:nth-child(5), #operatorsTable td:nth-child(5) { white-space: nowrap; }
-    #operatorsTable th:nth-child(4), #operatorsTable td:nth-child(4) { width: 1%; white-space: nowrap; }
-    #operatorsTable th, #operatorsTable td { padding: 0.45rem 0.5rem; }
-    #operatorsTable .check-row { margin-top: 0; gap: 0.35rem; font-size: 0.85rem; }
+    #operatorsTable .check-row { margin-top: 0; justify-content: center; }
     tr.muted td { opacity: 0.65; }
     .btn-op-menu-trigger {
       padding: 0.35rem 0.55rem; border-radius: 8px; font-weight: 700; color: var(--muted);
@@ -1172,6 +1173,21 @@
     return canAccessSettings();
   }
 
+  function loggedInOperatorId() {
+    return (loggedInOperator && loggedInOperator.operator_id) || '';
+  }
+
+  function isEditingSelf(operatorId) {
+    return !!operatorId && operatorId === loggedInOperatorId();
+  }
+
+  function operatorMenuActionVisible(action, operatorId, role, active) {
+    if (action === 'activate') return !active;
+    if (!active) return false;
+    if (action === 'deactivate') return role !== 'admin' && !isEditingSelf(operatorId);
+    return true;
+  }
+
   /** ONLY sidebar/nav access path after login or logout. */
   function applyOperatorAccess() {
     document.body.classList.toggle('operator-admin', operatorRole() === 'admin');
@@ -1584,7 +1600,7 @@
     if (bootstrap) bootstrap.classList.toggle('hidden', !showBootstrap);
   }
 
-  /** ONLY bootstrap-owner UI path (login page on agent host). */
+  /** ONLY bootstrap-admin UI path (login page on agent host; API path bootstrap-owner retained). */
   async function bootstrapOwnerAndLogin(displayName, pin) {
     const name = String(displayName || '').trim();
     const pinVal = String(pin || '').trim();
@@ -4313,7 +4329,7 @@
     operatorMenuAnchor = null;
   }
 
-  function openOperatorMenuPop(anchor, operatorId, active) {
+  function openOperatorMenuPop(anchor, operatorId, active, role) {
     const pop = $('#operatorMenuPop');
     if (!pop || !anchor) return;
     if (operatorMenuAnchor === anchor && !pop.classList.contains('hidden')) {
@@ -4323,10 +4339,10 @@
     closeOperatorMenuPop();
     operatorMenuTargetId = operatorId;
     operatorMenuAnchor = anchor;
-    pop.querySelector('[data-op-action="edit"]').classList.toggle('hidden', !active);
-    pop.querySelector('[data-op-action="reset-pin"]').classList.toggle('hidden', !active);
-    pop.querySelector('[data-op-action="deactivate"]').classList.toggle('hidden', !active);
-    pop.querySelector('[data-op-action="activate"]').classList.toggle('hidden', !!active);
+    pop.querySelector('[data-op-action="edit"]').classList.toggle('hidden', !operatorMenuActionVisible('edit', operatorId, role, active));
+    pop.querySelector('[data-op-action="reset-pin"]').classList.toggle('hidden', !operatorMenuActionVisible('reset-pin', operatorId, role, active));
+    pop.querySelector('[data-op-action="deactivate"]').classList.toggle('hidden', !operatorMenuActionVisible('deactivate', operatorId, role, active));
+    pop.querySelector('[data-op-action="activate"]').classList.toggle('hidden', !operatorMenuActionVisible('activate', operatorId, role, active));
     pop.setAttribute('aria-hidden', 'false');
     const rect = anchor.getBoundingClientRect();
     const margin = 6;
@@ -4350,8 +4366,9 @@
     closeOperatorMenuPop();
     if (!id) return;
     try {
-      await loadOperatorManageCache();
-      if (action === 'edit') openOperatorFormModal('edit', id);
+      const op = operatorManageCache.find(x => x.id === id);
+      if (!op && action !== 'edit') return;
+      if (action === 'edit') await openOperatorFormModal('edit', id);
       else if (action === 'reset-pin') openOperatorResetPinModal(id);
       else if (action === 'deactivate') await toggleOperatorActive(id, false);
       else if (action === 'activate') await toggleOperatorActive(id, true);
@@ -4365,9 +4382,7 @@
     if (!canManageOperators()) return;
     closeOperatorMenuPop();
     try {
-      const data = await j('GET', '/local/v1/setup/operators/manage');
-      const ops = data.operators || [];
-      operatorManageCache = ops;
+      const ops = await loadOperatorManageCache();
       if (empty) empty.classList.toggle('hidden', ops.length > 0);
       if (!ops.length) {
         tbody.innerHTML = '';
@@ -4375,9 +4390,9 @@
       }
       tbody.innerHTML = ops.map(o => {
         const ncToggle = o.active
-          ? '<label class="check-row"><input type="checkbox" data-op-nc="' + o.id + '"' + (o.can_issue_nc ? ' checked' : '') + ' /><span>可冲销</span></label>'
+          ? '<label class="check-row"><input type="checkbox" data-op-nc="' + o.id + '"' + (o.can_issue_nc ? ' checked' : '') + ' aria-label="可冲销" /></label>'
           : '—';
-        const actions = '<button type="button" class="ghost btn-op-menu-trigger" data-op-menu-trigger data-op-id="' + o.id + '" data-op-active="' + (o.active ? '1' : '0') + '" aria-label="操作">⋯</button>';
+        const actions = '<button type="button" class="ghost btn-op-menu-trigger" data-op-menu-trigger data-op-id="' + o.id + '" data-op-active="' + (o.active ? '1' : '0') + '" data-op-role="' + escHtml(o.role) + '" aria-label="操作">⋯</button>';
         return '<tr' + (o.active ? '' : ' class="muted"') + '>' +
           '<td>' + escHtml(o.display_name) + '</td>' +
           '<td>' + operatorRoleLabel(o.role) + '</td>' +
@@ -4401,13 +4416,17 @@
     return operatorManageCache;
   }
 
-  function openOperatorFormModal(mode, operatorId) {
+  async function openOperatorFormModal(mode, operatorId) {
     const isEdit = mode === 'edit';
+    if (isEdit && !operatorManageCache.find(x => x.id === operatorId)) {
+      await loadOperatorManageCache();
+    }
     const isAdmin = canManageProvisioning();
+    const editingSelf = isEdit && isEditingSelf(operatorId);
     $('#operatorFormTitle').textContent = isEdit ? '编辑开票员' : '添加开票员';
     $('#operatorFormId').value = isEdit ? operatorId : '';
     $('#operatorFormPinBlock').classList.toggle('hidden', isEdit);
-    $('#operatorFormRoleBlock').classList.toggle('hidden', !isAdmin);
+    $('#operatorFormRoleBlock').classList.toggle('hidden', !isAdmin || editingSelf);
     if (isEdit) {
       const op = operatorManageCache.find(x => x.id === operatorId);
       $('#operatorFormName').value = op ? op.display_name : '';
@@ -4431,7 +4450,11 @@
     let role = 'cashier';
     if (isEdit) {
       const op = operatorManageCache.find(x => x.id === $('#operatorFormId').value);
-      role = canManageProvisioning() ? $('#operatorFormRole').value : (op ? op.role : 'cashier');
+      if (isEditingSelf($('#operatorFormId').value)) {
+        role = op ? op.role : 'cashier';
+      } else {
+        role = canManageProvisioning() ? $('#operatorFormRole').value : (op ? op.role : 'cashier');
+      }
     } else {
       role = canManageProvisioning() ? $('#operatorFormRole').value : 'cashier';
     }
@@ -4484,8 +4507,7 @@
       toast('两次 PIN 不一致', 'error');
       return;
     }
-    const op = operatorManageCache.find(x => x.id === id) || {};
-    await putOperator({ id, role: op.role || 'cashier', display_name: op.display_name || '', pin });
+    await putOperator({ id, pin });
     closeOperatorResetPinModal();
     await refreshOperatorsPanel();
     toast('PIN 已重置', 'success');
@@ -4500,21 +4522,20 @@
         body: '确认停用「' + op.display_name + '」？其所有端会话将立即失效。',
         submitLabel: '确认停用',
         onConfirm: async () => {
-          await putOperator({ id: operatorId, role: op.role, display_name: op.display_name, active: false });
+          await putOperator({ id: operatorId, active: false });
           await refreshOperatorsPanel();
           toast('开票员已停用', 'success');
         }
       });
       return;
     }
-    await putOperator({ id: operatorId, role: op.role, display_name: op.display_name, active: true });
+    await putOperator({ id: operatorId, active: true });
     await refreshOperatorsPanel();
     toast('开票员已启用', 'success');
   }
 
-  $('#btnOperatorAdd').onclick = async () => {
+  $('#btnOperatorAdd').onclick = () => {
     try {
-      await loadOperatorManageCache();
       openOperatorFormModal('add');
     } catch (er) { toast(errText(er), 'error'); }
   };
@@ -4536,7 +4557,7 @@
     const trigger = e.target.closest('[data-op-menu-trigger]');
     if (!trigger) return;
     e.stopPropagation();
-    openOperatorMenuPop(trigger, trigger.dataset.opId, trigger.dataset.opActive === '1');
+    openOperatorMenuPop(trigger, trigger.dataset.opId, trigger.dataset.opActive === '1', trigger.dataset.opRole || 'cashier');
   });
   $('#operatorMenuPop').addEventListener('click', e => {
     const btn = e.target.closest('[data-op-action]');
@@ -4570,10 +4591,7 @@
     const nc = e.target.closest('[data-op-nc]');
     if (!nc) return;
     try {
-      await loadOperatorManageCache();
-      const op = operatorManageCache.find(x => x.id === nc.dataset.opNc);
-      if (!op) return;
-      await putOperator({ id: op.id, role: op.role, display_name: op.display_name, can_issue_nc: nc.checked });
+      await putOperator({ id: nc.dataset.opNc, can_issue_nc: nc.checked });
       await refreshOperatorsPanel();
       toast('冲销权限已更新', 'success');
     } catch (er) {

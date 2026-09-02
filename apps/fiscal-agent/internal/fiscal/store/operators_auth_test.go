@@ -52,6 +52,56 @@ func TestBootstrapOwner_EmptyThenRejectSecond(t *testing.T) {
 	}
 }
 
+func TestListOperatorsRoleOrder(t *testing.T) {
+	dir := t.TempDir()
+	db, err := store.Open(filepath.Join(dir, "fiscal.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	const storeID = "store-sort-1"
+	for _, spec := range []struct {
+		id, role, name string
+	}{
+		{"op-admin", "admin", "Z Admin"},
+		{"op-owner", "owner", "M Owner"},
+		{"op-cash", "cashier", "A Cashier"},
+	} {
+		if err := db.UpsertOperator(spec.id, storeID, spec.role, spec.name, "local-"+spec.id); err != nil {
+			t.Fatal(err)
+		}
+		if err := db.SetOperatorPIN(storeID, spec.id, "123456"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	login, err := db.ListOperatorsForLogin(storeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(login) != 3 {
+		t.Fatalf("login rows=%d", len(login))
+	}
+	wantLogin := []string{"cashier", "owner", "admin"}
+	for i, row := range login {
+		if row.Role != wantLogin[i] {
+			t.Fatalf("login[%d] role=%q want %q", i, row.Role, wantLogin[i])
+		}
+	}
+	manage, err := db.ListOperatorsForManage(storeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(manage) != 3 {
+		t.Fatalf("manage rows=%d", len(manage))
+	}
+	wantManage := []string{"cashier", "owner", "admin"}
+	for i, row := range manage {
+		if row.Role != wantManage[i] {
+			t.Fatalf("manage[%d] role=%q want %q", i, row.Role, wantManage[i])
+		}
+	}
+}
+
 func TestCountActiveOperatorsWithPIN_IgnoresUnpinned(t *testing.T) {
 	dir := t.TempDir()
 	db, err := store.Open(filepath.Join(dir, "fiscal.db"))

@@ -35,6 +35,9 @@ type OperatorLoginRow struct {
 	HasPIN      bool   `json:"has_pin"`
 }
 
+// operatorRoleOrderSQL sorts cashier → owner → admin (ONLY operator list ORDER BY).
+const operatorRoleOrderSQL = `CASE role WHEN 'cashier' THEN 0 WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 ELSE 3 END`
+
 // OperatorManageRow is owner manage list (GET /setup/operators/manage).
 type OperatorManageRow struct {
 	ID          string `json:"id"`
@@ -224,7 +227,7 @@ func (d *DB) beginImmediateTx(ctx context.Context) (*sql.Tx, error) {
 	return d.SQL.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 }
 
-// BootstrapOwner creates first owner when operators empty — ONLY bootstrap write path (H3).
+// BootstrapOwner creates first admin when operators empty — ONLY bootstrap write path (H3). API path name bootstrap-owner is retained.
 func (d *DB) BootstrapOwner(storeID, displayName, pin string) (string, error) {
 	if strings.TrimSpace(displayName) == "" {
 		return "", errors.New("store: display_name required")
@@ -385,7 +388,7 @@ func (d *DB) SetOperatorActive(storeID, operatorID string, active bool) error {
 // ListOperatorsForManage lists all operators for owner UI.
 func (d *DB) ListOperatorsForManage(storeID string) ([]OperatorManageRow, error) {
 	rows, err := d.SQL.Query(`SELECT id, display_name, role, active, pin_hash, can_issue_nc FROM operators
-		WHERE store_id=? ORDER BY active DESC, display_name`, storeID)
+		WHERE store_id=? ORDER BY active DESC, `+operatorRoleOrderSQL+`, display_name COLLATE NOCASE`, storeID)
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +412,8 @@ func (d *DB) ListOperatorsForManage(storeID string) ([]OperatorManageRow, error)
 // ListOperatorsForLogin lists operators without pin_hash.
 func (d *DB) ListOperatorsForLogin(storeID string) ([]OperatorLoginRow, error) {
 	rows, err := d.SQL.Query(`SELECT id, display_name, role, pin_hash FROM operators
-		WHERE store_id=? AND active=1 AND pin_hash IS NOT NULL AND pin_hash != '' ORDER BY display_name`, storeID)
+		WHERE store_id=? AND active=1 AND pin_hash IS NOT NULL AND pin_hash != ''
+		ORDER BY `+operatorRoleOrderSQL+`, display_name COLLATE NOCASE`, storeID)
 	if err != nil {
 		return nil, err
 	}

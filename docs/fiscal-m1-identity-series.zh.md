@@ -7,7 +7,7 @@
 
 ## 1. 目标
 
-店长经 Local Admin / API 完成：纳税人 → AT 子用户 → 注册/绑定系列（`validation_code`）→ 激活开票（设备钥 + 产品钥封装）→ 再开 FT。  
+**管理员**（`admin`）经 Local Admin / API 完成：纳税人 → AT 子用户 → 注册/绑定系列（`validation_code`）→ 激活开票（设备钥 + 产品钥封装）→ 再开 FT。（**店长** `owner` 仅商家资料等子集，见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.3.3。）  
 **禁止**依赖 `SeedDemo` 灌验证码与 `DEV_PLAIN` 私钥（除非显式开发开关）。
 
 ## 2. 环境

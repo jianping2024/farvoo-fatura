@@ -104,7 +104,7 @@ AT SOAP、TPM、NC、SAF-T、Farvoo 对接、主进程托盘集成。
 
 ### 目标
 
-去掉「开发者灌库才能开票」：店长可配置纳税人与 AT 子用户，注册系列拿到真 `validation_code`，完成「激活开票」拿到可解封的产品签名钥。
+去掉「开发者灌库才能开票」：**管理员**（`admin`）可配置纳税人与 AT 子用户，注册系列拿到真 `validation_code`，完成「激活开票」拿到可解封的产品签名钥。（**店长** `owner` 仅商家资料等子集，见 M3.2c §3.3.3。）
 
 ### 非目标
 
@@ -346,7 +346,7 @@ M1（NC 系列也要 validation_code）；M2 建议已完成以便真打 NC；**
 
 ### 目标
 
-Admin **本地**创建 `owner` / `cashier`、PIN 登录；**一 Agent 多台 PC 浏览器开票**（[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.8）；签发 `operators.id` 来自会话；**不同步** Farvoo。
+空库 **bootstrap 创建 `admin`**；**admin** 本地再建 `owner` / `cashier`、PIN 登录；**一 Agent 多台 PC 浏览器开票**（[`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.8）；签发 `operators.id` 来自会话；**不同步** Farvoo。
 
 ### 非目标
 
@@ -359,7 +359,7 @@ Farvoo `fiscal-operators` 拉取；Mesa 密码复用；`operator_token` / LAN �
 | D3.11 | **设计** `fiscal-m3-2-operators.zh.md` | P0 角色、冷启动、PIN、会话安全、唯一写路径 |
 | D3.12 | **Store/Service** | `SetOperatorPIN`、`ChangeOperatorPIN`、`VerifyOperatorPIN`；登录限速；`mesa_user_id=local-{id}`；审计 LOGIN/PIN_* |
 | D3.13 | **API 会话** | 写路径 middleware；`bootstrap-owner` / `login` / `logout` / `change-pin`；`operator_id` 仅来自会话 |
-| D3.14 | **Admin** | 激活向导首个 `owner`；§5 名册；登录/锁定/修改我的 PIN；移除 `op-demo-cashier` 生产路径 |
+| D3.14 | **Admin** | 登录页 bootstrap 首个 **`admin`**；§5 名册；登录/锁定/修改我的 PIN；移除 `op-demo-cashier` 生产路径 |
 | D3.15 | **Ops 门店策略** | `max_fiscal_terminals` + `fiscal_profile` 仅 Ops 下发；`FISCAL_ALLOW_LAN`；配对码 `terminals/pair` |
 | D3.16 | **回归** | `fiscal-m3-operators-regression.mjs`：双角色、401、跨 PC、Ops 端数、**Ops 切换 fiscal_profile** |
 

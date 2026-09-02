@@ -11,52 +11,53 @@
 | 门店 | Farvoo 餐厅「Pirata Wok Lisboa」 | Farvoo `restaurants` |
 | `store_id` | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` | claim 返回的 `restaurant_id`，写入 `config.json` 后再写入各表 |
 | 主机 | 店内唯一 Windows 收银主机 | 物理机 |
-| owner | 张三 | Agent 本地创建，`role=owner` |
-| cashier | 李四 | Agent 本地创建，`role=cashier` |
+| admin | 王五 | 空库 bootstrap（登录页），`role=admin` |
+| owner | 张三 | **admin** 在设置 §operators 创建，`role=owner` |
+| cashier | 李四 | **admin** 或 **owner** 创建，`role=cashier` |
 
 时间一律举 UTC 例：`2026-08-20T13:05:00Z`。
 
 ---
 
-## 1. `taxpayer_settings`（店长在 Agent「商家资料」页保存）
+## 1. `taxpayer_settings`（管理员或店长在 Agent「商家资料」页保存）
 
-**谁写：** 店长在 Agent 本地表单提交。  
+**谁写：** **admin** 或 **owner** 在 Agent 本地表单提交（`owner` 无 AT/系列/激活权限，见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.3.3）。  
 **谁读：** 开票票头、QR 字段 A、SAF-T Header、算 `InvoiceDate` 用的时区。
 
 | 列 | 本例值 | 明确来源 |
 |----|--------|----------|
 | id | `ts-001-uuid` | Agent 生成 UUID |
 | store_id | `a1b2c3d4-…7890` | 本机 `config.json` 的 `restaurant_id`（来自 claim） |
-| tax_registration_number | `517535009` | 店长手填；来自公司税务登记 NIF（与 Portal 一致） |
-| legal_name | `ESTRELAS OGIVAIS LDA` | 店长手填；商业登记法定名 |
-| business_name | `Pirata Wok` | 店长手填；门店招牌（可空则票面可用 legal_name） |
-| address_detail | `Av. Exemplo 12` | 店长手填；注册地址 |
-| city | `Lisboa` | 店长手填 |
-| postal_code | `1000-001` | 店长手填 |
-| country | `PT` | 表单默认；店长可改（P0 大陆店固定 PT） |
-| timezone | `Europe/Lisbon` | 表单默认；店长可改；**唯一**用于 InvoiceDate/票面本地时 |
-| phone | `218437250` | 店长手填；可空 |
-| software_certificate_number | `0` | **产品默认**；Modelo 24 通过前固定 `0`；通过后由**运营下发/发版配置**改为真号，店长一般不手改 |
+| tax_registration_number | `517535009` | 手填；来自公司税务登记 NIF（与 Portal 一致） |
+| legal_name | `ESTRELAS OGIVAIS LDA` | 手填；商业登记法定名 |
+| business_name | `Pirata Wok` | 手填；门店招牌（可空则票面可用 legal_name） |
+| address_detail | `Av. Exemplo 12` | 手填；注册地址 |
+| city | `Lisboa` | 手填 |
+| postal_code | `1000-001` | 手填 |
+| country | `PT` | 表单默认；可改（P0 大陆店固定 PT） |
+| timezone | `Europe/Lisbon` | 表单默认；可改；**唯一**用于 InvoiceDate/票面本地时 |
+| phone | `218437250` | 手填；可空 |
+| software_certificate_number | `0` | **产品默认**；Modelo 24 通过前固定 `0`；通过后由**运营下发/发版配置**改为真号，一般不手改 |
 | product_id | `Farvoo/InvoiceEngine` | **产品常量**（安装包/代码内嵌） |
 | product_version | `0.1.0` | **运行中 Agent 版本号**（与 `VERSION` 文件一致） |
-| fs_amount_threshold | `100.00` | 表单默认；店长可改；会计确认后的门店配置 |
+| fs_amount_threshold | `100.00` | 表单默认；可改；会计确认后的门店配置 |
 | tax_country_region | `PT` | 表单默认；P0 大陆 |
 | created_at | `2026-08-20T13:00:00Z` | Agent 首次插入时 `time.Now().UTC()` |
 | updated_at | `2026-08-20T13:00:00Z` | 每次保存刷新 |
 
 ---
 
-## 2. `at_credentials`（店长在 Agent「AT 凭证」页保存）
+## 2. `at_credentials`（**管理员**在 Agent「AT 凭证」页保存）
 
-**谁写：** 店长粘贴 Portal 子用户账号密码。  
+**谁写：** **admin** 粘贴 Portal 子用户账号密码（**owner** 不可见该分区）。  
 **谁读：** 仅调用 AT Series SOAP 时（注册/查询系列）；日常开 FT **不读**。
 
 | 列 | 本例值 | 明确来源 |
 |----|--------|----------|
 | id | `atc-001-uuid` | Agent 生成 UUID |
 | store_id | `a1b2c3d4-…7890` | 同 `config.json.restaurant_id` |
-| username | `517535009/37` | 店长手填；Portal「NIF/子用户编号」 |
-| password_ciphertext | `<DPAPI blob>` | 店长输入明文密码 → Agent 调用 Windows `CryptProtectData` → 只存返回字节 |
+| username | `517535009/37` | admin 手填；Portal「NIF/子用户编号」 |
+| password_ciphertext | `<DPAPI blob>` | admin 输入明文密码 → Agent 调用 Windows `CryptProtectData` → 只存返回字节 |
 | salt | `NULL` | **P0 定法写死 NULL**（不用 PBKDF2）；不是手填 |
 | wrap_meta | `{"scheme":"dpapi","v":1}` | **Agent 代码常量写入**；不是店长填写 |
 | last_ok_at | `2026-08-20T13:10:00Z` | 最近一次 `registarSerie`/`consultarSeries` **成功**时 Agent 写入 |
@@ -68,7 +69,7 @@
 
 ---
 
-## 3. `agent_installations` + `signing_keys`（两步激活：店长点「激活开票」）
+## 3. `agent_installations` + `signing_keys`（两步激活：**管理员**点「激活开票」）
 
 顺序固定：
 
@@ -116,23 +117,39 @@
 **PIN：** 6 位数字；argon2id 写 `pin_hash`；不上云。  
 **权威：** [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md)
 
-### 4.1 owner 张三
+### 4.1 admin 王五（bootstrap · 登录页）
+
+| 列 | 本例值 | 明确来源 |
+|----|--------|----------|
+| id | `op-wang-uuid` | Agent 生成 UUID（作 SourceID） |
+| mesa_user_id | `local-op-wang-uuid` | 占位 `local-{id}`（非 Farvoo user） |
+| store_id | `a1b2c3d4-…7890` | `config.json.restaurant_id` |
+| role | `admin` | 空库 bootstrap（`POST /setup/bootstrap-owner`，路径名保留） |
+| display_name | `王五` | 登录页手填 |
+| active | `1` | bootstrap 默认启用 |
+| pin_hash | `$argon2id$…` | bootstrap 设 6 位 PIN |
+| can_issue_nc | `1` | `admin` 默认 1 |
+| synced_at | NULL | P0 本地路径不写 |
+| created_at | `2026-08-20T14:00:00Z` | bootstrap 插入 |
+| updated_at | `2026-08-20T14:00:00Z` | 改 PIN 或权限时刷新 |
+
+### 4.2 owner 张三（admin 在设置 §operators 创建）
 
 | 列 | 本例值 | 明确来源 |
 |----|--------|----------|
 | id | `op-zhang-uuid` | Agent 生成 UUID（作 SourceID） |
 | mesa_user_id | `local-op-zhang-uuid` | 占位 `local-{id}`（非 Farvoo user） |
 | store_id | `a1b2c3d4-…7890` | `config.json.restaurant_id` |
-| role | `owner` | 创建时选 `owner` |
+| role | `owner` | **admin** 添加开票员时选择 `owner` |
 | display_name | `张三` | 手填 |
 | active | `1` | 创建时默认启用 |
 | pin_hash | `$argon2id$…` | 创建时设 PIN |
 | can_issue_nc | `1` | `owner` 默认 1 |
 | synced_at | NULL | P0 本地路径不写 |
-| created_at | `2026-08-20T14:05:00Z` | 首次创建 |
+| created_at | `2026-08-20T14:05:00Z` | admin 创建 |
 | updated_at | `2026-08-20T15:00:00Z` | 改 PIN 或权限时刷新 |
 
-### 4.2 cashier 李四
+### 4.3 cashier 李四
 
 | 列 | 本例值 | 明确来源 |
 |----|--------|----------|
@@ -142,8 +159,8 @@
 | role | `cashier` | 创建时选 `cashier` |
 | display_name | `李四` | 手填 |
 | active | `1` | 默认启用 |
-| pin_hash | `$argon2id$…` | `owner` 创建时设 PIN；或本人「修改我的 PIN」 |
-| can_issue_nc | `0` | 默认 0；`owner` 可在设置页打开 |
+| pin_hash | `$argon2id$…` | **admin** 或 **owner** 创建时设 PIN；或本人「修改我的 PIN」 |
+| can_issue_nc | `0` | 默认 0；**admin** / **owner** 可在设置页打开 |
 | synced_at | NULL | P0 本地路径不写 |
 | created_at | `2026-08-20T14:05:00Z` | |
 | updated_at | `2026-08-20T15:00:00Z` | |
@@ -159,13 +176,16 @@ T0  claim 六位码
     → config.json: restaurant_id, device_id, agentjwt
     → 本例尚无写 SQLite 身份表
 
-T1  店长填商家资料
+T0b 空库 bootstrap（仅 loopback 登录页）
+    → INSERT operators（王五 admin + pin_hash）
+
+T1  admin 登录后填商家资料
     → INSERT taxpayer_settings（上表全部列有来源）
 
-T2  店长填 AT 子用户
+T2  admin 填 AT 子用户
     → INSERT at_credentials（salt=NULL, wrap_meta=dpapi）
 
-T3  店长点激活开票
+T3  admin 点激活开票
     → 生成本机设备钥
     → 申请运营 → 收到 C
     → INSERT agent_installations + signing_keys
@@ -174,7 +194,7 @@ T4  （可穿插）用 at_credentials 调 AT 注册系列
     → 更新 at_credentials.last_ok_at
     → 验证码写入 series（别表，本篇不展开）
 
-T5  `owner` 在设置 §5 创建开票员
+T5  **admin** 在设置 §operators 创建开票员
     → INSERT operators（张三 owner、李四 cashier）
     → 各设 pin_hash
 
@@ -189,7 +209,7 @@ T6  日常开票
 
 | 来源类型 | 含义 | 本篇出现的列例 |
 |----------|------|----------------|
-| A. 店长手填 | Agent 表单 | NIF、地址、AT username/密码明文（存前加密） |
+| A. 手填（admin/owner 表单） | Agent 表单 | NIF、地址、AT username/密码明文（存前加密；AT 仅 admin） |
 | B. claim/config.json | 打印配对已有 | store_id、device_id |
 | C. 产品常量/版本 | 安装包 | product_id、software_certificate_number 初值、wrap_meta.scheme |
 | D. 本机生成 | Agent/TPM | installation_id、device_public_key、password_ciphertext、operators.id、mesa_user_id 占位 |

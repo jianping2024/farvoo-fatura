@@ -465,8 +465,8 @@ func TestAdminHTMLOperatorManageM32bSinglePath(t *testing.T) {
 	if n := strings.Count(adminHTML, "function putOperator"); n != 1 {
 		t.Fatalf("putOperator must appear exactly once, got %d", n)
 	}
-	if strings.Count(adminHTML, "/local/v1/setup/operators/manage") != 2 {
-		t.Fatalf("operators/manage must be called from refreshOperatorsPanel + loadOperatorManageCache only, got %d",
+	if strings.Count(adminHTML, "/local/v1/setup/operators/manage") != 1 {
+		t.Fatalf("operators/manage must be called from loadOperatorManageCache only, got %d",
 			strings.Count(adminHTML, "/local/v1/setup/operators/manage"))
 	}
 	if strings.Count(adminHTML, "j('PUT', '/local/v1/setup/operator'") != 1 {
@@ -478,6 +478,14 @@ func TestAdminHTMLOperatorManageM32bSinglePath(t *testing.T) {
 	}
 	if !strings.Contains(adminHTML, "session_revoked") || !strings.Contains(adminHTML, "operator_inactive") {
 		t.Fatal("j() must handle session_revoked and operator_inactive via forceLogout")
+	}
+	for _, fn := range []string{"function loggedInOperatorId", "function isEditingSelf", "function operatorMenuActionVisible"} {
+		if n := strings.Count(adminHTML, fn); n != 1 {
+			t.Fatalf("%s must appear exactly once, got %d", fn, n)
+		}
+	}
+	if !strings.Contains(adminHTML, "editingSelf") || !strings.Contains(adminHTML, "isEditingSelf($('#operatorFormId').value)") {
+		t.Fatal("operator self-edit must hide role and preserve existing role on submit")
 	}
 }
 
@@ -529,5 +537,20 @@ func TestAdminHTMLConfirmActionSinglePath(t *testing.T) {
 	}
 	if n := strings.Count(adminHTML, "    openConfirmAction({"); n != 3 {
 		t.Fatalf("openConfirmAction must be called from exactly 3 sites, got %d", n)
+	}
+}
+
+func TestAdminHTMLOperatorsTableLayout(t *testing.T) {
+	if !strings.Contains(adminHTML, "#operatorsTable.list-table { table-layout: fixed; width: 100%; }") {
+		t.Fatal("operators table must use full-width fixed layout")
+	}
+	if strings.Contains(adminHTML, "<colgroup>") {
+		t.Fatal("operators table must not use colgroup; use scoped th/td width only")
+	}
+	if strings.Count(adminHTML, `id="operatorsTable"`) != 1 {
+		t.Fatal("operators table must exist exactly once")
+	}
+	if !strings.Contains(adminHTML, "#operatorsTable.list-table th.col-actions") {
+		t.Fatal("operators table must override list-table col-actions width")
 	}
 }

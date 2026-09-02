@@ -552,42 +552,53 @@ func handleOperator(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		return
 	}
 	actorRole := ""
+	actorID := ""
 	if s := SessionFromContext(r.Context()); s != nil {
 		actorRole = s.Role
+		actorID = s.OperatorID
 	}
-	if err := deps.Fiscal.UpsertOperatorWithActor(actorRole, body.ID, body.StoreID, body.Role, body.DisplayName); err != nil {
-		writeCoded(w, err)
-		return
-	}
-	if body.Active != nil {
-		if err := deps.Fiscal.SetOperatorActiveWithActor(actorRole, body.StoreID, body.ID, *body.Active); err != nil {
+	touched := false
+	if body.DisplayName != "" || body.Role != "" {
+		touched = true
+		if body.DisplayName == "" {
+			writeErr(w, http.StatusBadRequest, "display_name_required", "display_name required")
+			return
+		}
+		if err := deps.Fiscal.UpsertOperatorWithActor(actorRole, actorID, body.ID, body.StoreID, body.Role, body.DisplayName); err != nil {
 			writeCoded(w, err)
 			return
 		}
-		actor := ""
-		if s := SessionFromContext(r.Context()); s != nil {
-			actor = s.OperatorID
+	}
+	if body.Active != nil {
+		touched = true
+		if err := deps.Fiscal.SetOperatorActiveWithActor(actorRole, body.StoreID, body.ID, *body.Active); err != nil {
+			writeCoded(w, err)
+			return
 		}
 		action := "OPERATOR_ACTIVATE"
 		if !*body.Active {
 			action = "OPERATOR_DEACTIVATE"
 		}
-		_ = deps.Fiscal.DB().InsertAuditLog(actor, action, "operator", body.ID, "{}")
+		_ = deps.Fiscal.DB().InsertAuditLog(actorID, action, "operator", body.ID, "{}")
 	}
 	if body.PIN != "" {
-		if err := deps.Fiscal.SetOperatorPIN(body.StoreID, body.ID, body.PIN); err != nil {
+		touched = true
+		if err := deps.Fiscal.SetOperatorPINWithActor(actorRole, actorID, body.StoreID, body.ID, body.PIN); err != nil {
 			writeCoded(w, err)
 			return
 		}
-		if s := SessionFromContext(r.Context()); s != nil {
-			_ = deps.Fiscal.DB().InsertAuditLog(s.OperatorID, "PIN_RESET", "operator", body.ID, "{}")
-		}
+		_ = deps.Fiscal.DB().InsertAuditLog(actorID, "PIN_RESET", "operator", body.ID, "{}")
 	}
 	if body.CanIssueNC != nil {
+		touched = true
 		if err := deps.Fiscal.SetOperatorCanIssueNCWithActor(actorRole, body.StoreID, body.ID, *body.CanIssueNC); err != nil {
 			writeCoded(w, err)
 			return
 		}
+	}
+	if !touched {
+		writeErr(w, http.StatusBadRequest, "no_updates", "no operator fields to update")
+		return
 	}
 	st, _ := deps.Fiscal.SetupStatus(body.StoreID)
 	writeJSON(w, http.StatusOK, st)

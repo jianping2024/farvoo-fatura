@@ -23,7 +23,7 @@ type LoginResult struct {
 	SessionEpoch int
 }
 
-// BootstrapOwner creates first owner when operators empty.
+// BootstrapOwner creates first admin when operators empty (API path bootstrap-owner retained).
 func (s *FiscalService) BootstrapOwner(storeID, displayName, pin string) (string, error) {
 	if s == nil || s.db == nil {
 		return "", fmt.Errorf("fiscal: service nil")

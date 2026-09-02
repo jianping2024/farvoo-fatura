@@ -29,7 +29,7 @@ func handleListOperators(w http.ResponseWriter, r *http.Request, deps HandlerDep
 
 func handleBootstrapOwner(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	if !IsLoopbackClient(r) {
-		writeErr(w, http.StatusForbidden, "bootstrap_loopback_only", "create first owner on the agent host only")
+		writeErr(w, http.StatusForbidden, "bootstrap_loopback_only", "create first admin on the agent host only")
 		return
 	}
 	var body struct {
