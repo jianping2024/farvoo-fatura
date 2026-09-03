@@ -65,7 +65,7 @@
 | 问题 | 登录页匿名可读字段过多，便于枚举门店配置 |
 | P0 定法 | 匿名 `GET /local/v1/setup/status` **移除** 以下字段：`at_env`、`software_certificate_number`、`signing_key_version`、`cloud_jwt_hint`（若存在） |
 | 保留 | `bootstrap_required`、`operators_count`、`fiscal_profile`、`store_display_name`（店名用于登录页展示）、`ready_to_issue` 布尔 **不** 暴露系列明细 |
-| 已登录 | 会话下 `GET /setup/status` 行为 **不变**（各角色仍按 M3.2c 可见子集） |
+| 已登录 | 会话须经 `sessionIfValidCookie`（active+epoch）；吊销/停用 Cookie **只**回匿名 Public，不吐系列校验码 |
 | 唯一出口 | 现有 status handler 分匿名/会话两套 JSON builder |
 
 ---

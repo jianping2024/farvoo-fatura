@@ -190,7 +190,7 @@ func (m *SessionManager) ParseRequest(r *http.Request) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	if m.sign(raw) != parts[1] {
+	if !hmac.Equal([]byte(m.sign(raw)), []byte(parts[1])) {
 		return nil, errors.New("bad signature")
 	}
 	var p sessionPayload

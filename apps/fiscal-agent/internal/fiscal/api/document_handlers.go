@@ -185,11 +185,11 @@ func handleCreditNote(w http.ResponseWriter, r *http.Request, deps HandlerDeps) 
 	}
 	documentID := r.PathValue("documentId")
 	var body struct {
-		RequestID  string                    `json:"request_id"`
-		OperatorID string                    `json:"operator_id"`
-		StationID  string                    `json:"station_id"`
-		Reason     string                    `json:"reason"`
-		CreditFull *bool                     `json:"credit_full"`
+		RequestID  string                     `json:"request_id"`
+		OperatorID string                     `json:"operator_id"`
+		StationID  string                     `json:"station_id"`
+		Reason     string                     `json:"reason"`
+		CreditFull *bool                      `json:"credit_full"`
 		Lines      []domain.CreditLineRequest `json:"lines"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -244,11 +244,11 @@ func handleDebitNote(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	}
 	documentID := r.PathValue("documentId")
 	var body struct {
-		RequestID  string                    `json:"request_id"`
-		OperatorID string                    `json:"operator_id"`
-		StationID  string                    `json:"station_id"`
-		Reason     string                    `json:"reason"`
-		DebitFull  *bool                     `json:"debit_full"`
+		RequestID  string                     `json:"request_id"`
+		OperatorID string                     `json:"operator_id"`
+		StationID  string                     `json:"station_id"`
+		Reason     string                     `json:"reason"`
+		DebitFull  *bool                      `json:"debit_full"`
 		Lines      []domain.CreditLineRequest `json:"lines"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {

@@ -44,13 +44,13 @@ func routeAuthFor(r *http.Request) routeAuth {
 		}
 	}
 	adminPaths := map[string]bool{
-		"/local/v1/setup/at-credentials":        true,
-		"/local/v1/setup/series/register":       true,
-		"/local/v1/setup/activate":              true,
-		"/local/v1/setup/activate-from-cloud":   true,
-		"/local/v1/setup/backup":                true,
-		"/local/v1/setup/integrity/verify":      true,
-		"/local/v1/setup/prepare-swap":          true,
+		"/local/v1/setup/at-credentials":      true,
+		"/local/v1/setup/series/register":     true,
+		"/local/v1/setup/activate":            true,
+		"/local/v1/setup/activate-from-cloud": true,
+		"/local/v1/setup/backup":              true,
+		"/local/v1/setup/integrity/verify":    true,
+		"/local/v1/setup/prepare-swap":        true,
 	}
 	if adminPaths[p] {
 		return authAdmin

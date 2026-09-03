@@ -178,7 +178,7 @@ func handleTerminalPair(w http.ResponseWriter, r *http.Request, deps HandlerDeps
 	SetTerminalCookie(w, res.TerminalID)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"terminal_id": res.TerminalID,
-		"label":         res.Label,
+		"label":       res.Label,
 	})
 }
 

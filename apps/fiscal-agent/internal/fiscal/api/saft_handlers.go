@@ -14,20 +14,24 @@ func handleExportSAFT(w http.ResponseWriter, r *http.Request, deps HandlerDeps) 
 		return
 	}
 	var body struct {
-		StoreID    string `json:"store_id"`
-		Year       int    `json:"year"`
-		Month      int    `json:"month"`
-		OperatorID string `json:"operator_id"`
+		StoreID string `json:"store_id"`
+		Year    int    `json:"year"`
+		Month   int    `json:"month"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
 		return
 	}
-	if body.StoreID == "" {
-		body.StoreID = deps.StoreID
+	storeID, ok := writeResolvedStoreID(w, deps, body.StoreID)
+	if !ok {
+		return
+	}
+	opID, ok := RequireOperatorID(w, r)
+	if !ok {
+		return
 	}
 	res, err := deps.Fiscal.ExportSAFT(r.Context(), service.ExportSAFTInput{
-		StoreID: body.StoreID, Year: body.Year, Month: body.Month, OperatorID: body.OperatorID,
+		StoreID: storeID, Year: body.Year, Month: body.Month, OperatorID: opID,
 	})
 	if err != nil {
 		writeCoded(w, err)
@@ -41,9 +45,9 @@ func handleListSAFTExports(w http.ResponseWriter, r *http.Request, deps HandlerD
 		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
 		return
 	}
-	storeID := r.URL.Query().Get("store_id")
-	if storeID == "" {
-		storeID = deps.StoreID
+	storeID, ok := writeResolvedStoreID(w, deps, r.URL.Query().Get("store_id"))
+	if !ok {
+		return
 	}
 	year, month := 0, 0
 	if q := r.URL.Query().Get("year"); q != "" {

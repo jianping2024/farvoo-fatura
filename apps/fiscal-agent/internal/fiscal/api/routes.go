@@ -67,6 +67,10 @@ func (deps HandlerDeps) guardAuto(h http.HandlerFunc) http.HandlerFunc {
 			}
 			return
 		}
+		// Sole LAN terminal gate for every authenticated route (loopback exempt).
+		if !deps.requireActiveLANTerminal(w, r) {
+			return
+		}
 		h(w, r.WithContext(ctx))
 	}
 }
@@ -208,13 +212,13 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/bill-drafts/{id}/discard", g(func(w http.ResponseWriter, r *http.Request) {
 		handleDiscardBillDraft(w, r, deps)
 	}))
-	mux.HandleFunc("GET /local/v1/events", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /local/v1/events", g(func(w http.ResponseWriter, r *http.Request) {
 		if deps.UIEvents == nil {
 			writeErr(w, http.StatusServiceUnavailable, "events_unavailable", "UI events hub not configured")
 			return
 		}
 		deps.UIEvents.ServeSSE(w, r)
-	})
+	}))
 	// Dev/UAT only: run the SAME PullAndIngest path in-process so SSE Hub sees draft writers.
 	mux.HandleFunc("POST /local/v1/dev/bill-sync/pull", func(w http.ResponseWriter, r *http.Request) {
 		handleDevBillSyncPull(w, r, deps)
@@ -267,17 +271,14 @@ func handleSetupStatus(w http.ResponseWriter, r *http.Request, deps HandlerDeps)
 		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
 		return
 	}
-	st, err := deps.Fiscal.SetupStatus(r.URL.Query().Get("store_id"))
+	// Always agent store — ignore client store_id (no parallel-tenant leak via query).
+	st, err := deps.Fiscal.SetupStatus(deps.StoreID)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "status_failed", err.Error())
 		return
 	}
-	sess := SessionFromContext(r.Context())
-	if sess == nil && deps.Sessions != nil {
-		if parsed, err := deps.Sessions.ParseRequest(r); err == nil && parsed != nil {
-			sess = parsed
-		}
-	}
+	// Full status ONLY via sessionIfValidCookie (active+epoch); revoked → Public, never 401.
+	sess := deps.sessionIfValidCookie(r)
 	if sess != nil && deps.Fiscal.DB() != nil {
 		if can, err := deps.Fiscal.DB().OperatorCanIssueNC(deps.StoreID, sess.OperatorID); err == nil {
 			st.OperatorCanIssueNC = can
@@ -362,10 +363,10 @@ func handlePrepareSwap(w http.ResponseWriter, r *http.Request, deps HandlerDeps)
 	}
 	st, _ := deps.Fiscal.SetupStatus(deps.StoreID)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":            true,
-		"backup_path":   path,
-		"backup_bytes":  size,
-		"activated_ok":  st != nil && st.ActivatedOK,
+		"ok":             true,
+		"backup_path":    path,
+		"backup_bytes":   size,
+		"activated_ok":   st != nil && st.ActivatedOK,
 		"ready_to_issue": st != nil && st.ReadyToIssue,
 		"next_steps": []string{
 			"Copy backup_path to the new PC",
@@ -382,14 +383,16 @@ func handleUpsertTaxpayer(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
 		return
 	}
-	if body.StoreID == "" {
-		body.StoreID = deps.StoreID
+	storeID, ok := writeResolvedStoreID(w, deps, body.StoreID)
+	if !ok {
+		return
 	}
+	body.StoreID = storeID
 	if err := deps.Fiscal.UpsertTaxpayer(body); err != nil {
 		writeCoded(w, err)
 		return
 	}
-	st, _ := deps.Fiscal.SetupStatus(body.StoreID)
+	st, _ := deps.Fiscal.SetupStatus(storeID)
 	writeJSON(w, http.StatusOK, st)
 }
 
@@ -403,14 +406,15 @@ func handleUpsertAT(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
 		return
 	}
-	if body.StoreID == "" {
-		body.StoreID = deps.StoreID
+	storeID, ok := writeResolvedStoreID(w, deps, body.StoreID)
+	if !ok {
+		return
 	}
-	if err := deps.Fiscal.UpsertATCredentials(body.StoreID, body.Username, body.Password); err != nil {
+	if err := deps.Fiscal.UpsertATCredentials(storeID, body.Username, body.Password); err != nil {
 		writeCoded(w, err)
 		return
 	}
-	st, _ := deps.Fiscal.SetupStatus(body.StoreID)
+	st, _ := deps.Fiscal.SetupStatus(storeID)
 	writeJSON(w, http.StatusOK, st)
 }
 
@@ -425,7 +429,11 @@ func handleRegisterSeries(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
 		return
 	}
-	res, err := deps.Fiscal.RegisterSeries(r.Context(), body.StoreID, body.SeriesCode, body.DocType, body.FiscalYear)
+	storeID, ok := writeResolvedStoreID(w, deps, body.StoreID)
+	if !ok {
+		return
+	}
+	res, err := deps.Fiscal.RegisterSeries(r.Context(), storeID, body.SeriesCode, body.DocType, body.FiscalYear)
 	if err != nil {
 		writeCoded(w, err)
 		return
@@ -454,7 +462,11 @@ func handleActivate(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
 		return
 	}
-	st, err := deps.Fiscal.ActivateFiscal(body.StoreID, body.ProductPrivateKeyPEM)
+	storeID, ok := writeResolvedStoreID(w, deps, body.StoreID)
+	if !ok {
+		return
+	}
+	st, err := deps.Fiscal.ActivateFiscal(storeID, body.ProductPrivateKeyPEM)
 	if err != nil {
 		writeCoded(w, err)
 		return
@@ -467,7 +479,11 @@ func handleActivateFromCloud(w http.ResponseWriter, r *http.Request, deps Handle
 		StoreID string `json:"store_id"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
-	st, err := deps.Fiscal.ActivateFromCloud(r.Context(), body.StoreID)
+	storeID, ok := writeResolvedStoreID(w, deps, body.StoreID)
+	if !ok {
+		return
+	}
+	st, err := deps.Fiscal.ActivateFromCloud(r.Context(), storeID)
 	if err != nil {
 		writeCoded(w, err)
 		return
@@ -532,9 +548,11 @@ func handleOperator(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
 		return
 	}
-	if body.StoreID == "" {
-		body.StoreID = deps.StoreID
+	storeID, ok := writeResolvedStoreID(w, deps, body.StoreID)
+	if !ok {
+		return
 	}
+	body.StoreID = storeID
 	if body.ID == "" {
 		writeErr(w, http.StatusBadRequest, "id_required", "operator id required")
 		return
@@ -611,9 +629,11 @@ func handleIssue(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
 		return
 	}
-	if body.StoreID == "" {
-		body.StoreID = deps.StoreID
+	storeID, ok := writeResolvedStoreID(w, deps, body.StoreID)
+	if !ok {
+		return
 	}
+	body.StoreID = storeID
 	id, ok := RequireOperatorID(w, r)
 	if !ok {
 		return
@@ -650,9 +670,9 @@ func handleIssue(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 
 func handleGetByRequest(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	requestID := r.PathValue("requestId")
-	storeID := r.URL.Query().Get("store_id")
-	if storeID == "" {
-		storeID = deps.StoreID
+	storeID, ok := writeResolvedStoreID(w, deps, r.URL.Query().Get("store_id"))
+	if !ok {
+		return
 	}
 	res, err := deps.Fiscal.GetByRequestID(storeID, requestID)
 	if errors.Is(err, store.ErrNotFound) {
@@ -716,7 +736,7 @@ func handleListBillDrafts(w http.ResponseWriter, r *http.Request, deps HandlerDe
 			ID: d.ID, RequestID: d.RequestID, SourceSaleID: d.SourceSaleID,
 			Status: d.Status, CloudJobID: d.CloudJobID, UpdatedAt: d.UpdatedAt,
 			TableDisplayName: meta.TableDisplayName, ScopeType: meta.ScopeType,
-			GrossTotal:       billsync.ListGrossTotalFromPayload(d.PayloadJSON),
+			GrossTotal: billsync.ListGrossTotalFromPayload(d.PayloadJSON),
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"drafts": out})
@@ -765,11 +785,11 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		OperatorID         string `json:"operator_id"`
 		DocumentType       string `json:"document_type"`
 		Mode               string `json:"mode"`
-		ScopeID              string `json:"scope_id"`
-		StationID            string `json:"station_id"`
-		CustomerNIF          string `json:"customer_nif"`
-		CustomerName         string `json:"customer_name"`
-		AllocationRevision   *int64 `json:"allocation_revision"`
+		ScopeID            string `json:"scope_id"`
+		StationID          string `json:"station_id"`
+		CustomerNIF        string `json:"customer_nif"`
+		CustomerName       string `json:"customer_name"`
+		AllocationRevision *int64 `json:"allocation_revision"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	opID, ok := RequireOperatorID(w, r)

@@ -388,7 +388,7 @@ activate-from-cloud / 定期 pull → Agent 缓存 max + 同步终端吊销
 | 默认 | Ops 未下发时 **1**（仅本机 `127.0.0.1`） |
 | 登记 | 新 PC 无终端 Cookie → `POST /setup/terminals/pair` + `pairing_code` → **Agent 调 Ops 校验**（须联网）；成功且 `used<max` → Set-Cookie |
 | 满额 | **403**「终端数已满，联系 Farvoo」 |
-| 停用 | Ops 吊销 → 下次同步 `fiscal_terminals.active=0`；该 Cookie 失效 |
+| 停用 | Ops 吊销 → 下次同步 `fiscal_terminals.active=0`；**唯一运行时门闩** `requireActiveLANTerminal`（非 loopback 的已鉴权路由）：无 Cookie / 非 active → **403** `terminal_required` / `terminal_revoked`（本机 loopback 免检） |
 | 本机 | `127.0.0.1` **不占** LAN 端数 |
 | 断网 | **不能**新登记终端（无本地兜底）；已登记终端在 LAN 内可继续用直至 Cookie/会话过期 |
 
@@ -534,6 +534,7 @@ activate-from-cloud / 定期 pull → Agent 缓存 max + 同步终端吊销
 | 日期 | 变更 |
 |------|------|
 | 2026-08-30 | 定稿：Agent 本地创建；废止 Farvoo 同步 |
+| 2026-09-03 | **0.4.74：** §3.8.1 运行时门闩 `requireActiveLANTerminal`；status 吊销 Cookie 只回 Public |
 | 2026-09-01 | 角色 UI 统一 `owner`/`cashier`；`can_issue_nc` 按账号 |
 | 2026-09-01 | §3.9：**激活开票前**须 Ops 已配 `fiscal_profile`；`ready_to_issue` 增加校验 |
 | 2026-09-02 | **M3.2c 定稿：** 三档 `admin`/`owner`/`cashier`；bootstrap-admin；设置分区权限；`authAdmin`/`authManager`；迁移 `007` 方案 A |

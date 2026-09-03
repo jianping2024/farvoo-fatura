@@ -144,15 +144,15 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		return
 	}
 	var body struct {
-		RequestID          string                    `json:"request_id"`
-		OperatorID         string                    `json:"operator_id"`
-		StationID          string                    `json:"station_id"`
-		DocumentType       string                    `json:"document_type"`
-		CustomerNIF        string                    `json:"customer_nif"`
-		CustomerName       string                    `json:"customer_name"`
-		PaymentMethod      string                    `json:"payment_method"`
-		TableDisplayName   string                    `json:"table_display_name"`
-		Lines              []catalog.ManualLineInput `json:"lines"`
+		RequestID        string                    `json:"request_id"`
+		OperatorID       string                    `json:"operator_id"`
+		StationID        string                    `json:"station_id"`
+		DocumentType     string                    `json:"document_type"`
+		CustomerNIF      string                    `json:"customer_nif"`
+		CustomerName     string                    `json:"customer_name"`
+		PaymentMethod    string                    `json:"payment_method"`
+		TableDisplayName string                    `json:"table_display_name"`
+		Lines            []catalog.ManualLineInput `json:"lines"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())

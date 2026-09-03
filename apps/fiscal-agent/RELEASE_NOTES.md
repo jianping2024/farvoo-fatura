@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.74
+
+**LAN 鉴权收口：终端门闩 + 吊销会话不再漏系列码**
+
+- **唯一写法 · 终端：** `requireActiveLANTerminal`（仅 `guardAuto` 调用）；非 loopback 已鉴权路由必须 `fiscal_terminal_id` 且 `TouchFiscalTerminal` 成功；本机免检。
+- **唯一写法 · status：** `sessionIfValidCookie` → `refreshSessionFromDB`；吊销/停用 Cookie 只回 `SetupStatusPublic`（永不凭未校验 Cookie 吐 `validation_code`）。
+- **唯一写法 · store_id：** `resolveRequestStoreID` / `writeResolvedStoreID`；拒绝错店 ID。SAFT `operator_id` 只从会话。SSE `/events` 走 `guardAuto`。会话 MAC 用 `hmac.Equal`。
+- 自检：`TestSoleLANAuthWritings` + `TestRequireActiveLANTerminal` + `TestSetupStatus_RevokedSessionGetsPublic`。
+
 ## 0.4.73
 
 **安装器：桌面「开票」快捷方式默认不勾**
