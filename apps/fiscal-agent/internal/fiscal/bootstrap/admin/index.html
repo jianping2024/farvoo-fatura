@@ -1015,11 +1015,11 @@
         <div class="topbar settings-topbar">
           <div>
             <h1 data-i18n="settings.title">设置</h1>
-            <p class="hint" id="settingsSubtitle" data-i18n="settings.subtitle">门店与设备</p>
+            <p class="hint" id="settingsSubtitle" data-i18n="settings.subtitle.wait">完成下方配置后即可开票</p>
           </div>
           <div class="settings-topbar-actions">
-            <button type="button" class="secondary hidden" id="btnSettingsShowWizard">配置向导</button>
-            <button type="button" class="secondary hidden" id="btnSettingsShowFull">查看全部设置</button>
+            <button type="button" class="secondary hidden" id="btnSettingsShowWizard" data-i18n="settings.wizard">配置向导</button>
+            <button type="button" class="secondary hidden" id="btnSettingsShowFull" data-i18n="settings.full">查看全部设置</button>
           </div>
         </div>
         <div id="settingsWizardBar" class="settings-wizard-bar hidden" aria-label="配置进度"></div>
@@ -1031,24 +1031,24 @@
             <a href="#settings-section-operators" data-settings-nav="operators" data-i18n="settings.nav.operators">人员</a>
             <a href="#settings-section-audit" data-settings-nav="audit" class="settings-access-only" data-i18n="settings.nav.audit">操作记录</a>
             <a href="#settings-section-printers" data-settings-nav="printers" data-i18n="settings.nav.printers">设备</a>
-            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only">开票电脑</a>
+            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only" data-i18n="settings.nav.terminals">开票电脑</a>
             <a href="#settings-section-saft" data-settings-nav="saft" data-i18n="settings.nav.saft">合规</a>
             <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </nav>
           <div class="settings-nav-mobile" id="settingsNavMobile" aria-label="设置分区">
             <a href="#settings-section-overview" data-settings-nav="overview" data-i18n="settings.nav.overview">概览</a>
-            <a href="#settings-section-store" data-settings-nav="store" data-i18n="settings.nav.store">门店</a>
-            <a href="#settings-section-series" data-settings-nav="series" data-i18n="settings.nav.series">授权</a>
+            <a href="#settings-section-store" data-settings-nav="store" data-i18n="settings.nav.store">门店与税务</a>
+            <a href="#settings-section-series" data-settings-nav="series" data-i18n="settings.nav.series">系列与授权</a>
             <a href="#settings-section-operators" data-settings-nav="operators" data-i18n="settings.nav.operators">人员</a>
             <a href="#settings-section-audit" data-settings-nav="audit" class="settings-access-only" data-i18n="settings.nav.audit">操作记录</a>
             <a href="#settings-section-printers" data-settings-nav="printers" data-i18n="settings.nav.printers">设备</a>
-            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only">开票电脑</a>
+            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only" data-i18n="settings.nav.terminals">开票电脑</a>
             <a href="#settings-section-saft" data-settings-nav="saft" data-i18n="settings.nav.saft">合规</a>
             <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </div>
           <div class="settings-main">
             <div class="settings-panel-flat panel" id="settings-section-overview">
-              <h2 data-i18n="settings.overview">就绪概览</h2>
+              <h2 data-i18n="settings.nav.overview">概览</h2>
               <div class="setup-dashboard" id="setupDashboard" role="status"></div>
               <div class="panel-footer">
                 <button type="button" class="secondary" id="btnRefreshSetup" data-i18n="settings.refresh">刷新状态</button>
@@ -1056,9 +1056,9 @@
               <div class="field" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--line)">
                 <label for="uiLocaleSelect" data-i18n="lang.title">界面语言</label>
                 <select id="uiLocaleSelect" autocomplete="off">
-                  <option value="zh">中文</option>
-                  <option value="en">English</option>
-                  <option value="pt">Português</option>
+                  <option value="zh" data-i18n="lang.zh">中文</option>
+                  <option value="en" data-i18n="lang.en">English</option>
+                  <option value="pt" data-i18n="lang.pt">Português</option>
                 </select>
                 <p class="hint" id="uiLocaleHint" data-i18n="lang.hint">中文界面时发票为葡语；English / Português 时界面与发票同语言。认证句始终葡语。</p>
                 <p class="hint" id="uiLocaleInvoiceHint"></p>
@@ -1066,102 +1066,102 @@
             </div>
 
             <details class="settings-panel" id="settings-section-store" data-settings-section="store" data-wizard-step="1">
-              <summary>门店与税务</summary>
+              <summary data-i18n="settings.nav.store">门店与税务</summary>
               <div class="settings-panel-body">
-                <h3 style="margin:0.75rem 0 0.5rem;font-size:0.95rem">门店信息</h3>
+                <h3 style="margin:0.75rem 0 0.5rem;font-size:0.95rem" data-i18n="settings.store.heading">门店</h3>
                 <div class="split">
                   <div class="field"><label for="nif">NIF</label><input id="nif" value="517535009" autocomplete="off" /><span class="field-error" id="nifError"></span></div>
-                  <div class="field"><label for="legal">店名</label><input id="legal" value="Farvoo Demo Lda" autocomplete="off" /><span class="field-error" id="legalError"></span></div>
+                  <div class="field"><label for="legal" data-i18n="settings.store.name">店名</label><input id="legal" value="Farvoo Demo Lda" autocomplete="off" /><span class="field-error" id="legalError"></span></div>
                 </div>
-                <div class="field"><label for="addr">地址</label><input id="addr" value="Rua Demo 1" autocomplete="off" /></div>
+                <div class="field"><label for="addr" data-i18n="settings.store.addr">地址</label><input id="addr" value="Rua Demo 1" autocomplete="off" /></div>
                 <div class="split">
-                  <div class="field"><label for="city">城市</label><input id="city" value="Lisboa" autocomplete="off" /></div>
-                  <div class="field"><label for="postal">邮编</label><input id="postal" value="1000-001" autocomplete="off" /><span class="field-error" id="postalError"></span></div>
+                  <div class="field"><label for="city" data-i18n="settings.store.city">城市</label><input id="city" value="Lisboa" autocomplete="off" /></div>
+                  <div class="field"><label for="postal" data-i18n="settings.store.postal">邮编</label><input id="postal" value="1000-001" autocomplete="off" /><span class="field-error" id="postalError"></span></div>
                 </div>
-                <div class="panel-footer"><button type="button" id="btnTax">保存门店信息</button></div>
+                <div class="panel-footer"><button type="button" id="btnTax" data-i18n="settings.store.save">保存门店</button></div>
                 <div class="settings-admin-only">
-                <h3 style="margin:1rem 0 0.5rem;font-size:0.95rem">税务平台凭证</h3>
-                <div class="field"><label for="atuser">用户名</label><input id="atuser" value="517535009/37" autocomplete="off" /><span class="field-error" id="atuserError"></span></div>
-                <div class="field"><label for="atpass">密码</label><input id="atpass" type="password" value="demo-pass" autocomplete="off" /><span class="field-error" id="atpassError"></span></div>
-                <div class="panel-footer"><button type="button" id="btnAT">保存凭证</button></div>
+                <h3 style="margin:1rem 0 0.5rem;font-size:0.95rem" data-i18n="settings.store.at_heading">AT 凭证</h3>
+                <div class="field"><label for="atuser" data-i18n="settings.store.user">用户名</label><input id="atuser" value="517535009/37" autocomplete="off" /><span class="field-error" id="atuserError"></span></div>
+                <div class="field"><label for="atpass" data-i18n="settings.store.pass">密码</label><input id="atpass" type="password" value="demo-pass" autocomplete="off" /><span class="field-error" id="atpassError"></span></div>
+                <div class="panel-footer"><button type="button" id="btnAT" data-i18n="settings.store.save_at">保存凭证</button></div>
                 </div>
               </div>
             </details>
 
             <details class="settings-panel settings-admin-only" id="settings-section-series" data-settings-section="series" data-wizard-step="2">
-              <summary>系列与开票授权</summary>
+              <summary data-i18n="settings.nav.series">系列与授权</summary>
               <div class="settings-panel-body">
                 <div class="series-grid">
                   <div class="series-card" data-series="ft">
                     <div class="series-card-head"><strong>FT</strong><span class="status-pill" id="seriesFtPill">待配置</span></div>
-                    <div class="field"><label for="series">系列编号</label><input id="series" /><span class="hint" id="seriesFtHint"></span></div>
-                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeries" class="btn-sm">注册 FT</button></div>
+                    <div class="field"><label for="series" data-i18n="settings.series.number">系列编号</label><input id="series" /><span class="hint" id="seriesFtHint"></span></div>
+                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeries" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="FT">注册 FT</button></div>
                   </div>
                   <div class="series-card" data-series="fs">
                     <div class="series-card-head"><strong>FS</strong><span class="status-pill" id="seriesFsPill">待配置</span></div>
-                    <div class="field"><label for="seriesFs">系列编号</label><input id="seriesFs" /><span class="hint" id="seriesFsHint"></span></div>
-                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesFs" class="btn-sm">注册 FS</button></div>
+                    <div class="field"><label for="seriesFs" data-i18n="settings.series.number">系列编号</label><input id="seriesFs" /><span class="hint" id="seriesFsHint"></span></div>
+                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesFs" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="FS">注册 FS</button></div>
                   </div>
                   <div class="series-card optional" data-series="nc">
                     <div class="series-card-head"><strong>NC</strong><span class="status-pill optional" id="seriesNcPill">可选</span></div>
-                    <div class="field"><label for="seriesNc">系列编号</label><input id="seriesNc" /><span class="hint" id="seriesNcHint"></span></div>
-                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesNc" class="btn-sm">注册 NC</button></div>
+                    <div class="field"><label for="seriesNc" data-i18n="settings.series.number">系列编号</label><input id="seriesNc" /><span class="hint" id="seriesNcHint"></span></div>
+                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesNc" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="NC">注册 NC</button></div>
                   </div>
                   <div class="series-card optional" data-series="nd">
                     <div class="series-card-head"><strong>ND</strong><span class="status-pill optional" id="seriesNdPill">可选</span></div>
-                    <div class="field"><label for="seriesNd">系列编号</label><input id="seriesNd" /><span class="hint" id="seriesNdHint"></span></div>
-                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesNd" class="btn-sm">注册 ND</button></div>
+                    <div class="field"><label for="seriesNd" data-i18n="settings.series.number">系列编号</label><input id="seriesNd" /><span class="hint" id="seriesNdHint"></span></div>
+                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesNd" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="ND">注册 ND</button></div>
                   </div>
                 </div>
-                <h3 style="margin:1rem 0 0.5rem;font-size:0.95rem">激活开票</h3>
+                <h3 style="margin:1rem 0 0.5rem;font-size:0.95rem" data-i18n="settings.series.activate">激活开票</h3>
                 <div class="panel-footer" style="border:0;justify-content:flex-start">
-                  <button type="button" id="btnActCloud">从运营同步开票授权</button>
+                  <button type="button" id="btnActCloud" data-i18n="settings.series.sync">从运营同步</button>
                 </div>
                 <div id="actCloudStatus" class="sync-status" role="status">尚未同步 · 点上方按钮从运营领取</div>
                 <div id="localPemBlock" class="hidden" style="margin-top:1rem">
-                  <p class="hint">开发/UAT：允许粘贴产品 RSA 私钥 PEM。</p>
+                  <p class="hint" data-i18n="settings.series.pem_hint">开发/UAT：允许粘贴产品 RSA 私钥 PEM。</p>
                   <div class="field"><textarea id="pem" rows="4" placeholder="-----BEGIN … PRIVATE KEY-----"></textarea><span class="field-error" id="pemError"></span></div>
-                  <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnAct">本地 PEM 激活</button></div>
+                  <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnAct" data-i18n="settings.series.pem_act">本地 PEM 激活</button></div>
                 </div>
               </div>
             </details>
 
             <details class="settings-panel admin-list-panel" id="settings-section-operators" data-settings-section="operators">
-              <summary>开票员名册</summary>
+              <summary data-i18n="settings.nav.operators">人员</summary>
               <div class="settings-panel-body">
                 <p class="hint" id="fiscalProfileHint">门店业态：加载中…</p>
                 <div class="admin-list-filter-row settings-access-only" id="operatorsToolbar">
-                  <button type="button" id="btnOperatorAdd">添加开票员</button>
+                  <button type="button" id="btnOperatorAdd" data-i18n="settings.ops.add">添加开票员</button>
                 </div>
                 <div class="table-scroll">
                   <table class="list-table" id="operatorsTable">
                     <thead><tr>
-                      <th>姓名</th><th>角色</th><th>PIN</th><th>可冲销</th><th>状态</th><th class="col-actions">操作</th>
+                      <th data-i18n="common.name">姓名</th><th data-i18n="common.role">角色</th><th data-i18n="settings.ops.pin">PIN</th><th data-i18n="settings.ops.can_nc">可冲销</th><th data-i18n="common.status">状态</th><th class="col-actions" data-i18n="common.actions">操作</th>
                     </tr></thead>
                     <tbody id="operatorsTbody"></tbody>
                   </table>
                 </div>
-                <p class="hint hidden" id="operatorsEmptyHint">无开票员 · 请退出后在登录页创建管理员</p>
+                <p class="hint hidden" id="operatorsEmptyHint" data-i18n="settings.ops.empty">无开票员 · 请退出后在登录页创建管理员</p>
               </div>
             </details>
 
             <details class="settings-panel settings-access-only admin-list-panel" id="settings-section-audit" data-settings-section="audit">
-              <summary>操作记录</summary>
+              <summary data-i18n="settings.nav.audit">操作记录</summary>
               <div class="settings-panel-body">
                 <div class="admin-list-filter-row">
                   <div class="field admin-list-select-field">
-                    <label for="auditActionFilter">操作类型</label>
+                    <label for="auditActionFilter" data-i18n="settings.audit.action_type">操作类型</label>
                     <select id="auditActionFilter"><option value="">全部</option></select>
                   </div>
                   <div class="field admin-list-select-field">
-                    <label for="auditOperatorFilter">开票员</label>
+                    <label for="auditOperatorFilter" data-i18n="settings.audit.operator">开票员</label>
                     <select id="auditOperatorFilter"><option value="">全部</option></select>
                   </div>
-                  <button type="button" class="secondary" id="btnAuditRefresh">刷新</button>
+                  <button type="button" class="secondary" id="btnAuditRefresh" data-i18n="common.refresh">刷新</button>
                 </div>
                 <div class="table-scroll">
                   <table class="list-table" id="auditLogTable">
-                    <thead><tr><th>时间</th><th>开票员</th><th>操作</th><th>说明</th></tr></thead>
+                    <thead><tr><th data-i18n="settings.audit.time">时间</th><th data-i18n="settings.audit.operator">开票员</th><th data-i18n="common.actions">操作</th><th data-i18n="settings.audit.detail">说明</th></tr></thead>
                     <tbody id="auditLogTbody"></tbody>
                   </table>
                 </div>
@@ -1170,39 +1170,39 @@
             </details>
 
             <details class="settings-panel" id="settings-section-printers" data-settings-section="printers">
-              <summary>打印机</summary>
+              <summary data-i18n="settings.printers.title">打印机</summary>
               <div class="settings-panel-body">
                 <div class="field">
-                  <label for="stationSel">默认打印档口</label>
+                  <label for="stationSel" data-i18n="settings.printers.station">默认档口</label>
                   <select id="stationSel"><option value="">（加载中…）</option></select>
                 </div>
                 <div class="panel-footer" style="border:0;justify-content:flex-start">
-                  <button type="button" class="secondary" id="btnPrinters">刷新档口</button>
-                  <a href="http://127.0.0.1:17892/configure" target="_blank" rel="noopener" class="hint">管理档口打印机 →</a>
+                  <button type="button" class="secondary" id="btnPrinters" data-i18n="settings.printers.refresh">刷新档口</button>
+                  <a href="http://127.0.0.1:17892/configure" target="_blank" rel="noopener" class="hint" data-i18n="settings.printers.manage">管理档口打印机 →</a>
                 </div>
               </div>
             </details>
 
             <details class="settings-panel settings-access-only admin-list-panel" id="settings-section-terminals" data-settings-section="terminals">
-              <summary>开票电脑</summary>
+              <summary data-i18n="settings.nav.terminals">开票电脑</summary>
               <div class="settings-panel-body">
-                <p class="hint" id="terminalsQuotaHint">终端 —/—</p>
+                <p class="hint" id="terminalsQuotaHint" data-i18n="settings.terminals.quota_placeholder">终端 —/—</p>
                 <div class="field settings-admin-only" id="terminalsMaxRow">
-                  <label for="terminalsMaxInput">最大开票台数</label>
+                  <label for="terminalsMaxInput" data-i18n="settings.terminals.max">最大开票台数</label>
                   <div class="panel-footer" style="border:0;justify-content:flex-start;gap:0.5rem;padding:0">
                     <input id="terminalsMaxInput" type="number" min="1" max="99" style="width:5rem" />
-                    <button type="button" class="secondary" id="btnTerminalsMaxSave">保存上限</button>
+                    <button type="button" class="secondary" id="btnTerminalsMaxSave" data-i18n="settings.terminals.save_max">保存上限</button>
                   </div>
                 </div>
                 <div class="panel-footer" style="border:0;justify-content:flex-start;gap:0.5rem">
-                  <input id="terminalsAllowLabel" placeholder="新电脑备注（可选）" style="max-width:12rem" />
-                  <button type="button" id="btnTerminalsAllowNext">允许下一台</button>
-                  <button type="button" class="secondary" id="btnTerminalsRefresh">刷新</button>
+                  <input id="terminalsAllowLabel" placeholder="新电脑备注（可选）" data-i18n="settings.terminals.placeholder" data-i18n-attr="placeholder" style="max-width:12rem" />
+                  <button type="button" id="btnTerminalsAllowNext" data-i18n="settings.terminals.allow">允许下一台</button>
+                  <button type="button" class="secondary" id="btnTerminalsRefresh" data-i18n="common.refresh">刷新</button>
                 </div>
                 <p class="hint hidden" id="terminalsAllowCodeHint"></p>
                 <div class="table-scroll">
                   <table class="list-table" id="terminalsTable">
-                    <thead><tr><th>备注</th><th>状态</th><th>最近 IP</th><th>最近活跃</th><th></th></tr></thead>
+                    <thead><tr><th data-i18n="settings.terminals.note">备注</th><th data-i18n="common.status">状态</th><th data-i18n="settings.terminals.ip">最近 IP</th><th data-i18n="settings.terminals.seen">最近活跃</th><th></th></tr></thead>
                     <tbody id="terminalsTbody"></tbody>
                   </table>
                 </div>
@@ -1210,42 +1210,42 @@
             </details>
 
             <details class="settings-panel" id="settings-section-saft" data-settings-section="saft">
-              <summary>SAF-T 月导</summary>
+              <summary data-i18n="settings.saft.title">SAF-T</summary>
               <div class="settings-panel-body">
                 <div class="split">
-                  <div class="field"><label for="saftYear">年份</label><input id="saftYear" type="number" min="2000" max="2100" /></div>
-                  <div class="field"><label for="saftMonth">月份</label><input id="saftMonth" type="number" min="1" max="12" /></div>
+                  <div class="field"><label for="saftYear" data-i18n="settings.saft.year">年份</label><input id="saftYear" type="number" min="2000" max="2100" /></div>
+                  <div class="field"><label for="saftMonth" data-i18n="settings.saft.month">月份</label><input id="saftMonth" type="number" min="1" max="12" /></div>
                 </div>
                 <div class="panel-footer" style="border:0;justify-content:flex-start">
-                  <button type="button" id="btnSaftExport">导出 SAF-T</button>
-                  <button type="button" class="secondary" id="btnSaftRefresh">刷新列表</button>
+                  <button type="button" id="btnSaftExport" data-i18n="settings.saft.export">导出 SAF-T</button>
+                  <button type="button" class="secondary" id="btnSaftRefresh" data-i18n="settings.saft.refresh">刷新列表</button>
                 </div>
                 <ul class="checklist" id="saftExportList"></ul>
               </div>
             </details>
 
             <details class="settings-panel panel-danger settings-admin-only" id="settings-section-advanced" data-settings-section="advanced">
-              <summary>备份与换机</summary>
+              <summary data-i18n="settings.advanced.title">备份与换机</summary>
               <div class="settings-panel-body">
                 <div class="panel-footer" style="border:0;justify-content:flex-start">
-                  <button type="button" id="btnFiscalBackup">备份税务库</button>
-                  <button type="button" class="secondary" id="btnIntegrityVerify">校验系列完整性</button>
+                  <button type="button" id="btnFiscalBackup" data-i18n="settings.advanced.backup">备份税务库</button>
+                  <button type="button" class="secondary" id="btnIntegrityVerify" data-i18n="settings.advanced.verify">校验系列完整性</button>
                 </div>
                 <label class="check-row" for="chkIntegrityHeal">
                   <input type="checkbox" id="chkIntegrityHeal" />
-                  <span>校验通过时恢复已停用系列</span>
+                  <span data-i18n="settings.advanced.heal">校验通过时恢复已停用系列</span>
                 </label>
                 <p id="integrityResult" class="hint" style="margin-top:0.5rem"></p>
                 <div class="panel-footer">
-                  <button type="button" class="secondary" id="btnPrepareSwap">本机停用开票授权（换机）</button>
+                  <button type="button" class="secondary" id="btnPrepareSwap" data-i18n="settings.advanced.swap">本机停用开票授权（换机）</button>
                 </div>
-                <p class="hint">停用前会自动备份。新机须重新「从运营同步开票授权」。</p>
+                <p class="hint" data-i18n="settings.advanced.swap_hint">停用前会自动备份。新机须重新「从运营同步」。</p>
               </div>
             </details>
 
             <div class="settings-wizard-actions hidden" id="settingsWizardActions">
-              <button type="button" class="secondary" id="btnWizardPrev">上一步</button>
-              <button type="button" id="btnWizardNext">下一步</button>
+              <button type="button" class="secondary" id="btnWizardPrev" data-i18n="settings.wizard.prev">上一步</button>
+              <button type="button" id="btnWizardNext" data-i18n="settings.wizard.next">下一步</button>
             </div>
           </div>
         </div>
@@ -1306,62 +1306,62 @@
 
   <div id="confirmActionModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:440px">
-      <h2 id="confirmActionTitle">确认操作</h2>
+      <h2 id="confirmActionTitle" data-i18n="common.confirm_title">确认操作</h2>
       <p class="hint" id="confirmActionBody"></p>
       <div class="actions">
-        <button type="button" id="btnConfirmActionSubmit">确认</button>
-        <button type="button" class="secondary" id="btnConfirmActionCancel">取消</button>
+        <button type="button" id="btnConfirmActionSubmit" data-i18n="common.confirm">确认</button>
+        <button type="button" class="secondary" id="btnConfirmActionCancel" data-i18n="common.cancel">取消</button>
       </div>
     </div>
   </div>
 
   <div id="changePinModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:400px">
-      <h2>修改 PIN</h2>
-      <div class="field"><label>当前 PIN</label><input id="changePinOld" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
-      <div class="field"><label>新 PIN</label><input id="changePinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
-      <div class="field"><label>确认新 PIN</label><input id="changePinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      <h2 data-i18n="settings.ops.change_pin">修改 PIN</h2>
+      <div class="field"><label data-i18n="settings.ops.pin_old">当前 PIN</label><input id="changePinOld" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      <div class="field"><label data-i18n="settings.ops.pin_new">新 PIN</label><input id="changePinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      <div class="field"><label data-i18n="settings.ops.pin_confirm">确认新 PIN</label><input id="changePinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
       <div class="actions">
-        <button type="button" id="btnChangePinSubmit">保存</button>
-        <button type="button" class="secondary" id="btnChangePinCancel">取消</button>
+        <button type="button" id="btnChangePinSubmit" data-i18n="common.save">保存</button>
+        <button type="button" class="secondary" id="btnChangePinCancel" data-i18n="common.cancel">取消</button>
       </div>
     </div>
   </div>
 
   <div id="operatorFormModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:420px">
-      <h2 id="operatorFormTitle">添加开票员</h2>
+      <h2 id="operatorFormTitle" data-i18n="settings.ops.add">添加开票员</h2>
       <input type="hidden" id="operatorFormId" value="" />
-      <div class="field"><label>显示名称</label><input id="operatorFormName" autocomplete="off" /></div>
-      <div class="field settings-admin-only" id="operatorFormRoleBlock"><label>角色</label>
-        <select id="operatorFormRole"><option value="cashier">店员</option><option value="owner">店长</option></select>
+      <div class="field"><label data-i18n="settings.ops.display_name">显示名称</label><input id="operatorFormName" autocomplete="off" /></div>
+      <div class="field settings-admin-only" id="operatorFormRoleBlock"><label data-i18n="common.role">角色</label>
+        <select id="operatorFormRole"><option value="cashier" data-i18n="settings.ops.cashier">店员</option><option value="owner" data-i18n="settings.ops.owner">店长</option></select>
       </div>
-      <div class="field" id="operatorFormPinBlock"><label>初始 PIN（6 位）</label><input id="operatorFormPin" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      <div class="field" id="operatorFormPinBlock"><label data-i18n="settings.ops.pin_init">初始 PIN（6 位）</label><input id="operatorFormPin" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
       <div class="actions">
-        <button type="button" id="btnOperatorFormSubmit">保存</button>
-        <button type="button" class="secondary" id="btnOperatorFormCancel">取消</button>
+        <button type="button" id="btnOperatorFormSubmit" data-i18n="common.save">保存</button>
+        <button type="button" class="secondary" id="btnOperatorFormCancel" data-i18n="common.cancel">取消</button>
       </div>
     </div>
   </div>
 
   <div id="operatorResetPinModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:400px">
-      <h2>重置 PIN</h2>
+      <h2 data-i18n="settings.ops.reset_pin">重置 PIN</h2>
       <input type="hidden" id="operatorResetPinId" value="" />
-      <div class="field"><label>新 PIN</label><input id="operatorResetPinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
-      <div class="field"><label>确认新 PIN</label><input id="operatorResetPinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      <div class="field"><label data-i18n="settings.ops.pin_new">新 PIN</label><input id="operatorResetPinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      <div class="field"><label data-i18n="settings.ops.pin_confirm">确认新 PIN</label><input id="operatorResetPinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
       <div class="actions">
-        <button type="button" id="btnOperatorResetPinSubmit">重置</button>
-        <button type="button" class="secondary" id="btnOperatorResetPinCancel">取消</button>
+        <button type="button" id="btnOperatorResetPinSubmit" data-i18n="settings.ops.reset_pin">重置 PIN</button>
+        <button type="button" class="secondary" id="btnOperatorResetPinCancel" data-i18n="common.cancel">取消</button>
       </div>
     </div>
   </div>
 
   <div id="operatorMenuPop" class="hidden" role="menu" aria-hidden="true">
-    <button type="button" class="ghost" data-op-action="edit">编辑</button>
-    <button type="button" class="ghost" data-op-action="reset-pin">重置 PIN</button>
-    <button type="button" class="ghost" data-op-action="deactivate">停用</button>
-    <button type="button" class="ghost hidden" data-op-action="activate">启用</button>
+    <button type="button" class="ghost" data-op-action="edit" data-i18n="common.edit">编辑</button>
+    <button type="button" class="ghost" data-op-action="reset-pin" data-i18n="settings.ops.reset_pin">重置 PIN</button>
+    <button type="button" class="ghost" data-op-action="deactivate" data-i18n="settings.ops.deactivate">停用</button>
+    <button type="button" class="ghost hidden" data-op-action="activate" data-i18n="settings.ops.activate">启用</button>
   </div>
 
   <div id="productPicker" class="modal-backdrop hidden">
@@ -1421,6 +1421,22 @@
     ).join('');
   }
 
+  /** ONLY pager copy for FiscalUI.createListPaginationBar. */
+  function listPagerLabels() {
+    return {
+      pageInfo: FiscalAdminI18n.t('pager.info'),
+      pageSizeLabel: FiscalAdminI18n.t('pager.size'),
+      pagePrev: FiscalAdminI18n.t('pager.prev'),
+      pageNext: FiscalAdminI18n.t('pager.next')
+    };
+  }
+
+  function auditActionText(code, apiLabel) {
+    const key = 'audit.action.' + String(code || '');
+    const tr = FiscalAdminI18n.t(key);
+    return tr !== key ? tr : (apiLabel || code || '');
+  }
+
   function refreshUILocaleInvoiceHint(invoiceLocale) {
     const el = $('#uiLocaleInvoiceHint');
     if (!el) return;
@@ -1433,10 +1449,7 @@
       if (!r.ok) return;
       const data = await r.json();
       const ui = FiscalAdminI18n.normalize(data.ui_locale);
-      FiscalAdminI18n.setLocale(ui);
-      const sel = $('#uiLocaleSelect');
-      if (sel) sel.value = ui;
-      refreshUILocaleInvoiceHint(data.invoice_locale || (ui === 'en' ? 'en' : 'pt'));
+      applyAdminLocale(ui, data.invoice_locale || (ui === 'en' ? 'en' : 'pt'));
     } catch (_) { /* ignore */ }
   }
 
@@ -1453,6 +1466,26 @@
       throw new Error(err.error || err.message || ('HTTP ' + r.status));
     }
     return r.json();
+  }
+
+  /** ONLY Admin locale apply: chrome + settings dynamic panes + pager. */
+  function applyAdminLocale(ui, invoiceLocale) {
+    FiscalAdminI18n.setLocale(ui);
+    const sel = $('#uiLocaleSelect');
+    if (sel && ui) sel.value = ui;
+    if (invoiceLocale) refreshUILocaleInvoiceHint(invoiceLocale);
+    renderHomeDateChip();
+    if (setupStatusCache) applySettingsStatusUI(setupStatusCache);
+    [ordersListPaginationCtrl, billsListPaginationCtrl, productListPaginationCtrl,
+      customerListPaginationCtrl, invoiceListPaginationCtrl, auditLogPaginationCtrl]
+      .forEach(function (c) { if (c && c.relabel) c.relabel(); });
+    if ($('#app-shell') && $('#app-shell').classList.contains('on')) {
+      void refreshOperatorsPanel();
+      void refreshTerminalsPanel();
+      if (auditFiltersReady) void refreshAuditLog();
+      void refreshSAFTExports().catch(function () {});
+      void refreshPrinters().catch(function () {});
+    }
   }
 
   function saleDocTypeOptionsHtml(selected) {
@@ -1614,16 +1647,16 @@
     const newPin = $('#changePinNew').value.trim();
     const confirmPin = $('#changePinConfirm').value.trim();
     if (!/^\d{6}$/.test(oldPin) || !/^\d{6}$/.test(newPin)) {
-      toast('PIN 须为 6 位数字', 'error');
+      toast(FiscalAdminI18n.t('settings.ops.pin_need'), 'error');
       return;
     }
     if (newPin !== confirmPin) {
-      toast('两次新 PIN 不一致', 'error');
+      toast(FiscalAdminI18n.t('settings.ops.pin_mismatch'), 'error');
       return;
     }
     await j('POST', '/local/v1/setup/change-pin', { old_pin: oldPin, new_pin: newPin });
     closeChangePinModal();
-    toast('PIN 已更新', 'success');
+    toast(FiscalAdminI18n.t('settings.ops.pin_updated'), 'success');
   }
 
   async function j(method, path, body) {
@@ -1660,7 +1693,7 @@
   async function withBusy(btn, labelBusy, fn) {
     const prev = btn.textContent;
     btn.disabled = true;
-    btn.textContent = labelBusy || '处理中…';
+    btn.textContent = labelBusy || FiscalAdminI18n.t('common.processing');
     try { await fn(); }
     finally { btn.disabled = false; btn.textContent = prev; }
   }
@@ -1736,7 +1769,6 @@
   if (!INVOICE_LIST_DOC_TYPES.includes(invoiceListDocType)) invoiceListDocType = 'FT';
 
   const CATALOG_PICKER_PAGE_SIZE = 500;
-  const LIST_PAGE_INFO_ROWS = '第 {page} / {totalPages} 页 · 共 {total} 条';
   let productListPage = 1;
   let productListPageSize = FiscalUI.LIST_DEFAULT_PAGE_SIZE;
   let productListPaginationCtrl = null;
@@ -1962,7 +1994,7 @@
     const name = String(displayName || '').trim();
     const pinVal = String(pin || '').trim();
     if (!name || !/^\d{6}$/.test(pinVal)) {
-      toast('请填写名称与 6 位 PIN', 'error');
+      toast(FiscalAdminI18n.t('settings.ops.need_name_pin'), 'error');
       return false;
     }
     const created = await j('POST', '/local/v1/setup/bootstrap-owner', { display_name: name, pin: pinVal });
@@ -1992,7 +2024,7 @@
       }
       setLoginBootstrapMode(false);
       if (!ops.length) {
-        sel.innerHTML = '<option value="">无法加载开票员</option>';
+        sel.innerHTML = '<option value="">' + FiscalAdminI18n.t('settings.ops.load_fail') + '</option>';
         return;
       }
       for (const o of ops) {
@@ -2003,7 +2035,7 @@
       }
     } catch (_) {
       setLoginBootstrapMode(false);
-      sel.innerHTML = '<option value="">无法加载开票员</option>';
+      sel.innerHTML = '<option value="">' + FiscalAdminI18n.t('settings.ops.load_fail') + '</option>';
     }
   }
 
@@ -2133,7 +2165,7 @@
       if (!stations.length) {
         const o = document.createElement('option');
         o.value = '';
-        o.textContent = '（无档口 — 请先绑定）';
+        o.textContent = FiscalAdminI18n.t('settings.printers.empty');
         sel.appendChild(o);
         return;
       }
@@ -2156,7 +2188,7 @@
     const sid = ((sel && sel.value) || getStationId() || '').trim();
     const hasMapped = sel && [...sel.options].some(o => (o.value || '').trim());
     if (!sid && hasMapped) {
-      toast('请先绑定并选择打印档口（17892/configure）', 'error');
+      toast(FiscalAdminI18n.t('settings.printers.need'), 'error');
       throw { error: 'validation_failed', message: 'station_id required' };
     }
     if (sid) setStationId(sid);
@@ -2206,26 +2238,20 @@
   function cloudSyncFailText(er) {
     const code = er && er.error ? String(er.error) : '';
     const msg = er && er.message ? String(er.message) : '';
-    if (code === 'ops_activate_pending') {
-      return '等待运营激活 · 设备已上报，请在 Ops 点「激活开票」后再同步';
-    }
-    if (code === 'taxpayer_missing') return '失败 · 请先保存门店纳税人信息';
-    if (code === 'cloud_not_paired') return '失败 · 请先完成打印助手配对（与门店绑定）';
-    if (code === 'fiscal_profile_missing') return '失败 · Ops 尚未保存门店业态（餐馆/商超），请先在运营后台点「保存策略」';
+    const keyed = ['ops_activate_pending', 'taxpayer_missing', 'cloud_not_paired', 'fiscal_profile_missing', 'network', 'signer_not_ready'];
+    if (keyed.indexOf(code) >= 0) return FiscalAdminI18n.t('cloud.fail.' + code);
     if (code === 'unauthorized' || /pairing|not configured|JWT/i.test(msg)) {
-      return '失败 · 未配对云端，请先完成打印助手配对';
+      return FiscalAdminI18n.t('cloud.fail.unauthorized');
     }
-    if (code === 'network') return '失败 · 网络异常，请检查本机与 Farvoo 连通';
-    if (code === 'signer_not_ready') return '失败 · 本机签名钥未就绪';
-    return '失败 · ' + (msg || code || '未知错误');
+    return FiscalAdminI18n.fmt('cloud.fail.generic', { msg: msg || code || '—' });
   }
 
   const SETTINGS_SECTIONS_KEY = 'fiscal_settings_sections';
   const SETTINGS_VIEW_MODE_KEY = 'fiscal_settings_view_mode';
   const SETTINGS_WIZARD_STEP_KEY = 'fiscal_settings_wizard_step';
   const SETTINGS_WIZARD_STEPS = [
-    { step: 1, label: '门店与税务', panel: 'store' },
-    { step: 2, label: '系列与授权', panel: 'series' }
+    { step: 1, nav: 'store' },
+    { step: 2, nav: 'series' }
   ];
   let settingsViewMode = 'full';
   let settingsWizardStep = 1;
@@ -2283,7 +2309,7 @@
     if (!btn) return;
     const orig = btn.dataset.labelOrig || btn.textContent;
     btn.dataset.labelOrig = orig;
-    btn.textContent = '已保存';
+    btn.textContent = FiscalAdminI18n.t('common.saved');
     btn.classList.add('btn-saved');
     setTimeout(() => {
       btn.textContent = orig;
@@ -2350,35 +2376,37 @@
   function renderSetupDashboard(st) {
     const el = $('#setupDashboard');
     if (!el) return;
-    if (!st) { el.innerHTML = '<p class="hint">无法读取状态</p>'; return; }
+    const tt = FiscalAdminI18n.t;
+    if (!st) { el.innerHTML = '<p class="hint">' + tt('dash.unread') + '</p>'; return; }
     const baseOk = st.taxpayer_ok && st.at_credentials_ok;
     const seriesOk = st.series_ok && st.fs_series_ok && st.activated_ok;
+    const mark = (ok, key) => tt(key) + (ok ? ' ✓' : ' ○');
     const cards = [
       {
-        title: '基础信息', ok: baseOk,
-        value: baseOk ? '已就绪' : '待配置',
-        detail: [st.taxpayer_ok ? '门店 ✓' : '门店 ○', st.at_credentials_ok ? '凭证 ✓' : '凭证 ○'].join(' · '),
+        title: tt('dash.base'), ok: baseOk,
+        value: baseOk ? tt('common.ready') : tt('common.pending'),
+        detail: [mark(st.taxpayer_ok, 'dash.store'), mark(st.at_credentials_ok, 'dash.creds')].join(' · '),
         adminOnly: false
       },
       {
-        title: '系列与授权', ok: seriesOk,
-        value: seriesOk ? '已同步' : '待完成',
+        title: tt('settings.nav.series'), ok: seriesOk,
+        value: seriesOk ? tt('common.synced') : tt('common.incomplete'),
         detail: [
-          st.series_ok ? 'FT ✓' : 'FT ○',
-          st.fs_series_ok ? 'FS ✓' : 'FS ○',
-          st.activated_ok ? '授权 ✓' : '授权 ○'
+          'FT' + (st.series_ok ? ' ✓' : ' ○'),
+          'FS' + (st.fs_series_ok ? ' ✓' : ' ○'),
+          mark(st.activated_ok, 'dash.auth')
         ].join(' · '),
         adminOnly: true
       },
       {
-        title: '可开票', ok: st.ready_to_issue,
-        value: st.ready_to_issue ? '可以开票' : '尚未就绪',
-        detail: st.operator_ok ? '开票员 ✓' : '开票员 ○',
+        title: tt('dash.issue'), ok: st.ready_to_issue,
+        value: st.ready_to_issue ? tt('dash.can_issue') : tt('dash.not_ready'),
+        detail: mark(st.operator_ok, 'dash.operator'),
         adminOnly: false
       },
       {
-        title: '冲销 / 借记', ok: st.ready_to_credit || st.ready_to_debit,
-        value: (st.ready_to_credit ? '可冲销' : '不可冲销') + ' · ' + (st.ready_to_debit ? '可借记' : '不可借记'),
+        title: tt('dash.ncnd'), ok: st.ready_to_credit || st.ready_to_debit,
+        value: (st.ready_to_credit ? tt('dash.can_nc') : tt('dash.no_nc')) + ' · ' + (st.ready_to_debit ? tt('dash.can_nd') : tt('dash.no_nd')),
         detail: (st.nc_series_ok ? 'NC ✓' : 'NC ○') + ' · ' + (st.nd_series_ok ? 'ND ✓' : 'ND ○'),
         adminOnly: true
       }
@@ -2391,7 +2419,8 @@
     ).join('');
     const sub = $('#settingsSubtitle');
     if (sub) {
-      sub.textContent = st.ready_to_issue ? '门店与设备 · 开票已就绪' : '完成下方配置后即可开票';
+      sub.removeAttribute('data-i18n');
+      sub.textContent = st.ready_to_issue ? tt('settings.subtitle.ready') : tt('settings.subtitle.wait');
     }
   }
 
@@ -2405,7 +2434,7 @@
       let cls = 'wizard-step-chip';
       if (s.step < settingsWizardStep) cls += ' done';
       if (s.step === settingsWizardStep) cls += ' active';
-      return '<span class="' + cls + '">' + s.step + '. ' + s.label + '</span>';
+      return '<span class="' + cls + '">' + s.step + '. ' + FiscalAdminI18n.t('settings.nav.' + s.nav) + '</span>';
     }).join('');
   }
 
@@ -2429,7 +2458,8 @@
     renderWizardProgress(st);
     const nextBtn = $('#btnWizardNext');
     if (nextBtn) {
-      nextBtn.textContent = settingsWizardStep >= SETTINGS_WIZARD_STEPS.length ? '完成配置' : '下一步';
+      nextBtn.textContent = settingsWizardStep >= SETTINGS_WIZARD_STEPS.length
+        ? FiscalAdminI18n.t('settings.wizard.done') : FiscalAdminI18n.t('settings.wizard.next');
     }
   }
 
@@ -2489,17 +2519,17 @@
     const st = setupStatusCache || await refreshSetupStatus();
     if (settingsWizardStep === 1) {
       if (!st.taxpayer_ok) {
-        toast('请先保存门店信息与税务凭证', 'error');
+        toast(FiscalAdminI18n.t('settings.wizard.need_store'), 'error');
         return;
       }
     }
     if (settingsWizardStep >= SETTINGS_WIZARD_STEPS.length) {
       if (!st.ready_to_issue) {
-        toast('请先完成系列注册并同步开票授权', 'error');
+        toast(FiscalAdminI18n.t('settings.wizard.need_series'), 'error');
         return;
       }
       setSettingsViewMode('full', st);
-      toast('配置完成', 'success');
+      toast(FiscalAdminI18n.t('settings.wizard.finished'), 'success');
       return;
     }
     settingsWizardStep += 1;
@@ -2522,20 +2552,23 @@
     const prof = $('#fiscalProfileHint');
     if (prof) {
       if (st && st.fiscal_profile_ok && st.fiscal_profile) {
-        prof.textContent = '门店业态（Ops）：' + (st.fiscal_profile === 'retail' ? '商超' : '餐馆') +
-          ' · 终端 ' + (st.terminals_used || 0) + '/' + (st.max_fiscal_terminals || 1);
+        prof.textContent = FiscalAdminI18n.fmt('settings.ops.profile_ok', {
+          profile: FiscalAdminI18n.t(st.fiscal_profile === 'retail' ? 'settings.ops.retail' : 'settings.ops.restaurant'),
+          used: st.terminals_used || 0,
+          max: st.max_fiscal_terminals || 1
+        });
       } else if (st && st.taxpayer_ok) {
-        prof.textContent = '门店业态（Ops）：尚未同步 — 完成「系列与授权」后自动拉取';
+        prof.textContent = FiscalAdminI18n.t('settings.ops.profile_wait');
       } else {
-        prof.textContent = '门店业态（Ops）：请先保存门店信息';
+        prof.textContent = FiscalAdminI18n.t('settings.ops.profile_need_store');
       }
     }
     if (st && st.activated_ok) {
-      setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
+      setActCloudStatus('ok', FiscalAdminI18n.t('settings.series.ok'));
     } else if (st && !st.cloud_paired_ok) {
-      setActCloudStatus('wait', '尚未配对云端 · 请先完成打印助手配对');
+      setActCloudStatus('wait', FiscalAdminI18n.t('settings.series.need_pair'));
     } else if (st && !st.taxpayer_ok) {
-      setActCloudStatus('wait', '请先保存门店纳税人信息');
+      setActCloudStatus('wait', FiscalAdminI18n.t('settings.series.need_tax'));
     }
     const cloudBtn = $('#btnActCloud');
     if (cloudBtn && st) cloudBtn.disabled = !st.taxpayer_ok || !st.cloud_paired_ok || st.activated_ok;
@@ -2553,18 +2586,18 @@
   /** ONLY cloud activate-from-cloud path (button + settings auto-sync). */
   async function syncActivateFromCloud(opts) {
     const quiet = opts && opts.quiet;
-    if (!quiet) setActCloudStatus('', '同步中…');
+    if (!quiet) setActCloudStatus('', FiscalAdminI18n.t('common.syncing'));
     try {
       const st = await j('POST', '/local/v1/setup/activate-from-cloud', {});
       applySetupStatusFromResponse(st);
-      setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
-      if (!quiet) toast('开票授权已从运营同步', 'success');
+      setActCloudStatus('ok', FiscalAdminI18n.t('settings.series.ok'));
+      if (!quiet) toast(FiscalAdminI18n.t('settings.series.synced_toast'), 'success');
     } catch (er) {
       const code = er && er.error ? String(er.error) : '';
       const text = cloudSyncFailText(er);
       if (code === 'ops_activate_pending') {
         setActCloudStatus('wait', text);
-        if (!quiet) toast('设备已上报，等待运营在 Ops 点击「激活开票」', 'info');
+        if (!quiet) toast(FiscalAdminI18n.t('settings.series.pending_ops'), 'info');
       } else {
         setActCloudStatus('fail', text);
         if (!quiet) toast(text, 'error');
@@ -2606,14 +2639,14 @@
         inp.value = r.code;
         inp.readOnly = true;
         btn.disabled = true;
-        if (hint) hint.textContent = '已注册 · 不可重复';
-        if (pill) { pill.textContent = '已注册'; pill.className = 'status-pill ok'; }
+        if (hint) hint.textContent = FiscalAdminI18n.t('settings.series.locked');
+        if (pill) { pill.textContent = FiscalAdminI18n.t('settings.series.registered'); pill.className = 'status-pill ok'; }
       } else {
         inp.readOnly = false;
         btn.disabled = false;
         if (hint) hint.textContent = '';
         if (pill) {
-          pill.textContent = r.optional ? '可选' : '待配置';
+          pill.textContent = r.optional ? FiscalAdminI18n.t('common.optional') : FiscalAdminI18n.t('common.pending');
           pill.className = 'status-pill' + (r.optional ? ' optional' : '');
         }
       }
@@ -2765,7 +2798,7 @@
       renderOrdersList();
     });
     ordersListPaginationCtrl = FiscalUI.createListPaginationBar('#ordersListPagination', {
-      labels: { pageInfo: LIST_PAGE_INFO_ROWS },
+      getLabels: listPagerLabels,
       onPageChange: (nextPage) => {
         ordersListState.page = nextPage;
         renderOrdersList();
@@ -2787,7 +2820,7 @@
       renderBillsTable();
     });
     billsListPaginationCtrl = FiscalUI.createListPaginationBar('#billsListPagination', {
-      labels: { pageInfo: LIST_PAGE_INFO_ROWS },
+      getLabels: listPagerLabels,
       onPageChange: (nextPage) => {
         billsListState.page = nextPage;
         renderBillsTable();
@@ -2811,7 +2844,7 @@
       }, 300);
     });
     productListPaginationCtrl = FiscalUI.createListPaginationBar('#productsListPagination', {
-      labels: { pageInfo: LIST_PAGE_INFO_ROWS },
+      getLabels: listPagerLabels,
       onPageChange: (nextPage) => {
         productListPage = nextPage;
         refreshProducts().catch(e => toast(errText(e), 'error'));
@@ -2835,7 +2868,7 @@
       }, 300);
     });
     customerListPaginationCtrl = FiscalUI.createListPaginationBar('#customersListPagination', {
-      labels: { pageInfo: LIST_PAGE_INFO_ROWS },
+      getLabels: listPagerLabels,
       onPageChange: (nextPage) => {
         customerListPage = nextPage;
         refreshCustomers().catch(e => toast(errText(e), 'error'));
@@ -2884,13 +2917,13 @@
     const prevOp = opSel.value;
     const actions = data.filter_actions || auditFilterActions || [];
     auditFilterActions = actions;
-    actionSel.innerHTML = '<option value="">全部</option>' + actions.map(a =>
-      '<option value="' + escHtml(a.value) + '">' + escHtml(a.label) + '</option>'
+    actionSel.innerHTML = '<option value="">' + FiscalAdminI18n.t('common.all') + '</option>' + actions.map(a =>
+      '<option value="' + escHtml(a.value) + '">' + escHtml(auditActionText(a.value, a.label)) + '</option>'
     ).join('');
     if (prevAction && actions.some(a => a.value === prevAction)) actionSel.value = prevAction;
 
     const ops = operatorManageCache || [];
-    opSel.innerHTML = '<option value="">全部</option>' + ops.map(o =>
+    opSel.innerHTML = '<option value="">' + FiscalAdminI18n.t('common.all') + '</option>' + ops.map(o =>
       '<option value="' + escHtml(o.id) + '">' + escHtml(o.display_name || o.id) + '</option>'
     ).join('');
     if (prevOp && ops.some(o => o.id === prevOp)) opSel.value = prevOp;
@@ -2901,15 +2934,15 @@
     if (!tbody) return;
     const items = data.items || [];
     if (!items.length) {
-      tbody.innerHTML = '<tr><td colspan="4" class="hint">暂无操作记录</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="hint">' + FiscalAdminI18n.t('settings.audit.empty') + '</td></tr>';
       return;
     }
     tbody.innerHTML = items.map(row => {
       const summary = row.summary || '';
       return '<tr>' +
         '<td>' + escHtml(formatAuditLogTime(row.at)) + '</td>' +
-        '<td>' + escHtml(row.operator_display_name || '系统') + '</td>' +
-        '<td>' + escHtml(row.action_label || row.action || '') + '</td>' +
+        '<td>' + escHtml(row.operator_display_name || FiscalAdminI18n.t('common.system')) + '</td>' +
+        '<td>' + escHtml(auditActionText(row.action, row.action_label)) + '</td>' +
         '<td title="' + escHtml(summary) + '">' + escHtml(summary) + '</td>' +
         '</tr>';
     }).join('');
@@ -2951,7 +2984,7 @@
       refreshAuditLog().catch(e => toast(errText(e), 'error'));
     });
     auditLogPaginationCtrl = FiscalUI.createListPaginationBar('#auditLogPagination', {
-      labels: { pageInfo: LIST_PAGE_INFO_ROWS },
+      getLabels: listPagerLabels,
       pageSizes: [10, 20, 50, 100],
       onPageChange: (nextPage) => {
         auditLogPage = nextPage;
@@ -3305,7 +3338,7 @@
   /** ONLY reprint click handler (withBusy + toast). */
   function handleReprintClick(btn, documentId) {
     if (!btn || !documentId) return;
-    withBusy(btn, '重打中…', async () => {
+    withBusy(btn, FiscalAdminI18n.t('common.reprinting'), async () => {
       try { await reprintInvoice(documentId); }
       catch (er) { toast(errText(er), 'error'); throw er; }
     });
@@ -3556,7 +3589,7 @@
       }, 300);
     });
     invoiceListPaginationCtrl = FiscalUI.createListPaginationBar('#invoiceListPagination', {
-      labels: { pageInfo: '第 {page} / {totalPages} 页 · 共 {total} 张' },
+      getLabels: listPagerLabels,
       onPageChange: (nextPage) => {
         invoiceListPage = nextPage;
         refreshInvoices().catch(e => toast(errText(e), 'error'));
@@ -4383,18 +4416,18 @@
     const hint = $('#loginTerminalPairHint');
     if (hint) {
       hint.textContent = code === 'terminal_revoked'
-        ? '本机登记已被停用。请向店长索取新的一次性配对码。'
-        : '本机尚未登记为开票电脑。请向店长索取一次性配对码。';
+        ? FiscalAdminI18n.t('settings.terminals.login_revoked')
+        : FiscalAdminI18n.t('settings.terminals.login_need');
     }
   }
 
   async function submitTerminalPairFromLogin() {
     const pairing_code = ($('#loginPairCode').value || '').trim();
     const label = ($('#loginPairLabel').value || '').trim();
-    if (!pairing_code) { toast('请输入配对码', 'error'); return; }
+    if (!pairing_code) { toast(FiscalAdminI18n.t('settings.terminals.need_code'), 'error'); return; }
     try {
       await j('POST', '/local/v1/setup/terminals/pair', { pairing_code, label });
-      toast('本机已登记', 'success');
+      toast(FiscalAdminI18n.t('settings.terminals.paired'), 'success');
       $('#loginTerminalPair').classList.add('hidden');
       if (loggedInOperator) await enterApp();
     } catch (e) {
@@ -4407,24 +4440,24 @@
     const data = await j('GET', '/local/v1/setup/terminals');
     const used = data.terminals_used || 0;
     const max = data.max_fiscal_terminals || 1;
-    $('#terminalsQuotaHint').textContent = '已用 ' + used + ' / 上限 ' + max + '（本机 Agent 不占名额）';
+    $('#terminalsQuotaHint').textContent = FiscalAdminI18n.fmt('settings.terminals.quota', { used: used, max: max });
     const maxInput = $('#terminalsMaxInput');
     if (maxInput && document.activeElement !== maxInput) maxInput.value = String(max);
     const tb = $('#terminalsTbody');
     tb.innerHTML = '';
     (data.terminals || []).forEach(row => {
       const tr = document.createElement('tr');
-      const status = row.active ? '使用中' : '已停用';
-      tr.innerHTML = '<td>' + escapeHtml(row.label || '（无备注）') + '</td>'
+      const status = row.active ? FiscalAdminI18n.t('settings.terminals.active') : FiscalAdminI18n.t('common.disabled');
+      tr.innerHTML = '<td>' + escHtml(row.label || FiscalAdminI18n.t('settings.terminals.no_label')) + '</td>'
         + '<td>' + status + '</td>'
-        + '<td>' + escapeHtml(row.last_seen_ip || '—') + '</td>'
-        + '<td>' + escapeHtml(row.last_seen_at || row.registered_at || '—') + '</td>'
+        + '<td>' + escHtml(row.last_seen_ip || '—') + '</td>'
+        + '<td>' + escHtml(row.last_seen_at || row.registered_at || '—') + '</td>'
         + '<td></td>';
       if (row.active) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'secondary';
-        btn.textContent = '停用';
+        btn.textContent = FiscalAdminI18n.t('settings.ops.deactivate');
         btn.onclick = () => { void revokeTerminal(row.id); };
         tr.lastChild.appendChild(btn);
       }
@@ -4434,12 +4467,12 @@
 
   async function revokeTerminal(id) {
     openConfirmAction({
-      title: '停用开票电脑',
-      body: '停用后该电脑不能再开票，确认？',
-      submitLabel: '停用',
+      title: FiscalAdminI18n.t('settings.terminals.revoke_title'),
+      body: FiscalAdminI18n.t('settings.terminals.revoke_body'),
+      submitLabel: FiscalAdminI18n.t('settings.ops.deactivate'),
       onConfirm: async () => {
         await j('POST', '/local/v1/setup/terminals/' + encodeURIComponent(id) + '/revoke', {});
-        toast('已停用', 'success');
+        toast(FiscalAdminI18n.t('settings.terminals.revoked'), 'success');
         await refreshTerminalsPanel();
       }
     });
@@ -4450,20 +4483,20 @@
     const res = await j('POST', '/local/v1/setup/terminals/allow-next', { label });
     const hint = $('#terminalsAllowCodeHint');
     hint.classList.remove('hidden');
-    hint.textContent = '配对码 ' + res.pairing_code + ' · 请在 15 分钟内在新电脑登记（' + (res.expires_at || '') + '）';
-    toast('已生成配对码', 'success');
+    hint.textContent = FiscalAdminI18n.fmt('settings.terminals.code_hint', { code: res.pairing_code, expires: res.expires_at || '' });
+    toast(FiscalAdminI18n.t('settings.terminals.code_toast'), 'success');
     await refreshTerminalsPanel();
   }
 
   async function saveTerminalMax() {
-    if (!canSetTerminalMax()) { toast('仅管理员可改上限', 'error'); return; }
+    if (!canSetTerminalMax()) { toast(FiscalAdminI18n.t('settings.terminals.max_denied'), 'error'); return; }
     const max = parseInt($('#terminalsMaxInput').value, 10);
     await j('PUT', '/local/v1/setup/terminals/max', { max_fiscal_terminals: max });
-    toast('上限已保存', 'success');
+    toast(FiscalAdminI18n.t('settings.terminals.max_saved'), 'success');
     await refreshTerminalsPanel();
   }
 
-  function escapeHtml(s) {
+  function escHtml(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
@@ -4499,7 +4532,7 @@
 
   $('#btnChangePin').onclick = () => openChangePinModal();
   $('#btnChangePinCancel').onclick = () => closeChangePinModal();
-  $('#btnChangePinSubmit').onclick = () => withBusy($('#btnChangePinSubmit'), '保存中…', async () => {
+  $('#btnChangePinSubmit').onclick = () => withBusy($('#btnChangePinSubmit'), FiscalAdminI18n.t('common.saving'), async () => {
     try {
       await submitChangePin();
     } catch (er) {
@@ -4580,7 +4613,7 @@
     renderOrderLines();
   });
 
-  $('#btnPickProduct').onclick = () => withBusy($('#btnPickProduct'), '打开…', async () => {
+  $('#btnPickProduct').onclick = () => withBusy($('#btnPickProduct'), FiscalAdminI18n.t('common.opening'), async () => {
     if (!currentOrder) newBlankOrder();
     await openProductWorkbench('pick');
   });
@@ -4661,7 +4694,7 @@
   $('#adjustConfirmModal').addEventListener('click', e => {
     if (e.target.id === 'adjustConfirmModal') closeAdjustConfirmModal();
   });
-  $('#btnAdjustSubmit').onclick = () => withBusy($('#btnAdjustSubmit'), '提交中…', async () => {
+  $('#btnAdjustSubmit').onclick = () => withBusy($('#btnAdjustSubmit'), FiscalAdminI18n.t('common.submitting'), async () => {
     const payload = $('#adjustConfirmModal')._payload;
     if (!payload || !adjustTargetDetail || !adjustKind) return;
     try {
@@ -4677,7 +4710,7 @@
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnConfirmOrder').onclick = () => withBusy($('#btnConfirmOrder'), '确认中…', async () => {
+  $('#btnConfirmOrder').onclick = () => withBusy($('#btnConfirmOrder'), FiscalAdminI18n.t('common.confirming'), async () => {
     if (!currentOrder) return;
     if (!currentOrder.lines.length) { toast('请先添加商品', 'error'); return; }
     if (mode === 'restaurant') {
@@ -4695,7 +4728,7 @@
     toast('已确认 · 请选择发票类型', 'success');
   });
 
-  $('#btnIssueInvoice').onclick = () => withBusy($('#btnIssueInvoice'), '开票中…', async () => {
+  $('#btnIssueInvoice').onclick = () => withBusy($('#btnIssueInvoice'), FiscalAdminI18n.t('common.issuing'), async () => {
     try { await issueCurrentOrder(); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
@@ -4720,7 +4753,7 @@
       title: '放弃未开票部分',
       body: '未开票部分将不再处理（已开发票保留）。确认？',
       submitLabel: '确认放弃',
-      onConfirm: () => withBusy($('#btnSplitDiscard'), '处理中…', async () => {
+      onConfirm: () => withBusy($('#btnSplitDiscard'), FiscalAdminI18n.t('common.processing'), async () => {
         try {
           await j('POST', '/local/v1/bill-drafts/' + encodeURIComponent(currentBill) + '/discard', {});
           toast('已移除未开部分', 'success');
@@ -4742,12 +4775,12 @@
     catch (er) { toast(errText(er), 'error'); }
   });
 
-  $('#btnSplitWholeIssue').onclick = () => withBusy($('#btnSplitWholeIssue'), '开票中…', async () => {
+  $('#btnSplitWholeIssue').onclick = () => withBusy($('#btnSplitWholeIssue'), FiscalAdminI18n.t('common.issuing'), async () => {
     try { await issueBill('whole_table'); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnSplitPersonIssue').onclick = () => withBusy($('#btnSplitPersonIssue'), '开票中…', async () => {
+  $('#btnSplitPersonIssue').onclick = () => withBusy($('#btnSplitPersonIssue'), FiscalAdminI18n.t('common.issuing'), async () => {
     try {
       syncCurrentSharesFromDom();
       applySplitMarkerNameFromInput();
@@ -4827,12 +4860,12 @@
     onSplitQtyEdited();
   }, true);
 
-  $('#btnRefreshBills').onclick = () => withBusy($('#btnRefreshBills'), '刷新中…', async () => {
+  $('#btnRefreshBills').onclick = () => withBusy($('#btnRefreshBills'), FiscalAdminI18n.t('common.refreshing'), async () => {
     try { await refreshBills(); toast('已刷新', 'success'); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnRefreshInvoices').onclick = () => withBusy($('#btnRefreshInvoices'), '刷新中…', async () => {
+  $('#btnRefreshInvoices').onclick = () => withBusy($('#btnRefreshInvoices'), FiscalAdminI18n.t('common.refreshing'), async () => {
     try { await refreshInvoices(); toast('已刷新', 'success'); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
@@ -4841,7 +4874,7 @@
     openProductWorkbench('create').catch(er => toast(errText(er), 'error'));
   };
 
-  $('#btnSaveProduct').onclick = () => withBusy($('#btnSaveProduct'), '保存中…', async () => {
+  $('#btnSaveProduct').onclick = () => withBusy($('#btnSaveProduct'), FiscalAdminI18n.t('common.saving'), async () => {
     try {
       const saved = await saveProductFromFields();
       if (!saved) return;
@@ -4858,7 +4891,7 @@
   $('#btnNewCustomer').onclick = () => $('#customerForm').classList.remove('hidden');
   $('#btnCancelCustomer').onclick = () => $('#customerForm').classList.add('hidden');
 
-  $('#btnSaveCustomer').onclick = () => withBusy($('#btnSaveCustomer'), '保存中…', async () => {
+  $('#btnSaveCustomer').onclick = () => withBusy($('#btnSaveCustomer'), FiscalAdminI18n.t('common.saving'), async () => {
     try {
       const tax = $('#cNif').value.trim();
       if (!assertCustomerNifOrToast(tax)) return;
@@ -4886,15 +4919,16 @@
     const list = data.exports || [];
     const el = $('#saftExportList');
     if (!list.length) {
-      el.innerHTML = '<li class="hint">暂无导出记录</li>';
+      el.innerHTML = '<li class="hint">' + FiscalAdminI18n.t('settings.saft.empty') + '</li>';
       return;
     }
-    el.innerHTML = list.map(ex =>
-      '<li class="' + (ex.validation_status === 'VALID' ? 'ok' : 'no') + '">' +
-      ex.period_year + '-' + String(ex.period_month).padStart(2, '0') +
-      ' · ' + ex.invoice_count + ' 张 · ' + ex.validation_status +
-      ' · <a href="/local/v1/saft/exports/' + ex.id + '/download" download="' + (ex.file_name || 'saft.xml') + '">下载</a></li>'
-    ).join('');
+    el.innerHTML = list.map(ex => {
+      const period = ex.period_year + '-' + String(ex.period_month).padStart(2, '0');
+      return '<li class="' + (ex.validation_status === 'VALID' ? 'ok' : 'no') + '">' +
+      FiscalAdminI18n.fmt('settings.saft.row', { period: period, count: ex.invoice_count, status: ex.validation_status }) +
+      ' · <a href="/local/v1/saft/exports/' + ex.id + '/download" download="' + (ex.file_name || 'saft.xml') + '">' +
+      FiscalAdminI18n.t('settings.saft.download') + '</a></li>';
+    }).join('');
   }
 
   /** ONLY SAF-T export UI path. */
@@ -4914,55 +4948,55 @@
   $('#saftYear').value = String(y);
   $('#saftMonth').value = String(new Date().getMonth() + 1);
 
-  $('#btnRefreshSetup').onclick = () => withBusy($('#btnRefreshSetup'), '刷新中…', async () => {
-    try { await refreshSetupStatus({ autoSync: true }); toast('状态已刷新', 'success'); }
+  $('#btnRefreshSetup').onclick = () => withBusy($('#btnRefreshSetup'), FiscalAdminI18n.t('common.refreshing'), async () => {
+    try { await refreshSetupStatus({ autoSync: true }); toast(FiscalAdminI18n.t('settings.status.refreshed'), 'success'); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnPrinters').onclick = () => withBusy($('#btnPrinters'), '刷新中…', async () => {
+  $('#btnPrinters').onclick = () => withBusy($('#btnPrinters'), FiscalAdminI18n.t('common.refreshing'), async () => {
     try {
       const st = await refreshPrinters();
-      toast(st.length ? ('档口 ' + st.length + ' 个') : '无档口映射', 'success');
+      toast(st.length ? FiscalAdminI18n.fmt('settings.printers.count', { n: st.length }) : FiscalAdminI18n.t('settings.printers.none'), 'success');
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnTerminalsRefresh').onclick = () => withBusy($('#btnTerminalsRefresh'), '刷新中…', async () => {
-    try { await refreshTerminalsPanel(); toast('开票电脑已刷新', 'success'); }
+  $('#btnTerminalsRefresh').onclick = () => withBusy($('#btnTerminalsRefresh'), FiscalAdminI18n.t('common.refreshing'), async () => {
+    try { await refreshTerminalsPanel(); toast(FiscalAdminI18n.t('settings.terminals.refreshed'), 'success'); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
-  $('#btnTerminalsAllowNext').onclick = () => withBusy($('#btnTerminalsAllowNext'), '生成中…', async () => {
+  $('#btnTerminalsAllowNext').onclick = () => withBusy($('#btnTerminalsAllowNext'), FiscalAdminI18n.t('common.generating'), async () => {
     try { await allowNextTerminal(); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
-  $('#btnTerminalsMaxSave').onclick = () => withBusy($('#btnTerminalsMaxSave'), '保存中…', async () => {
+  $('#btnTerminalsMaxSave').onclick = () => withBusy($('#btnTerminalsMaxSave'), FiscalAdminI18n.t('common.saving'), async () => {
     try { await saveTerminalMax(); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
-  $('#btnLoginPairTerminal').onclick = () => withBusy($('#btnLoginPairTerminal'), '登记中…', async () => {
+  $('#btnLoginPairTerminal').onclick = () => withBusy($('#btnLoginPairTerminal'), FiscalAdminI18n.t('common.pairing'), async () => {
     try { await submitTerminalPairFromLogin(); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnSaftExport').onclick = () => withBusy($('#btnSaftExport'), '导出中…', async () => {
+  $('#btnSaftExport').onclick = () => withBusy($('#btnSaftExport'), FiscalAdminI18n.t('common.exporting'), async () => {
     try {
       const res = await exportSAFT();
       await refreshSAFTExports();
-      toast('SAF-T 已导出 · ' + res.invoice_count + ' 张 · ' + res.validation_status, 'success');
+      toast(FiscalAdminI18n.fmt('settings.saft.exported', { count: res.invoice_count, status: res.validation_status }), 'success');
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
-  $('#btnSaftRefresh').onclick = () => withBusy($('#btnSaftRefresh'), '刷新中…', async () => {
-    try { await refreshSAFTExports(); toast('列表已刷新', 'success'); }
+  $('#btnSaftRefresh').onclick = () => withBusy($('#btnSaftRefresh'), FiscalAdminI18n.t('common.refreshing'), async () => {
+    try { await refreshSAFTExports(); toast(FiscalAdminI18n.t('settings.saft.list_refreshed'), 'success'); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
   $('#stationSel').onchange = () => setStationId($('#stationSel').value);
   $('#invStationSel').onchange = () => setStationId($('#invStationSel').value);
 
-  $('#btnTax').onclick = () => withBusy($('#btnTax'), '保存中…', async () => {
+  $('#btnTax').onclick = () => withBusy($('#btnTax'), FiscalAdminI18n.t('common.saving'), async () => {
     try { await saveTaxpayerSettings($('#btnTax')); } catch (er) { if (er && er.error !== 'validation_failed') toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnAT').onclick = () => withBusy($('#btnAT'), '保存中…', async () => {
+  $('#btnAT').onclick = () => withBusy($('#btnAT'), FiscalAdminI18n.t('common.saving'), async () => {
     try { await saveATCredentialsSettings($('#btnAT')); } catch (er) { if (er && er.error !== 'validation_failed') toast(errText(er), 'error'); throw er; }
   });
 
@@ -4973,7 +5007,7 @@
 
   /** ONLY Admin path to POST /local/v1/setup/series/register. */
   async function registerSeries(btn, inputId, docType, label) {
-    await withBusy(btn, '注册中…', async () => {
+    await withBusy(btn, FiscalAdminI18n.t('common.registering'), async () => {
       const code = ($(inputId).value || '').trim();
       const res = await j('POST', '/local/v1/setup/series/register', {
         series_code: code,
@@ -4983,30 +5017,30 @@
       applySetupStatusFromResponse(res);
       const shown = res.series_code || code || '';
       if (res.idempotent_hit) {
-        toast(label + ' 系列已注册 · ' + shown, 'success');
+        toast(FiscalAdminI18n.fmt('settings.series.reg_hit', { type: docType, code: shown }), 'success');
       } else {
-        toast(label + ' 系列注册成功 · ' + shown, 'success');
+        toast(FiscalAdminI18n.fmt('settings.series.reg_ok', { type: docType, code: shown }), 'success');
       }
     });
   }
-  $('#btnActCloud').onclick = () => withBusy($('#btnActCloud'), '同步中…', async () => {
+  $('#btnActCloud').onclick = () => withBusy($('#btnActCloud'), FiscalAdminI18n.t('common.syncing'), async () => {
     await syncActivateFromCloud();
   });
 
-  $('#btnAct').onclick = () => withBusy($('#btnAct'), '激活中…', async () => {
+  $('#btnAct').onclick = () => withBusy($('#btnAct'), FiscalAdminI18n.t('common.activating'), async () => {
     try {
       const pem = $('#pem').value.trim();
       if (!pem) {
-        setFieldError($('#pem'), $('#pemError'), '请先粘贴产品私钥 PEM');
-        toast('请先粘贴产品私钥 PEM', 'error');
+        setFieldError($('#pem'), $('#pemError'), FiscalAdminI18n.t('settings.series.pem_required'));
+        toast(FiscalAdminI18n.t('settings.series.pem_required'), 'error');
         throw { error: 'validation_failed' };
       }
       setFieldError($('#pem'), $('#pemError'), '');
       const st = await j('POST', '/local/v1/setup/activate', { product_private_key_pem: pem });
       applySetupStatusFromResponse(st);
-      setActCloudStatus('ok', '已同步 · 开票授权就绪，可开票');
+      setActCloudStatus('ok', FiscalAdminI18n.t('settings.series.ok'));
       markSaveSuccess($('#btnAct'));
-      toast('开票已激活', 'success');
+      toast(FiscalAdminI18n.t('settings.series.activated'), 'success');
     } catch (er) { if (er && er.error !== 'validation_failed') toast(errText(er), 'error'); throw er; }
   });
 
@@ -5093,24 +5127,20 @@
       }
       tbody.innerHTML = ops.map(o => {
         const ncToggle = o.active
-          ? '<label class="check-row"><input type="checkbox" data-op-nc="' + o.id + '"' + (o.can_issue_nc ? ' checked' : '') + ' aria-label="可冲销" /></label>'
+          ? '<label class="check-row"><input type="checkbox" data-op-nc="' + o.id + '"' + (o.can_issue_nc ? ' checked' : '') + ' aria-label="' + FiscalAdminI18n.t('settings.ops.can_nc') + '" /></label>'
           : '—';
-        const actions = '<button type="button" class="ghost btn-op-menu-trigger" data-op-menu-trigger data-op-id="' + o.id + '" data-op-active="' + (o.active ? '1' : '0') + '" data-op-role="' + escHtml(o.role) + '" aria-label="操作">⋯</button>';
+        const actions = '<button type="button" class="ghost btn-op-menu-trigger" data-op-menu-trigger data-op-id="' + o.id + '" data-op-active="' + (o.active ? '1' : '0') + '" data-op-role="' + escHtml(o.role) + '" aria-label="' + FiscalAdminI18n.t('common.actions') + '">⋯</button>';
         return '<tr' + (o.active ? '' : ' class="muted"') + '>' +
           '<td>' + escHtml(o.display_name) + '</td>' +
           '<td>' + operatorRoleLabel(o.role) + '</td>' +
-          '<td>' + (o.has_pin ? '已设置' : '未设置') + '</td>' +
+          '<td>' + (o.has_pin ? FiscalAdminI18n.t('settings.ops.pin_set') : FiscalAdminI18n.t('settings.ops.pin_unset')) + '</td>' +
           '<td>' + ncToggle + '</td>' +
-          '<td>' + (o.active ? '启用' : '已停用') + '</td>' +
+          '<td>' + (o.active ? FiscalAdminI18n.t('common.enabled') : FiscalAdminI18n.t('common.disabled')) + '</td>' +
           '<td class="col-actions">' + actions + '</td></tr>';
       }).join('');
     } catch (e) {
-      tbody.innerHTML = '<tr><td colspan="6" class="hint">无法加载开票员</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="hint">' + FiscalAdminI18n.t('settings.ops.load_fail') + '</td></tr>';
     }
-  }
-
-  function escHtml(s) {
-    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   async function loadOperatorManageCache() {
@@ -5126,7 +5156,7 @@
     }
     const isAdmin = canManageProvisioning();
     const editingSelf = isEdit && isEditingSelf(operatorId);
-    $('#operatorFormTitle').textContent = isEdit ? '编辑开票员' : '添加开票员';
+    $('#operatorFormTitle').textContent = isEdit ? FiscalAdminI18n.t('settings.ops.edit') : FiscalAdminI18n.t('settings.ops.add');
     $('#operatorFormId').value = isEdit ? operatorId : '';
     $('#operatorFormPinBlock').classList.toggle('hidden', isEdit);
     $('#operatorFormRoleBlock').classList.toggle('hidden', !isAdmin || editingSelf);
@@ -5167,20 +5197,20 @@
     } else {
       const pin = $('#operatorFormPin').value.trim();
       if (!name || !/^\d{6}$/.test(pin)) {
-        toast('请填写名称与 6 位 PIN', 'error');
+        toast(FiscalAdminI18n.t('settings.ops.need_name_pin'), 'error');
         return;
       }
       body.id = 'op-' + Date.now().toString(36);
       body.pin = pin;
     }
     if (!name) {
-      toast('请填写名称', 'error');
+      toast(FiscalAdminI18n.t('settings.ops.need_name'), 'error');
       return;
     }
     await putOperator(body);
     closeOperatorFormModal();
     await refreshOperatorsPanel();
-    toast(isEdit ? '开票员已更新' : '开票员已添加', 'success');
+    toast(isEdit ? FiscalAdminI18n.t('settings.ops.updated') : FiscalAdminI18n.t('settings.ops.added'), 'success');
   }
 
   function openOperatorResetPinModal(operatorId) {
@@ -5200,17 +5230,17 @@
     const pin = $('#operatorResetPinNew').value.trim();
     const confirmPin = $('#operatorResetPinConfirm').value.trim();
     if (!/^\d{6}$/.test(pin)) {
-      toast('PIN 须为 6 位数字', 'error');
+      toast(FiscalAdminI18n.t('settings.ops.pin_need'), 'error');
       return;
     }
     if (pin !== confirmPin) {
-      toast('两次 PIN 不一致', 'error');
+      toast(FiscalAdminI18n.t('settings.ops.pin_mismatch'), 'error');
       return;
     }
     await putOperator({ id, pin });
     closeOperatorResetPinModal();
     await refreshOperatorsPanel();
-    toast('PIN 已重置', 'success');
+    toast(FiscalAdminI18n.t('settings.ops.pin_reset_ok'), 'success');
   }
 
   async function toggleOperatorActive(operatorId, active) {
@@ -5218,20 +5248,20 @@
     if (!op) return;
     if (!active) {
       openConfirmAction({
-        title: '停用开票员',
-        body: '确认停用「' + op.display_name + '」？其所有端会话将立即失效。',
-        submitLabel: '确认停用',
+        title: FiscalAdminI18n.t('settings.ops.deactivate_title'),
+        body: FiscalAdminI18n.fmt('settings.ops.deactivate_body', { name: op.display_name }),
+        submitLabel: FiscalAdminI18n.t('settings.advanced.swap_submit'),
         onConfirm: async () => {
           await putOperator({ id: operatorId, active: false });
           await refreshOperatorsPanel();
-          toast('开票员已停用', 'success');
+          toast(FiscalAdminI18n.t('settings.ops.deactivated'), 'success');
         }
       });
       return;
     }
     await putOperator({ id: operatorId, active: true });
     await refreshOperatorsPanel();
-    toast('开票员已启用', 'success');
+    toast(FiscalAdminI18n.t('settings.ops.activated'), 'success');
   }
 
   $('#btnOperatorAdd').onclick = () => {
@@ -5240,14 +5270,14 @@
     } catch (er) { toast(errText(er), 'error'); }
   };
   $('#btnOperatorFormCancel').onclick = () => closeOperatorFormModal();
-  $('#btnOperatorFormSubmit').onclick = () => withBusy($('#btnOperatorFormSubmit'), '保存中…', async () => {
+  $('#btnOperatorFormSubmit').onclick = () => withBusy($('#btnOperatorFormSubmit'), FiscalAdminI18n.t('common.saving'), async () => {
     try { await submitOperatorForm(); } catch (er) { toast(errText(er), 'error'); throw er; }
   });
   $('#operatorFormModal').addEventListener('click', e => {
     if (e.target === $('#operatorFormModal')) closeOperatorFormModal();
   });
   $('#btnOperatorResetPinCancel').onclick = () => closeOperatorResetPinModal();
-  $('#btnOperatorResetPinSubmit').onclick = () => withBusy($('#btnOperatorResetPinSubmit'), '重置中…', async () => {
+  $('#btnOperatorResetPinSubmit').onclick = () => withBusy($('#btnOperatorResetPinSubmit'), FiscalAdminI18n.t('common.resetting'), async () => {
     try { await submitOperatorResetPin(); } catch (er) { toast(errText(er), 'error'); throw er; }
   });
   $('#operatorResetPinModal').addEventListener('click', e => {
@@ -5284,7 +5314,7 @@
   $('#confirmActionModal').addEventListener('click', e => {
     if (e.target.id === 'confirmActionModal') closeConfirmActionModal();
   });
-  $('#btnConfirmActionSubmit').onclick = () => withBusy($('#btnConfirmActionSubmit'), '处理中…', async () => {
+  $('#btnConfirmActionSubmit').onclick = () => withBusy($('#btnConfirmActionSubmit'), FiscalAdminI18n.t('common.processing'), async () => {
     try { await runConfirmAction(); } catch (er) { toast(errText(er), 'error'); throw er; }
   });
   $('#operatorsTbody').addEventListener('change', async e => {
@@ -5293,36 +5323,42 @@
     try {
       await putOperator({ id: nc.dataset.opNc, can_issue_nc: nc.checked });
       await refreshOperatorsPanel();
-      toast('冲销权限已更新', 'success');
+      toast(FiscalAdminI18n.t('settings.ops.nc_updated'), 'success');
     } catch (er) {
       nc.checked = !nc.checked;
       toast(errText(er), 'error');
     }
   });
 
-  $('#btnLoginBootstrapOwner').onclick = () => withBusy($('#btnLoginBootstrapOwner'), '创建中…', async () => {
+  $('#btnLoginBootstrapOwner').onclick = () => withBusy($('#btnLoginBootstrapOwner'), FiscalAdminI18n.t('common.creating'), async () => {
     try {
       await bootstrapOwnerAndLogin($('#loginBootstrapName').value, $('#loginBootstrapPin').value);
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnFiscalBackup').onclick = () => withBusy($('#btnFiscalBackup'), '备份中…', async () => {
+  $('#btnFiscalBackup').onclick = () => withBusy($('#btnFiscalBackup'), FiscalAdminI18n.t('common.backing_up'), async () => {
     try {
       const res = await j('POST', '/local/v1/setup/backup', {});
-      toast('已备份 · ' + (res.backup_path || ''), 'success');
-      $('#integrityResult').textContent = '备份：' + (res.backup_path || '') + '（' + (res.bytes || 0) + ' 字节）';
+      toast(FiscalAdminI18n.fmt('settings.advanced.backup_toast', { path: res.backup_path || '' }), 'success');
+      $('#integrityResult').textContent = FiscalAdminI18n.fmt('settings.advanced.backup_line', { path: res.backup_path || '', bytes: res.bytes || 0 });
     } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnIntegrityVerify').onclick = () => withBusy($('#btnIntegrityVerify'), '校验中…', async () => {
+  $('#btnIntegrityVerify').onclick = () => withBusy($('#btnIntegrityVerify'), FiscalAdminI18n.t('common.verifying'), async () => {
     try {
       const res =       await j('POST', '/local/v1/setup/integrity/verify', {
         block_on_fail: true,
         heal_on_pass: !!$('#chkIntegrityHeal').checked
       });
       const msg = res.ok
-        ? ('校验通过 · ' + res.checked + ' 个系列' + (res.healed ? '（恢复 ' + res.healed + '）' : ''))
-        : ('校验失败 · 不匹配 ' + res.failed + (res.blocked ? '，已停用 ' + res.blocked : ''));
+        ? FiscalAdminI18n.fmt('settings.advanced.verify_ok', {
+            n: res.checked,
+            heal: res.healed ? FiscalAdminI18n.fmt('settings.advanced.verify_heal', { n: res.healed }) : ''
+          })
+        : FiscalAdminI18n.fmt('settings.advanced.verify_fail', {
+            failed: res.failed,
+            blocked: res.blocked ? FiscalAdminI18n.fmt('settings.advanced.verify_blocked', { n: res.blocked }) : ''
+          });
       $('#integrityResult').textContent = msg;
       toast(msg, res.ok ? 'success' : 'error');
       await refreshSetupStatus();
@@ -5331,16 +5367,18 @@
 
   $('#btnPrepareSwap').onclick = () => {
     openConfirmAction({
-      title: '换机准备',
-      body: '确认本机停用开票授权？将自动备份后吊销本机签名钥（换机用）。',
-      submitLabel: '确认停用',
-      onConfirm: () => withBusy($('#btnPrepareSwap'), '处理中…', async () => {
+      title: FiscalAdminI18n.t('settings.advanced.swap_title'),
+      body: FiscalAdminI18n.t('settings.advanced.swap_body'),
+      submitLabel: FiscalAdminI18n.t('settings.advanced.swap_submit'),
+      onConfirm: () => withBusy($('#btnPrepareSwap'), FiscalAdminI18n.t('common.processing'), async () => {
         try {
           const res = await j('POST', '/local/v1/setup/prepare-swap', { backup: true });
           const path = res.backup_path || '';
-          $('#integrityResult').textContent = '已停用 · 备份：' + path;
-          toast('开票授权已停用' + (path ? '；备份 ' + path : ''), 'success');
-          setActCloudStatus('wait', '换机后请在新机同步开票授权');
+          $('#integrityResult').textContent = FiscalAdminI18n.fmt('settings.advanced.swap_done', { path: path });
+          toast(FiscalAdminI18n.fmt('settings.advanced.swap_toast', {
+            path: path ? FiscalAdminI18n.fmt('settings.advanced.swap_path', { path: path }) : ''
+          }), 'success');
+          setActCloudStatus('wait', FiscalAdminI18n.t('settings.advanced.swap_status'));
           await refreshSetupStatus();
         } catch (er) { toast(errText(er), 'error'); throw er; }
       })
@@ -5357,10 +5395,7 @@
       uiLocaleSelect.disabled = true;
       try {
         const data = await saveUILocale(uiLocaleSelect.value);
-        FiscalAdminI18n.setLocale(data.ui_locale);
-        uiLocaleSelect.value = data.ui_locale;
-        renderHomeDateChip();
-        refreshUILocaleInvoiceHint(data.invoice_locale);
+        applyAdminLocale(data.ui_locale, data.invoice_locale);
         toast(FiscalAdminI18n.t('lang.saved'), 'success');
       } catch (er) {
         toast(errText(er), 'error');

@@ -25,7 +25,7 @@
 
 | 轨 | 开关 | 作用范围 | Agent 唯一入口 |
 |----|------|----------|----------------|
-| **屏幕** | `config.json` `ui_locale` | 托盘、Admin 导航/设置/支付文案 | `loadAgentUILocale` / `applyUILocaleToConfig` + `FiscalAdminI18n` |
+| **屏幕** | `config.json` `ui_locale` | 托盘、Admin 导航/设置页/支付文案 | `loadAgentUILocale` / `applyUILocaleToConfig` + `FiscalAdminI18n` |
 | **纸面（Mesa 厨打/预结/收银小票）** | Farvoo Dashboard 功能管理 `restaurants.print_locale` → job `payload.locale` | 热敏票**固定栏**（桌号、Guest、Items、Pre-Bill 标题等）；**不**改菜品名 | `normalizePrintLocale` + `printTicketLabels` |
 | **税票 FT（方案 A）** | `ui_locale` 派生 `invoiceLocale` | 认证 FT 票面业务标签 + 冻结进 print payload | `locale.InvoiceLocaleFromUI` + `print.receiptLabels` |
 
