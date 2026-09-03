@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.80
+
+**开票台 C 风格壳层（登录仍要 PIN）**
+
+- 侧栏：品牌渐变底、Logo 标、模式 pill、导航图标、当前项金色左边；脚部头像+姓名。
+- 工作台问候语只写 `#homeGreeting`；操作员名只写 `#operatorName`。
+- **唯一写法 · 导航标签：**仅 `data-i18n="nav.*"`（去掉 `nav.*.sub` 与 `<small>` 副标题）。
+- **唯一写法 · 工作台标题：**仅 `data-i18n="home.title"`。
+- 登录页 PIN 流程不变。
+
 ## 0.4.79
 
 **登录页背景（仅 CSS 渐变）**

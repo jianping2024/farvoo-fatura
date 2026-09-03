@@ -14,6 +14,7 @@
       --rest: #0b3d2e; --retail: #5c3d1e; --accent: #c45c26;
       --brand-darkest: #072c1f; --brand-dark: #0b3d2e; --brand-mid: #1a8a5e;
       --gold: #c9a227;
+      --sidebar-mid: 26,138,94;
       --success: #059669; --success-pale: #ecfdf5;
       --warn-col: #d97706; --warn-pale: #fffbeb;
       --shadow: 0 1px 2px rgba(0,0,0,.03), 0 3px 10px rgba(0,0,0,.06); --radius: 12px;
@@ -26,6 +27,10 @@
     body.mode-retail {
       --mode: var(--retail);
       --mode-rgb: 92,61,30;
+      --brand-darkest: #2a1a0c;
+      --brand-dark: #5c3d1e;
+      --brand-mid: #8a5a28;
+      --sidebar-mid: 138,90,40;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
@@ -121,18 +126,17 @@
     }
     .login-card {
       width: min(480px, 100%);
-      background: rgba(255,252,247,.92);
+      background: rgba(255,255,255,.94);
       border: 1px solid var(--line);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
+      border-radius: 20px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.22);
       padding: 2rem 1.75rem;
       position: relative;
       z-index: 1;
-      /* Softens background texture behind the card (harmless if unsupported). */
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
-    .brand { font-family: var(--display); font-size: 1.8rem; font-weight: 700; color: var(--green); margin: 0 0 0.25rem; }
+    .brand { font-size: 1.5rem; font-weight: 800; color: var(--brand-dark); margin: 0 0 0.25rem; }
     .mode-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin: 1.25rem 0; }
     .mode-pick button {
       min-height: 88px; text-align: left; padding: 1rem; background: #fff; color: var(--ink); border: 2px solid var(--line);
@@ -189,24 +193,31 @@
 
     /* ── Sidebar ── */
     .sidebar {
-      background: var(--brand-darkest); color: #c8e0d4;
-      padding: 0; display: flex; flex-direction: column;
-      min-height: 100vh; position: sticky; top: 0; overflow: hidden;
-    }
-    .sidebar::before {
-      content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+      color: #c8e0d4; padding: 0; display: flex; flex-direction: column;
+      min-height: 100vh; position: sticky; top: 0;
       background:
-        radial-gradient(ellipse 200% 60% at 50% -10%, rgba(26,138,94,.3) 0%, transparent 60%),
-        radial-gradient(ellipse 120% 40% at 110% 100%, rgba(201,162,39,.1) 0%, transparent 55%),
-        repeating-linear-gradient(135deg, rgba(255,255,255,.018) 0 1px, transparent 1px 7px);
+        radial-gradient(ellipse 240% 55% at 50% -5%, rgba(var(--sidebar-mid), .32) 0%, transparent 58%),
+        radial-gradient(ellipse 130% 45% at 115% 105%, rgba(201,162,39,.12) 0%, transparent 52%),
+        repeating-linear-gradient(135deg, rgba(255,255,255,.018) 0 1px, transparent 1px 7px),
+        var(--brand-darkest);
     }
-    .sidebar > * { position: relative; z-index: 1; }
+    .sidebar .logo-area {
+      padding: 1.1rem 1rem 0.85rem;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      margin-bottom: 0.4rem;
+    }
+    .sidebar .logo-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; }
+    .sidebar .logo-mark {
+      width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--brand-mid), var(--gold));
+      color: #fff; font-weight: 800; font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.2);
+    }
     .sidebar .logo {
-      font-size: 1rem; font-weight: 700; color: #fff; letter-spacing: -0.01em;
-      padding: 1.1rem 1rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,.07);
+      font-size: 1rem; font-weight: 700; color: #fff; letter-spacing: -0.01em; padding: 0;
     }
     .sidebar .mode-tag {
-      margin: 0.6rem 0.75rem 0.25rem;
       display: inline-flex; align-items: center; gap: 0.3rem;
       background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1);
       border-radius: 999px; padding: 0.2rem 0.65rem;
@@ -217,14 +228,27 @@
       content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); flex-shrink: 0;
     }
     .nav-btn {
-      text-align: left; background: transparent; color: rgba(200,224,212,.75);
-      border-radius: 8px; padding: 0.58rem 0.7rem; font-weight: 500;
-      width: calc(100% - 1rem); margin: 1px 0.5rem;
+      display: flex; align-items: center; gap: 0.55rem;
+      text-align: left; background: transparent; color: rgba(200,224,212,.72);
+      border-radius: 8px; padding: 0.55rem 0.65rem; font-weight: 500;
+      width: calc(100% - 1rem); margin: 2px 0.5rem;
       position: relative; transition: background 0.15s, color 0.15s;
+      border-left: 3px solid transparent; box-shadow: none;
     }
-    .nav-btn:hover { background: rgba(255,255,255,.08); color: #e8f2ec; }
-    .nav-btn.active { background: rgba(255,255,255,.13); color: #fff; font-weight: 600; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
-    .nav-btn small { display: none; }
+    .nav-btn:hover { background: rgba(255,255,255,.08); color: #e8f2ec; filter: none; transform: none; box-shadow: none; }
+    .nav-btn.active {
+      background: rgba(255,255,255,.12); color: #fff; font-weight: 700;
+      border-left-color: var(--gold);
+    }
+    .nav-icon {
+      width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.78rem; background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+    .nav-btn.active .nav-icon {
+      background: rgba(201,162,39,.14); border-color: rgba(201,162,39,.55);
+    }
     .nav-badge {
       display: none; position: absolute; top: 0.4rem; right: 0.5rem;
       min-width: 1.2rem; height: 1.2rem; padding: 0 0.3rem;
@@ -237,8 +261,17 @@
       font-size: 0.8rem; border-top: 1px solid rgba(255,255,255,.07);
       color: rgba(200,224,212,.6);
     }
+    .sidebar .user-row { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.35rem; }
+    .sidebar .avatar {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--brand-mid), var(--gold));
+      color: #fff; font-size: 0.68rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 0 2px rgba(255,255,255,.15);
+    }
+    .sidebar .user-name { font-size: 0.8125rem; font-weight: 600; color: #e8f2ec; }
     .sidebar .foot button { color: rgba(200,224,212,.55); padding-left: 0; font-size: 0.78rem; }
-    .sidebar .foot button:hover { color: #e8f2ec; }
+    .sidebar .foot button:hover { color: #e8f2ec; background: transparent; filter: none; transform: none; }
 
     /* ── Main area ── */
     .main { padding: 1.5rem 1.75rem 2.5rem; max-width: 980px; }
@@ -248,6 +281,7 @@
       padding-bottom: 1rem; border-bottom: 1px solid var(--line);
     }
     .topbar h1 { font-size: 1.4rem; font-weight: 800; margin: 0; letter-spacing: -0.025em; }
+    .home-greeting { font-size: 0.82rem; color: var(--muted); margin: 0.2rem 0 0; font-weight: 500; }
     .panel {
       background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
       padding: 1.1rem 1.25rem; box-shadow: var(--shadow); margin-bottom: 1rem;
@@ -327,11 +361,14 @@
     .cta-big span { display: block; font-size: 0.8rem; color: rgba(255,255,255,.7); font-weight: 500; margin-top: 0.15rem; }
     .retail-only, .rest-only, .settings-access-only, .settings-admin-only { display: none; }
     body.mode-restaurant .rest-only { display: block; }
+    body.mode-restaurant .nav-btn.rest-only { display: flex; }
     body.mode-retail .retail-only { display: block; }
     body.mode-restaurant tr.rest-only, body.mode-retail tr.retail-only { display: table-row; }
     body.operator-admin .settings-access-only,
     body.operator-admin .settings-admin-only,
     body.operator-manager .settings-access-only { display: block; }
+    body.operator-admin .nav-btn.settings-access-only,
+    body.operator-manager .nav-btn.settings-access-only { display: flex; }
     body.operator-admin tr.settings-access-only,
     body.operator-admin tr.settings-admin-only,
     body.operator-manager tr.settings-access-only { display: table-row; }
@@ -527,18 +564,26 @@
 
   <div id="app-shell">
     <aside class="sidebar">
-      <div class="logo">Farvoo 开票</div>
-      <div class="mode-tag" id="sidebarMode">餐馆模式</div>
-      <button type="button" class="nav-btn active" data-nav="home"><span data-i18n="nav.home">工作台</span><small data-i18n="nav.home.sub">今日概览</small></button>
-      <button type="button" class="nav-btn" data-nav="orders"><span data-i18n="nav.orders">手工开票</span><small data-i18n="nav.orders.sub">本机新建</small></button>
-      <button type="button" class="nav-btn rest-only" data-nav="bills" id="navBills"><span data-i18n="nav.bills">收银账单</span><small data-i18n="nav.bills.sub">待开票 · 来自收银</small><span class="nav-badge" id="navBillsBadge" aria-hidden="true">0</span></button>
-      <button type="button" class="nav-btn" data-nav="invoices"><span data-i18n="nav.invoices">发票</span><small data-i18n="nav.invoices.sub">查询 / 重打</small></button>
-      <button type="button" class="nav-btn" data-nav="products"><span data-i18n="nav.products">商品</span><small data-i18n="nav.products.sub">本店商品维护</small></button>
-      <button type="button" class="nav-btn" data-nav="customers"><span data-i18n="nav.customers">客户</span><small data-i18n="nav.customers.sub">常用购方</small></button>
-      <button type="button" class="nav-btn settings-access-only" data-nav="settings" id="navSettings"><span data-i18n="nav.settings">设置</span><small data-i18n="nav.settings.sub">店名 / 打印机</small></button>
+      <div class="logo-area">
+        <div class="logo-row">
+          <div class="logo-mark" aria-hidden="true">F</div>
+          <div class="logo">Farvoo 开票</div>
+        </div>
+        <div class="mode-tag" id="sidebarMode">餐馆模式</div>
+      </div>
+      <button type="button" class="nav-btn active" data-nav="home"><span class="nav-icon" aria-hidden="true">⌂</span><span data-i18n="nav.home">工作台</span></button>
+      <button type="button" class="nav-btn" data-nav="orders"><span class="nav-icon" aria-hidden="true">＋</span><span data-i18n="nav.orders">手工开票</span></button>
+      <button type="button" class="nav-btn rest-only" data-nav="bills" id="navBills"><span class="nav-icon" aria-hidden="true">☰</span><span data-i18n="nav.bills">收银账单</span><span class="nav-badge" id="navBillsBadge" aria-hidden="true">0</span></button>
+      <button type="button" class="nav-btn" data-nav="invoices"><span class="nav-icon" aria-hidden="true">◫</span><span data-i18n="nav.invoices">发票</span></button>
+      <button type="button" class="nav-btn" data-nav="products"><span class="nav-icon" aria-hidden="true">▦</span><span data-i18n="nav.products">商品</span></button>
+      <button type="button" class="nav-btn" data-nav="customers"><span class="nav-icon" aria-hidden="true">◉</span><span data-i18n="nav.customers">客户</span></button>
+      <button type="button" class="nav-btn settings-access-only" data-nav="settings" id="navSettings"><span class="nav-icon" aria-hidden="true">⚙</span><span data-i18n="nav.settings">设置</span></button>
       <div class="foot">
-        <div id="operatorName">开票员</div>
-        <button type="button" class="ghost" id="btnChangePin" style="color:#cfe3d7;padding-left:0;margin-top:0.35rem">修改 PIN</button>
+        <div class="user-row">
+          <div class="avatar" id="operatorAvatar" aria-hidden="true">—</div>
+          <div class="user-name" id="operatorName">开票员</div>
+        </div>
+        <button type="button" class="ghost" id="btnChangePin" style="color:#cfe3d7;padding-left:0;margin-top:0.2rem">修改 PIN</button>
         <button type="button" class="ghost" id="btnLogout" style="color:#cfe3d7;padding-left:0">退出</button>
       </div>
     </aside>
@@ -547,7 +592,8 @@
       <section class="view" id="view-home">
         <div class="topbar">
           <div>
-            <h1>工作台</h1>
+            <h1 data-i18n="home.title">工作台</h1>
+            <p class="home-greeting" id="homeGreeting"></p>
           </div>
         </div>
         <div class="stat-row">
@@ -4109,7 +4155,21 @@
 
   async function enterApp() {
     const op = loggedInOperator || {};
-    $('#operatorName').textContent = op.display_name || '操作员';
+    const displayName = op.display_name || '操作员';
+    $('#operatorName').textContent = displayName;
+    const avatar = $('#operatorAvatar');
+    if (avatar) {
+      const parts = String(displayName).trim().split(/\s+/).filter(Boolean);
+      avatar.textContent = parts.length >= 2
+        ? (parts[0][0] + parts[1][0]).toUpperCase()
+        : String(displayName).slice(0, 2).toUpperCase();
+    }
+    const greetEl = $('#homeGreeting');
+    if (greetEl) {
+      const h = new Date().getHours();
+      const greet = h < 12 ? '早上好' : h < 18 ? '下午好' : '晚上好';
+      greetEl.textContent = greet + '，' + displayName;
+    }
     applyOperatorAccess();
     $('#view-login').classList.add('hidden');
     $('#app-shell').classList.add('on');
@@ -4130,7 +4190,6 @@
     refreshPrinters().catch(() => {});
     ensureCustomerCatalog().catch(() => {});
     startBillDraftEvents();
-    toast('已进入 · ' + (mode === 'restaurant' ? '餐馆' : '商超'), 'success');
   }
 
   function showTerminalPairPrompt(code) {

@@ -120,15 +120,19 @@ func TestAdminHTMLSchemeACopyUnique(t *testing.T) {
 	}
 	requiredOnce := []string{
 		`data-i18n="nav.orders">手工开票</span>`,
-		`data-i18n="nav.orders.sub">本机新建</small>`,
 		`data-i18n="nav.bills">收银账单</span>`,
-		`data-i18n="nav.bills.sub">待开票 · 来自收银</small>`,
+		`data-i18n="home.title">工作台</h1>`,
+		`id="homeGreeting"`,
+		`id="operatorName"`,
 		"＋ 新建开票",
 		"处理收银账单",
 		"有新的收银账单",
 		"暂无收银账单",
 		`id="uiLocaleSelect"`,
 		`/fiscal-ui/admin-i18n.js`,
+	}
+	if strings.Contains(adminHTML, "nav.orders.sub") || strings.Contains(adminHTML, "nav.bills.sub") {
+		t.Fatal("nav subtitle keys must not remain after C shell (unique label is the nav title)")
 	}
 	for _, s := range requiredOnce {
 		if n := strings.Count(adminHTML, s); n != 1 {
