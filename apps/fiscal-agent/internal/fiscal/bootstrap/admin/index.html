@@ -847,7 +847,6 @@
             <details class="settings-panel settings-admin-only" id="settings-section-series" data-settings-section="series" data-wizard-step="2">
               <summary>系列与开票授权</summary>
               <div class="settings-panel-body">
-                <p class="hint">日常开票只需 FT + FS；NC / ND 仅在冲销 / 借记时需要。</p>
                 <div class="series-grid">
                   <div class="series-card" data-series="ft">
                     <div class="series-card-head"><strong>FT</strong><span class="status-pill" id="seriesFtPill">待配置</span></div>
@@ -871,7 +870,6 @@
                   </div>
                 </div>
                 <h3 style="margin:1rem 0 0.5rem;font-size:0.95rem">激活开票</h3>
-                <p class="hint" id="actCloudHint">由运营后台「激活开票」后，点下方同步领取封装私钥。</p>
                 <div class="panel-footer" style="border:0;justify-content:flex-start">
                   <button type="button" id="btnActCloud">从运营同步开票授权</button>
                 </div>
@@ -887,7 +885,6 @@
             <details class="settings-panel admin-list-panel" id="settings-section-operators" data-settings-section="operators">
               <summary>开票员名册</summary>
               <div class="settings-panel-body">
-                <p class="hint">角色：<strong>管理员</strong> / <strong>店长</strong> / <strong>店员</strong>；管理员可建店长与店员，店长仅管店员。</p>
                 <p class="hint" id="fiscalProfileHint">门店业态：加载中…</p>
                 <div class="admin-list-filter-row settings-access-only" id="operatorsToolbar">
                   <button type="button" id="btnOperatorAdd">添加开票员</button>
@@ -907,7 +904,6 @@
             <details class="settings-panel settings-manager-only admin-list-panel" id="settings-section-audit" data-settings-section="audit">
               <summary>操作记录</summary>
               <div class="settings-panel-body">
-                <p class="hint">登录、PIN 与运维操作留痕；不含开票明细（见「发票」）。</p>
                 <div class="admin-list-filter-row">
                   <div class="field admin-list-search-field">
                     <label for="auditActionFilter">操作类型</label>
@@ -946,7 +942,6 @@
             <details class="settings-panel settings-manager-only admin-list-panel" id="settings-section-terminals" data-settings-section="terminals">
               <summary>开票电脑</summary>
               <div class="settings-panel-body">
-                <p class="hint">局域网开票电脑须登记。Agent 本机不占名额。店长可批准/停用；仅管理员可改上限。</p>
                 <p class="hint" id="terminalsQuotaHint">终端 —/—</p>
                 <div class="field settings-admin-only" id="terminalsMaxRow">
                   <label for="terminalsMaxInput">最大开票台数</label>
@@ -973,7 +968,6 @@
             <details class="settings-panel" id="settings-section-saft" data-settings-section="saft">
               <summary>SAF-T 月导</summary>
               <div class="settings-panel-body">
-                <p class="hint">按月导出本机已签 FT / NC，归档 XML。</p>
                 <div class="split">
                   <div class="field"><label for="saftYear">年份</label><input id="saftYear" type="number" min="2000" max="2100" /></div>
                   <div class="field"><label for="saftMonth">月份</label><input id="saftMonth" type="number" min="1" max="12" /></div>
@@ -989,7 +983,6 @@
             <details class="settings-panel panel-danger settings-admin-only" id="settings-section-advanced" data-settings-section="advanced">
               <summary>备份与换机</summary>
               <div class="settings-panel-body">
-                <p class="hint">备份税务库；恢复后校验系列序号/Hash。换机须先停用本机授权。</p>
                 <div class="panel-footer" style="border:0;justify-content:flex-start">
                   <button type="button" id="btnFiscalBackup">备份税务库</button>
                   <button type="button" class="secondary" id="btnIntegrityVerify">校验系列完整性</button>
@@ -2286,13 +2279,6 @@
     }
     const cloudBtn = $('#btnActCloud');
     if (cloudBtn && st) cloudBtn.disabled = !st.taxpayer_ok || !st.cloud_paired_ok || st.activated_ok;
-    const actHint = $('#actCloudHint');
-    if (actHint && st) {
-      if (!st.cloud_paired_ok) actHint.textContent = '请先完成打印助手配对，再领取开票授权。';
-      else if (!st.taxpayer_ok) actHint.textContent = '请先保存门店信息，再领取开票授权。';
-      else if (st.activated_ok) actHint.textContent = '开票授权已同步到本机。';
-      else actHint.textContent = 'Ops 激活开票后，点下方领取（进入设置页会自动尝试一次）。';
-    }
   }
 
   /** Apply SetupStatus embedded in mutation responses (avoids redundant GET /setup/status). */

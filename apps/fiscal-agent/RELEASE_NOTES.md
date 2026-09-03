@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.78
+
+**设置页去掉重复说明，状态行唯一引导**
+
+- 删系列/角色/审计/开票电脑/SAF-T/备份总述等与按钮或状态重复的 hint。
+- **唯一写法 · 激活引导：**仅 `#actCloudStatus`（去掉 `#actCloudHint` 及 JS 双写）。
+- 保留：界面语言↔发票语言说明、开发 PEM 提示、换机停用后果说明。
+
 ## 0.4.77
 
 **托盘去掉「显示调试控制台」**
