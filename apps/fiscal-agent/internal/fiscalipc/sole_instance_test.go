@@ -76,16 +76,23 @@ func TestSoleSingleInstanceWritings(t *testing.T) {
 	if strings.Contains(cs, "func toggle"+"ConsoleWindow") {
 		t.Fatal("console toggle helper must be removed")
 	}
-	if strings.Count(cs, "func showOrFocusConsoleWindow") != 1 {
-		t.Fatal("showOrFocusConsoleWindow must be defined exactly once")
+	if strings.Contains(cs, "func showOrFocusConsoleWindow") {
+		t.Fatal("showOrFocusConsoleWindow must be removed (no tray debug console)")
+	}
+	if !strings.Contains(cs, "func attachConsoleWindow") || !strings.Contains(cs, "func showConsoleWindow") {
+		t.Fatal("CLI/-console must keep attachConsoleWindow + showConsoleWindow")
 	}
 
 	i18n, err := os.ReadFile(filepath.Join(agent, "ui_i18n.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(i18n), "instance_running_") {
+	i18nS := string(i18n)
+	if strings.Contains(i18nS, "instance_running_") {
 		t.Fatal("instance_running_* i18n keys must be removed")
+	}
+	if strings.Contains(i18nS, "menu_console") {
+		t.Fatal("menu_console i18n keys must be removed")
 	}
 
 	clientMain, err := os.ReadFile(filepath.Join(agent, "cmd", "fiscal-client", "main.go"))

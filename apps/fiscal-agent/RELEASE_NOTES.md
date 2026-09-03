@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.77
+
+**托盘去掉「显示调试控制台」**
+
+- 排障改用「打开日志 / 打开日志文件夹」；删除托盘项与 `showOrFocusConsoleWindow`。
+- 保留 `FarvooFiscalAgent.exe -console` 与 CLI 子命令挂控制台。
+
 ## 0.4.76
 
 **开票台改本地管：admin 定上限，owner 管电脑**

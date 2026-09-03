@@ -82,19 +82,19 @@ func applyTrayUILocaleSubmenu(mUILang, mLangZh, mLangEn, mLangPt interface {
 	mLangPt.SetTitle(uiLocaleOptionTitle(locale, "pt"))
 }
 
-func applyTrayMenuLabels(mStatus, mSettings, mOpenLog, mOpenLogDir, mShowConsole, mAbout, mRestart, mQuit interface {
+func applyTrayMenuLabels(mStatus, mSettings, mFiscal, mOpenLog, mOpenLogDir, mAbout, mRestart, mQuit interface {
 	SetTitle(string)
 	SetTooltip(string)
 }, locale string) {
 	mStatus.SetTitle(uiT(locale, "menu_status_prefix") + "…")
 	mSettings.SetTitle(uiT(locale, "menu_settings"))
 	mSettings.SetTooltip(uiT(locale, "menu_settings_tip"))
+	mFiscal.SetTitle(uiT(locale, "menu_fiscal"))
+	mFiscal.SetTooltip(uiT(locale, "menu_fiscal_tip"))
 	mOpenLog.SetTitle(uiT(locale, "menu_open_log"))
 	mOpenLog.SetTooltip(uiT(locale, "menu_open_log_tip"))
 	mOpenLogDir.SetTitle(uiT(locale, "menu_open_log_dir"))
 	mOpenLogDir.SetTooltip(uiT(locale, "menu_open_log_dir_tip"))
-	mShowConsole.SetTitle(uiT(locale, "menu_console"))
-	mShowConsole.SetTooltip(uiT(locale, "menu_console_tip"))
 	mAbout.SetTitle(uiT(locale, "menu_about"))
 	mAbout.SetTooltip(uiT(locale, "menu_about_tip"))
 	mRestart.SetTitle(uiT(locale, "menu_restart"))

@@ -80,30 +80,6 @@ func showConsoleWindow() {
 	_, _, _ = showWindow.Call(hwnd, swShow)
 }
 
-// showOrFocusConsoleWindow is the sole tray console open path: show if hidden, focus if visible.
-// Does not hide on second click (no toggle).
-func showOrFocusConsoleWindow() {
-	hwnd, _, _ := syscall.NewLazyDLL("kernel32.dll").NewProc("GetConsoleWindow").Call()
-	if hwnd == 0 {
-		showConsoleWindow()
-		hwnd, _, _ = syscall.NewLazyDLL("kernel32.dll").NewProc("GetConsoleWindow").Call()
-	} else {
-		isWindowVisible := syscall.NewLazyDLL("user32.dll").NewProc("IsWindowVisible")
-		visible, _, _ := isWindowVisible.Call(hwnd)
-		if visible == 0 {
-			showConsoleWindow()
-			return
-		}
-	}
-	if hwnd == 0 {
-		return
-	}
-	const swRestore = 9
-	user32 := syscall.NewLazyDLL("user32.dll")
-	_, _, _ = user32.NewProc("ShowWindow").Call(hwnd, swRestore)
-	_, _, _ = user32.NewProc("SetForegroundWindow").Call(hwnd)
-}
-
 func disableConsoleCloseButton(hwnd uintptr) {
 	if hwnd == 0 {
 		return

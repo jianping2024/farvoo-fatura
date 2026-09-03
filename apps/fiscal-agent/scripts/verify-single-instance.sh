@@ -49,12 +49,17 @@ grep -q 'openFiscalAttempts' "$ROOT/internal/fiscalipc/pipe_windows.go" || {
   exit 1
 }
 
-# Console: show/focus only — no toggle (exclude tests that assert absence)
-if grep -rn 'func toggleConsoleWindow\|toggleConsoleWindow()' "$ROOT" --include='*.go' | grep -v '_test.go'; then
-  echo "FAIL: toggleConsoleWindow must be removed (use showOrFocusConsoleWindow)"
+# Console: no tray show/focus helper; -console / CLI still use attach+show
+if grep -rn 'func toggleConsoleWindow\|toggleConsoleWindow()\|func showOrFocusConsoleWindow\|showOrFocusConsoleWindow()' "$ROOT" --include='*.go' | grep -v '_test.go'; then
+  echo "FAIL: tray console helpers must be removed (use agent.log / -console)"
   exit 1
 fi
-grep -q 'func showOrFocusConsoleWindow' "$ROOT/console_windows.go" || exit 1
+if grep -n 'menu_console' "$ROOT/ui_i18n.go"; then
+  echo "FAIL: menu_console i18n keys must be removed"
+  exit 1
+fi
+grep -q 'func attachConsoleWindow' "$ROOT/console_windows.go" || exit 1
+grep -q 'func showConsoleWindow' "$ROOT/console_windows.go" || exit 1
 
 # Client sole mutex
 grep -q 'FarvooFiscalClient-SingleInstance-v1' "$ROOT/internal/fiscalclient/single_instance_windows.go" || exit 1

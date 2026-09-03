@@ -215,8 +215,6 @@ func onTrayReady(rt *trayRuntime) {
 	mLangEn := mUILang.AddSubMenuItem(uiLocaleOptionTitle(loc, "en"), "")
 	mLangPt := mUILang.AddSubMenuItem(uiLocaleOptionTitle(loc, "pt"), "")
 	systray.AddSeparator()
-	mShowConsole := systray.AddMenuItem(uiT(loc, "menu_console"), uiT(loc, "menu_console_tip"))
-	systray.AddSeparator()
 	mAbout := systray.AddMenuItem(uiT(loc, "menu_about"), uiT(loc, "menu_about_tip"))
 	mRestart := systray.AddMenuItem(uiT(loc, "menu_restart"), uiT(loc, "menu_restart_tip"))
 	mQuit := systray.AddMenuItem(uiT(loc, "menu_quit"), uiT(loc, "menu_quit_tip"))
@@ -231,7 +229,7 @@ func onTrayReady(rt *trayRuntime) {
 			if loc != lastLoc {
 				lastLoc = loc
 				systray.SetTitle(uiT(loc, "tray_title"))
-				applyTrayMenuLabels(mStatus, mSettings, mOpenLog, mOpenLogDir, mShowConsole, mAbout, mRestart, mQuit, loc)
+				applyTrayMenuLabels(mStatus, mSettings, mFiscal, mOpenLog, mOpenLogDir, mAbout, mRestart, mQuit, loc)
 				applyTrayUILocaleSubmenu(mUILang, mLangZh, mLangEn, mLangPt, loc)
 			}
 			mStatus.SetTitle(rt.status.menuStatusLine(loc))
@@ -259,7 +257,7 @@ func onTrayReady(rt *trayRuntime) {
 		agentLogLocale(code, "log_tray_ui_locale", uiLocaleOptionLogLabel(code))
 		loc = code
 		systray.SetTitle(uiT(loc, "tray_title"))
-		applyTrayMenuLabels(mStatus, mSettings, mOpenLog, mOpenLogDir, mShowConsole, mAbout, mRestart, mQuit, loc)
+		applyTrayMenuLabels(mStatus, mSettings, mFiscal, mOpenLog, mOpenLogDir, mAbout, mRestart, mQuit, loc)
 		applyTrayUILocaleSubmenu(mUILang, mLangZh, mLangEn, mLangPt, loc)
 		systray.SetTooltip(rt.status.tooltip(Version, loc))
 	}
@@ -288,11 +286,6 @@ func onTrayReady(rt *trayRuntime) {
 					log.Println("tray:", err)
 					loc := rt.uiLocale()
 					messageBoxOK(uiT(loc, "about_title"), fmt.Sprintf(uiT(loc, "open_log_dir_fail"), err.Error()))
-				}
-			case <-mShowConsole.ClickedCh:
-				showOrFocusConsoleWindow()
-				if _, err, done := rt.snapshot(); done && err != nil {
-					log.Println(err)
 				}
 			case <-mAbout.ClickedCh:
 				messageBoxOK(uiT(rt.uiLocale(), "about_title"), trayAboutText(rt, rt.uiLocale()))
