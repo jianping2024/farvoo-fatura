@@ -137,7 +137,7 @@
 | 项 | 定法 |
 |----|------|
 | 配置向导 | **仅 `admin`**；`ready_to_issue=false` 时展示 |
-| CSS 门控 | `settings-admin-only` / `settings-manager-only`（**禁止**复用 M3.2b 的 `owner-only` 表示「全设置权限」） |
+| CSS 门控 | `settings-admin-only` / `settings-access-only`（**禁止**复用 M3.2b 的 `owner-only` 表示「全设置权限」） |
 | `owner` 名册 UI | 添加开票员弹窗 **无**角色下拉（固定创建 `cashier`）；表格 **不展示** `admin` / `owner` 行 |
 
 **「开票授权等一系列」= `admin` 独占（P0）：** AT 凭证、系列注册（FT/FS/NC/ND）、`activate-from-cloud`、本地 PEM 激活、备份/换机/完整性校验、就绪概览中的授权/激活卡片。

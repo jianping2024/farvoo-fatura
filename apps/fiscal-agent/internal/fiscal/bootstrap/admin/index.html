@@ -9,12 +9,16 @@
   <link rel="stylesheet" href="/fiscal-ui/list-pagination.css"/>
   <style>
     :root {
-      --ink: #14201b; --muted: #5c6b64; --paper: #f3efe6; --panel: #fffcf7;
-      --line: #ddd4c4; --green: #0b3d2e; --green-2: #146048;
+      --ink: #111827; --muted: #6b7280; --paper: #f0ece4; --panel: #ffffff;
+      --line: #e5e2db; --green: #0b3d2e; --green-2: #1a8a5e;
       --rest: #0b3d2e; --retail: #5c3d1e; --accent: #c45c26;
-      --shadow: 0 10px 30px rgba(20,32,27,.08); --radius: 14px;
+      --brand-darkest: #072c1f; --brand-dark: #0b3d2e; --brand-mid: #1a8a5e;
+      --gold: #c9a227;
+      --success: #059669; --success-pale: #ecfdf5;
+      --warn-col: #d97706; --warn-pale: #fffbeb;
+      --shadow: 0 1px 2px rgba(0,0,0,.03), 0 3px 10px rgba(0,0,0,.06); --radius: 12px;
       --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-      --display: Georgia, "Times New Roman", serif;
+      --display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       --mode: var(--rest);
       /* Used for rgba() alpha gradients inside login-only backgrounds. */
       --mode-rgb: 11,61,46;
@@ -28,13 +32,19 @@
     body { font-family: var(--font); color: var(--ink); background: var(--paper); }
     button, input, select, textarea { font: inherit; }
     button {
-      border: 0; border-radius: 10px; padding: 0.65rem 1rem;
-      background: var(--mode); color: #fff; font-weight: 600; cursor: pointer;
+      border: 0; border-radius: 8px; padding: 0.55rem 1rem;
+      background: linear-gradient(135deg, var(--brand-dark), var(--brand-mid));
+      color: #fff; font-weight: 600; cursor: pointer;
+      box-shadow: 0 1px 3px rgba(11,61,46,.25);
+      transition: filter 0.15s, box-shadow 0.15s, transform 0.15s;
     }
-    button:hover { filter: brightness(1.08); }
-    button:disabled { opacity: .55; cursor: wait; filter: none; }
-    button.secondary { background: transparent; color: var(--mode); border: 1px solid var(--line); }
-    button.ghost { background: transparent; color: var(--muted); border: 0; }
+    button:hover { filter: brightness(1.08); box-shadow: 0 2px 8px rgba(11,61,46,.35); transform: translateY(-1px); }
+    button:active { transform: translateY(0); filter: none; }
+    button:disabled { opacity: .55; cursor: wait; filter: none; transform: none; box-shadow: none; }
+    button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); box-shadow: none; }
+    button.secondary:hover { border-color: var(--brand-dark); color: var(--brand-dark); background: #f0f7f2; transform: none; box-shadow: none; }
+    button.ghost { background: transparent; color: var(--muted); border: 0; box-shadow: none; }
+    button.ghost:hover { background: var(--paper); color: var(--ink); transform: none; box-shadow: none; }
     input, select, textarea {
       width: 100%; border: 1px solid var(--line); border-radius: 10px;
       padding: 0.65rem 0.75rem; background: #fff;
@@ -60,9 +70,15 @@
     .sync-status.ok { background: #dff3e7; border-color: #b7e0c6; color: #1f7a4c; }
     .sync-status.wait { background: #fff1d6; border-color: #f0d59a; color: #9a6700; }
     .sync-status.fail { background: #fde8e8; border-color: #f0b4b4; color: #a33b3b; }
-    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; background: #e7efe9; color: var(--mode); }
-    .badge.wait { background: #fff1d6; color: #9a6700; }
-    .badge.done { background: #dff3e7; color: #1f7a4c; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.2rem;
+      padding: 0.15rem 0.55rem; border-radius: 999px;
+      font-size: 0.7rem; font-weight: 700;
+      background: var(--success-pale); color: var(--success);
+    }
+    .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .badge.wait { background: var(--warn-pale); color: var(--warn-col); }
+    .badge.done { background: var(--success-pale); color: var(--success); }
     .hidden { display: none !important; }
 
     #view-login {
@@ -168,40 +184,75 @@
       box-shadow: inset 0 2px 4px rgba(0,0,0,.18);
     }
 
-    #app-shell { display: none; min-height: 100vh; grid-template-columns: 220px 1fr; }
+    #app-shell { display: none; min-height: 100vh; grid-template-columns: 224px 1fr; }
     #app-shell.on { display: grid; }
+
+    /* ── Sidebar ── */
     .sidebar {
-      background: var(--mode); color: #e8f2ec; padding: 1rem 0.75rem;
-      display: flex; flex-direction: column; min-height: 100vh; position: sticky; top: 0;
+      background: var(--brand-darkest); color: #c8e0d4;
+      padding: 0; display: flex; flex-direction: column;
+      min-height: 100vh; position: sticky; top: 0; overflow: hidden;
     }
-    .sidebar .logo { font-family: var(--display); font-size: 1.2rem; font-weight: 700; padding: 0.5rem 0.65rem 0.25rem; }
+    .sidebar::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(ellipse 200% 60% at 50% -10%, rgba(26,138,94,.3) 0%, transparent 60%),
+        radial-gradient(ellipse 120% 40% at 110% 100%, rgba(201,162,39,.1) 0%, transparent 55%),
+        repeating-linear-gradient(135deg, rgba(255,255,255,.018) 0 1px, transparent 1px 7px);
+    }
+    .sidebar > * { position: relative; z-index: 1; }
+    .sidebar .logo {
+      font-size: 1rem; font-weight: 700; color: #fff; letter-spacing: -0.01em;
+      padding: 1.1rem 1rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,.07);
+    }
     .sidebar .mode-tag {
-      margin: 0 0.65rem 1rem; padding: 0.35rem 0.6rem; border-radius: 8px;
-      background: rgba(255,255,255,.12); font-size: 0.75rem;
+      margin: 0.6rem 0.75rem 0.25rem;
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 999px; padding: 0.2rem 0.65rem;
+      font-size: 0.7rem; font-weight: 600; color: rgba(200,224,212,.8);
+      width: fit-content;
+    }
+    .sidebar .mode-tag::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); flex-shrink: 0;
     }
     .nav-btn {
-      text-align: left; background: transparent; color: #d5e8dd;
-      border-radius: 10px; padding: 0.65rem 0.75rem; font-weight: 600; width: 100%;
-      position: relative;
+      text-align: left; background: transparent; color: rgba(200,224,212,.75);
+      border-radius: 8px; padding: 0.58rem 0.7rem; font-weight: 500;
+      width: calc(100% - 1rem); margin: 1px 0.5rem;
+      position: relative; transition: background 0.15s, color 0.15s;
     }
-    .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,.14); color: #fff; }
-    .nav-btn small { display: block; font-size: 0.7rem; opacity: 0.7; font-weight: 500; margin-top: 0.1rem; }
+    .nav-btn:hover { background: rgba(255,255,255,.08); color: #e8f2ec; }
+    .nav-btn.active { background: rgba(255,255,255,.13); color: #fff; font-weight: 600; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+    .nav-btn small { display: none; }
     .nav-badge {
-      display: none; position: absolute; top: 0.45rem; right: 0.55rem;
-      min-width: 1.25rem; height: 1.25rem; padding: 0 0.35rem;
-      border-radius: 999px; background: #f5c542; color: #1a1a1a;
-      font-size: 0.72rem; font-weight: 800; line-height: 1.25rem; text-align: center;
+      display: none; position: absolute; top: 0.4rem; right: 0.5rem;
+      min-width: 1.2rem; height: 1.2rem; padding: 0 0.3rem;
+      border-radius: 999px; background: var(--gold); color: #1a1a1a;
+      font-size: 0.68rem; font-weight: 800; line-height: 1.2rem; text-align: center;
     }
     .nav-badge.on { display: inline-block; }
-    .sidebar .foot { margin-top: auto; padding: 0.75rem; font-size: 0.82rem; border-top: 1px solid rgba(255,255,255,.12); }
-    .main { padding: 1.25rem 1.5rem 2.5rem; max-width: 960px; }
-    .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
-    .topbar h1 { font-family: var(--display); font-size: 1.65rem; margin: 0; letter-spacing: -0.02em; }
+    .sidebar .foot {
+      margin-top: auto; padding: 0.85rem 1rem;
+      font-size: 0.8rem; border-top: 1px solid rgba(255,255,255,.07);
+      color: rgba(200,224,212,.6);
+    }
+    .sidebar .foot button { color: rgba(200,224,212,.55); padding-left: 0; font-size: 0.78rem; }
+    .sidebar .foot button:hover { color: #e8f2ec; }
+
+    /* ── Main area ── */
+    .main { padding: 1.5rem 1.75rem 2.5rem; max-width: 980px; }
+    .topbar {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap;
+      padding-bottom: 1rem; border-bottom: 1px solid var(--line);
+    }
+    .topbar h1 { font-size: 1.4rem; font-weight: 800; margin: 0; letter-spacing: -0.025em; }
     .panel {
       background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-      padding: 1rem 1.1rem; box-shadow: var(--shadow); margin-bottom: 1rem;
+      padding: 1.1rem 1.25rem; box-shadow: var(--shadow); margin-bottom: 1rem;
     }
-    .panel h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+    .panel h2 { margin: 0 0 0.75rem; font-size: 1rem; font-weight: 700; }
     .table-scroll { overflow-x: auto; }
     .invoices-table th, .invoices-table td { font-size: 0.85rem; }
     .buyer-cell { display: flex; flex-direction: column; gap: 0.1rem; line-height: 1.3; }
@@ -235,9 +286,11 @@
     }
     .flow-step.active .num { background: var(--mode); }
     .flow-step.done .num { background: #1f7a4c; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    th, td { text-align: left; padding: 0.6rem 0.4rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
-    th { color: var(--muted); font-size: 0.76rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th, td { text-align: left; padding: 0.7rem 0.6rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    th { color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; background: #faf9f6; }
+    tr { transition: background 0.12s; }
+    tr:hover td { background: #faf8f4; }
     .list-table th.col-actions, .list-table td.col-actions {
       text-align: right; white-space: nowrap; width: 1%; padding-right: 0.15rem;
     }
@@ -255,30 +308,33 @@
     .person-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 1rem; }
     .person-chips button { border-radius: 999px; padding: 0.35rem 0.85rem; }
     .person-chips button.active { outline: 2px solid #2d6a4f; }
-    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
-    .stat { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 0.85rem 1rem; }
-    .stat .k { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
-    .stat .v { font-family: var(--display); font-size: 1.45rem; margin-top: 0.2rem; }
-    .cta-big {
-      display: block; width: 100%; text-align: left; padding: 1.1rem 1.2rem;
-      background: #fff; border: 2px solid var(--mode); border-radius: 14px;
-      color: var(--ink); margin-bottom: 0.75rem;
+    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.85rem; margin-bottom: 1.25rem; }
+    .stat {
+      background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem 1.15rem;
+      box-shadow: var(--shadow); transition: box-shadow 0.2s, transform 0.2s;
     }
-    .cta-big:focus { outline: 3px solid var(--mode); outline-offset: 2px; }
-    .cta-big strong { display: block; font-size: 1.05rem; }
-    .cta-big span { display: block; font-size: 0.85rem; color: var(--muted); font-weight: 500; margin-top: 0.25rem; }
-    .retail-only, .rest-only, .settings-access-only, .settings-admin-only, .settings-manager-only { display: none; }
+    .stat:hover { box-shadow: 0 4px 16px rgba(0,0,0,.09); transform: translateY(-2px); }
+    .stat .k { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+    .stat .v { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.03em; margin-top: 0.3rem; }
+    .cta-big {
+      display: inline-flex; align-items: center; text-align: left; padding: 0.65rem 1.25rem;
+      background: linear-gradient(135deg, var(--brand-dark), var(--brand-mid));
+      border: 0; border-radius: 8px; color: #fff; margin: 0 0.6rem 0.6rem 0;
+      box-shadow: 0 1px 3px rgba(11,61,46,.25);
+    }
+    .cta-big:focus { outline: 3px solid var(--brand-mid); outline-offset: 2px; }
+    .cta-big strong { display: inline; font-size: 0.9rem; }
+    .cta-big span { display: block; font-size: 0.8rem; color: rgba(255,255,255,.7); font-weight: 500; margin-top: 0.15rem; }
+    .retail-only, .rest-only, .settings-access-only, .settings-admin-only { display: none; }
     body.mode-restaurant .rest-only { display: block; }
     body.mode-retail .retail-only { display: block; }
     body.mode-restaurant tr.rest-only, body.mode-retail tr.retail-only { display: table-row; }
     body.operator-admin .settings-access-only,
     body.operator-admin .settings-admin-only,
-    body.operator-manager .settings-access-only,
-    body.operator-manager .settings-manager-only { display: block; }
+    body.operator-manager .settings-access-only { display: block; }
     body.operator-admin tr.settings-access-only,
     body.operator-admin tr.settings-admin-only,
-    body.operator-manager tr.settings-access-only,
-    body.operator-manager tr.settings-manager-only { display: table-row; }
+    body.operator-manager tr.settings-access-only { display: table-row; }
     .settings-nav-hidden { display: none !important; }
     .checklist { list-style: none; padding: 0; margin: 0; }
     .checklist li { padding: 0.35rem 0; font-size: 0.9rem; }
@@ -836,9 +892,9 @@
             <a href="#settings-section-store" data-settings-nav="store" data-i18n="settings.nav.store">门店与税务</a>
             <a href="#settings-section-series" data-settings-nav="series" data-i18n="settings.nav.series">系列与授权</a>
             <a href="#settings-section-operators" data-settings-nav="operators" data-i18n="settings.nav.operators">人员</a>
-            <a href="#settings-section-audit" data-settings-nav="audit" class="settings-manager-only" data-i18n="settings.nav.audit">操作记录</a>
+            <a href="#settings-section-audit" data-settings-nav="audit" class="settings-access-only" data-i18n="settings.nav.audit">操作记录</a>
             <a href="#settings-section-printers" data-settings-nav="printers" data-i18n="settings.nav.printers">设备</a>
-            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-manager-only">开票电脑</a>
+            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only">开票电脑</a>
             <a href="#settings-section-saft" data-settings-nav="saft" data-i18n="settings.nav.saft">合规</a>
             <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </nav>
@@ -847,9 +903,9 @@
             <a href="#settings-section-store" data-settings-nav="store" data-i18n="settings.nav.store">门店</a>
             <a href="#settings-section-series" data-settings-nav="series" data-i18n="settings.nav.series">授权</a>
             <a href="#settings-section-operators" data-settings-nav="operators" data-i18n="settings.nav.operators">人员</a>
-            <a href="#settings-section-audit" data-settings-nav="audit" class="settings-manager-only" data-i18n="settings.nav.audit">操作记录</a>
+            <a href="#settings-section-audit" data-settings-nav="audit" class="settings-access-only" data-i18n="settings.nav.audit">操作记录</a>
             <a href="#settings-section-printers" data-settings-nav="printers" data-i18n="settings.nav.printers">设备</a>
-            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-manager-only">开票电脑</a>
+            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only">开票电脑</a>
             <a href="#settings-section-saft" data-settings-nav="saft" data-i18n="settings.nav.saft">合规</a>
             <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </div>
@@ -952,7 +1008,7 @@
               </div>
             </details>
 
-            <details class="settings-panel settings-manager-only admin-list-panel" id="settings-section-audit" data-settings-section="audit">
+            <details class="settings-panel settings-access-only admin-list-panel" id="settings-section-audit" data-settings-section="audit">
               <summary>操作记录</summary>
               <div class="settings-panel-body">
                 <div class="admin-list-filter-row">
@@ -990,7 +1046,7 @@
               </div>
             </details>
 
-            <details class="settings-panel settings-manager-only admin-list-panel" id="settings-section-terminals" data-settings-section="terminals">
+            <details class="settings-panel settings-access-only admin-list-panel" id="settings-section-terminals" data-settings-section="terminals">
               <summary>开票电脑</summary>
               <div class="settings-panel-body">
                 <p class="hint" id="terminalsQuotaHint">终端 —/—</p>

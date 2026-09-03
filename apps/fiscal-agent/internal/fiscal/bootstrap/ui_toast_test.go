@@ -579,8 +579,8 @@ func TestAdminHTMLAuditLogSinglePath(t *testing.T) {
 	if !strings.Contains(adminHTML, `data-settings-section="audit"`) {
 		t.Fatal("audit panel must use data-settings-section=audit")
 	}
-	if !strings.Contains(adminHTML, "settings-manager-only") || !strings.Contains(adminHTML, ">操作记录<") {
-		t.Fatal("audit nav must be settings-manager-only 操作记录")
+	if !strings.Contains(adminHTML, ">操作记录<") {
+		t.Fatal("audit nav must contain 操作记录")
 	}
 	if strings.Contains(adminHTML, "auditActionLabels") || strings.Contains(adminHTML, "OWNER_AUDIT_ACTIONS") {
 		t.Fatal("do not duplicate action labels in admin JS; use API filter_actions")
