@@ -78,5 +78,18 @@ git push origin main   # 若 VERSION 有新提交
 
 - **Fiscal agent**：必须 push `fiscal-agent-v*` tag 才会打安装包；merge main **不等于** 可下载。
 - **不要**在 Mac 上本地打 Windows 安装包冒充 Release。
-- Tag 前跑 `./scripts/check-fiscal-agent.sh`。
+- Tag / `push-to-main` **之前**必须跑 `./scripts/check-fiscal-agent.sh`（含 `GOOS=windows` 交叉编译 Agent + Client）。
 - **不要改** `fiscal-agent-release.yml` 里 Inno/路径，除非真要改安装方式。
+
+---
+
+## 踩坑（重复犯过，禁止再犯）
+
+| 错法 | 后果 | 正确做法 |
+|------|------|----------|
+| 只在 Darwin 跑 `go test ./...` 就 `push-to-main` | `*_windows.go` **不参与**本机编译；未使用 import / Windows 专属语法错误要到 **tag 前 check** 或 CI 才爆；main 已推上去，再补第二提交修编译 | **先** `./scripts/check-fiscal-agent.sh`（脚本里已有 `GOOS=windows GOARCH=amd64 go build` Agent + Client）**通过后再** push/tag |
+| 以为 `push-to-main` 的 VERSION 校验 = 编译校验 | `validate-fiscal-agent-release` 只卡 VERSION/NOTES；**Windows build 在 push 之后**的 `apply-fiscal-agent-tag` 才跑 → 会「main 绿推、tag 红挂」 | 本地主动先跑 `check-fiscal-agent.sh`，不要赌 push 后 tag 步骤 |
+| merge main 就说「可下载」 | Release 只跟 `fiscal-agent-v*` tag | 等 Actions **fiscal-agent-release** 全绿，Release 页有 `FarvooFiscalAgent-Setup-amd64.exe` |
+| macOS 本地 zip 当发版 | 与门店安装器/签名路径不一致 | 只用 GitHub Release 产物 |
+
+**0.4.69 实例：** `fiscal_shell_windows.go` 残留未使用的 `unsafe` → Darwin test 全绿 → main 已推 → tag 检查 `GOOS=windows go build` 失败 → 不得不再推一笔修 import。同类问题只靠交叉编译门禁能拦住。
