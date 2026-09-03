@@ -14,14 +14,16 @@ const errorAlreadyExists = syscall.Errno(183)
 // Held until process exit so the mutex stays owned by this instance.
 var agentInstanceMutex syscall.Handle
 
-// acquireAgentSingleInstance returns false if another main agent instance is already running.
+// acquireAgentSingleInstance is the sole tray-agent mutex acquire.
+// Returns false if another agent holds the mutex or CreateMutex fails (fail-closed).
 func acquireAgentSingleInstance() bool {
 	if agentInstanceMutex != 0 {
 		return true
 	}
 	name, err := syscall.UTF16PtrFromString(agentMutexName)
 	if err != nil {
-		return true
+		log.Println("single-instance: mutex name:", err)
+		return false
 	}
 	kernel32 := syscall.NewLazyDLL("kernel32.dll")
 	openMutexW := kernel32.NewProc("OpenMutexW")
@@ -38,7 +40,8 @@ func acquireAgentSingleInstance() bool {
 	// bInitialOwner=TRUE so this instance owns the mutex immediately.
 	handle, _, _ := createMutexW.Call(0, 1, uintptr(unsafe.Pointer(name)))
 	if handle == 0 {
-		return true
+		log.Println("single-instance: CreateMutex failed")
+		return false
 	}
 	agentInstanceMutex = syscall.Handle(handle)
 
@@ -52,9 +55,9 @@ func acquireAgentSingleInstance() bool {
 	return true
 }
 
+// exitAlreadyRunning is the sole duplicate-agent exit: silent process exit (no UI dialog).
 func exitAlreadyRunning() {
-	loc := loadAgentUILocale()
-	messageBoxOK(uiT(loc, "instance_running_title"), uiT(loc, "instance_running_body"))
+	log.Println("single-instance: agent already running — silent exit")
 	os.Exit(0)
 }
 

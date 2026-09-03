@@ -37,6 +37,11 @@ func runClientSettings() {
 }
 
 func runClientMain() {
+	// Sole Client process gate: second launch focuses existing shell and exits.
+	if !fiscalclient.AcquireClientSingleInstance() {
+		_ = fiscalwebview.FocusExistingByTitle(fiscalwebview.WindowTitle)
+		return
+	}
 	cfg, err := fiscalclient.LoadConfig()
 	if err != nil || cfg.AgentBase == "" {
 		host, port := "", "17880"

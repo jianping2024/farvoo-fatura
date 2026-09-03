@@ -7,6 +7,8 @@ import (
 	"log"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"unsafe"
 
 	"farvoo-fiscal-agent/internal/fiscalipc"
 	"farvoo-fiscal-agent/internal/fiscalwebview"
@@ -42,14 +44,32 @@ func startFiscalIPC(ctx context.Context, open func()) {
 	fiscalipc.ServeAgentCommands(ctx, open)
 }
 
+// allowSetForegroundAny lets the running Agent call SetForegroundWindow after this
+// user-launched fiscal shortcut process hands off via IPC (best-effort).
+func allowSetForegroundAny() {
+	const asfwAny = ^uint32(0)
+	user32 := syscall.NewLazyDLL("user32.dll")
+	allow := user32.NewProc("AllowSetForegroundWindow")
+	_, _, _ = allow.Call(uintptr(asfwAny))
+}
+
+// runFiscalCommand is the sole desktop "Farvoo 开票" entry (FarvooFiscalAgent fiscal).
+// Never starts a second tray agent: open via IPC if mutex held, else become the sole agent.
 func runFiscalCommand() {
+	allowSetForegroundAny()
 	if fiscalipc.AgentInstanceRunning() {
 		if err := fiscalipc.RequestOpenFiscal(); err != nil {
-			log.Fatal(err)
+			log.Println("fiscal:", err)
 		}
 		return
 	}
-	guardMainAgentSingleInstance()
+	if !acquireAgentSingleInstance() {
+		// Lost race: another agent appeared between check and CreateMutex.
+		if err := fiscalipc.RequestOpenFiscal(); err != nil {
+			log.Println("fiscal:", err)
+		}
+		return
+	}
 	openFiscalOnTrayStart = true
 	runAgent(nil)
 }

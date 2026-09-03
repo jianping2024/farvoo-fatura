@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.69
+
+**单例 UX：重复启动静默、开票/控制台开或聚焦、Client 单进程**
+
+- **唯一写法：** `exitAlreadyRunning` 静默退出（无 MessageBox / 无 `instance_running_*`）；`acquireAgentSingleInstance` **fail-closed**；桌面 `fiscal` **唯一** `runFiscalCommand`（Mutex 已占用 → `RequestOpenFiscal` 重试后退出，绝不第二份 Agent）；IPC **唯一** `RequestOpenFiscal`（内置重试）；托盘控制台 **唯一** `showOrFocusConsoleWindow`（删除 `toggleConsoleWindow`）；Client **唯一** `AcquireClientSingleInstance` + `FocusExistingByTitle`。
+- 聚焦 best-effort（`focusHWND` / `AllowSetForegroundWindow`）；抢不到焦点不报错、不 Fatal。
+- 自检：`scripts/verify-single-instance.sh` + `TestSoleSingleInstanceWritings`。
+
 ## 0.4.68
 
 **预结单 Consulta de Mesa：非发票声明 + 姓名/NIF 填写栏**

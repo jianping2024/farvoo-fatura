@@ -289,9 +289,8 @@ func onTrayReady(rt *trayRuntime) {
 					messageBoxOK(uiT(loc, "about_title"), fmt.Sprintf(uiT(loc, "open_log_dir_fail"), err.Error()))
 				}
 			case <-mShowConsole.ClickedCh:
-				shown := toggleConsoleWindow()
-				_, err, done := rt.snapshot()
-				if shown && done && err != nil {
+				showOrFocusConsoleWindow()
+				if _, err, done := rt.snapshot(); done && err != nil {
 					log.Println(err)
 				}
 			case <-mAbout.ClickedCh:

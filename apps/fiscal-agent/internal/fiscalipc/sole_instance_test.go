@@ -1,0 +1,109 @@
+package fiscalipc
+
+import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+)
+
+func TestAgentMutexNameStable(t *testing.T) {
+	const want = `Global\FarvooFiscalAgent-SingleInstance-v1`
+	if AgentMutexName != want {
+		t.Fatalf("AgentMutexName = %q want %q", AgentMutexName, want)
+	}
+}
+
+func TestCommandOpenFiscalStable(t *testing.T) {
+	if CommandOpenFiscal != "open-fiscal" {
+		t.Fatalf("CommandOpenFiscal = %q", CommandOpenFiscal)
+	}
+}
+
+// TestSoleSingleInstanceWritings locks the unique-path contract from the single-instance UX plan.
+func TestSoleSingleInstanceWritings(t *testing.T) {
+	agent := filepath.Join(moduleRoot(t), "apps", "fiscal-agent")
+
+	si, err := os.ReadFile(filepath.Join(agent, "single_instance_windows.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(si)
+	if strings.Count(s, "func exitAlreadyRunning") != 1 {
+		t.Fatal("exitAlreadyRunning must be defined exactly once")
+	}
+	if strings.Contains(s, "messageBoxOK") || strings.Contains(s, "MessageBoxW") || strings.Contains(s, "instance_running") {
+		t.Fatal("exitAlreadyRunning path must not show a dialog")
+	}
+	if strings.Count(s, "func acquireAgentSingleInstance") != 1 {
+		t.Fatal("acquireAgentSingleInstance must be defined exactly once")
+	}
+
+	shell, err := os.ReadFile(filepath.Join(agent, "fiscal_shell_windows.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ss := string(shell)
+	if strings.Count(ss, "func runFiscalCommand") != 1 {
+		t.Fatal("runFiscalCommand must be defined exactly once")
+	}
+	if strings.Contains(ss, "log.Fatal") {
+		t.Fatal("runFiscalCommand must not log.Fatal")
+	}
+	if strings.Count(ss, "RequestOpenFiscal()") != 2 {
+		// Agent running + lost-race paths both call the sole IPC helper
+		t.Fatalf("runFiscalCommand must call RequestOpenFiscal exactly twice (running + race), got %d", strings.Count(ss, "RequestOpenFiscal()"))
+	}
+
+	pipe, err := os.ReadFile(filepath.Join(agent, "internal", "fiscalipc", "pipe_windows.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ps := string(pipe)
+	if strings.Count(ps, "func RequestOpenFiscal(") != 1 {
+		t.Fatal("RequestOpenFiscal must be defined exactly once")
+	}
+	if !strings.Contains(ps, "openFiscalAttempts") {
+		t.Fatal("RequestOpenFiscal must retry via openFiscalAttempts")
+	}
+
+	console, err := os.ReadFile(filepath.Join(agent, "console_windows.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cs := string(console)
+	if strings.Contains(cs, "func toggle"+"ConsoleWindow") {
+		t.Fatal("console toggle helper must be removed")
+	}
+	if strings.Count(cs, "func showOrFocusConsoleWindow") != 1 {
+		t.Fatal("showOrFocusConsoleWindow must be defined exactly once")
+	}
+
+	i18n, err := os.ReadFile(filepath.Join(agent, "ui_i18n.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(i18n), "instance_running_") {
+		t.Fatal("instance_running_* i18n keys must be removed")
+	}
+
+	clientMain, err := os.ReadFile(filepath.Join(agent, "cmd", "fiscal-client", "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cm := string(clientMain)
+	if !strings.Contains(cm, "AcquireClientSingleInstance") || !strings.Contains(cm, "FocusExistingByTitle") {
+		t.Fatal("Client main must gate on AcquireClientSingleInstance + FocusExistingByTitle")
+	}
+}
+
+func moduleRoot(t *testing.T) string {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	// .../apps/fiscal-agent/internal/fiscalipc → repo root
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", "..", ".."))
+}

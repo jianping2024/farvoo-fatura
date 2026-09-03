@@ -19,6 +19,11 @@ import (
 
 const pipeName = `\\.\pipe\FarvooFiscalAgent-v1`
 
+const (
+	openFiscalAttempts = 15
+	openFiscalDelay    = 200 * time.Millisecond
+)
+
 var (
 	serveMu  sync.Mutex
 	serveGen int
@@ -112,15 +117,27 @@ func handleConn(conn net.Conn, onOpenFiscal func()) {
 	_, _ = io.WriteString(conn, "ok\n")
 }
 
-// RequestOpenFiscal asks a running Agent to open the fiscal shell window.
+// RequestOpenFiscal is the sole IPC open path: retries while the Agent pipe comes up.
 func RequestOpenFiscal() error {
+	var last error
+	for i := 0; i < openFiscalAttempts; i++ {
+		last = requestOpenFiscalOnce()
+		if last == nil {
+			return nil
+		}
+		time.Sleep(openFiscalDelay)
+	}
+	return last
+}
+
+func requestOpenFiscalOnce() error {
 	timeout := 3 * time.Second
 	conn, err := winio.DialPipe(pipeName, &timeout)
 	if err != nil {
 		return fmt.Errorf("fiscal ipc: agent not reachable: %w", err)
 	}
 	defer conn.Close()
-	if _, err := io.WriteString(conn, CommandOpenFiscal + "\n"); err != nil {
+	if _, err := io.WriteString(conn, CommandOpenFiscal+"\n"); err != nil {
 		return err
 	}
 	line, err := bufio.NewReader(conn).ReadString('\n')
