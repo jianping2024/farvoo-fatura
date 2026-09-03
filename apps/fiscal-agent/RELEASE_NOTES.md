@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.68
+
+**预结单 Consulta de Mesa：非发票声明 + 姓名/NIF 填写栏**
+
+- 跟 `print_locale`（空→pt）：标题 zh `预结账单` / en `Table Consultation` / pt `Consulta Mesa`。
+- **唯一** `writePreBillLegalBlock` + `preBillFillLine`：`ESTE DOCUMENTO NÃO SERVE DE FATURA`（及中英对照）、姓名/NIF/地址下划线、致谢；**不**印在厨打 / 结账收据 / FT 税票。
+
 ## 0.4.67
 
 **WebView2 开票壳：专用 UI 线程 + IPC 长驻 + 僵窗重建**

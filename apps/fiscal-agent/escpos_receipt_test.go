@@ -224,8 +224,11 @@ func TestCheckoutBillOmitsPaymentLines(t *testing.T) {
 	if !strings.Contains(s, "Receipt") {
 		t.Fatalf("checkout_bill title must be Receipt, got: %q", s)
 	}
-	if strings.Contains(s, "Pre-Bill") {
+	if strings.Contains(s, "Pre-Bill") || strings.Contains(s, "Table Consultation") || strings.Contains(s, "Consulta Mesa") {
 		t.Fatal("checkout_bill must not use pre_bill title")
+	}
+	if strings.Contains(s, "NOT AN INVOICE") || strings.Contains(s, "SERVE DE FATURA") {
+		t.Fatal("checkout_bill must not print Consulta de Mesa legal block")
 	}
 	if strings.Contains(s, "Amount Paid:") || strings.Contains(s, "Payment:") {
 		t.Fatal("checkout_bill must not include payment confirmation lines")
@@ -245,8 +248,17 @@ func TestPreBillOmitsPaymentLines(t *testing.T) {
 	})
 	raw := escposFromJob(printJob{Type: "pre_bill", Payload: payload})
 	s := string(raw)
-	if !strings.Contains(s, "Pr\xe9-conta") {
-		t.Fatalf("pre_bill pt locale must show Pré-conta, got: %q", s)
+	if !strings.Contains(s, "Consulta Mesa") {
+		t.Fatalf("pre_bill pt locale must show Consulta Mesa, got: %q", s)
+	}
+	if !strings.Contains(s, "SERVE DE FATURA") {
+		t.Fatal("pre_bill must print not-an-invoice disclaimer")
+	}
+	if !strings.Contains(s, "NOME:") || !strings.Contains(s, "NIF:") {
+		t.Fatal("pre_bill must print NOME and NIF fill-in lines")
+	}
+	if !strings.Contains(s, strings.Repeat("_", 4)) {
+		t.Fatal("pre_bill fill-in lines must use underscore blanks")
 	}
 	if strings.Contains(s, "Amount Paid:") || strings.Contains(s, "Payment:") {
 		t.Fatal("pre_bill must not include payment confirmation lines")
@@ -288,8 +300,64 @@ func TestPreBillTitleEnglishLocale(t *testing.T) {
 	})
 	raw := escposFromJob(printJob{Type: "pre_bill", Payload: payload})
 	s := string(raw)
-	if !strings.Contains(s, "Pre-Bill") {
-		t.Fatalf("pre_bill en locale must show Pre-Bill, got: %q", s)
+	if !strings.Contains(s, "Table Consultation") {
+		t.Fatalf("pre_bill en locale must show Table Consultation, got: %q", s)
+	}
+	if !strings.Contains(s, "THIS DOCUMENT IS NOT AN INVOICE") {
+		t.Fatal("pre_bill en locale must print not-an-invoice disclaimer")
+	}
+	if !strings.Contains(s, "Name:") || !strings.Contains(s, "NIF:") {
+		t.Fatal("pre_bill en locale must print Name and NIF fill-in lines")
+	}
+}
+
+func TestPreBillFillLinePadsToWidth(t *testing.T) {
+	line := preBillFillLine("NOME", escposWidth)
+	if displayWidth(line) != escposWidth {
+		t.Fatalf("fill line width %d want %d (%q)", displayWidth(line), escposWidth, line)
+	}
+	if !strings.HasPrefix(line, "NOME: ") || !strings.Contains(line, "_") {
+		t.Fatalf("fill line must be LABEL: ____, got %q", line)
+	}
+}
+
+func TestPreBillEmptyLocaleUsesPortugueseLegalBlock(t *testing.T) {
+	payload, _ := json.Marshal(map[string]any{
+		"display_name": "A-01",
+		"subtotal":     1,
+		"amount_due":   1,
+		"lines":        []jobLine{{ItemIndex: 1, DisplayName: "Agua", Qty: 1, UnitPrice: 1}},
+	})
+	s := string(escposFromJob(printJob{Type: "pre_bill", Payload: payload}))
+	if !strings.Contains(s, "Consulta Mesa") || !strings.Contains(s, "SERVE DE FATURA") {
+		t.Fatal("empty payload.locale must default pre-bill chrome to pt")
+	}
+}
+
+func TestStationTicketOmitsPreBillLegalBlock(t *testing.T) {
+	payload, _ := json.Marshal(jobPayload{
+		Locale:           "pt",
+		TableDisplayName: "A-01",
+		Lines:            []jobLine{{ItemIndex: 1, DisplayName: "Agua", Qty: 1}},
+	})
+	s := string(escposFromJob(printJob{Type: "station_ticket", Payload: payload}))
+	if strings.Contains(s, "SERVE DE FATURA") || strings.Contains(s, "Consulta Mesa") {
+		t.Fatal("station_ticket must not print Consulta de Mesa legal chrome")
+	}
+}
+
+func TestFinalReceiptOmitsPreBillLegalBlock(t *testing.T) {
+	payload, _ := json.Marshal(map[string]any{
+		"locale":          "pt",
+		"display_name":    "A-01",
+		"receipt_variant": "final",
+		"subtotal":        1,
+		"amount_due":      1,
+		"lines":           []jobLine{{ItemIndex: 1, DisplayName: "Agua", Qty: 1, UnitPrice: 1}},
+	})
+	s := string(escposFromJob(printJob{Type: "order_receipt", Payload: payload}))
+	if strings.Contains(s, "SERVE DE FATURA") {
+		t.Fatal("final receipt must not print not-an-invoice disclaimer")
 	}
 }
 
@@ -411,9 +479,9 @@ func TestZhPreBillMenuOneRasterPerLine(t *testing.T) {
 	})
 	raw := escposFromJob(printJob{Type: "pre_bill", Payload: payload})
 	gs := bytes.Count(raw, []byte{0x1D, 0x76, 0x30, 0x00})
-	// zh chrome + menu(header+2) + pads + footer ≈ one GS per Han line (~14), not 2× menu wrap.
-	if gs < 10 || gs > 18 {
-		t.Fatalf("zh pre_bill GS v 0 count %d outside one-raster-per-line band [10,18]", gs)
+	// zh chrome + legal block + menu(header+2) + pads + footer; one GS per Han line.
+	if gs < 14 || gs > 28 {
+		t.Fatalf("zh pre_bill GS v 0 count %d outside one-raster-per-line band [14,28]", gs)
 	}
 	img := renderBitmapReceiptRow("001-中水", "9", "16.65", fontPx, style)
 	if img.Width != bitmapTextMaxWidthPx {

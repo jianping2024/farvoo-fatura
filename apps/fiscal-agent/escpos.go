@@ -61,6 +61,13 @@ type ticketLabels struct {
 	amountPaid     string
 	station        string
 	itemNote       string // underlined guest note label, e.g. "备注: " / "Note: " / "Observação: "
+	// pre-bill legal chrome (Consulta de Mesa) — print_locale; empty locale → pt
+	notAnInvoice     string
+	invoiceFillHint  string
+	invoiceFillName  string
+	invoiceFillNIF   string
+	invoiceFillAddr  string
+	thankYouVisit    string
 }
 
 func labelsFor(locale string) ticketLabels {
@@ -70,7 +77,7 @@ func labelsFor(locale string) ticketLabels {
 			connectionTest: "打印测试",
 			guestOrder:     "出菜单",
 			receipt:        "收据",
-			preBill:        "预结单",
+			preBill:        "预结账单",
 			tableNo:        "桌号",
 			guest:          "人数",
 			items:          "菜品",
@@ -86,15 +93,21 @@ func labelsFor(locale string) ticketLabels {
 			printedByVal:   "系统",
 			orderedBy:      "下单方",
 			amountPaid:     "实付",
-			station:        "档口",
-			itemNote:       "备注: ",
+			station:          "档口",
+			itemNote:         "备注: ",
+			notAnInvoice:     "此单据不可作为发票使用",
+			invoiceFillHint:  "请填写发票信息",
+			invoiceFillName:  "姓名",
+			invoiceFillNIF:   "税号",
+			invoiceFillAddr:  "地址",
+			thankYouVisit:    "谢谢光临",
 		}
 	case "en":
 		return ticketLabels{
 			connectionTest: "PRINT TEST",
 			guestOrder:     "Guest Order",
 			receipt:        "Receipt",
-			preBill:        "Pre-Bill",
+			preBill:        "Table Consultation",
 			tableNo:        "Table No.",
 			guest:          "Guest",
 			items:          "Items",
@@ -110,15 +123,21 @@ func labelsFor(locale string) ticketLabels {
 			printedByVal:   "Customer/Merchant",
 			orderedBy:      "Ordered By",
 			amountPaid:     "Amount Paid",
-			station:        "Station",
-			itemNote:       "Note: ",
+			station:          "Station",
+			itemNote:         "Note: ",
+			notAnInvoice:     "THIS DOCUMENT IS NOT AN INVOICE",
+			invoiceFillHint:  "FILL IN FOR INVOICE",
+			invoiceFillName:  "Name",
+			invoiceFillNIF:   "NIF",
+			invoiceFillAddr:  "Address",
+			thankYouVisit:    "THANK YOU FOR YOUR VISIT",
 		}
 	default: // pt (pt-PT semantics)
 		return ticketLabels{
 			connectionTest: "TESTE IMPRESSÃO",
 			guestOrder:     "Pedido",
 			receipt:        "Recibo",
-			preBill:        "Pré-conta",
+			preBill:        "Consulta Mesa",
 			tableNo:        "Mesa n.º",
 			guest:          "Conv.",
 			items:          "Artigos",
@@ -134,8 +153,14 @@ func labelsFor(locale string) ticketLabels {
 			printedByVal:   "Cliente/Estabelecimento",
 			orderedBy:      "Pedido por",
 			amountPaid:     "Valor pago",
-			station:        "Estação",
-			itemNote:       "Observação: ",
+			station:          "Estação",
+			itemNote:         "Observação: ",
+			notAnInvoice:     "ESTE DOCUMENTO NÃO SERVE DE FATURA",
+			invoiceFillHint:  "PARA A FATURA PREENCHER",
+			invoiceFillName:  "NOME",
+			invoiceFillNIF:   "NIF",
+			invoiceFillAddr:  "MORADA",
+			thankYouVisit:    "OBRIGADO PELA SUA VISITA",
 		}
 	}
 }
@@ -1025,7 +1050,51 @@ func buildOrderReceipt(p jobPayload, lab ticketLabels, withPayment bool, variant
 	w.text(fmt.Sprintf("%s:%s", lab.printTime, printAt))
 	w.lf()
 
+	if variant == "pre_bill" {
+		writePreBillLegalBlock(w, lab)
+	}
+
 	return w.finish(true)
+}
+
+// writePreBillLegalBlock — ONLY Consulta de Mesa / pre_bill footer (not-an-invoice + NIF fill-in).
+func writePreBillLegalBlock(w *escposWriter, lab ticketLabels) {
+	w.separator('-')
+	w.align(1)
+	w.bold(true)
+	w.writeBody1x1()
+	for _, line := range wrapDisplay(lab.notAnInvoice, escposWidth) {
+		w.text(line)
+		w.lf()
+	}
+	w.bold(false)
+	w.lf()
+	w.text(lab.invoiceFillHint)
+	w.lf()
+	w.align(0)
+	w.writePreBillFillField(lab.invoiceFillName)
+	w.writePreBillFillField(lab.invoiceFillNIF)
+	w.writePreBillFillField(lab.invoiceFillAddr)
+	w.lf()
+	w.align(1)
+	w.text(lab.thankYouVisit)
+	w.lf()
+	w.align(0)
+}
+
+func (w *escposWriter) writePreBillFillField(label string) {
+	w.text(preBillFillLine(label, escposWidth))
+	w.lf()
+}
+
+// preBillFillLine — ONLY Consulta de Mesa blank (Nome / NIF / Morada): "LABEL: ________".
+func preBillFillLine(label string, width int) string {
+	prefix := strings.TrimRight(strings.TrimSpace(label), ":") + ": "
+	n := width - displayWidth(prefix)
+	if n < 4 {
+		n = 4
+	}
+	return prefix + strings.Repeat("_", n)
 }
 
 func buildConnectionTest(p jobPayload, lab ticketLabels) []byte {

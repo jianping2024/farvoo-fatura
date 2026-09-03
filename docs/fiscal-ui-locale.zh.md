@@ -31,6 +31,8 @@
 
 空 `payload.locale` → **pt**（与 Mesa 默认一致）。`zh` / `en` / `pt` 三档全走 `labelsFor`，禁止「zh 否则 English」。
 
+预结单（`pre_bill` / Consulta de Mesa）票尾须印「非发票」声明 + 开票填写栏（姓名/NIF/地址，下划线空行）+ 致谢，**跟 `print_locale`**（空→pt）；**不**印在 FT 税票、厨打、结账收据上。标题：zh `预结账单` / en `Table Consultation` / pt `Consulta Mesa`。
+
 ---
 
 ## 3. 唯一写法
@@ -49,6 +51,7 @@
 | 支付方式 code 表 | `domain.KnownPaymentMethods`（Admin `pay.*` / 票面 `Pay*` 分表，仅 key 对齐） |
 | Mesa 热敏票固定栏 | `printTicketLabels`（`escpos_encoding.go`；仅 `payload.locale`） |
 | Mesa `payload.locale` normalize | `normalizePrintLocale`（默认 pt；**不**读 `ui_locale`） |
+| 预结单「非发票」声明 | **唯一** `writePreBillLegalBlock`（仅 `pre_bill`）；填写行 **唯一** `preBillFillLine`；文案在 `labelsFor` 的 `notAnInvoice` / `invoiceFill*` / `thankYouVisit`；跟 `print_locale`，空→pt |
 
 ---
 

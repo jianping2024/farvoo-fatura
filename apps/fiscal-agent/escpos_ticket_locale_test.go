@@ -8,9 +8,9 @@ import (
 
 func TestPrintTicketLabelsHonorsPrintLocale(t *testing.T) {
 	cases := map[string]string{
-		"zh": "预结单",
-		"en": "Pre-Bill",
-		"pt": "Pré-conta",
+		"zh": "预结账单",
+		"en": "Table Consultation",
+		"pt": "Consulta Mesa",
 	}
 	for loc, wantPreBill := range cases {
 		got := printTicketLabels(loc).preBill
@@ -24,6 +24,15 @@ func TestPrintTicketLabelsHonorsPrintLocale(t *testing.T) {
 	if printTicketLabels("").preBill != printTicketLabels("pt").preBill {
 		t.Fatal("empty payload.locale defaults to pt chrome")
 	}
+	if printTicketLabels("pt").notAnInvoice != "ESTE DOCUMENTO NÃO SERVE DE FATURA" {
+		t.Fatal("pt pre-bill disclaimer must stay Portuguese legal wording")
+	}
+	if printTicketLabels("zh").invoiceFillName != "姓名" || printTicketLabels("en").invoiceFillNIF != "NIF" {
+		t.Fatal("pre-bill fill labels must follow print_locale")
+	}
+	if printTicketLabels("").notAnInvoice != printTicketLabels("pt").notAnInvoice {
+		t.Fatal("empty locale must use pt not-an-invoice copy")
+	}
 }
 
 func TestProductionTicketChromeUsesPrintTicketLabelsOnly(t *testing.T) {
@@ -33,8 +42,8 @@ func TestProductionTicketChromeUsesPrintTicketLabelsOnly(t *testing.T) {
 			t.Fatal(err)
 		}
 		src := string(b)
-		if strings.Contains(src, "labelsFor(p.Locale)") {
-			t.Fatalf("%s must not call labelsFor(p.Locale); use printTicketLabels", file)
+		if n := strings.Count(src, "lab.notAnInvoice"); n > 1 {
+			t.Fatalf("%s must use lab.notAnInvoice only in writePreBillLegalBlock, got %d", file, n)
 		}
 	}
 }
