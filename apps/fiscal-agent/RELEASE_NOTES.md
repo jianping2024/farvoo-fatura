@@ -2,6 +2,12 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.79
+
+**登录页背景（仅 CSS 渐变）**
+
+- 登录页 `#view-login` 增加深色企业风的纯 CSS 背景（渐变/遮罩/纹理），不影响登录后主界面。
+
 ## 0.4.78
 
 **设置页去掉重复说明，状态行唯一引导**
