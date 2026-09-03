@@ -96,6 +96,7 @@ func TestAgentInstallerFiscalShortcut(t *testing.T) {
 	for _, s := range []string{
 		`Parameters: "fiscal"`,
 		"desktopfiscal",
+		`Name: "desktopfiscal"; Description: "Create a Farvoo Fiscal (WebView2) shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: unchecked`,
 		"Tasks: webview2",
 		"Name: \"webview2\"",
 		"SetupIconFile=..\\assets\\app_icon.ico",

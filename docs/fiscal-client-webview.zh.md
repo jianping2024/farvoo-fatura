@@ -60,7 +60,7 @@
 ```text
 【Agent 机 · 已开通 Fiscal】
   托盘 ^ → FARVOO Fiscal → 开票 / Fiscal…  → WebView2 → http://127.0.0.1:17880/
-  桌面（默认勾选）→ Farvoo 开票            → FarvooFiscalAgent.exe fiscal（IPC 或随 Agent 启动）
+  桌面（默认不勾）→ Farvoo 开票             → FarvooFiscalAgent.exe fiscal（IPC 或随 Agent 启动）
   托盘 → 打印机设置…                        → 17892（不变）
 
 【LAN 其它开票 PC】
@@ -163,7 +163,7 @@ apps/fiscal-agent/
 | Fiscal API / 会话 / 终端配对 | 已有 §3.8.1 |
 | `17892` configure 流程 | 仍浏览器 / 现有本地 HTTP |
 | `openBrowser` 非开票路径 | pair、文档链接等保留 |
-| Agent 安装器 | P0 增「Farvoo 开票」桌面快捷方式（`fiscal` 子命令，默认勾选）+ WebView2 bootstrapper（默认勾选） |
+| Agent 安装器 | 「Farvoo 开票」桌面快捷方式（`fiscal` 子命令，**默认不勾**；仅开票店按需勾）+ WebView2 bootstrapper（默认勾选） |
 
 ### 9.3 可选（P1，不阻塞 P0）
 
@@ -199,5 +199,6 @@ apps/fiscal-agent/
 
 | 日期 | 变更 |
 |------|------|
+| 2026-09-03 | **0.4.73**：Agent 安装器桌面「Farvoo 开票」改为默认不勾（纯打印店不落桌面图标） |
 | 2026-09-03 | **0.4.67 WebView UI 线程 + IPC 长驻 + 僵窗重建**：`startUIThread` 唯一消息循环；HWND 无响应丢弃；pipe accept 长驻；Admin 去掉 stale cookie 假 PIN |
 | 2026-09-02 | **定稿落地（0.4.58）**：WebView2 壳、Client、IPC、`fiscal` 子命令、安装器 |

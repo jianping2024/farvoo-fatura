@@ -2,6 +2,12 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.73
+
+**安装器：桌面「开票」快捷方式默认不勾**
+
+- Agent Setup「Farvoo Fiscal (WebView2)」桌面快捷方式改为默认不勾（与 Agent 快捷方式、登录自启一致）；只打印、不开票的店不再被动落桌面图标。开票仍可从托盘 / 开始菜单进入，需要时安装向导手动勾选即可。
+
 ## 0.4.72
 
 **冷开壳门牌：盘上 restaurant_id；禁止错 store 假「创建管理员」**
