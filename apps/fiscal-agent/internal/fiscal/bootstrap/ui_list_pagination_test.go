@@ -20,6 +20,31 @@ func TestFiscalUIListPaginationAssets(t *testing.T) {
 	}
 }
 
+func TestAdminListFilterRowUnique(t *testing.T) {
+	css := string(fiscalUIListPaginationCSS)
+	if n := strings.Count(css, ".admin-list-filter-row {"); n != 1 {
+		t.Fatalf(".admin-list-filter-row must have exactly one rule, got %d", n)
+	}
+	if n := strings.Count(css, ".admin-list-filter-row {\n  display: flex;"); n != 1 {
+		t.Fatal("filter-row flex must live in that single .admin-list-filter-row rule")
+	}
+	if n := strings.Count(css, ".admin-list-select-field {"); n != 1 {
+		t.Fatalf(".admin-list-select-field block must appear once, got %d", n)
+	}
+	if strings.Contains(css, "invoice-filter-row") || strings.Contains(css, "invoice-search-field") {
+		t.Fatal("list-pagination.css must not keep invoice-filter-row / invoice-search-field")
+	}
+	if strings.Contains(adminHTML, "invoice-filter-row") || strings.Contains(adminHTML, "invoice-search-field") {
+		t.Fatal("admin HTML must use admin-list-filter-row / admin-list-search-field only")
+	}
+	if strings.Contains(adminHTML, ".invoice-filter-row") || strings.Contains(adminHTML, ".admin-list-filter-row {") {
+		t.Fatal("filter-row flex must not be restated in admin index.html")
+	}
+	if strings.Contains(string(fiscalUIAdminI18nJS), "auditAction") || strings.Contains(string(fiscalUIAdminI18nJS), "操作类型") {
+		t.Fatal("do not add audit filter i18n keys; chrome dictionary stays nav/settings/pay")
+	}
+}
+
 func TestAdminHTMLInvoiceListPaginationUnique(t *testing.T) {
 	if !strings.Contains(adminHTML, `/fiscal-ui/list-pagination.js`) || !strings.Contains(adminHTML, `/fiscal-ui/list-pagination.css`) {
 		t.Fatal("admin must load fiscal-ui list-pagination assets")

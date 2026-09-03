@@ -338,8 +338,6 @@
     .buyer-cell .buyer-nif { font-weight: 600; }
     .buyer-cell .buyer-name { font-size: 0.78rem; }
     #view-invoices { --fiscal-date-ink: var(--ink); --fiscal-date-line: var(--line); --fiscal-date-accent: var(--mode); --fiscal-page-line: var(--line); }
-    .invoice-filter-row { display: flex; flex-wrap: wrap; gap: 1rem 1.25rem; align-items: flex-end; }
-    .invoice-search-field { flex: 1; min-width: 12rem; margin: 0; }
     .invoice-detail-modal { max-width: 560px; }
     .detail-grid { margin: 0; }
     .detail-row { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.5rem 0.75rem; padding: 0.45rem 0; border-bottom: 1px solid var(--line); align-items: start; }
@@ -932,9 +930,9 @@
             <button type="button" class="secondary" data-invoice-type="NC" role="tab">NC<small>冲销单</small></button>
             <button type="button" class="secondary" data-invoice-type="ND" role="tab">ND<small>借记单</small></button>
           </div>
-          <div class="invoice-filter-row admin-list-filter-row">
+          <div class="admin-list-filter-row">
             <div id="invoiceDateFilter"></div>
-            <div class="field invoice-search-field admin-list-search-field">
+            <div class="field admin-list-search-field">
               <label for="invoiceSearch">搜索</label>
               <input id="invoiceSearch" placeholder="票号 / NIF / 桌号" autocomplete="off" />
             </div>
@@ -1151,11 +1149,11 @@
               <summary>操作记录</summary>
               <div class="settings-panel-body">
                 <div class="admin-list-filter-row">
-                  <div class="field admin-list-search-field">
+                  <div class="field admin-list-select-field">
                     <label for="auditActionFilter">操作类型</label>
                     <select id="auditActionFilter"><option value="">全部</option></select>
                   </div>
-                  <div class="field admin-list-search-field">
+                  <div class="field admin-list-select-field">
                     <label for="auditOperatorFilter">开票员</label>
                     <select id="auditOperatorFilter"><option value="">全部</option></select>
                   </div>

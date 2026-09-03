@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.83
+
+**列表筛选行：一行 flex，去掉发票专用重复 class**
+
+- **唯一写法 · 筛选行布局：**仅 `.admin-list-filter-row`（`list-pagination.css`）。
+- **唯一写法 · 下拉筛：**仅 `.admin-list-select-field`（操作记录类型/开票员；搜索仍用 `.admin-list-search-field`）。
+- 删 `.invoice-filter-row` / `.invoice-search-field`。不扩 Admin i18n 字典。
+
 ## 0.4.82
 
 **工作台今日发票表：对齐 + 票号量宽 + 补购方/来源**
