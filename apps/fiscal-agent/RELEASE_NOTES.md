@@ -2,6 +2,17 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.82
+
+**工作台今日发票表：对齐 + 票号量宽 + 补购方/来源**
+
+- **唯一写法 · 票号单元格：**仅 `formatInvoiceNoCell`（工作台 + 发票页；禁止回退 `document_type`）。
+- **唯一写法 · 签发时刻单元格：**仅 `formatInvoiceWhenCell`。
+- **唯一写法 · 购方 / 来源单元格：**仅 `formatInvoiceBuyerCell` / `formatInvoiceOrderCell`（工作台 + 发票页共用）。
+- **唯一写法 · 今日表 tbody：**仅 `renderHomeRecentInvoices`；列序 签发时刻 / 票号 / 购方 / 来源 / 金额 / 操作（去掉类型；**禁止**假 spacer、禁止靠右侧留白凑布局）。
+- **唯一写法 · 今日表布局：**`width:100%`；票号宽仅 `applyHomeRecentColNoWidth`（量最长 `invoice_no` → `--home-col-no-w`）；购方+来源吃中间剩余宽度；首/末列 `1.25rem` 齐字。
+- 标题与空态口径统一为「今日」。
+
 ## 0.4.81
 
 **开票台：工作台 C 布局 + 禁止整页左右拖**

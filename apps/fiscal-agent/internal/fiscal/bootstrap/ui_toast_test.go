@@ -177,6 +177,11 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 		"function renderHomeStats",
 		"function refreshHomeStats",
 		"function focusHomePrimaryCta",
+		"function formatInvoiceNoCell",
+		"function formatInvoiceWhenCell",
+		"function formatInvoiceOrderCell",
+		"function measureAdminTableTextPx",
+		"function applyHomeRecentColNoWidth",
 	} {
 		if n := strings.Count(adminHTML, fn); n != 1 {
 			t.Fatalf("%s must appear exactly once, got %d", fn, n)
@@ -208,6 +213,97 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	}
 	if strings.Contains(adminHTML, "$('#homeGreeting').textContent") || strings.Contains(adminHTML, "$('#homeDateChip').textContent") {
 		t.Fatal("do not write home greeting/date outside renderHomeGreeting/renderHomeDateChip")
+	}
+	if strings.Count(adminHTML, "function formatInvoiceNoCell") != 1 {
+		t.Fatal("formatInvoiceNoCell must be defined exactly once")
+	}
+	if strings.Count(adminHTML, "+ formatInvoiceNoCell(inv)") != 2 {
+		t.Fatal("invoice_no cells must call formatInvoiceNoCell only (home + invoice list)")
+	}
+	if strings.Count(adminHTML, "formatInvoiceNoCell(inv)") != 4 {
+		// def + home cell + applyHomeRecentColNoWidth measure + invoice list
+		t.Fatal("formatInvoiceNoCell(inv) must appear only in def, home cell, col-no measure, invoice list")
+	}
+	if strings.Count(adminHTML, "function formatInvoiceWhenCell") != 1 {
+		t.Fatal("formatInvoiceWhenCell must be defined exactly once")
+	}
+	if strings.Count(adminHTML, "+ formatInvoiceWhenCell(inv)") != 2 {
+		t.Fatal("issued-at cells must call formatInvoiceWhenCell only (home + invoice list)")
+	}
+	if strings.Count(adminHTML, "+ formatInvoiceOrderCell(inv)") != 2 {
+		t.Fatal("order/source cells must call formatInvoiceOrderCell only (home + invoice list)")
+	}
+	if strings.Contains(adminHTML, "inv.order_label || '—'") {
+		t.Fatal("do not inline order_label fallback; use formatInvoiceOrderCell")
+	}
+	if strings.Contains(adminHTML, "inv.invoice_no || inv.document_type") {
+		t.Fatal("do not fall back invoice_no to document_type in list cells")
+	}
+}
+
+func TestAdminHTMLHomeRecentInvoicesLayout(t *testing.T) {
+	start := strings.Index(adminHTML, `class="panel home-recent"`)
+	if start < 0 {
+		t.Fatal("missing home-recent panel")
+	}
+	end := strings.Index(adminHTML[start:], `id="view-orders"`)
+	if end < 0 {
+		t.Fatal("cannot bound home-recent section")
+	}
+	section := adminHTML[start : start+end]
+	if strings.Contains(section, "最近发票") {
+		t.Fatal("home panel title must be 今日发票 (data is today-scoped), not 最近发票")
+	}
+	if !strings.Contains(section, ">今日发票<") {
+		t.Fatal("home panel title must be 今日发票")
+	}
+	for _, h := range []string{
+		`class="col-when">签发时刻</th>`,
+		`class="col-no">票号</th>`,
+		`class="col-buyer">购方</th>`,
+		`class="col-source">来源</th>`,
+		`class="col-money">金额</th>`,
+		`class="col-actions">操作</th>`,
+	} {
+		if n := strings.Count(section, h); n != 1 {
+			t.Fatalf("home recent header %q must appear once, got %d", h, n)
+		}
+	}
+	if strings.Contains(section, "col-spacer") {
+		t.Fatal("home recent must not use a fake spacer column")
+	}
+	if strings.Contains(section, "<th>类型</th>") || strings.Contains(section, "document_type") {
+		t.Fatal("home recent must not show redundant 类型 column (type is in invoice_no)")
+	}
+	for _, css := range []string{
+		".home-recent .list-table { table-layout: fixed; width: 100%; }",
+		".home-recent .list-table .col-no { width: var(--home-col-no-w, 10rem); white-space: nowrap; }",
+		".home-recent .list-table .col-buyer,",
+	} {
+		if n := strings.Count(adminHTML, css); n != 1 {
+			t.Fatalf("home recent layout CSS %q must appear exactly once, got %d", css, n)
+		}
+	}
+	if strings.Count(adminHTML, "function applyHomeRecentColNoWidth") != 1 {
+		t.Fatal("applyHomeRecentColNoWidth must be defined exactly once")
+	}
+	if strings.Count(adminHTML, "applyHomeRecentColNoWidth(") != 3 {
+		t.Fatal("applyHomeRecentColNoWidth must be called only from renderHomeRecentInvoices (empty + rows)")
+	}
+	if strings.Count(adminHTML, "function measureAdminTableTextPx") != 1 {
+		t.Fatal("measureAdminTableTextPx must be defined exactly once")
+	}
+	if strings.Contains(adminHTML, ".home-recent .table-scroll { padding:") {
+		t.Fatal("do not pad home table-scroll (clips thead fill); pad first/last cells instead")
+	}
+	if strings.Contains(adminHTML, "padding-right: 0.15rem") {
+		t.Fatal("col-actions must not use clipped padding-right: 0.15rem")
+	}
+	if !strings.Contains(adminHTML, `colspan="6" class="hint">今日暂无发票`) {
+		t.Fatal("home empty row colspan must match 6 columns")
+	}
+	if !strings.Contains(adminHTML, "formatInvoiceBuyerCell(inv)") || !strings.Contains(adminHTML, "formatInvoiceOrderCell(inv)") {
+		t.Fatal("home recent must render 购方/来源 via shared formatters")
 	}
 }
 
@@ -433,6 +529,12 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 	}
 	if !strings.Contains(adminHTML, "formatInvoiceBuyerCell(inv)") {
 		t.Fatal("invoice list must render buyer via formatInvoiceBuyerCell only")
+	}
+	if !strings.Contains(adminHTML, "formatInvoiceNoCell(inv)") {
+		t.Fatal("invoice list must render ticket no via formatInvoiceNoCell only")
+	}
+	if !strings.Contains(adminHTML, "formatInvoiceWhenCell(inv)") {
+		t.Fatal("invoice list must render issued-at via formatInvoiceWhenCell only")
 	}
 	if strings.Contains(adminHTML, "truncateHash(inv.") || strings.Contains(adminHTML, `title="' + (inv.hash`) {
 		t.Fatal("invoice list must not show hash columns or title tooltips")

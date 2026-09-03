@@ -306,6 +306,27 @@
       background: linear-gradient(90deg, var(--brand-mid), var(--gold));
     }
     .home-recent .panel-title { font-size: 0.875rem; font-weight: 700; }
+    /* ONLY home today-invoice table:
+     * 签发时刻 / 票号 / 购方 / 来源 / 金额 / 操作；购方+来源吃中间宽度；票号量最长。 */
+    .home-recent .list-table { table-layout: fixed; width: 100%; }
+    .home-recent .list-table th,
+    .home-recent .list-table td { padding-left: 0.75rem; padding-right: 0.75rem; }
+    .home-recent .list-table th:first-child,
+    .home-recent .list-table td:first-child { padding-left: 1.25rem; }
+    .home-recent .list-table th:last-child,
+    .home-recent .list-table td:last-child { padding-right: 1.25rem; }
+    .home-recent .list-table .col-when { width: 7.5rem; white-space: nowrap; }
+    .home-recent .list-table .col-no { width: var(--home-col-no-w, 10rem); white-space: nowrap; }
+    .home-recent .list-table .col-buyer,
+    .home-recent .list-table .col-source { min-width: 0; overflow: hidden; }
+    .home-recent .list-table td.col-source {
+      white-space: nowrap; text-overflow: ellipsis;
+    }
+    .home-recent .list-table .col-money {
+      width: 5.5rem; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
+    }
+    .home-recent .list-table th.col-actions,
+    .home-recent .list-table td.col-actions { width: 4.5rem; white-space: nowrap; }
     .panel {
       background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
       padding: 1.1rem 1.25rem; box-shadow: var(--shadow); margin-bottom: 1rem;
@@ -350,7 +371,7 @@
     tr { transition: background 0.12s; }
     tr:hover td { background: #faf8f4; }
     .list-table th.col-actions, .list-table td.col-actions {
-      text-align: right; white-space: nowrap; width: 1%; padding-right: 0.15rem;
+      text-align: right; white-space: nowrap; width: 1%;
     }
     .list-table td.col-actions .row-action-text { color: var(--mode); font-weight: 600; }
     button.btn-sm { padding: 0.4rem 0.7rem; font-size: 0.85rem; font-weight: 600; }
@@ -662,12 +683,19 @@
           </div>
           <div class="panel home-recent">
             <div class="panel-head">
-              <span class="panel-title">最近发票</span>
+              <span class="panel-title">今日发票</span>
               <button type="button" class="ghost" data-nav="invoices">查看全部</button>
             </div>
             <div class="table-scroll">
               <table class="list-table">
-                <thead><tr><th>票号</th><th>类型</th><th>金额</th><th class="col-actions">操作</th></tr></thead>
+                <thead><tr>
+                  <th class="col-when">签发时刻</th>
+                  <th class="col-no">票号</th>
+                  <th class="col-buyer">购方</th>
+                  <th class="col-source">来源</th>
+                  <th class="col-money">金额</th>
+                  <th class="col-actions">操作</th>
+                </tr></thead>
                 <tbody id="homeRecentInvoicesTbody"></tbody>
               </table>
             </div>
@@ -1742,7 +1770,7 @@
     return s.slice(0, 8) + '…' + s.slice(-4);
   }
 
-  /** ONLY buyer cell formatter for invoice list table. */
+  /** ONLY buyer cell formatter for invoice list + home today. */
   function formatInvoiceBuyerCell(inv) {
     const nif = String(inv.customer_tax_id || '').trim();
     const name = String(inv.customer_name || '').trim();
@@ -1753,6 +1781,22 @@
     if (name) return name;
     if (nif) return nif;
     return '—';
+  }
+
+  /** ONLY invoice-no cell text (home today + invoice list). */
+  function formatInvoiceNoCell(inv) {
+    return (inv && inv.invoice_no) ? inv.invoice_no : '—';
+  }
+
+  /** ONLY issued-at cell text (home today + invoice list). */
+  function formatInvoiceWhenCell(inv) {
+    return fmtTime((inv && (inv.system_entry_date || inv.issued_at)) || '');
+  }
+
+  /** ONLY source/order label cell text (home today + invoice list). */
+  function formatInvoiceOrderCell(inv) {
+    const label = inv && inv.order_label;
+    return label ? String(label) : '—';
   }
 
   function invoiceDetailRow(label, value) {
@@ -2614,22 +2658,52 @@
     return '<button type="button" class="secondary btn-sm" data-reprint="' + documentId + '">重打</button>';
   }
 
+  /** ONLY canvas text-width helper for Admin column sizing. */
+  let adminTableTextMeasureCtx = null;
+  function measureAdminTableTextPx(fontSourceEl, text) {
+    if (!fontSourceEl) return 0;
+    if (!adminTableTextMeasureCtx) {
+      adminTableTextMeasureCtx = document.createElement('canvas').getContext('2d');
+    }
+    adminTableTextMeasureCtx.font = getComputedStyle(fontSourceEl).font;
+    return adminTableTextMeasureCtx.measureText(String(text == null ? '' : text)).width;
+  }
+
+  /** ONLY set --home-col-no-w from longest invoice_no (+ header label) in this home table. */
+  function applyHomeRecentColNoWidth(rows) {
+    const table = document.querySelector('.home-recent .list-table');
+    const th = table && table.querySelector('th.col-no');
+    if (!th) return;
+    const tdProbe = table.querySelector('td.col-no') || th;
+    let maxPx = measureAdminTableTextPx(th, '票号');
+    (rows || []).forEach(inv => {
+      maxPx = Math.max(maxPx, measureAdminTableTextPx(tdProbe, formatInvoiceNoCell(inv)));
+    });
+    const cs = getComputedStyle(tdProbe);
+    const pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    table.style.setProperty('--home-col-no-w', Math.ceil(maxPx + pad) + 'px');
+  }
+
   /** ONLY writer for #homeRecentInvoicesTbody. */
   function renderHomeRecentInvoices(list) {
     const tbody = $('#homeRecentInvoicesTbody');
     if (!tbody) return;
-    const rows = list || [];
+    const rows = (list || []).slice(0, 8);
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="4" class="hint">今日暂无发票</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="hint">今日暂无发票</td></tr>';
+      applyHomeRecentColNoWidth([]);
       return;
     }
-    tbody.innerHTML = rows.slice(0, 8).map(inv =>
+    tbody.innerHTML = rows.map(inv =>
       '<tr class="clickable" data-inv="' + inv.document_id + '">' +
-        '<td>' + (inv.invoice_no || inv.document_type || '—') + '</td>' +
-        '<td>' + (inv.document_type || '—') + '</td>' +
-        '<td>' + fmtMoney(inv.gross_total) + '</td>' +
+        '<td class="col-when">' + formatInvoiceWhenCell(inv) + '</td>' +
+        '<td class="col-no">' + formatInvoiceNoCell(inv) + '</td>' +
+        '<td class="col-buyer">' + formatInvoiceBuyerCell(inv) + '</td>' +
+        '<td class="col-source">' + formatInvoiceOrderCell(inv) + '</td>' +
+        '<td class="col-money">' + fmtMoney(inv.gross_total) + '</td>' +
         '<td class="col-actions">' + invoiceReprintButtonHtml(inv.document_id) + '</td></tr>'
     ).join('');
+    applyHomeRecentColNoWidth(rows);
   }
 
   function renderHomeStats(totalInvoices, grossTotalSum) {
@@ -3537,16 +3611,15 @@
         : ('该时段暂无' + typeLabel);
       tbody.innerHTML = '<tr><td colspan="6" class="hint">' + emptyMsg + '</td></tr>';
     } else {
-      tbody.innerHTML = list.map(inv => {
-        const when = inv.system_entry_date || inv.issued_at || '';
-        return '<tr class="clickable" data-inv="' + inv.document_id + '">' +
-          '<td>' + fmtTime(when) + '</td>' +
-          '<td>' + (inv.invoice_no || inv.document_type || '—') + '</td>' +
+      tbody.innerHTML = list.map(inv =>
+        '<tr class="clickable" data-inv="' + inv.document_id + '">' +
+          '<td>' + formatInvoiceWhenCell(inv) + '</td>' +
+          '<td>' + formatInvoiceNoCell(inv) + '</td>' +
           '<td>' + fmtMoney(inv.gross_total) + '</td>' +
           '<td>' + formatInvoiceBuyerCell(inv) + '</td>' +
-          '<td>' + (inv.order_label || '—') + '</td>' +
-          '<td class="col-actions">' + invoiceReprintButtonHtml(inv.document_id) + '</td></tr>';
-      }).join('');
+          '<td>' + formatInvoiceOrderCell(inv) + '</td>' +
+          '<td class="col-actions">' + invoiceReprintButtonHtml(inv.document_id) + '</td></tr>'
+      ).join('');
     }
     return list;
   }
