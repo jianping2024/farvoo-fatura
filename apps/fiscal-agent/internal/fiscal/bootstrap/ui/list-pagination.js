@@ -1,5 +1,6 @@
 /* Fiscal Admin list pagination — mirrors restaurant-ordering ListPaginationBar.tsx
- * API: FiscalUI.createListPaginationBar(container, options) -> { update, setDisabled }
+ * API: FiscalUI.createListPaginationBar(container, options) -> { update, setDisabled, relabel }
+ * Labels: options.getLabels() is the ONLY live copy path (re-read on paint/relabel).
  */
 (function (global) {
   'use strict';
@@ -14,11 +15,22 @@
 
   function createListPaginationBar(container, options) {
     options = options || {};
-    var labels = options.labels || {};
-    var pageInfoTpl = labels.pageInfo || '第 {page} / {totalPages} 页 · 共 {total} 张';
-    var pageSizeLabel = labels.pageSizeLabel || '每页';
-    var pagePrev = labels.pagePrev || '上一页';
-    var pageNext = labels.pageNext || '下一页';
+    function resolveLabels() {
+      var extra = {};
+      if (typeof options.getLabels === 'function') extra = options.getLabels() || {};
+      else extra = options.labels || {};
+      return {
+        pageInfo: extra.pageInfo || '第 {page} / {totalPages} 页 · 共 {total} 条',
+        pageSizeLabel: extra.pageSizeLabel || '每页',
+        pagePrev: extra.pagePrev || '上一页',
+        pageNext: extra.pageNext || '下一页'
+      };
+    }
+    var labels = resolveLabels();
+    var pageInfoTpl = labels.pageInfo;
+    var pageSizeLabel = labels.pageSizeLabel;
+    var pagePrev = labels.pagePrev;
+    var pageNext = labels.pageNext;
     var pageSizes = options.pageSizes || LIST_PAGE_SIZES.slice();
     var onPageChange = typeof options.onPageChange === 'function' ? options.onPageChange : function () {};
     var onPageSizeChange = typeof options.onPageSizeChange === 'function' ? options.onPageSizeChange : function () {};
@@ -57,6 +69,15 @@
     var state = { page: 1, totalPages: 1, total: 0, pageSize: LIST_DEFAULT_PAGE_SIZE, disabled: false };
 
     function paint() {
+      var live = resolveLabels();
+      pageInfoTpl = live.pageInfo;
+      pageSizeLabel = live.pageSizeLabel;
+      pagePrev = live.pagePrev;
+      pageNext = live.pageNext;
+      sizeLabelEl.textContent = pageSizeLabel;
+      sizeEl.setAttribute('aria-label', pageSizeLabel);
+      prevBtn.textContent = pagePrev;
+      nextBtn.textContent = pageNext;
       infoEl.textContent = pageInfoTpl
         .replace('{page}', String(state.page))
         .replace('{totalPages}', String(state.totalPages))
@@ -94,6 +115,7 @@
         state.disabled = !!disabled;
         paint();
       },
+      relabel: function () { paint(); },
     };
   }
 

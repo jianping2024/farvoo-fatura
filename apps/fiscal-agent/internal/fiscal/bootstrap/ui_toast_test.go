@@ -508,7 +508,7 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 		strings.Contains(adminHTML, "reprintBtn.dataset.reprint") {
 		t.Fatal("detail/order reprint buttons must not use data-reprint (delegation double-fire)")
 	}
-	if strings.Count(adminHTML, "withBusy(btn, '重打中…'") != 1 {
+	if strings.Count(adminHTML, "withBusy(btn, FiscalAdminI18n.t('common.reprinting')") != 1 {
 		t.Fatal("reprint withBusy must exist exactly once in handleReprintClick")
 	}
 	staticBtnDelegationMarkers := []string{
@@ -753,14 +753,16 @@ func TestAdminHTMLAuditLogSinglePath(t *testing.T) {
 		t.Fatal("audit nav must contain 操作记录")
 	}
 	if strings.Contains(adminHTML, "auditActionLabels") || strings.Contains(adminHTML, "OWNER_AUDIT_ACTIONS") {
-		t.Fatal("do not duplicate action labels in admin JS; use API filter_actions")
+		t.Fatal("do not duplicate action labels in admin JS; use auditActionText + API codes")
+	}
+	if n := strings.Count(adminHTML, "function auditActionText"); n != 1 {
+		t.Fatalf("auditActionText must be the only action-label mapper, got %d", n)
 	}
 	if n := strings.Count(adminHTML, "admin-list-select-field"); n != 2 {
 		t.Fatalf("audit filters must use admin-list-select-field exactly twice, got %d", n)
 	}
-	if !strings.Contains(adminHTML, `<div class="field admin-list-select-field">
-                    <label for="auditActionFilter">操作类型</label>`) {
-		t.Fatal("audit action filter must use admin-list-select-field (not search-field)")
+	if !strings.Contains(adminHTML, `<label for="auditActionFilter" data-i18n="settings.audit.action_type">操作类型</label>`) {
+		t.Fatal("audit action filter must use admin-list-select-field + settings.audit.action_type")
 	}
 }
 

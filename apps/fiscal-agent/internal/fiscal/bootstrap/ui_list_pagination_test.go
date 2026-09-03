@@ -12,6 +12,9 @@ func TestFiscalUIListPaginationAssets(t *testing.T) {
 	if n := strings.Count(string(fiscalUIListPaginationJS), "function createListPaginationBar"); n != 1 {
 		t.Fatalf("createListPaginationBar must be defined once in list-pagination.js, got %d", n)
 	}
+	if !strings.Contains(string(fiscalUIListPaginationJS), "options.getLabels") {
+		t.Fatal("pagination must re-read getLabels on paint (locale switch)")
+	}
 	if !strings.Contains(string(fiscalUIListPaginationCSS), ".fiscal-list-pagination") {
 		t.Fatal("list-pagination.css must style fiscal-list-pagination")
 	}
@@ -40,8 +43,8 @@ func TestAdminListFilterRowUnique(t *testing.T) {
 	if strings.Contains(adminHTML, ".invoice-filter-row") || strings.Contains(adminHTML, ".admin-list-filter-row {") {
 		t.Fatal("filter-row flex must not be restated in admin index.html")
 	}
-	if strings.Contains(string(fiscalUIAdminI18nJS), "auditAction") || strings.Contains(string(fiscalUIAdminI18nJS), "操作类型") {
-		t.Fatal("do not add audit filter i18n keys; chrome dictionary stays nav/settings/pay")
+	if strings.Contains(string(fiscalUIAdminI18nJS), "auditActionLabels") {
+		t.Fatal("do not add a second audit action map in admin-i18n.js")
 	}
 }
 

@@ -2,6 +2,17 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.84
+
+**设置页屏幕 i18n（zh/en/pt）一次写完，不留第二套文案**
+
+- **唯一写法 · Admin 字典：**仅 `FiscalAdminI18n`（`admin-i18n.js`）；插值仅 `fmt`。
+- **唯一写法 · 应用语言：**仅 `applyAdminLocale`（`setLocale` + 设置动态区 + 分页 `relabel`）。
+- **唯一写法 · 分页文案：**仅 `listPagerLabels` → `createListPaginationBar({ getLabels })`。
+- **唯一写法 · 设置导航：**`settings.nav.*`（含 `terminals`）；面板 summary 复用同 key。
+- **唯一写法 · 审计操作名：**仅 `auditActionText`（字典 `audit.action.*`，缺 key 才回落 API label）。
+- 收掉 `LIST_PAGE_INFO_ROWS`、重复 `escapeHtml`/`escHtml`、向导第二套中文 label。
+
 ## 0.4.83
 
 **列表筛选行：一行 flex，去掉发票专用重复 class**
