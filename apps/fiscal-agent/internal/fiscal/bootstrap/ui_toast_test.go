@@ -755,6 +755,13 @@ func TestAdminHTMLAuditLogSinglePath(t *testing.T) {
 	if strings.Contains(adminHTML, "auditActionLabels") || strings.Contains(adminHTML, "OWNER_AUDIT_ACTIONS") {
 		t.Fatal("do not duplicate action labels in admin JS; use API filter_actions")
 	}
+	if n := strings.Count(adminHTML, "admin-list-select-field"); n != 2 {
+		t.Fatalf("audit filters must use admin-list-select-field exactly twice, got %d", n)
+	}
+	if !strings.Contains(adminHTML, `<div class="field admin-list-select-field">
+                    <label for="auditActionFilter">操作类型</label>`) {
+		t.Fatal("audit action filter must use admin-list-select-field (not search-field)")
+	}
 }
 
 func TestAdminHTMLOperatorsTableLayout(t *testing.T) {

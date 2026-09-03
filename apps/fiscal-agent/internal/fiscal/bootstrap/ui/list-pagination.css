@@ -62,8 +62,11 @@
   padding-bottom: 0.85rem;
 }
 
-.invoice-list-panel .invoice-filter-row,
-.admin-list-panel .admin-list-filter-row {
+.admin-list-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.25rem;
+  align-items: flex-end;
   margin-bottom: 0.75rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--line);
@@ -85,7 +88,19 @@
   margin: 0;
 }
 
-.admin-list-search-field label {
+.admin-list-select-field {
+  flex: 0 1 16rem;
+  min-width: 10rem;
+  margin: 0;
+}
+
+.admin-list-filter-row > button {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.admin-list-search-field label,
+.admin-list-select-field label {
   margin-bottom: 0.25rem;
 }
 
