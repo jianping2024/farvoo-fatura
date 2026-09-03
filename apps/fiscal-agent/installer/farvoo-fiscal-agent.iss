@@ -34,6 +34,9 @@ DisableProgramGroupPage=yes
 ; Admin: match Program Files + HKLM uninstall so Setup detects prior install (overwrite, not "new").
 PrivilegesRequired=admin
 UsePreviousAppDir=yes
+; Do NOT restore prior task checks (default yes). Else upgrading from builds that
+; default-checked desktopfiscal still shows it checked despite Flags: unchecked.
+UsePreviousTasks=no
 ; No AppMutex (that blocks with "please close then OK/Cancel"). No CloseApplications
 ; (that asks yes/no to close). PrepareToInstall kills the tray quietly before file copy.
 CloseApplications=no

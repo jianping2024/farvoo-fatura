@@ -7,7 +7,8 @@ Installer optional tasks (Setup .exe only)
 ------------------------------------------
 On the wizard step "Select Additional Tasks" you can check:
 
-  Desktop shortcut — Farvoo Fiscal Agent and/or Farvoo 开票 (WebView2); both off by default.
+  Desktop shortcut — Farvoo Fiscal Agent and/or Farvoo 开票 (WebView2); both off by default
+  (wizard does not restore prior task checks on upgrade).
   Sign-in startup — run the agent when you log on to Windows (off by default).
 
 Checked shortcuts are removed when you uninstall. Portable zip has no wizard tasks.

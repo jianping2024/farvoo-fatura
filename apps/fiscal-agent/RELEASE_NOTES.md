@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.75
+
+**安装器：升级也不再沿用旧「开票桌面」勾选**
+
+- **唯一写法：** `UsePreviousTasks=no`（Inno 默认 yes 会从注册表恢复上次 Tasks）。否则从 0.4.72 及更早升级时，即使 `desktopfiscal` 已 `Flags: unchecked`，向导仍显示勾选。
+- 与 0.4.73 一起：桌面两项 + 自启均默认不勾；WebView2 Runtime 仍默认勾。
+
 ## 0.4.74
 
 **LAN 鉴权收口：终端门闩 + 吊销会话不再漏系列码**
