@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.71
+
+**开票壳两件事：记住最小化 HWND + 健康后再开窗**
+
+- **HWND 生命周期（唯一写法）：** `rememberShellHWND` 登记、`clearShellHWND` **仅**在 `wv.Run()` 返回后清理（废止 `trackHWND` 内 defer——一返回就忘窗，最小化再点无反应）。
+- **开壳唯一路径：** `openFiscalShellFromTray` → `ensureFiscalStarted` → **`waitFiscalHTTPReady`**（`GET /local/v1/health`）→ `RequestOpen` / `focusHWND`。
+- 桌面 `fiscal` 冷启动：**不等 Mesa Connected**，尽早按健康闸开壳；托盘/IPC 同路径。
+
 ## 0.4.70
 
 **开票窗最小化后再点入口：强制还原可见**

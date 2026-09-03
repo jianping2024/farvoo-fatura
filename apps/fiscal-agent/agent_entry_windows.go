@@ -138,6 +138,11 @@ func runAgentTrayFirst(args []string) {
 	startFiscalIPC(ctx, rt.openFiscalShellFromTray)
 
 	go func() {
+		// Desktop "Farvoo 开票" cold start: open fiscal when HTTP is healthy — do not wait for Mesa Connected.
+		if openFiscalOnTrayStart {
+			openFiscalOnTrayStart = false
+			rt.openFiscalShellFromTray()
+		}
 		rt.status.set("Setting up", "Complete pairing or printer mapping in the browser if it opened")
 		sess, _, err := initAgentSession(ctx, args)
 		rt.mu.Lock()
@@ -160,10 +165,6 @@ func runAgentTrayFirst(args []string) {
 		rt.status.set("Ready", "Connected to Mesa")
 		log.Println("tray: Connected — accepting print jobs")
 		rt.startTrayAgentWork(sess)
-		if openFiscalOnTrayStart {
-			openFiscalOnTrayStart = false
-			rt.openFiscalShellFromTray()
-		}
 	}()
 
 	runtime.LockOSThread()

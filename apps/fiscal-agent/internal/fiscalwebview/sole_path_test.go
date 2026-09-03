@@ -40,6 +40,25 @@ func TestWebViewSoleConstructionPath(t *testing.T) {
 	if !strings.Contains(s, "takeExistingShellHWND") {
 		t.Fatal("open_windows.go must use takeExistingShellHWND for already-open shell")
 	}
+	if !strings.Contains(s, "rememberShellHWND") || !strings.Contains(s, "clearShellHWND") {
+		t.Fatal("open_windows.go must use rememberShellHWND + clearShellHWND")
+	}
+	if strings.Contains(s, "func trackHWND") {
+		t.Fatal("trackHWND removed — defer-on-return cleared activeHWND while Run still alive")
+	}
+	// clearShellHWND must be deferred around Run, not inside rememberShellHWND
+	rememberIdx := strings.Index(s, "func rememberShellHWND")
+	clearFnIdx := strings.Index(s, "func clearShellHWND")
+	if rememberIdx < 0 || clearFnIdx < 0 {
+		t.Fatal("missing remember/clear helpers")
+	}
+	rememberBody := s[rememberIdx:clearFnIdx]
+	if strings.Contains(rememberBody, "defer ") {
+		t.Fatal("rememberShellHWND must not defer-clear HWND (bug: HWND gone while window still open)")
+	}
+	if !strings.Contains(s, "defer clearShellHWND()") {
+		t.Fatal("runWindowOnThread must defer clearShellHWND around Run()")
+	}
 	if strings.Contains(s, "hwndResponsive(") {
 		t.Fatal("open_windows.go must not call hwndResponsive (breaks minimized restore)")
 	}

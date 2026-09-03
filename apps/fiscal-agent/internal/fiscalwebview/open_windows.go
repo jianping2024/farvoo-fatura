@@ -72,7 +72,6 @@ func RunHTMLWindow(opts HTMLWindowOptions) error {
 }
 
 // takeExistingShellHWND is the sole gate for "shell already open" (incl. minimized).
-// Uses IsWindow only so iconic windows still restore (do not require a ping response).
 func takeExistingShellHWND() (uintptr, bool) {
 	windowMu.Lock()
 	defer windowMu.Unlock()
@@ -107,7 +106,9 @@ func runWindowOnThread(opts Options) error {
 	if wv == nil {
 		return webView2MissingError()
 	}
-	trackHWND(wv)
+	// HWND must stay registered for the whole Run() lifetime (minimize → reopen).
+	rememberShellHWND(wv)
+	defer clearShellHWND()
 	wv.Navigate(opts.URL)
 	wv.Run()
 	return nil
@@ -154,17 +155,20 @@ func newWebView(win webview2.WindowOptions, dataPath string) webview2.WebView {
 	})
 }
 
-func trackHWND(wv webview2.WebView) {
+// rememberShellHWND / clearShellHWND are the sole activeHWND writers for the fiscal shell.
+// clearShellHWND must run only after wv.Run returns — never via defer inside rememberShellHWND.
+func rememberShellHWND(wv webview2.WebView) {
 	if ptr := wv.Window(); ptr != nil {
 		windowMu.Lock()
 		activeHWND = uintptr(ptr)
 		windowMu.Unlock()
-		defer func() {
-			windowMu.Lock()
-			activeHWND = 0
-			windowMu.Unlock()
-		}()
 	}
+}
+
+func clearShellHWND() {
+	windowMu.Lock()
+	activeHWND = 0
+	windowMu.Unlock()
 }
 
 func webView2MissingError() error {
