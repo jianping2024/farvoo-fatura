@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"unsafe"
 
 	"farvoo-fiscal-agent/internal/fiscalipc"
 	"farvoo-fiscal-agent/internal/fiscalwebview"
