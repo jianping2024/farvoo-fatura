@@ -63,7 +63,7 @@
 
 | 项 | 定法 |
 |----|------|
-| CSS | 分区容器加 `settings-manager-only`（与 SAFT 同级；**禁止** `settings-admin-only`） |
+| CSS | 分区容器加 `settings-access-only`（admin + owner 均可见；**禁止** `settings-admin-only`） |
 | JS 守卫 | `showView('settings')` 已有；加载 audit 前 `canAccessSettings()` |
 | 禁止 | owner 仅前端藏行；**必须** API 过滤 |
 
