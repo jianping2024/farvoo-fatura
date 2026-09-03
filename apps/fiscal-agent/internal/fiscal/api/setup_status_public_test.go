@@ -55,3 +55,48 @@ func TestSetupStatusPublic_Anonymous(t *testing.T) {
 		t.Fatal("missing operators_count")
 	}
 }
+
+func TestBuildSetupStatusPublic_BlocksBootstrapWhenOtherStoreHasOperators(t *testing.T) {
+	dir := t.TempDir()
+	db, err := store.Open(filepath.Join(dir, "fiscal.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	if _, err := db.BootstrapOwner("restaurant-real", "Admin", "123456"); err != nil {
+		t.Fatal(err)
+	}
+	full := &store.SetupStatus{FiscalProfile: "restaurant", ReadyToIssue: false}
+	pub, err := BuildSetupStatusPublic("store-demo-001", full, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pub.BootstrapRequired {
+		t.Fatal("bootstrap_required must be false when another store already has operators")
+	}
+	if pub.OperatorsCount != 0 {
+		t.Fatalf("operators_count for demo store=%d", pub.OperatorsCount)
+	}
+
+	green, err := BuildSetupStatusPublic("greenfield-store", &store.SetupStatus{}, db)
+	// greenfield-store is also empty but other store has ops → still blocked
+	if err != nil {
+		t.Fatal(err)
+	}
+	if green.BootstrapRequired {
+		t.Fatal("any empty store_id must not bootstrap when DB already has operators elsewhere")
+	}
+
+	// True greenfield: wipe then empty DB
+	if _, err := db.SQL.Exec(`DELETE FROM operators`); err != nil {
+		t.Fatal(err)
+	}
+	ok, err := BuildSetupStatusPublic("store-demo-001", full, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok.BootstrapRequired {
+		t.Fatal("true empty DB must allow bootstrap_required")
+	}
+}

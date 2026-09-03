@@ -61,6 +61,27 @@ func applyFiscalRuntimeFromConfig(cfg *config) {
 	}
 }
 
+const defaultEmbedStoreID = "store-demo-001"
+
+// resolveEmbedStoreID is the ONLY Agent-embed StoreID resolver (cold open before Mesa included).
+// Order: FISCAL_STORE_ID → cfg.RestaurantID → disk config restaurant_id → defaultEmbedStoreID.
+func resolveEmbedStoreID(cfg *config) string {
+	if v := strings.TrimSpace(os.Getenv("FISCAL_STORE_ID")); v != "" {
+		return v
+	}
+	if cfg != nil {
+		if id := strings.TrimSpace(cfg.RestaurantID); id != "" {
+			return id
+		}
+	}
+	if c, err := loadConfig(defaultConfigPath()); err == nil && c != nil {
+		if id := strings.TrimSpace(c.RestaurantID); id != "" {
+			return id
+		}
+	}
+	return defaultEmbedStoreID
+}
+
 // startEmbeddedFiscal starts Fiscal Core inside the Agent process — ONLY agent embed entry.
 func startEmbeddedFiscal(cfg *config) error {
 	embeddedFiscalMu.Lock()
@@ -95,13 +116,7 @@ func startEmbeddedFiscal(cfg *config) error {
 	if bind == "" {
 		bind = "127.0.0.1:17880"
 	}
-	storeID := "store-demo-001"
-	if cfg != nil && strings.TrimSpace(cfg.RestaurantID) != "" {
-		storeID = strings.TrimSpace(cfg.RestaurantID)
-	}
-	if v := strings.TrimSpace(os.Getenv("FISCAL_STORE_ID")); v != "" {
-		storeID = v
-	}
+	storeID := resolveEmbedStoreID(cfg)
 
 	var stations map[string]string
 	configPath := defaultConfigPath()

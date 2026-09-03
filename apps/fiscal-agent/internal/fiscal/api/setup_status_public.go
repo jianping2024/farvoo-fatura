@@ -12,6 +12,7 @@ type SetupStatusPublic struct {
 }
 
 // BuildSetupStatusPublic maps full status + store fields — ONLY anonymous status builder.
+// BootstrapRequired is true only for true greenfield (this store empty AND no operators under any other store_id).
 func BuildSetupStatusPublic(storeID string, full *store.SetupStatus, db *store.DB) (*SetupStatusPublic, error) {
 	if full == nil {
 		return &SetupStatusPublic{}, nil
@@ -20,9 +21,19 @@ func BuildSetupStatusPublic(storeID string, full *store.SetupStatus, db *store.D
 	if err != nil {
 		return nil, err
 	}
+	bootstrapRequired := count == 0
+	if bootstrapRequired {
+		other, err := db.CountOperatorsExcludingStore(storeID)
+		if err != nil {
+			return nil, err
+		}
+		if other > 0 {
+			bootstrapRequired = false
+		}
+	}
 	display, _ := db.StoreDisplayName(storeID)
 	return &SetupStatusPublic{
-		BootstrapRequired: count == 0,
+		BootstrapRequired: bootstrapRequired,
 		OperatorsCount:    count,
 		FiscalProfile:     full.FiscalProfile,
 		StoreDisplayName:  display,

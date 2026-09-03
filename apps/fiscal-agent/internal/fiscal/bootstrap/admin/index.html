@@ -1677,13 +1677,23 @@
     const sel = $('#loginOperator');
     sel.innerHTML = '';
     try {
+      // Sole bootstrap UI gate: setup/status.bootstrap_required (never empty-ops alone).
+      let st = setupStatusCache;
+      if (!st || typeof st.bootstrap_required !== 'boolean') {
+        st = await j('GET', '/local/v1/setup/status');
+        setupStatusCache = st;
+      }
       const data = await j('GET', '/local/v1/setup/operators');
       const ops = (data.operators || []).filter(o => o.has_pin);
-      if (!ops.length) {
+      if (st.bootstrap_required) {
         setLoginBootstrapMode(true);
         return;
       }
       setLoginBootstrapMode(false);
+      if (!ops.length) {
+        sel.innerHTML = '<option value="">无法加载开票员</option>';
+        return;
+      }
       for (const o of ops) {
         const opt = document.createElement('option');
         opt.value = o.id;

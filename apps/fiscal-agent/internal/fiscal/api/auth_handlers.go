@@ -46,6 +46,10 @@ func handleBootstrapOwner(w http.ResponseWriter, r *http.Request, deps HandlerDe
 			writeErr(w, http.StatusForbidden, "bootstrap_not_empty", "operators already exist")
 			return
 		}
+		if errors.Is(err, store.ErrBootstrapStoreMismatch) {
+			writeErr(w, http.StatusForbidden, "bootstrap_store_mismatch", "operators exist under another store; refuse create-admin")
+			return
+		}
 		if errors.Is(err, store.ErrInvalidPIN) {
 			writeErr(w, http.StatusBadRequest, "invalid_pin", "pin must be 6 digits")
 			return

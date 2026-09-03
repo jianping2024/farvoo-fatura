@@ -8,6 +8,32 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/store"
 )
 
+func TestBootstrapOwner_RejectsWhenOtherStoreHasOperators(t *testing.T) {
+	dir := t.TempDir()
+	db, err := store.Open(filepath.Join(dir, "fiscal.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	realStore := "restaurant-uuid-real"
+	if _, err := db.BootstrapOwner(realStore, "Real Admin", "123456"); err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.BootstrapOwner("store-demo-001", "Ghost Admin", "654321")
+	if !errors.Is(err, store.ErrBootstrapStoreMismatch) {
+		t.Fatalf("want ErrBootstrapStoreMismatch, got %v", err)
+	}
+	n, err := db.CountOperators("store-demo-001")
+	if err != nil || n != 0 {
+		t.Fatalf("demo store must stay empty: n=%d err=%v", n, err)
+	}
+	nReal, err := db.CountOperators(realStore)
+	if err != nil || nReal != 1 {
+		t.Fatalf("real store operators must be untouched: n=%d err=%v", nReal, err)
+	}
+}
+
 func TestBootstrapOwner_EmptyThenRejectSecond(t *testing.T) {
 	dir := t.TempDir()
 	db, err := store.Open(filepath.Join(dir, "fiscal.db"))

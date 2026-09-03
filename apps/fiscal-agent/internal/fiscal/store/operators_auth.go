@@ -22,7 +22,8 @@ var (
 	ErrInvalidPIN          = errors.New("store: invalid pin")
 	ErrPINMismatch         = errors.New("store: pin mismatch")
 	ErrOperatorLocked      = errors.New("store: operator locked")
-	ErrBootstrapNotEmpty   = errors.New("store: bootstrap not empty")
+	ErrBootstrapNotEmpty      = errors.New("store: bootstrap not empty")
+	ErrBootstrapStoreMismatch = errors.New("store: bootstrap blocked: operators exist under another store_id")
 	ErrLastOwnerConstraint = errors.New("store: cannot remove last owner with nc")
 	ErrLastAdminConstraint = errors.New("store: cannot deactivate admin")
 )
@@ -208,6 +209,14 @@ func (d *DB) CountOperators(storeID string) (int, error) {
 	return n, err
 }
 
+// CountOperatorsExcludingStore returns operator rows whose store_id != storeID.
+// Used by bootstrap belt: never treat a wrong store_id as greenfield when another store already has operators.
+func (d *DB) CountOperatorsExcludingStore(storeID string) (int, error) {
+	var n int
+	err := d.SQL.QueryRow(`SELECT COUNT(1) FROM operators WHERE store_id!=?`, storeID).Scan(&n)
+	return n, err
+}
+
 // CountActiveOperatorsWithPIN returns operators that can log in (operator_ok gate).
 func (d *DB) CountActiveOperatorsWithPIN(storeID string) (int, error) {
 	var n int
@@ -236,6 +245,13 @@ func (d *DB) BootstrapOwner(storeID, displayName, pin string) (string, error) {
 	}
 	if n > 0 {
 		return "", ErrBootstrapNotEmpty
+	}
+	var other int
+	if err := tx.QueryRow(`SELECT COUNT(1) FROM operators WHERE store_id!=?`, storeID).Scan(&other); err != nil {
+		return "", err
+	}
+	if other > 0 {
+		return "", ErrBootstrapStoreMismatch
 	}
 	id := uuid.NewString()
 	mesaID := "local-" + id

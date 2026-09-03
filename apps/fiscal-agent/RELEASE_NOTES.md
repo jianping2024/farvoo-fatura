@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.72
+
+**冷开壳门牌：盘上 restaurant_id；禁止错 store 假「创建管理员」**
+
+- **唯一写法：** `resolveEmbedStoreID`（`FISCAL_STORE_ID` → `cfg.RestaurantID` → 盘上 `config.json` → `store-demo-001`）；`startEmbeddedFiscal` **只**调用它（冷开在 Mesa Connected 前也能对上已配对店）。
+- **Bootstrap 皮带：** 本店 operators=0 但库内其它 `store_id` 已有人 → `bootstrap_required=false`；`BootstrapOwner` → `ErrBootstrapStoreMismatch`（不 INSERT）；Admin 登录页 **只认** `bootstrap_required`（废止「列表空就创建管理员」）。
+- 自检：`TestSoleEmbedStoreIDWritings` + `TestResolveEmbedStoreID_Order`。
+
 ## 0.4.71
 
 **开票壳两件事：记住最小化 HWND + 健康后再开窗**
