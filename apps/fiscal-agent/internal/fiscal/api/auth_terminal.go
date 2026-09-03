@@ -23,9 +23,9 @@ func (deps HandlerDeps) requireActiveLANTerminal(w http.ResponseWriter, r *http.
 		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
 		return false
 	}
-	if err := deps.Fiscal.DB().TouchFiscalTerminal(deps.StoreID, tid); err != nil {
+	if err := deps.Fiscal.DB().TouchFiscalTerminal(deps.StoreID, tid, store.ClientIPFromRemoteAddr(r.RemoteAddr)); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			writeErr(w, http.StatusForbidden, "terminal_revoked", "terminal unknown or revoked; re-pair with Ops code")
+			writeErr(w, http.StatusForbidden, "terminal_revoked", "terminal unknown or revoked; ask manager for a new pairing code")
 			return false
 		}
 		writeErr(w, http.StatusInternalServerError, "terminal_check_failed", err.Error())

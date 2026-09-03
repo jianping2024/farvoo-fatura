@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"farvoo-fiscal-agent/internal/fiscal/service"
 	"farvoo-fiscal-agent/internal/fiscal/store"
 )
 
@@ -150,49 +149,6 @@ func handleChangePIN(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	_ = deps.Fiscal.DB().InsertAuditLog(s.OperatorID, "PIN_CHANGE", "operator", s.OperatorID, "{}")
 	setSessionCookieFromState(w, deps, s.OperatorID)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
-}
-
-func handleTerminalPair(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
-	if IsLoopbackClient(r) {
-		writeJSON(w, http.StatusOK, map[string]any{"loopback": true})
-		return
-	}
-	var body struct {
-		PairingCode string `json:"pairing_code"`
-		Label       string `json:"label"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeErr(w, http.StatusBadRequest, "invalid_json", "invalid body")
-		return
-	}
-	res, err := deps.Fiscal.PairFiscalTerminal(r.Context(), deps.StoreID, body.PairingCode, body.Label)
-	if err != nil {
-		var ce *service.CodedError
-		if errors.As(err, &ce) {
-			writeErr(w, http.StatusForbidden, ce.Code, ce.Msg)
-			return
-		}
-		writeErr(w, http.StatusBadGateway, "pair_failed", err.Error())
-		return
-	}
-	SetTerminalCookie(w, res.TerminalID)
-	writeJSON(w, http.StatusOK, map[string]any{
-		"terminal_id": res.TerminalID,
-		"label":       res.Label,
-	})
-}
-
-func handleTerminalSummary(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
-	used, max, err := deps.Fiscal.TerminalSummary(deps.StoreID)
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "summary_failed", err.Error())
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"terminals_used":       used,
-		"max_fiscal_terminals": max,
-		"loopback_exempt":      true,
-	})
 }
 
 // OperatorIDFromRequest returns session operator id or empty.

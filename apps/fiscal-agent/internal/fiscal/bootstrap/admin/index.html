@@ -407,6 +407,14 @@
         <div class="field"><label class="hint">6 位 PIN</label><input id="loginBootstrapPin" inputmode="numeric" maxlength="6" style="margin-bottom:0.75rem" /></div>
         <button type="button" id="btnLoginBootstrapOwner" style="width:100%">创建管理员并登录</button>
       </div>
+      <div id="loginTerminalPair" class="hidden" style="margin-top:1rem;border-top:1px solid #dce8e0;padding-top:1rem">
+        <p class="hint" id="loginTerminalPairHint">本机尚未登记为开票电脑。请向店长索取一次性配对码。</p>
+        <div class="field"><label class="hint" for="loginPairCode">配对码</label>
+          <input id="loginPairCode" maxlength="8" placeholder="如 AB12CD" style="margin-bottom:0.5rem;text-transform:uppercase" /></div>
+        <div class="field"><label class="hint" for="loginPairLabel">备注（可选）</label>
+          <input id="loginPairLabel" placeholder="如：吧台电脑" style="margin-bottom:0.75rem" /></div>
+        <button type="button" id="btnLoginPairTerminal" style="width:100%">登记本机</button>
+      </div>
     </div>
   </section>
 
@@ -779,6 +787,7 @@
             <a href="#settings-section-operators" data-settings-nav="operators" data-i18n="settings.nav.operators">人员</a>
             <a href="#settings-section-audit" data-settings-nav="audit" class="settings-manager-only" data-i18n="settings.nav.audit">操作记录</a>
             <a href="#settings-section-printers" data-settings-nav="printers" data-i18n="settings.nav.printers">设备</a>
+            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-manager-only">开票电脑</a>
             <a href="#settings-section-saft" data-settings-nav="saft" data-i18n="settings.nav.saft">合规</a>
             <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </nav>
@@ -789,6 +798,7 @@
             <a href="#settings-section-operators" data-settings-nav="operators" data-i18n="settings.nav.operators">人员</a>
             <a href="#settings-section-audit" data-settings-nav="audit" class="settings-manager-only" data-i18n="settings.nav.audit">操作记录</a>
             <a href="#settings-section-printers" data-settings-nav="printers" data-i18n="settings.nav.printers">设备</a>
+            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-manager-only">开票电脑</a>
             <a href="#settings-section-saft" data-settings-nav="saft" data-i18n="settings.nav.saft">合规</a>
             <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </div>
@@ -929,6 +939,33 @@
                 <div class="panel-footer" style="border:0;justify-content:flex-start">
                   <button type="button" class="secondary" id="btnPrinters">刷新档口</button>
                   <a href="http://127.0.0.1:17892/configure" target="_blank" rel="noopener" class="hint">管理档口打印机 →</a>
+                </div>
+              </div>
+            </details>
+
+            <details class="settings-panel settings-manager-only admin-list-panel" id="settings-section-terminals" data-settings-section="terminals">
+              <summary>开票电脑</summary>
+              <div class="settings-panel-body">
+                <p class="hint">局域网开票电脑须登记。Agent 本机不占名额。店长可批准/停用；仅管理员可改上限。</p>
+                <p class="hint" id="terminalsQuotaHint">终端 —/—</p>
+                <div class="field settings-admin-only" id="terminalsMaxRow">
+                  <label for="terminalsMaxInput">最大开票台数</label>
+                  <div class="panel-footer" style="border:0;justify-content:flex-start;gap:0.5rem;padding:0">
+                    <input id="terminalsMaxInput" type="number" min="1" max="99" style="width:5rem" />
+                    <button type="button" class="secondary" id="btnTerminalsMaxSave">保存上限</button>
+                  </div>
+                </div>
+                <div class="panel-footer" style="border:0;justify-content:flex-start;gap:0.5rem">
+                  <input id="terminalsAllowLabel" placeholder="新电脑备注（可选）" style="max-width:12rem" />
+                  <button type="button" id="btnTerminalsAllowNext">允许下一台</button>
+                  <button type="button" class="secondary" id="btnTerminalsRefresh">刷新</button>
+                </div>
+                <p class="hint hidden" id="terminalsAllowCodeHint"></p>
+                <div class="table-scroll">
+                  <table class="list-table" id="terminalsTable">
+                    <thead><tr><th>备注</th><th>状态</th><th>最近 IP</th><th>最近活跃</th><th></th></tr></thead>
+                    <tbody id="terminalsTbody"></tbody>
+                  </table>
                 </div>
               </div>
             </details>
@@ -1221,8 +1258,16 @@
     return operatorRole() === 'admin';
   }
 
-  function canManageOperators() {
+	function canManageOperators() {
     return canAccessSettings();
+  }
+
+  function canManageTerminals() {
+    return canAccessSettings();
+  }
+
+  function canSetTerminalMax() {
+    return canManageProvisioning();
   }
 
   function loggedInOperatorId() {
@@ -1366,6 +1411,9 @@
         const msg = code === 'session_revoked' ? '会话已失效，请重新登录'
           : code === 'operator_inactive' ? '账号已停用，请重新登录' : '请重新登录';
         await forceLogout(msg);
+      }
+      if (r.status === 403 && (code === 'terminal_required' || code === 'terminal_revoked')) {
+        showTerminalPairPrompt(code);
       }
       throw t;
     }
@@ -3959,6 +4007,7 @@
       initAuditLogPanel();
       refreshAuditLog().catch(() => {});
       refreshPrinters().catch(() => {});
+      refreshTerminalsPanel().catch(() => {});
       refreshSAFTExports().catch(() => {});
     } else {
       document.querySelector('.main').classList.remove('settings-page');
@@ -3971,6 +4020,17 @@
     applyOperatorAccess();
     $('#view-login').classList.add('hidden');
     $('#app-shell').classList.add('on');
+    try {
+      await j('GET', '/local/v1/printers');
+    } catch (e) {
+      if (e && (e.error === 'terminal_required' || e.error === 'terminal_revoked')) {
+        $('#app-shell').classList.remove('on');
+        $('#view-login').classList.remove('hidden');
+        showTerminalPairPrompt(e.error);
+        toast(e.error === 'terminal_revoked' ? '本机开票登记已失效，请重新配对' : '请先登记本机为开票电脑', 'error');
+        return;
+      }
+    }
     await ensureSetupStatus();
     applyMode();
     showView('home');
@@ -3978,6 +4038,98 @@
     ensureCustomerCatalog().catch(() => {});
     startBillDraftEvents();
     toast('已进入 · ' + (mode === 'restaurant' ? '餐馆' : '商超'), 'success');
+  }
+
+  function showTerminalPairPrompt(code) {
+    const box = $('#loginTerminalPair');
+    if (!box) return;
+    box.classList.remove('hidden');
+    const hint = $('#loginTerminalPairHint');
+    if (hint) {
+      hint.textContent = code === 'terminal_revoked'
+        ? '本机登记已被停用。请向店长索取新的一次性配对码。'
+        : '本机尚未登记为开票电脑。请向店长索取一次性配对码。';
+    }
+  }
+
+  async function submitTerminalPairFromLogin() {
+    const pairing_code = ($('#loginPairCode').value || '').trim();
+    const label = ($('#loginPairLabel').value || '').trim();
+    if (!pairing_code) { toast('请输入配对码', 'error'); return; }
+    try {
+      await j('POST', '/local/v1/setup/terminals/pair', { pairing_code, label });
+      toast('本机已登记', 'success');
+      $('#loginTerminalPair').classList.add('hidden');
+      if (loggedInOperator) await enterApp();
+    } catch (e) {
+      toast(errText(e), 'error');
+    }
+  }
+
+  async function refreshTerminalsPanel() {
+    if (!canManageTerminals()) return;
+    const data = await j('GET', '/local/v1/setup/terminals');
+    const used = data.terminals_used || 0;
+    const max = data.max_fiscal_terminals || 1;
+    $('#terminalsQuotaHint').textContent = '已用 ' + used + ' / 上限 ' + max + '（本机 Agent 不占名额）';
+    const maxInput = $('#terminalsMaxInput');
+    if (maxInput && document.activeElement !== maxInput) maxInput.value = String(max);
+    const tb = $('#terminalsTbody');
+    tb.innerHTML = '';
+    (data.terminals || []).forEach(row => {
+      const tr = document.createElement('tr');
+      const status = row.active ? '使用中' : '已停用';
+      tr.innerHTML = '<td>' + escapeHtml(row.label || '（无备注）') + '</td>'
+        + '<td>' + status + '</td>'
+        + '<td>' + escapeHtml(row.last_seen_ip || '—') + '</td>'
+        + '<td>' + escapeHtml(row.last_seen_at || row.registered_at || '—') + '</td>'
+        + '<td></td>';
+      if (row.active) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'secondary';
+        btn.textContent = '停用';
+        btn.onclick = () => { void revokeTerminal(row.id); };
+        tr.lastChild.appendChild(btn);
+      }
+      tb.appendChild(tr);
+    });
+  }
+
+  async function revokeTerminal(id) {
+    openConfirmAction({
+      title: '停用开票电脑',
+      body: '停用后该电脑不能再开票，确认？',
+      submitLabel: '停用',
+      onConfirm: async () => {
+        await j('POST', '/local/v1/setup/terminals/' + encodeURIComponent(id) + '/revoke', {});
+        toast('已停用', 'success');
+        await refreshTerminalsPanel();
+      }
+    });
+  }
+
+  async function allowNextTerminal() {
+    const label = ($('#terminalsAllowLabel').value || '').trim();
+    const res = await j('POST', '/local/v1/setup/terminals/allow-next', { label });
+    const hint = $('#terminalsAllowCodeHint');
+    hint.classList.remove('hidden');
+    hint.textContent = '配对码 ' + res.pairing_code + ' · 请在 15 分钟内在新电脑登记（' + (res.expires_at || '') + '）';
+    toast('已生成配对码', 'success');
+    await refreshTerminalsPanel();
+  }
+
+  async function saveTerminalMax() {
+    if (!canSetTerminalMax()) { toast('仅管理员可改上限', 'error'); return; }
+    const max = parseInt($('#terminalsMaxInput').value, 10);
+    await j('PUT', '/local/v1/setup/terminals/max', { max_fiscal_terminals: max });
+    toast('上限已保存', 'success');
+    await refreshTerminalsPanel();
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   async function tryLogin() {
@@ -4436,6 +4588,23 @@
       const st = await refreshPrinters();
       toast(st.length ? ('档口 ' + st.length + ' 个') : '无档口映射', 'success');
     } catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+
+  $('#btnTerminalsRefresh').onclick = () => withBusy($('#btnTerminalsRefresh'), '刷新中…', async () => {
+    try { await refreshTerminalsPanel(); toast('开票电脑已刷新', 'success'); }
+    catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+  $('#btnTerminalsAllowNext').onclick = () => withBusy($('#btnTerminalsAllowNext'), '生成中…', async () => {
+    try { await allowNextTerminal(); }
+    catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+  $('#btnTerminalsMaxSave').onclick = () => withBusy($('#btnTerminalsMaxSave'), '保存中…', async () => {
+    try { await saveTerminalMax(); }
+    catch (er) { toast(errText(er), 'error'); throw er; }
+  });
+  $('#btnLoginPairTerminal').onclick = () => withBusy($('#btnLoginPairTerminal'), '登记中…', async () => {
+    try { await submitTerminalPairFromLogin(); }
+    catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
   $('#btnSaftExport').onclick = () => withBusy($('#btnSaftExport'), '导出中…', async () => {

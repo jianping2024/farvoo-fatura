@@ -8,23 +8,21 @@ import (
 
 // OpsStorePolicy is the cached Ops fiscal store policy — ONLY policy row shape.
 type OpsStorePolicy struct {
-	FiscalProfile       string
-	MaxFiscalTerminals  int
-	OpsPolicySyncedAt   string
+	FiscalProfile      string
+	MaxFiscalTerminals int
+	OpsPolicySyncedAt  string
 }
 
-// SaveOpsStorePolicy writes Ops policy into taxpayer_settings — ONLY policy write path.
-func (d *DB) SaveOpsStorePolicy(storeID, fiscalProfile string, maxTerminals int) error {
+// SaveOpsFiscalProfile writes Ops fiscal_profile only — does NOT touch max_fiscal_terminals
+// (max is local admin authority; see SetMaxFiscalTerminals).
+func (d *DB) SaveOpsFiscalProfile(storeID, fiscalProfile string) error {
 	if fiscalProfile != "restaurant" && fiscalProfile != "retail" {
 		return errors.New("store: invalid fiscal_profile")
 	}
-	if maxTerminals < 1 {
-		maxTerminals = 1
-	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := d.SQL.Exec(`UPDATE taxpayer_settings SET
-		fiscal_profile=?, max_fiscal_terminals=?, ops_policy_synced_at=?, updated_at=?
-		WHERE store_id=?`, fiscalProfile, maxTerminals, now, now, storeID)
+		fiscal_profile=?, ops_policy_synced_at=?, updated_at=?
+		WHERE store_id=?`, fiscalProfile, now, now, storeID)
 	if err != nil {
 		return err
 	}
@@ -35,7 +33,7 @@ func (d *DB) SaveOpsStorePolicy(storeID, fiscalProfile string, maxTerminals int)
 	return nil
 }
 
-// GetOpsStorePolicy reads cached policy for storeID.
+// GetOpsStorePolicy reads cached profile + local max for storeID.
 func (d *DB) GetOpsStorePolicy(storeID string) (*OpsStorePolicy, error) {
 	var profile sql.NullString
 	var max sql.NullInt64

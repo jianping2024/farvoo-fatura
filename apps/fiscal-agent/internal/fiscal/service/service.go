@@ -339,7 +339,6 @@ func (s *FiscalService) ActivateFromCloud(ctx context.Context, storeID string) (
 				return nil, err
 			}
 		}
-		_ = s.SyncFiscalTerminalsFromCloud(ctx, storeID)
 	} else {
 		ok, _, _, _ := s.db.FiscalProfileOK(storeID)
 		if !ok {

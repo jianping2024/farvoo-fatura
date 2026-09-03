@@ -60,7 +60,7 @@ func TestRequireActiveLANTerminal(t *testing.T) {
 		t.Fatalf("want terminal_required got %d %s", rec.Code, rec.Body.String())
 	}
 
-	tid, err := db.UpsertFiscalTerminal(storeID, "ops-ref-1", "Front", true)
+	tid, err := db.RegisterLocalFiscalTerminal(storeID, "Front")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestRequireActiveLANTerminal(t *testing.T) {
 	}
 
 	// Revoke → Touch fails → terminal_revoked.
-	if _, err := db.UpsertFiscalTerminal(storeID, "ops-ref-1", "Front", false); err != nil {
+	if err := db.RevokeFiscalTerminal(storeID, tid); err != nil {
 		t.Fatal(err)
 	}
 	req = httptest.NewRequest(http.MethodPost, "/local/v1/fiscal-documents", nil)
@@ -169,9 +169,21 @@ func TestSoleLANAuthWritings(t *testing.T) {
 	root := "."
 	files := []string{
 		"auth_terminal.go", "auth_session.go", "store_id.go", "routes.go", "saft_handlers.go", "session.go",
+		"terminal_handlers.go", "auth_middleware.go",
 	}
 	var all strings.Builder
 	for _, f := range files {
+		b, err := os.ReadFile(filepath.Join(root, f))
+		if err != nil {
+			t.Fatal(err)
+		}
+		all.Write(b)
+		all.WriteByte('\n')
+	}
+	// Also lock store/service sole paths (one level up).
+	for _, f := range []string{
+		"../store/terminals.go", "../store/ops_policy.go", "../service/operators_policy.go",
+	} {
 		b, err := os.ReadFile(filepath.Join(root, f))
 		if err != nil {
 			t.Fatal(err)
@@ -190,6 +202,11 @@ func TestSoleLANAuthWritings(t *testing.T) {
 		"deps.requireActiveLANTerminal(w, r)",
 		"sess := deps.sessionIfValidCookie(r)",
 		"hmac.Equal([]byte(m.sign(raw)), []byte(parts[1]))",
+		"func (d *DB) CreateTerminalPairCode(",
+		"func (d *DB) RedeemTerminalPairCode(",
+		"func (d *DB) SetMaxFiscalTerminals(",
+		"func (s *FiscalService) PairFiscalTerminal(",
+		"func (d *DB) SaveOpsFiscalProfile(",
 	}
 	for _, needle := range mustOnce {
 		n := strings.Count(src, needle)
@@ -203,6 +220,12 @@ func TestSoleLANAuthWritings(t *testing.T) {
 		`if storeID == "" {\n\t\tstoreID = deps.StoreID`,
 		"m.sign(raw) != parts[1]",
 		"ParseRequest(r); err == nil && parsed != nil",
+		"SyncFiscalTerminalsFromCloud",
+		"SyncFiscalTerminalsFromOps",
+		"UpsertFiscalTerminal",
+		"SaveOpsStorePolicy",
+		"cli.PairFiscalTerminal",
+		"ListFiscalTerminals(ctx",
 	}
 	for _, needle := range forbidden {
 		if strings.Contains(src, needle) {

@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.76
+
+**开票台改本地管：admin 定上限，owner 管电脑**
+
+- **唯一写法 · 登记：** `CreateTerminalPairCode` / `RedeemTerminalPairCode` / `PairFiscalTerminal`（本地兑码，**废止 Ops pair/list/sync**）。
+- **唯一写法 · 上限：** `SetMaxFiscalTerminals`（仅 admin API）；`SaveOpsFiscalProfile` **只**写 `fiscal_profile`，不覆盖 max。
+- **唯一写法 · 运行时：**仍 `requireActiveLANTerminal`；`TouchFiscalTerminal` 记 `last_seen_ip`（只读展示）。
+- 设置页「开票电脑」：允许下一台 / 停用 /（admin）改上限；登录页兑码。
+- 自检：`TestLocalTerminalPairAndMax` + 路由 RBAC + `TestSoleLANAuthWritings` 更新。
+
 ## 0.4.75
 
 **安装器：升级也不再沿用旧「开票桌面」勾选**

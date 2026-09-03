@@ -253,10 +253,35 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | fs_amount_threshold | TEXT | 是 | 默认 `"100.00"`，可配置 |
 | tax_country_region | TEXT | 是 | 默认 `PT` |
 | fiscal_profile | TEXT | 否 | **Ops 下发**；`restaurant` 或 `retail`；**激活开票前须已有值**；Agent 只读（§3.9） |
-| max_fiscal_terminals | INTEGER | 否 | **Ops 下发**；默认语义 `1`；激活前须已下发；Agent 只读（§3.8.1） |
-| ops_policy_synced_at | TEXT | 否 | 最近一次从 Ops 同步门店策略的时间 UTC |
+| max_fiscal_terminals | INTEGER | 否 | **本地 admin** 写入；默认语义 `1`；Ops 下发值**忽略**（§3.8.1） |
+| ops_policy_synced_at | TEXT | 否 | 最近一次从 Ops 同步 **fiscal_profile** 的时间 UTC（不含 max） |
 | created_at | TEXT | 是 | UTC |
 | updated_at | TEXT | 是 | UTC |
+
+### 6.1b `fiscal_terminals`（局域网开票台）
+
+| 列 | 类型 | 必填 | 说明 |
+|----|------|------|------|
+| id | TEXT PK | 是 | Cookie `fiscal_terminal_id` |
+| store_id | TEXT | 是 | |
+| label | TEXT | 否 | 备注 |
+| active | INTEGER | 是 | 1=可用；0=本地停用 |
+| ops_terminal_ref | TEXT | 是 | 本地登记为 `local:{id}`（列名历史保留） |
+| registered_at | TEXT | 是 | UTC |
+| last_seen_at | TEXT | 否 | UTC |
+| last_seen_ip | TEXT | 否 | 只读展示；不作鉴权 |
+
+### 6.1c `terminal_pair_codes`（允许下一台）
+
+| 列 | 类型 | 必填 | 说明 |
+|----|------|------|------|
+| code | TEXT PK | 是 | 一次性码 |
+| store_id | TEXT | 是 | |
+| label | TEXT | 否 | 预填备注 |
+| created_by_operator_id | TEXT | 是 | |
+| created_at | TEXT | 是 | UTC |
+| expires_at | TEXT | 是 | UTC |
+| consumed_at | TEXT | 否 | 兑码后写入 |
 
 ### 6.2 `at_credentials`（AT SOAP，加密）
 

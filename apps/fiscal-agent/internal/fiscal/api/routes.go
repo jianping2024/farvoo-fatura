@@ -128,6 +128,18 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("GET /local/v1/setup/terminals/summary", g(func(w http.ResponseWriter, r *http.Request) {
 		handleTerminalSummary(w, r, deps)
 	}))
+	mux.HandleFunc("GET /local/v1/setup/terminals", g(func(w http.ResponseWriter, r *http.Request) {
+		handleListTerminals(w, r, deps)
+	}))
+	mux.HandleFunc("POST /local/v1/setup/terminals/allow-next", g(func(w http.ResponseWriter, r *http.Request) {
+		handleAllowNextTerminal(w, r, deps)
+	}))
+	mux.HandleFunc("POST /local/v1/setup/terminals/{terminalId}/revoke", g(func(w http.ResponseWriter, r *http.Request) {
+		handleRevokeTerminal(w, r, deps)
+	}))
+	mux.HandleFunc("PUT /local/v1/setup/terminals/max", g(func(w http.ResponseWriter, r *http.Request) {
+		handleSetTerminalMax(w, r, deps)
+	}))
 	mux.HandleFunc("PUT /local/v1/setup/operator", g(func(w http.ResponseWriter, r *http.Request) {
 		handleOperator(w, r, deps)
 	}))

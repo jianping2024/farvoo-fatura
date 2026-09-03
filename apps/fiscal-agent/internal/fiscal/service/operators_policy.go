@@ -13,6 +13,8 @@ import (
 const (
 	ErrCodeFiscalProfileMissing = "fiscal_profile_missing"
 	ErrCodeTerminalsFull        = "terminals_full"
+	ErrCodePairInvalid          = "pairing_invalid"
+	ErrCodePairExpired          = "pairing_expired"
 )
 
 // LoginResult is returned after successful PIN login.
@@ -52,7 +54,7 @@ func (s *FiscalService) ChangeOperatorPIN(storeID, operatorID, oldPIN, newPIN st
 	return s.db.ChangeOperatorPIN(storeID, operatorID, oldPIN, newPIN)
 }
 
-// PullAndSaveStorePolicy fetches Ops policy and writes taxpayer_settings — ONLY policy sync entry.
+// PullAndSaveStorePolicy fetches Ops fiscal_profile only — does NOT overwrite local max_fiscal_terminals.
 func (s *FiscalService) PullAndSaveStorePolicy(ctx context.Context, storeID string) error {
 	cli := &fiscalsigning.Client{APIBase: s.cloud.APIBase, JWT: s.cloud.JWT}
 	policy, err := cli.PullStorePolicy(ctx)
@@ -62,33 +64,7 @@ func (s *FiscalService) PullAndSaveStorePolicy(ctx context.Context, storeID stri
 	if policy.FiscalProfile != "restaurant" && policy.FiscalProfile != "retail" {
 		return coded(ErrCodeFiscalProfileMissing, "ops fiscal_profile not configured")
 	}
-	max := policy.MaxFiscalTerminals
-	if max < 1 {
-		max = 1
-	}
-	return s.db.SaveOpsStorePolicy(storeID, policy.FiscalProfile, max)
-}
-
-// SyncFiscalTerminalsFromCloud pulls terminal list from Ops.
-func (s *FiscalService) SyncFiscalTerminalsFromCloud(ctx context.Context, storeID string) error {
-	cli := &fiscalsigning.Client{APIBase: s.cloud.APIBase, JWT: s.cloud.JWT}
-	list, err := cli.ListFiscalTerminals(ctx)
-	if err != nil {
-		return err
-	}
-	rows := make([]store.FiscalTerminalRow, 0, len(list))
-	for _, t := range list {
-		ref := t.OpsTerminalRef
-		if ref == "" {
-			ref = t.ID
-		}
-		rows = append(rows, store.FiscalTerminalRow{
-			OpsTerminalRef: ref,
-			Label:          t.Label,
-			Active:         t.Active,
-		})
-	}
-	return s.db.SyncFiscalTerminalsFromOps(storeID, rows)
+	return s.db.SaveOpsFiscalProfile(storeID, policy.FiscalProfile)
 }
 
 // TerminalPairResult is local terminal registration result.
@@ -97,16 +73,30 @@ type TerminalPairResult struct {
 	Label      string
 }
 
-// PairFiscalTerminal redeems Ops pairing code — ONLY terminal pair orchestration.
-func (s *FiscalService) PairFiscalTerminal(ctx context.Context, storeID, pairingCode, label string) (*TerminalPairResult, error) {
-	if strings.TrimSpace(s.cloud.APIBase) == "" || strings.TrimSpace(s.cloud.JWT) == "" {
-		return nil, fmt.Errorf("fiscal: cloud pairing requires agent jwt")
+// AllowNextTerminalCodeResult is returned when manager mints an allow-next code.
+type AllowNextTerminalCodeResult struct {
+	Code      string
+	ExpiresAt string
+	Label     string
+}
+
+// SetMaxFiscalTerminals is admin-only local max — ONLY service max write.
+func (s *FiscalService) SetMaxFiscalTerminals(storeID string, max int, actorID string) error {
+	if s == nil || s.db == nil {
+		return fmt.Errorf("fiscal: service nil")
 	}
-	if err := s.PullAndSaveStorePolicy(ctx, storeID); err != nil {
-		var ce *CodedError
-		if errors.As(err, &ce) && ce.Code == ErrCodeFiscalProfileMissing {
-			return nil, err
-		}
+	if err := s.db.SetMaxFiscalTerminals(storeID, max); err != nil {
+		return err
+	}
+	_ = s.db.InsertAuditLog(actorID, "TERMINAL_MAX_SET", "taxpayer_settings", storeID,
+		fmt.Sprintf(`{"max_fiscal_terminals":%d}`, max))
+	return nil
+}
+
+// AllowNextTerminal mints a one-time local pair code — ONLY allow-next orchestration.
+func (s *FiscalService) AllowNextTerminal(storeID, actorID, label string) (*AllowNextTerminalCodeResult, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("fiscal: service nil")
 	}
 	used, max, err := s.TerminalSummary(storeID)
 	if err != nil {
@@ -115,24 +105,68 @@ func (s *FiscalService) PairFiscalTerminal(ctx context.Context, storeID, pairing
 	if used >= max {
 		return nil, coded(ErrCodeTerminalsFull, "terminal slots full")
 	}
-	cli := &fiscalsigning.Client{APIBase: s.cloud.APIBase, JWT: s.cloud.JWT}
-	res, err := cli.PairFiscalTerminal(ctx, pairingCode, label)
+	code, exp, err := s.db.CreateTerminalPairCode(storeID, actorID, strings.TrimSpace(label))
 	if err != nil {
-		if strings.Contains(err.Error(), "terminals_full") {
-			return nil, coded(ErrCodeTerminalsFull, "terminal slots full")
+		return nil, err
+	}
+	_ = s.db.InsertAuditLog(actorID, "TERMINAL_ALLOW_NEXT", "terminal_pair_code", code, "{}")
+	return &AllowNextTerminalCodeResult{Code: code, ExpiresAt: exp, Label: label}, nil
+}
+
+// PairFiscalTerminal redeems a local allow-next code — ONLY LAN pair orchestration (no Ops).
+func (s *FiscalService) PairFiscalTerminal(storeID, pairingCode, label string) (*TerminalPairResult, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("fiscal: service nil")
+	}
+	used, max, err := s.TerminalSummary(storeID)
+	if err != nil {
+		return nil, err
+	}
+	if used >= max {
+		return nil, coded(ErrCodeTerminalsFull, "terminal slots full")
+	}
+	id, lab, err := s.db.RedeemTerminalPairCode(storeID, pairingCode, strings.TrimSpace(label))
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, coded(ErrCodePairInvalid, "invalid pairing code")
+		}
+		msg := err.Error()
+		if strings.Contains(msg, "expired") {
+			return nil, coded(ErrCodePairExpired, "pairing code expired")
+		}
+		if strings.Contains(msg, "already used") {
+			return nil, coded(ErrCodePairInvalid, "pairing code already used")
 		}
 		return nil, err
 	}
-	ref := res.OpsTerminalRef
-	if ref == "" {
-		ref = res.TerminalID
+	// Re-check after redeem (race): if somehow over max, revoke immediately.
+	used2, _, _ := s.TerminalSummary(storeID)
+	if used2 > max {
+		_ = s.db.RevokeFiscalTerminal(storeID, id)
+		return nil, coded(ErrCodeTerminalsFull, "terminal slots full")
 	}
-	id, err := s.db.UpsertFiscalTerminal(storeID, ref, res.Label, true)
-	if err != nil {
-		return nil, err
+	_ = s.db.InsertAuditLog("", "TERMINAL_PAIR", "fiscal_terminal", id, "{}")
+	return &TerminalPairResult{TerminalID: id, Label: lab}, nil
+}
+
+// ListFiscalTerminals returns registered LAN terminals.
+func (s *FiscalService) ListFiscalTerminals(storeID string) ([]store.FiscalTerminalRow, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("fiscal: service nil")
 	}
-	_ = s.SyncFiscalTerminalsFromCloud(ctx, storeID)
-	return &TerminalPairResult{TerminalID: id, Label: res.Label}, nil
+	return s.db.ListFiscalTerminals(storeID)
+}
+
+// RevokeFiscalTerminal deactivates a LAN terminal — ONLY revoke orchestration.
+func (s *FiscalService) RevokeFiscalTerminal(storeID, terminalID, actorID string) error {
+	if s == nil || s.db == nil {
+		return fmt.Errorf("fiscal: service nil")
+	}
+	if err := s.db.RevokeFiscalTerminal(storeID, terminalID); err != nil {
+		return err
+	}
+	_ = s.db.InsertAuditLog(actorID, "TERMINAL_REVOKE", "fiscal_terminal", terminalID, "{}")
+	return nil
 }
 
 // TerminalSummary returns used/max terminal slots (LAN only).

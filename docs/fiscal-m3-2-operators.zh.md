@@ -15,7 +15,7 @@
 | 登录 | 进门校验 **PIN**（`operators.pin_hash`，argon2id）；会话绑定 **`operators.id`** |
 | 开票归属 | 签发 FT/NC/ND 等写操作：`operator_id` **仅**来自服务端会话，禁止客户端自填 |
 | 冲销权限 | **按账号** `operators.can_issue_nc`；新建 `admin` / `owner` 默认 1、`cashier` 默认 0；`admin` / `owner` 在设置页按人开关（§3.1.1） |
-| 多端开票 | **一 Agent、多台开票电脑**（§3.8）；端数 **纯 Ops**（§3.8.1） |
+| 多端开票 | **一 Agent、多台开票电脑**（§3.8）；端数 **本地 admin / owner**（§3.8.1） |
 | 发票模式 | **餐馆 / 商超** 由 **Ops** 下发（§3.9）；登录页 **不**选业态 |
 | 安全边界 | 写 API **会话中间件**（§3.7）；PIN = 店员互防 + 审计；网络见 §3.7 / §3.8（单端本机 vs 店内局域网） |
 
@@ -130,6 +130,7 @@
 | 系列与开票授权 | `series` | ✓ | **不可见** | — |
 | 开票员名册 | `operators` | ✓ 全表 | ✓ **仅 `cashier` 行** | — |
 | 打印机 | `printers` | ✓ | ✓ | — |
+| 开票电脑 | `terminals` | ✓（含改 max） | ✓（不管 max） | — |
 | SAF-T 月导 | `saft` | ✓ | ✓ | — |
 | 备份与换机 | `advanced` | ✓ | **不可见** | — |
 
@@ -360,60 +361,57 @@ admin 或 owner 停用 cashier
 
 **安全预期：** 店内网里、知道 PIN 的店员可开票——等同多个收银台共用一套税控；**须**店网隔离、不对公网；**不**替代 HTTPS / 每设备 token（后置）。
 
-#### 3.8.1 限制开票端数（P0 定法 · 纯 Ops）
+#### 3.8.1 限制开票端数（P0 定法 · **本地 admin / owner**）
 
-**可以。** 按 **「登记过的开票台」** 计数。**端数上限、登记、停用 — 仅 Ops**；门店 `owner` **无**管理入口；Agent **无**本地超级账号 / 支持密钥 / `/support/*`。
+**可以。** 按 **「登记过的开票台」** 计数。**端数上限仅 `admin`；具体电脑由 `admin` / `owner` 管理。** Ops **不再**发配对码、**不再**同步吊销名单、**不再**下发 `max_fiscal_terminals`（激活仍可拉 `fiscal_profile`，但不得覆盖本地 max）。
 
 **谁管什么：**
 
 | 能力 | 权威 | 门店 UI |
 |------|------|---------|
-| 上限 `max_fiscal_terminals` | **Ops**（激活 / 续费 / 改套餐） | 只读「已用 2/3」（可选） |
-| 登记新开票台 | **Ops 配对码** | 页面上仅「输入配对码」；**无** owner 登记按钮 |
-| 停用 / 腾出名额 | **Ops** 吊销终端 | **无**；满额文案「联系 Farvoo」 |
-| 店员 PIN / 开票员名册 | 本机 **`admin` / `owner`** | §3.3 / §operators（与端数无关） |
+| 上限 `max_fiscal_terminals` | **仅 `admin`** | 设置 → 开票电脑 → 保存上限 |
+| 批准新开票台 | **`admin` / `owner`** | 「允许下一台」→ 一次性配对码（15 分钟） |
+| 停用 / 腾出名额 | **`admin` / `owner`** | 列表「停用」 |
+| 登记（新电脑） | 公开 `POST …/terminals/pair` 兑码 | 登录页输入配对码；**不**填 IP 白名单 |
+| 店员 PIN / 开票员名册 | 本机 **`admin` / `owner`** | §3.3（与端数无关） |
 
 ```text
-Ops Dashboard
-  → 设 max、生成一次性「终端配对码」、吊销 terminal_id
+管理员定 max（可选）
+店长/管理员：设置 → 允许下一台 → 显示配对码
        ↓
-activate-from-cloud / 定期 pull → Agent 缓存 max + 同步终端吊销
+新 PC（Client 填 Agent IP）→ 登录页输入配对码 → Cookie fiscal_terminal_id
        ↓
-新 PC：开票页输入配对码 → Agent 向 Ops 校验 → Set-Cookie fiscal_terminal_id
+LAN 已鉴权路由：requireActiveLANTerminal（本机 loopback 免检）
 ```
 
 | 项 | 定法 |
 |----|------|
-| 上限来源 | Ops 写入 Agent（`activate-from-cloud` 或 `PullTerminalPolicy` 类同步）；**Agent 无本地改 max API** |
-| 默认 | Ops 未下发时 **1**（仅本机 `127.0.0.1`） |
-| 登记 | 新 PC 无终端 Cookie → `POST /setup/terminals/pair` + `pairing_code` → **Agent 调 Ops 校验**（须联网）；成功且 `used<max` → Set-Cookie |
-| 满额 | **403**「终端数已满，联系 Farvoo」 |
-| 停用 | Ops 吊销 → 下次同步 `fiscal_terminals.active=0`；**唯一运行时门闩** `requireActiveLANTerminal`（非 loopback 的已鉴权路由）：无 Cookie / 非 active → **403** `terminal_required` / `terminal_revoked`（本机 loopback 免检） |
+| 上限来源 | **本地** `taxpayer_settings.max_fiscal_terminals`；`admin` `PUT /setup/terminals/max`；默认语义 `1`；Ops JSON 里的 max **忽略** |
+| 登记 | 非 loopback 无有效 Cookie → 须兑本地配对码；成功且 `used<max` → Set-Cookie |
+| 满额 | **403** `terminals_full` |
+| 停用 | 本地 `active=0` → 运行时 **403** `terminal_revoked`（即时，不依赖 Ops） |
 | 本机 | `127.0.0.1` **不占** LAN 端数 |
-| 断网 | **不能**新登记终端（无本地兜底）；已登记终端在 LAN 内可继续用直至 Cookie/会话过期 |
+| 断网 | **可以**批准新电脑（本地码）；**不**依赖 Ops |
+| 最近 IP | `last_seen_ip` **只读展示**；**不作**放行条件 |
 
-**表 `fiscal_terminals`（M3.2 迁移）：**
+**表 `fiscal_terminals`：** 见 schema；`ops_terminal_ref` 本地登记为 `local:{id}`（列名保留，不再表示 Ops 权威）。
 
-| 列 | 说明 |
-|----|------|
-| id | UUID；Cookie `fiscal_terminal_id` |
-| store_id | |
-| label | Ops 配对响应可选带回 |
-| active | 0 = Ops 已吊销（同步写入） |
-| ops_terminal_ref | Ops 侧终端 id（吊销、对账） |
-| registered_at | |
-| last_seen_at | |
+**表 `terminal_pair_codes`：** 一次性允许码。
 
-**API（Agent，增量）：**
+**API（Agent）：**
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/local/v1/setup/terminals/pair` | body `pairing_code`；**代理 Ops 校验**；成功 Set-Cookie |
-| GET | `/local/v1/setup/terminals/summary` | 只读 `used` / `max`（登录页提示） |
+| 方法 | 路径 | 鉴权 | 说明 |
+|------|------|------|------|
+| POST | `/local/v1/setup/terminals/pair` | 匿名 | body `pairing_code`；兑本地码；Set-Cookie |
+| GET | `/local/v1/setup/terminals/summary` | 匿名 | `used` / `max` |
+| GET | `/local/v1/setup/terminals` | manager | 列表 + used/max |
+| POST | `/local/v1/setup/terminals/allow-next` | manager | 生成配对码 |
+| POST | `/local/v1/setup/terminals/{id}/revoke` | manager | 停用 |
+| PUT | `/local/v1/setup/terminals/max` | **admin** | 改上限 |
 
-**Ops 侧（本仓外，接口约定）：** `max_fiscal_terminals`；`POST` 生成配对码；`POST` 吊销终端；Agent pull 同步吊销状态。M3.2 Agent **只消费**。
+**唯一运行时门闩：** `requireActiveLANTerminal`（非 loopback）。
 
-**明确不做：** 本地支持模式、`FISCAL_SUPPORT_KEY`、`/support/terminals`；owner 管理端数；门店自填 `max`；断网本地绕过 Ops 登记。
+**明确不做：** Ops 配对码 / Ops 吊销同步 / IP 白名单鉴权；cashier 改端数或设备；断网无限加端。
 
 #### 3.9 发票模式（餐馆 / 商超 · 纯 Ops）
 
@@ -533,6 +531,7 @@ activate-from-cloud / 定期 pull → Agent 缓存 max + 同步终端吊销
 
 | 日期 | 变更 |
 |------|------|
+| 2026-09-03 | **0.4.76：** §3.8.1 端数/设备改本地 admin（max）+ owner（设备）；废止 Ops 配对/吊销同步 |
 | 2026-08-30 | 定稿：Agent 本地创建；废止 Farvoo 同步 |
 | 2026-09-03 | **0.4.74：** §3.8.1 运行时门闩 `requireActiveLANTerminal`；status 吊销 Cookie 只回 Public |
 | 2026-09-01 | 角色 UI 统一 `owner`/`cashier`；`can_issue_nc` 按账号 |

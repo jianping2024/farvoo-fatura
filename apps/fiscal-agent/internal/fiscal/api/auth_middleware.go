@@ -51,18 +51,24 @@ func routeAuthFor(r *http.Request) routeAuth {
 		"/local/v1/setup/backup":              true,
 		"/local/v1/setup/integrity/verify":    true,
 		"/local/v1/setup/prepare-swap":        true,
+		"/local/v1/setup/terminals/max":       true,
 	}
 	if adminPaths[p] {
 		return authAdmin
 	}
 	managerPaths := map[string]bool{
-		"/local/v1/setup/taxpayer": true,
-		"/local/v1/setup/operator": true,
+		"/local/v1/setup/taxpayer":             true,
+		"/local/v1/setup/operator":             true,
+		"/local/v1/setup/terminals":            true,
+		"/local/v1/setup/terminals/allow-next": true,
 	}
 	if managerPaths[p] {
 		return authManager
 	}
 	if p == "/local/v1/setup/operators/manage" {
+		return authManager
+	}
+	if strings.HasPrefix(p, "/local/v1/setup/terminals/") && strings.HasSuffix(p, "/revoke") {
 		return authManager
 	}
 	if strings.HasPrefix(p, "/local/v1/saft/exports") {

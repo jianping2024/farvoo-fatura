@@ -16,7 +16,8 @@ First run
 1. Install Farvoo Fiscal Client from Dashboard or GitHub Release.
 2. On first launch, enter the Agent PC IP (store LAN) and port 17880.
 3. Click Test connection, then Save and open.
-4. Log in with operator PIN; enter Ops terminal pairing code if prompted.
+4. Log in with operator PIN. If this PC is not registered, enter the one-time
+   pairing code from Agent settings → 开票电脑 → 允许下一台 (store manager).
 
 Change Agent IP
 ---------------
