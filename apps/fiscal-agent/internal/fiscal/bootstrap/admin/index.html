@@ -33,7 +33,7 @@
       --sidebar-mid: 138,90,40;
     }
     * { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; }
+    html, body { height: 100%; margin: 0; overflow-x: hidden; }
     body { font-family: var(--font); color: var(--ink); background: var(--paper); }
     button, input, select, textarea { font: inherit; }
     button {
@@ -188,7 +188,7 @@
       box-shadow: inset 0 2px 4px rgba(0,0,0,.18);
     }
 
-    #app-shell { display: none; min-height: 100vh; grid-template-columns: 224px 1fr; }
+    #app-shell { display: none; min-height: 100vh; grid-template-columns: 224px minmax(0, 1fr); }
     #app-shell.on { display: grid; }
 
     /* ── Sidebar ── */
@@ -274,14 +274,38 @@
     .sidebar .foot button:hover { color: #e8f2ec; background: transparent; filter: none; transform: none; }
 
     /* ── Main area ── */
-    .main { padding: 1.5rem 1.75rem 2.5rem; max-width: 980px; }
+    .main { padding: 1.5rem 1.75rem 2.5rem; max-width: 980px; min-width: 0; }
     .topbar {
       display: flex; justify-content: space-between; align-items: center;
       gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap;
       padding-bottom: 1rem; border-bottom: 1px solid var(--line);
     }
     .topbar h1 { font-size: 1.4rem; font-weight: 800; margin: 0; letter-spacing: -0.025em; }
-    .home-greeting { font-size: 0.82rem; color: var(--muted); margin: 0.2rem 0 0; font-weight: 500; }
+    #view-home { margin: -1.5rem -1.75rem 0; }
+    .home-topbar {
+      height: 52px; background: rgba(255,255,255,.75); backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.75rem; gap: 1rem; position: sticky; top: 0; z-index: 10;
+    }
+    .home-topbar h1 { font-size: 0.8125rem; font-weight: 600; margin: 0; letter-spacing: 0; }
+    .home-topbar-right { display: flex; align-items: center; gap: 0.75rem; }
+    .date-chip {
+      font-size: 0.75rem; color: var(--muted); background: var(--paper);
+      border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.65rem;
+    }
+    .home-body { padding: 1.25rem 1.75rem 2.5rem; }
+    .home-greeting { font-size: 0.82rem; color: var(--muted); margin: 0 0 1.25rem; font-weight: 500; }
+    .panel.home-recent { padding: 0; overflow: hidden; }
+    .home-recent .panel-head {
+      position: relative; display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--line);
+    }
+    .home-recent .panel-head::after {
+      content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px;
+      background: linear-gradient(90deg, var(--brand-mid), var(--gold));
+    }
+    .home-recent .panel-title { font-size: 0.875rem; font-weight: 700; }
     .panel {
       background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
       padding: 1.1rem 1.25rem; box-shadow: var(--shadow); margin-bottom: 1rem;
@@ -342,14 +366,32 @@
     .person-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 1rem; }
     .person-chips button { border-radius: 999px; padding: 0.35rem 0.85rem; }
     .person-chips button.active { outline: 2px solid #2d6a4f; }
-    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.85rem; margin-bottom: 1.25rem; }
+    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
     .stat {
-      background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem 1.15rem;
+      background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.25rem 1.25rem 1rem;
       box-shadow: var(--shadow); transition: box-shadow 0.2s, transform 0.2s;
+      position: relative; overflow: hidden;
     }
     .stat:hover { box-shadow: 0 4px 16px rgba(0,0,0,.09); transform: translateY(-2px); }
+    button.stat {
+      width: 100%; text-align: left; font: inherit; color: var(--ink);
+      background: #fff; box-shadow: var(--shadow); cursor: pointer;
+    }
+    button.stat:hover {
+      filter: none; color: var(--ink); background: #fff;
+      box-shadow: 0 4px 16px rgba(0,0,0,.09); transform: translateY(-2px);
+    }
+    .stat-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
     .stat .k { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
-    .stat .v { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.03em; margin-top: 0.3rem; }
+    .stat-icon {
+      width: 32px; height: 32px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
+    }
+    .stat-icon.gold { background: #fdf6e3; }
+    .stat-icon.green { background: #e4f5ed; }
+    .stat-icon.blue { background: #eff6ff; }
+    .stat .v { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+    .stat-cta-label { font-size: 0.7rem; font-weight: 600; color: var(--mode); margin-top: 0.45rem; }
     .cta-big {
       display: inline-flex; align-items: center; text-align: left; padding: 0.65rem 1.25rem;
       background: linear-gradient(135deg, var(--brand-dark), var(--brand-mid));
@@ -523,7 +565,7 @@
     .modal { background: var(--panel); border-radius: 16px; max-width: 520px; width: 100%; max-height: 80vh; overflow: auto; padding: 1.25rem; box-shadow: var(--shadow); }
     .line-input { width: 4rem; padding: 0.35rem; }
     @media (max-width: 860px) {
-      #app-shell.on { grid-template-columns: 1fr; }
+      #app-shell.on { grid-template-columns: minmax(0, 1fr); }
       .split, .stat-row, .mode-pick { grid-template-columns: 1fr; }
       .flow-step { font-size: 0.68rem; padding: 0.5rem 0.25rem; }
     }
@@ -590,24 +632,47 @@
 
     <main class="main">
       <section class="view" id="view-home">
-        <div class="topbar">
-          <div>
-            <h1 data-i18n="home.title">工作台</h1>
-            <p class="home-greeting" id="homeGreeting"></p>
+        <header class="home-topbar">
+          <h1 data-i18n="home.title">工作台</h1>
+          <div class="home-topbar-right">
+            <span class="date-chip" id="homeDateChip"></span>
+            <button type="button" id="ctaNewOrder" data-goto="order-new">＋ 新建开票</button>
+          </div>
+        </header>
+        <div class="home-body">
+          <p class="home-greeting" id="homeGreeting"></p>
+          <div class="stat-row">
+            <div class="stat">
+              <div class="stat-top"><div class="k">手工待开</div><div class="stat-icon gold" aria-hidden="true">📋</div></div>
+              <div class="v" id="statPendingOrders">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-top"><div class="k">今日已开发票</div><div class="stat-icon green" aria-hidden="true">✓</div></div>
+              <div class="v" id="statTodayInvoices">0</div>
+            </div>
+            <button type="button" class="stat rest-only" id="ctaPendingBills" data-nav="bills">
+              <div class="stat-top"><div class="k">收银账单</div><div class="stat-icon blue" aria-hidden="true">⬡</div></div>
+              <div class="v" id="statPendingBills">0</div>
+              <div class="stat-cta-label">处理收银账单</div>
+            </button>
+            <div class="stat retail-only">
+              <div class="stat-top"><div class="k">今日营业额</div><div class="stat-icon gold" aria-hidden="true">€</div></div>
+              <div class="v" id="statTodaySales">€0</div>
+            </div>
+          </div>
+          <div class="panel home-recent">
+            <div class="panel-head">
+              <span class="panel-title">最近发票</span>
+              <button type="button" class="ghost" data-nav="invoices">查看全部</button>
+            </div>
+            <div class="table-scroll">
+              <table class="list-table">
+                <thead><tr><th>票号</th><th>类型</th><th>金额</th><th class="col-actions">操作</th></tr></thead>
+                <tbody id="homeRecentInvoicesTbody"></tbody>
+              </table>
+            </div>
           </div>
         </div>
-        <div class="stat-row">
-          <div class="stat"><div class="k">手工待开</div><div class="v" id="statPendingOrders">0</div></div>
-          <div class="stat"><div class="k">今日已开发票</div><div class="v" id="statTodayInvoices">0</div></div>
-          <div class="stat rest-only"><div class="k">收银账单</div><div class="v" id="statPendingBills">0</div></div>
-          <div class="stat retail-only"><div class="k">今日营业额</div><div class="v" id="statTodaySales">€0</div></div>
-        </div>
-        <button type="button" class="cta-big" id="ctaNewOrder" data-goto="order-new">
-          <strong>＋ 新建开票</strong>
-        </button>
-        <button type="button" class="cta-big rest-only" id="ctaPendingBills" data-nav="bills">
-          <strong>处理收银账单</strong>
-        </button>
       </section>
 
       <section class="view hidden" id="view-orders">
@@ -2519,6 +2584,54 @@
     return refreshSetupStatus();
   }
 
+  /** ONLY writer for #homeGreeting. */
+  function renderHomeGreeting(displayName) {
+    const greetEl = $('#homeGreeting');
+    if (!greetEl) return;
+    const name = String(displayName || '').trim() || '操作员';
+    const h = new Date().getHours();
+    const greet = h < 12 ? '早上好' : h < 18 ? '下午好' : '晚上好';
+    greetEl.textContent = greet + '，' + name;
+  }
+
+  /** ONLY writer for #homeDateChip (locale weekday). */
+  function renderHomeDateChip() {
+    const el = $('#homeDateChip');
+    if (!el) return;
+    const loc = (typeof FiscalAdminI18n !== 'undefined' && FiscalAdminI18n.getLocale)
+      ? FiscalAdminI18n.getLocale() : 'zh';
+    const d = new Date();
+    const ymd = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    let weekday;
+    if (loc === 'zh') weekday = '周' + '日一二三四五六'[d.getDay()];
+    else if (loc === 'pt') weekday = d.toLocaleDateString('pt-PT', { weekday: 'short' });
+    else weekday = d.toLocaleDateString('en-GB', { weekday: 'short' });
+    el.textContent = ymd + ' ' + weekday;
+  }
+
+  /** ONLY reprint control HTML (invoice list + home recent). */
+  function invoiceReprintButtonHtml(documentId) {
+    return '<button type="button" class="secondary btn-sm" data-reprint="' + documentId + '">重打</button>';
+  }
+
+  /** ONLY writer for #homeRecentInvoicesTbody. */
+  function renderHomeRecentInvoices(list) {
+    const tbody = $('#homeRecentInvoicesTbody');
+    if (!tbody) return;
+    const rows = list || [];
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="hint">今日暂无发票</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.slice(0, 8).map(inv =>
+      '<tr class="clickable" data-inv="' + inv.document_id + '">' +
+        '<td>' + (inv.invoice_no || inv.document_type || '—') + '</td>' +
+        '<td>' + (inv.document_type || '—') + '</td>' +
+        '<td>' + fmtMoney(inv.gross_total) + '</td>' +
+        '<td class="col-actions">' + invoiceReprintButtonHtml(inv.document_id) + '</td></tr>'
+    ).join('');
+  }
+
   function renderHomeStats(totalInvoices, grossTotalSum) {
     const orders = loadOrders();
     const pending = orders.filter(o => o.status !== 'issued').length;
@@ -3385,11 +3498,12 @@
     invoiceFiltersReady = true;
   }
 
-  /** ONLY home today-invoice stats fetch (not filtered by invoice-page search). */
+  /** ONLY home today-invoice fetch (stats + recent table; not invoice-page filters). */
   async function refreshHomeStats() {
     const today = FiscalUI.dateRangePresetToDates('today', INVOICE_TZ);
     const data = await j('GET', buildInvoicesQueryPath(today, '', 1, FiscalUI.LIST_DEFAULT_PAGE_SIZE));
     renderHomeStats(data.total || 0, data.gross_total_sum || 0);
+    renderHomeRecentInvoices(data.invoices || []);
   }
 
   async function refreshInvoices() {
@@ -3431,7 +3545,7 @@
           '<td>' + fmtMoney(inv.gross_total) + '</td>' +
           '<td>' + formatInvoiceBuyerCell(inv) + '</td>' +
           '<td>' + (inv.order_label || '—') + '</td>' +
-          '<td class="col-actions"><button type="button" class="secondary btn-sm" data-reprint="' + inv.document_id + '">重打</button></td></tr>';
+          '<td class="col-actions">' + invoiceReprintButtonHtml(inv.document_id) + '</td></tr>';
       }).join('');
     }
     return list;
@@ -4127,7 +4241,11 @@
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.nav === navName));
     if (name === 'orders') renderOrdersList();
     if (name === 'home') {
-      refreshHomeStats().catch(() => renderHomeStats(0, 0));
+      renderHomeDateChip();
+      refreshHomeStats().catch(() => {
+        renderHomeStats(0, 0);
+        renderHomeRecentInvoices([]);
+      });
       if (mode === 'restaurant') refreshBills().catch(() => focusHomePrimaryCta(0));
       else focusHomePrimaryCta(0);
     }
@@ -4164,12 +4282,7 @@
         ? (parts[0][0] + parts[1][0]).toUpperCase()
         : String(displayName).slice(0, 2).toUpperCase();
     }
-    const greetEl = $('#homeGreeting');
-    if (greetEl) {
-      const h = new Date().getHours();
-      const greet = h < 12 ? '早上好' : h < 18 ? '下午好' : '晚上好';
-      greetEl.textContent = greet + '，' + displayName;
-    }
+    renderHomeGreeting(displayName);
     applyOperatorAccess();
     $('#view-login').classList.add('hidden');
     $('#app-shell').classList.add('on');
@@ -5175,6 +5288,7 @@
         const data = await saveUILocale(uiLocaleSelect.value);
         FiscalAdminI18n.setLocale(data.ui_locale);
         uiLocaleSelect.value = data.ui_locale;
+        renderHomeDateChip();
         refreshUILocaleInvoiceHint(data.invoice_locale);
         toast(FiscalAdminI18n.t('lang.saved'), 'success');
       } catch (er) {

@@ -38,6 +38,12 @@ func TestAdminHTMLUsesSharedToastOnly(t *testing.T) {
 	if !strings.Contains(string(fiscalUIToastJS), `FiscalUI.showToast`) {
 		t.Fatal("toast.js must export FiscalUI.showToast")
 	}
+	if strings.Contains(string(fiscalUIToastCSS), "100vw") {
+		t.Fatal("toast.css must not use 100vw")
+	}
+	if n := strings.Count(string(fiscalUIToastCSS), "max-width: calc(100% - 2rem)"); n != 1 {
+		t.Fatalf("toast max-width 100 percent writing must appear once, got %d", n)
+	}
 }
 
 func TestAdminHTMLSplitSyncScopeHelper(t *testing.T) {
@@ -144,6 +150,64 @@ func TestAdminHTMLSchemeACopyUnique(t *testing.T) {
 	}
 	if strings.Count(adminHTML, "新建开票") < 2 {
 		t.Fatal("新建开票 must appear on CTA and order surfaces")
+	}
+}
+
+func TestAdminHTMLNoPageXScrollUnique(t *testing.T) {
+	if n := strings.Count(adminHTML, "overflow-x: hidden"); n != 1 {
+		t.Fatalf("page overflow-x:hidden must appear exactly once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "224px minmax(0, 1fr)"); n != 1 {
+		t.Fatalf("shell columns must appear exactly once, got %d", n)
+	}
+	if !strings.Contains(adminHTML, ".main { padding: 1.5rem 1.75rem 2.5rem; max-width: 980px; min-width: 0; }") {
+		t.Fatal("main must shrink with min-width: 0")
+	}
+	if strings.Contains(adminHTML, "100vw") {
+		t.Fatal("admin must not use 100vw (causes page x-scroll)")
+	}
+}
+
+func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
+	for _, fn := range []string{
+		"function renderHomeGreeting",
+		"function renderHomeDateChip",
+		"function renderHomeRecentInvoices",
+		"function invoiceReprintButtonHtml",
+		"function renderHomeStats",
+		"function refreshHomeStats",
+		"function focusHomePrimaryCta",
+	} {
+		if n := strings.Count(adminHTML, fn); n != 1 {
+			t.Fatalf("%s must appear exactly once, got %d", fn, n)
+		}
+	}
+	for _, id := range []string{
+		`id="homeDateChip"`,
+		`id="homeRecentInvoicesTbody"`,
+		`id="ctaNewOrder"`,
+		`id="ctaPendingBills"`,
+		`id="homeGreeting"`,
+		`id="statPendingOrders"`,
+		`id="statTodayInvoices"`,
+		`id="statPendingBills"`,
+		`id="statTodaySales"`,
+	} {
+		if n := strings.Count(adminHTML, id); n != 1 {
+			t.Fatalf("%s must appear exactly once, got %d", id, n)
+		}
+	}
+	if n := strings.Count(adminHTML, `data-i18n="home.title"`); n != 1 {
+		t.Fatalf("home.title must appear exactly once, got %d", n)
+	}
+	if strings.Contains(adminHTML, `class="cta-big" id="ctaNewOrder"`) || strings.Contains(adminHTML, `class="cta-big rest-only" id="ctaPendingBills"`) {
+		t.Fatal("home CTAs must not use leftover cta-big")
+	}
+	if strings.Count(adminHTML, `data-reprint="' + documentId + '"`) != 1 {
+		t.Fatal("reprint button markup must exist only in invoiceReprintButtonHtml")
+	}
+	if strings.Contains(adminHTML, "$('#homeGreeting').textContent") || strings.Contains(adminHTML, "$('#homeDateChip').textContent") {
+		t.Fatal("do not write home greeting/date outside renderHomeGreeting/renderHomeDateChip")
 	}
 }
 

@@ -2,6 +2,20 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.81
+
+**开票台：工作台 C 布局 + 禁止整页左右拖**
+
+- **唯一写法 · 整页横滑：**仅 `html, body { overflow-x: hidden }`。
+- **唯一写法 · 主列收缩：**`#app-shell` 用 `224px minmax(0, 1fr)`，`.main` 用 `min-width: 0`；窄屏同样 `minmax(0, 1fr)`。
+- 宽表仍只在 `.table-scroll` 里横滑。Toast 宽度改 `100%`，不用 `100vw`。
+- **唯一写法 · 工作台标题：**仅 `data-i18n="home.title"`（顶栏 h1）。
+- **唯一写法 · 日期胶囊：**仅 `renderHomeDateChip` → `#homeDateChip`。
+- **唯一写法 · 问候：**仅 `renderHomeGreeting` → `#homeGreeting`。
+- **唯一写法 · 今日票数/最近发票：**仅 `refreshHomeStats` 拉一次；`renderHomeStats` / `renderHomeRecentInvoices` 分写。
+- **唯一写法 · 重打按钮：**仅 `invoiceReprintButtonHtml`（发票页与工作台共用）。
+- **唯一写法 · 主操作：**`#ctaNewOrder` 在顶栏；`#ctaPendingBills` 即餐馆「收银账单」卡（「处理收银账单」只出现一次）。
+
 ## 0.4.80
 
 **开票台 C 风格壳层（登录仍要 PIN）**
