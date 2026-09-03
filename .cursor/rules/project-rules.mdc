@@ -1,0 +1,18 @@
+---
+description: Short always-on nav — design docs, branching, fiscal release gates
+alwaysApply: true
+---
+
+# Project rules (nav only)
+
+**Always-on sources**
+
+1. [`design-doc-standards.mdc`](./design-doc-standards.mdc) — schema/design doc hard gates（一列一行、文档↔DDL）
+2. [`feature-branch-before-code.mdc`](./feature-branch-before-code.mdc) — 功能编码前必须开本任务专用分支 / worktree
+3. [`git-local-merge-push.mdc`](./git-local-merge-push.mdc) — 本地分支 → 合进 main → 用户说 push 再推；默认不开 PR
+
+**On-demand**
+
+- [`release-and-ci.mdc`](./release-and-ci.mdc) — fiscal-agent push/tag 前必须 `./scripts/check-fiscal-agent.sh`（含 Windows 交叉编译）
+
+Product / release truth under `docs/`（尤其 `docs/ci-and-release.zh.md`、`docs/fiscal-sqlite-schema.zh.md`）。

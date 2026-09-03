@@ -1,0 +1,41 @@
+---
+description: Local branch → merge → push only; never auto-open PR or agent-merge main
+alwaysApply: true
+---
+
+# Git shipping (local merge → push)
+
+**Owner workflow:** open a local feature branch → finish work → merge into local `main` → push `origin/main` when the user asks (prefer `./scripts/push-to-main.sh` when fiscal-agent VERSION/NOTES/tag apply). Do **not** use GitHub PR as the default path.
+
+> 与 restaurant-ordering 同口径；本仓合进 main 后若动了 `apps/fiscal-agent/`，push/tag 另遵 [`release-and-ci.mdc`](./release-and-ci.mdc)（先 `./scripts/check-fiscal-agent.sh`）。
+
+## Forbidden unless the user explicitly asks in this thread
+
+- `gh pr create` / opening a GitHub Pull Request
+- Enabling GitHub auto-merge / squash-merge into `main`
+- Pushing or merging **to `origin/main`** from a Cloud/Background Agent
+- Pushing remote feature branches solely so Actions/Cursor can open a PR
+
+## Cloud / Background Agents
+
+If running in Cursor Cloud: leave changes on a feature branch and stop. Do **not** merge to `main`, do **not** open a PR, do **not** push `main`. Report the branch name and wait for the human to merge locally and push.
+
+## Still allowed without extra ask
+
+- Local commits on a feature branch
+- Local `git merge` into local `main` when the user asked to land the change that way
+- Pushing `main` only when the user explicitly says push / ship / `./scripts/push-to-main.sh`
+
+## After land on local `main` (mandatory last step — no extra ask)
+
+When the user asked to merge/land this task’s feature branch (or the task’s approved end is “合进 main”): **do not stop on the feature branch/worktree.** Immediately:
+
+1. Ensure local `main` has the merge commit.
+2. `git worktree remove` this task’s feature worktree (if any); `--force` for throwaway untracked junk. **Unregister ≠ gone:** if the directory still exists after remove, `rm -rf` that **same** throwaway path (land permission covers it).
+3. `git branch -d <feature>` (local only; do not delete unrelated worktrees/branches).
+4. Primary checkout on **`main`**: if a helper worktree is holding `main`, `git worktree remove` it first, then shell `git checkout main` in the canonical repo. **Never** call `move_agent_to_root` / `move_agent_to_cloned_root` during land (or any branch/worktree switch) — even to “go back to main”; those MCP tools still `git fetch origin <prior-branch>` and blow up / leave the chat on a deleted tree. Stay on shell + absolute paths under the canonical repo. Done only when canonical `git branch --show-current` is `main` (not detached).
+5. **Done-gate (all must pass before the user-facing report):** `git worktree list` has no feature path; `test ! -e <feature-worktree-path>`; feature branch absent; canonical `git branch --show-current` is `main` (not detached). `git worktree list` alone is a **false pass** if the folder husk remains. Stash/conflicts on main WIP must not interrupt this gate — finish delete/assert first, then resolve WIP.
+
+6. Report only after step 5: on `main` @ `<sha>`, feature branch/worktree gone.
+
+Skip only if the user explicitly says keep the branch/worktree.

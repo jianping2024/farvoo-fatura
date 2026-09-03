@@ -1,0 +1,36 @@
+---
+description: Hard gate — never start feature coding without a dedicated new branch from main (or named baseline)
+alwaysApply: true
+---
+
+# Feature branch before coding (hard gate)
+
+**禁止**在未开本任务专用分支前开始功能编码（含多文件行为改动、确认方案后的 implement）。
+
+> 与 restaurant-ordering 同口径；本仓（farvoo-fatura）强制执行。
+
+## Before the first product edit
+
+1. `git branch --show-current` + `git status -sb`
+2. Create/switch to a **new** branch from **`main`** (or user-named baseline) for **this** task only
+3. If the checkout has **unrelated dirty WIP**, use a **separate git worktree** — do not edit on another task’s branch; do not stash their WIP to “borrow” the tree
+4. Shell only: `git checkout -b` / `git worktree add` — **never** `move_agent_to_root` / `move_agent_to_cloned_root` for branch switches
+
+Only then may you edit product code for the feature.
+
+## Forbidden
+
+- Coding a feature on `main`
+- Coding a feature on an **unrelated** feature branch (e.g. home workbench on `fix/admin-x-scroll`)
+- “先改几行再开分支” / 确认方案后直接 Write/StrReplace 而不先开分支
+
+## Exceptions (no new branch required)
+
+- Pure analyze / read-only / plan turns (no product edits)
+- User explicitly says work on the **current** branch / continue this branch
+- Typo / one-line fix / docs-only / lint-only that the user asked to apply in place
+- Rule/skill/docs updates the user asked for in-thread (this file)
+
+## After land
+
+Follow [`git-local-merge-push.mdc`](./git-local-merge-push.mdc): merge to local `main` only when asked; then delete this task’s feature branch/worktree and return to `main`.
