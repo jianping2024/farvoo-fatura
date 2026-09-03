@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.70
+
+**开票窗最小化后再点入口：强制还原可见**
+
+- **唯一写法：** `takeExistingShellHWND`（已开壳门闩，含最小化，**不用** `hwndResponsive`）→ **唯一** `focusHWND`（`GetAncestor` 顶层 + `IsIconic` → `SW_RESTORE` + `PostMessage(SC_RESTORE)` + 前置；失败闪任务栏）。
+- 桌面「Farvoo 开票」/ 托盘「开票」仍走 `RequestOpen`；删 `hwnd_windows.go`（避免最小化被误判「无响应」而静默无界面）。
+- 跨进程 Client：`FocusExistingByTitle` 同样只调 `focusHWND`。
+
 ## 0.4.69
 
 **单例 UX：重复启动静默、开票/控制台开或聚焦、Client 单进程**

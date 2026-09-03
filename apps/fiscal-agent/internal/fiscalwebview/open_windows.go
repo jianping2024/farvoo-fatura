@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/jchv/go-webview2"
-	"golang.org/x/sys/windows"
 )
 
 var (
@@ -25,16 +24,12 @@ func RequestOpen(opts Options) error {
 	}
 	startUIThread()
 
-	windowMu.Lock()
-	if activeHWND != 0 {
-		if hwndResponsive(activeHWND) {
-			hwnd := activeHWND
-			windowMu.Unlock()
-			focusHWND(hwnd)
-			return nil
-		}
-		activeHWND = 0
+	if hwnd, ok := takeExistingShellHWND(); ok {
+		focusHWND(hwnd)
+		return nil
 	}
+
+	windowMu.Lock()
 	if opening {
 		windowMu.Unlock()
 		return nil
@@ -54,17 +49,10 @@ func RunWindow(opts Options) error {
 	}
 	startUIThread()
 
-	windowMu.Lock()
-	if activeHWND != 0 {
-		if hwndResponsive(activeHWND) {
-			hwnd := activeHWND
-			windowMu.Unlock()
-			focusHWND(hwnd)
-			return nil
-		}
-		activeHWND = 0
+	if hwnd, ok := takeExistingShellHWND(); ok {
+		focusHWND(hwnd)
+		return nil
 	}
-	windowMu.Unlock()
 
 	done := make(chan error, 1)
 	uiCmdCh <- uiCmd{opts: opts, done: done}
@@ -81,6 +69,22 @@ func RunHTMLWindow(opts HTMLWindowOptions) error {
 	html := opts
 	uiCmdCh <- uiCmd{html: &html, done: done}
 	return <-done
+}
+
+// takeExistingShellHWND is the sole gate for "shell already open" (incl. minimized).
+// Uses IsWindow only so iconic windows still restore (do not require a ping response).
+func takeExistingShellHWND() (uintptr, bool) {
+	windowMu.Lock()
+	defer windowMu.Unlock()
+	if activeHWND == 0 {
+		return 0, false
+	}
+	hwnd := activeHWND
+	if !isWindow(hwnd) {
+		activeHWND = 0
+		return 0, false
+	}
+	return hwnd, true
 }
 
 func runWindowOnThread(opts Options) error {
@@ -160,45 +164,6 @@ func trackHWND(wv webview2.WebView) {
 			activeHWND = 0
 			windowMu.Unlock()
 		}()
-	}
-}
-
-// focusHWND is the sole best-effort window activation helper (never errors; may fail silently).
-func focusHWND(hwnd uintptr) {
-	if hwnd == 0 {
-		return
-	}
-	user32 := windows.NewLazyDLL("user32.dll")
-	showWindow := user32.NewProc("ShowWindow")
-	bringToTop := user32.NewProc("BringWindowToTop")
-	setForeground := user32.NewProc("SetForegroundWindow")
-	getForeground := user32.NewProc("GetForegroundWindow")
-	getWindowThread := user32.NewProc("GetWindowThreadProcessId")
-	attachThreadInput := user32.NewProc("AttachThreadInput")
-	kernel32 := windows.NewLazyDLL("kernel32.dll")
-	getCurrentThreadId := kernel32.NewProc("GetCurrentThreadId")
-
-	const swRestore = 9
-	_, _, _ = showWindow.Call(hwnd, swRestore)
-
-	fg, _, _ := getForeground.Call()
-	curThread, _, _ := getCurrentThreadId.Call()
-	tgtThread, _, _ := getWindowThread.Call(hwnd, 0)
-	fgThread, _, _ := getWindowThread.Call(fg, 0)
-
-	if fg != 0 && fgThread != 0 && fgThread != curThread {
-		_, _, _ = attachThreadInput.Call(curThread, fgThread, 1)
-	}
-	if tgtThread != 0 && tgtThread != curThread {
-		_, _, _ = attachThreadInput.Call(curThread, tgtThread, 1)
-	}
-	_, _, _ = bringToTop.Call(hwnd)
-	_, _, _ = setForeground.Call(hwnd)
-	if tgtThread != 0 && tgtThread != curThread {
-		_, _, _ = attachThreadInput.Call(curThread, tgtThread, 0)
-	}
-	if fg != 0 && fgThread != 0 && fgThread != curThread {
-		_, _, _ = attachThreadInput.Call(curThread, fgThread, 0)
 	}
 }
 
