@@ -23,6 +23,7 @@ type Options struct {
 	DBPath                    string
 	DataDir                   string
 	BindAddr                  string
+	AllowLAN                  bool // H2: required for 0.0.0.0 / non-loopback BindAddr (no env)
 	SoftwareCertificateNumber string
 	StoreID                   string
 	SigningKeyPEMPath         string
@@ -36,7 +37,7 @@ type Options struct {
 	UILocaleSet               func(string) error
 	LanAccessGet              func() (api.LanAccessSnapshot, error)
 	LanAccessSet              func(allow bool) (api.LanAccessSnapshot, error)
-	AutoSessionSecretFile     bool                     // ONLY fiscal_embed sets true (Retail session_hmac.key)
+	AutoSessionSecretFile     bool // ONLY fiscal_embed sets true (Retail session_hmac.key)
 }
 
 // Runtime is a started fiscal stack (HTTP optional).
@@ -221,7 +222,7 @@ func Start(opts Options) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := validateBindAddr(opts.BindAddr); err != nil {
+	if err := validateBindAddr(opts.BindAddr, opts.AllowLAN); err != nil {
 		_ = rt.Close()
 		return nil, err
 	}

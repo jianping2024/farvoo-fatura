@@ -28,6 +28,8 @@ func main() {
 	key := env("FISCAL_KEY_PEM", filepath.Join(cwd, "internal", "fiscal", "testdata", "dev_signing_key.pem"))
 	cert := env("FISCAL_CERT_NO", "0")
 	seed := os.Getenv("FISCAL_SEED") == "1"
+	// CLI/UAT only: FISCAL_ALLOW_LAN=1 for non-loopback bind (Agent product path uses config.json).
+	allowLAN := os.Getenv("FISCAL_ALLOW_LAN") == "1"
 
 	stationPrinters := parseStationPrintersJSON(os.Getenv("FISCAL_STATION_PRINTERS_JSON"))
 	stationMeta := parseStationMetaJSON(os.Getenv("FISCAL_STATION_META_JSON"))
@@ -42,7 +44,7 @@ func main() {
 	}
 
 	rt, err := bootstrap.Start(bootstrap.Options{
-		DBPath: dbPath, DataDir: dataDir, BindAddr: bind, StoreID: storeID,
+		DBPath: dbPath, DataDir: dataDir, BindAddr: bind, AllowLAN: allowLAN, StoreID: storeID,
 		SigningKeyPEMPath: key, SoftwareCertificateNumber: cert, Seed: seed,
 		StationPrintersFn: stationPrintersFn,
 		StationMetaFn:     stationMetaFn,

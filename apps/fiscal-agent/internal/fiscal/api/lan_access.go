@@ -2,12 +2,8 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 )
-
-// ErrLanEnvLocked means FISCAL_ALLOW_LAN / FISCAL_BIND were set before Agent apply.
-var ErrLanEnvLocked = errors.New("lan access locked by environment variables")
 
 // LanAccessSnapshot is the ONLY JSON shape for GET/PUT /local/v1/setup/lan-access.
 type LanAccessSnapshot struct {
@@ -15,8 +11,7 @@ type LanAccessSnapshot struct {
 	ListeningLAN    bool     `json:"listening_lan"`
 	BindAddr        string   `json:"bind_addr"`
 	Port            string   `json:"port"`
-	Source          string   `json:"source"` // config | env | default
-	EnvLocked       bool     `json:"env_locked"`
+	Source          string   `json:"source"` // config | default
 	RestartRequired bool     `json:"restart_required"`
 	AgentLANIPs     []string `json:"agent_lan_ips"`
 }
@@ -54,10 +49,6 @@ func handlePutLanAccess(w http.ResponseWriter, r *http.Request, deps HandlerDeps
 	}
 	snap, err := deps.LanAccessSet(body.AllowLAN)
 	if err != nil {
-		if errors.Is(err, ErrLanEnvLocked) {
-			writeErr(w, http.StatusConflict, "env_locked", "FISCAL_ALLOW_LAN or FISCAL_BIND is set; unset to use Admin")
-			return
-		}
 		writeErr(w, http.StatusInternalServerError, "lan_access_save_failed", err.Error())
 		return
 	}
