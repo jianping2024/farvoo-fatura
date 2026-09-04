@@ -192,7 +192,7 @@ func TestAdminHTMLSchemeACopyUnique(t *testing.T) {
 	requiredOnce := []string{
 		`data-i18n="nav.invoices">发票</span>`,
 		`data-i18n="nav.bills">收银账单</span>`,
-		`data-i18n="nav.invoices">发票</h1>`,
+		`id="homeGreeting"`,
 		`id="operatorName"`,
 		`data-i18n="home.cta.new_order"`,
 		`data-i18n="home.stat.bills_cta"`,
@@ -244,6 +244,7 @@ func TestAdminHTMLNoPageXScrollUnique(t *testing.T) {
 func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	for _, fn := range []string{
 		"function renderHomeDateChip",
+		"function renderHomeGreeting",
 		"function invoiceRowActionsHtml",
 		"function listRowMenuTriggerHtml",
 		"function renderHomeStats",
@@ -263,6 +264,7 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	}
 	for _, id := range []string{
 		`id="homeDateChip"`,
+		`id="homeGreeting"`,
 		`id="ctaNewOrder"`,
 		`id="ctaPendingBills"`,
 		`id="statTodayInvoices"`,
@@ -275,8 +277,14 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 			t.Fatalf("%s must appear exactly once, got %d", id, n)
 		}
 	}
-	if n := strings.Count(adminHTML, `data-i18n="nav.invoices">发票</h1>`); n != 1 {
-		t.Fatalf("nav.invoices hub title must appear exactly once, got %d", n)
+	if n := strings.Count(adminHTML, `id="homeGreeting"`); n != 1 {
+		t.Fatalf("homeGreeting must appear exactly once, got %d", n)
+	}
+	if strings.Contains(adminHTML, `data-i18n="nav.invoices">发票</h1>`) {
+		t.Fatal("invoice topbar must use welcome greeting, not nav.invoices title")
+	}
+	if strings.Contains(adminHTML, "#view-invoices { margin: -1.5rem -1.75rem 0; }") {
+		t.Fatal("invoice view must not use negative-margin bleed (topbar wider than list)")
 	}
 	if strings.Contains(adminHTML, `class="cta-big" id="ctaNewOrder"`) || strings.Contains(adminHTML, `class="cta-big rest-only" id="ctaPendingBills"`) {
 		t.Fatal("home CTAs must not use leftover cta-big")
@@ -290,8 +298,8 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	if strings.Contains(adminHTML, "$('#homeDateChip').textContent") {
 		t.Fatal("do not write home date outside renderHomeDateChip")
 	}
-	if strings.Contains(adminHTML, "homeGreeting") || strings.Contains(adminHTML, "renderHomeGreeting") || strings.Contains(adminHTML, "home-greeting") {
-		t.Fatal("invoice hub must not keep greeting row / renderHomeGreeting")
+	if strings.Contains(adminHTML, "$('#homeGreeting').textContent") {
+		t.Fatal("do not write home greeting outside renderHomeGreeting")
 	}
 	if strings.Contains(adminHTML, "stat-row") || strings.Contains(adminHTML, "stat-icon") || strings.Contains(adminHTML, "stat-cta-label") {
 		t.Fatal("invoice hub must not keep tall KPI card styles/markup")
@@ -344,8 +352,11 @@ func TestAdminHTMLInvoiceHubLayout(t *testing.T) {
 	if !strings.Contains(section, `id="homeDateChip"`) {
 		t.Fatal("invoice hub must include date chip")
 	}
-	if strings.Contains(section, `homeGreeting`) || strings.Contains(section, `home-greeting`) {
-		t.Fatal("invoice hub must not include greeting row")
+	if !strings.Contains(section, `id="homeGreeting"`) || !strings.Contains(section, `class="home-greeting"`) {
+		t.Fatal("invoice topbar must include welcome greeting")
+	}
+	if strings.Contains(section, `data-i18n="nav.invoices">发票</h1>`) {
+		t.Fatal("invoice topbar must not use nav.invoices as title")
 	}
 	if !strings.Contains(section, `class="hub-entry-strip"`) {
 		t.Fatal("invoice hub must use compact hub-entry-strip")

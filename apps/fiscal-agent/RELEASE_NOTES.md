@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.103
+
+**发票顶栏：欢迎语 + 与列表同宽**
+
+- **唯一写法 · 欢迎：**仅 `renderHomeGreeting` → `#homeGreeting`（顶栏左侧，替换「发票」标题）。
+- **唯一写法 · 宽度：**去掉 `#view-invoices` 负边距出血；顶栏与下方 panel 同属 main 内边距，左右对齐。
+
 ## 0.4.102
 
 **日期筛选：收掉「自定义」pill**
