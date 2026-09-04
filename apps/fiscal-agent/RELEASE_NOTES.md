@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.95
+
+**开票电脑：档口下拉撑满列 + 停用两字 + 最近使用时分秒**
+
+- **唯一写法 · 表宽：**仅 `#terminalsTable.list-table { table-layout: fixed }` + `.col-station select` / `.col-note input` 的 `width:100%`（收掉备注 input 内联 `maxWidth`）。
+- **唯一写法 · 最近使用：**仅 `formatMdHms` → `MM-dd HH:mm:ss`（`Europe/Lisbon`）；禁止表格直接吐 ISO。
+- 按钮文案 `停止这台开票` → `停用`（确认框/toast 同步「停用」口径）。
+
 ## 0.4.94
 
 **开票电脑：备注必填 + 列表可改（收掉「电脑名称」空列）**

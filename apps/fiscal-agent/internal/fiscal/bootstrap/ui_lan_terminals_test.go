@@ -63,4 +63,28 @@ func TestAdminMultiPC_NoAllowNextCopyAndSingleWizard(t *testing.T) {
 	if !strings.Contains(adminHTML, "settings.printers.configure_link") {
 		t.Fatal("configure_link i18n key required in printers section")
 	}
+	if n := strings.Count(adminHTML, "#terminalsTable.list-table { table-layout: fixed"); n != 1 {
+		t.Fatalf("terminalsTable fixed layout must be the ONLY width rule, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "#terminalsTable .col-station select"); n != 1 {
+		t.Fatalf("station select fill CSS must exist once, got %d", n)
+	}
+	if strings.Contains(adminHTML, "input.style.maxWidth") || strings.Contains(adminHTML, "maxWidth = '10rem'") {
+		t.Fatal("note input maxWidth must be CSS-only via .col-note input")
+	}
+	if strings.Contains(string(fiscalUIAdminI18nJS), "停止这台开票") {
+		t.Fatal("revoke button copy must be 停用, not 停止这台开票")
+	}
+	if !strings.Contains(string(fiscalUIAdminI18nJS), "'settings.terminals.revoke_btn': '停用'") {
+		t.Fatal("zh revoke_btn must be 停用")
+	}
+	if n := strings.Count(adminHTML, "function formatMdHms"); n != 1 {
+		t.Fatalf("formatMdHms must be the ONLY MM-dd HH:mm:ss formatter, got %d", n)
+	}
+	if strings.Count(adminHTML, "formatMdHms(row.last_seen_at") != 1 {
+		t.Fatal("terminals last-seen must use formatMdHms once")
+	}
+	if strings.Contains(adminHTML, "escHtml(row.last_seen_at || row.registered_at") {
+		t.Fatal("do not dump raw ISO into terminals last-seen cell")
+	}
 }

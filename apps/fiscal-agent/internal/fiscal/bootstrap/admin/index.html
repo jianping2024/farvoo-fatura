@@ -545,6 +545,23 @@
       width: calc(100% / 6);
     }
     #operatorsTable .check-row { margin-top: 0; justify-content: center; }
+    /* 开票电脑表：fixed 布局，档口 select 撑满列（唯一宽度写法） */
+    #terminalsTable.list-table { table-layout: fixed; width: 100%; }
+    #terminalsTable.list-table th,
+    #terminalsTable.list-table td { vertical-align: middle; }
+    #terminalsTable .col-note { width: 16%; }
+    #terminalsTable .col-status { width: 10%; }
+    #terminalsTable .col-ip { width: 14%; }
+    #terminalsTable .col-seen { width: 18%; }
+    #terminalsTable .col-station { width: 28%; }
+    #terminalsTable .col-actions { width: 14%; white-space: nowrap; }
+    #terminalsTable .col-station select,
+    #terminalsTable .col-note input {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
     tr.muted td { opacity: 0.65; }
     .btn-op-menu-trigger {
       padding: 0.35rem 0.55rem; border-radius: 8px; font-weight: 700; color: var(--muted);
@@ -1225,7 +1242,14 @@
                 </div>
                 <div class="table-scroll">
                   <table class="list-table" id="terminalsTable">
-                    <thead><tr><th data-i18n="settings.terminals.note">备注</th><th data-i18n="common.status">状态</th><th data-i18n="settings.terminals.ip">最近 IP</th><th data-i18n="settings.terminals.seen">最近使用</th><th data-i18n="settings.terminals.print_station">打印档口</th><th></th></tr></thead>
+                    <thead><tr>
+                      <th class="col-note" data-i18n="settings.terminals.note">备注</th>
+                      <th class="col-status" data-i18n="common.status">状态</th>
+                      <th class="col-ip" data-i18n="settings.terminals.ip">最近 IP</th>
+                      <th class="col-seen" data-i18n="settings.terminals.seen">最近使用</th>
+                      <th class="col-station" data-i18n="settings.terminals.print_station">打印档口</th>
+                      <th class="col-actions"></th>
+                    </tr></thead>
                     <tbody id="terminalsTbody"></tbody>
                   </table>
                 </div>
@@ -1842,6 +1866,28 @@
     if (isNaN(d)) return iso;
     return d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }) + ' ' +
       d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  /** ONLY Admin MM-dd HH:mm:ss display (Europe/Lisbon). */
+  function formatMdHms(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso);
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: INVOICE_TZ,
+        month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      }).formatToParts(d);
+      const get = function (t) {
+        const p = parts.find(function (x) { return x.type === t; });
+        return (p && p.value) || '';
+      };
+      return get('month') + '-' + get('day') + ' ' + get('hour') + ':' + get('minute') + ':' + get('second');
+    } catch (_) {
+      return String(iso);
+    }
   }
 
   /** last GET /local/v1/fiscal-documents page — ONLY invoice row source for detail drawer. */
@@ -4667,7 +4713,6 @@
     input.value = row.label || '';
     input.placeholder = FiscalAdminI18n.t('settings.terminals.no_label');
     input.setAttribute('aria-label', FiscalAdminI18n.t('settings.terminals.note'));
-    input.style.maxWidth = '10rem';
     input.dataset.savedLabel = row.label || '';
     input.onblur = function () {
       const next = (input.value || '').trim();
@@ -4730,33 +4775,33 @@
     tb.innerHTML = '';
 
     const localTr = document.createElement('tr');
-    localTr.innerHTML = '<td>' + escHtml(FiscalAdminI18n.t('settings.terminals.local_row')) + '</td>'
-      + '<td>' + FiscalAdminI18n.t('settings.terminals.active') + '</td>'
-      + '<td>127.0.0.1</td>'
-      + '<td>—</td>'
-      + '<td></td><td></td>';
+    localTr.innerHTML = '<td class="col-note">' + escHtml(FiscalAdminI18n.t('settings.terminals.local_row')) + '</td>'
+      + '<td class="col-status">' + FiscalAdminI18n.t('settings.terminals.active') + '</td>'
+      + '<td class="col-ip">127.0.0.1</td>'
+      + '<td class="col-seen">—</td>'
+      + '<td class="col-station"></td><td class="col-actions"></td>';
     const localSel = document.createElement('select');
     fillStationSelectEl(localSel, localStation, function (sid) {
       void saveLocalStation(sid).catch(reportError);
     });
-    localTr.children[4].appendChild(localSel);
+    localTr.querySelector('.col-station').appendChild(localSel);
     tb.appendChild(localTr);
 
     rows.forEach(function (row) {
       const tr = document.createElement('tr');
       const status = row.active ? FiscalAdminI18n.t('settings.terminals.active') : FiscalAdminI18n.t('common.disabled');
-      tr.innerHTML = '<td></td>'
-        + '<td>' + status + '</td>'
-        + '<td>' + escHtml(row.last_seen_ip || '—') + '</td>'
-        + '<td>' + escHtml(row.last_seen_at || row.registered_at || '—') + '</td>'
-        + '<td></td><td></td>';
-      mountTerminalLabelInput(tr.children[0], row);
+      tr.innerHTML = '<td class="col-note"></td>'
+        + '<td class="col-status">' + status + '</td>'
+        + '<td class="col-ip">' + escHtml(row.last_seen_ip || '—') + '</td>'
+        + '<td class="col-seen">' + escHtml(formatMdHms(row.last_seen_at || row.registered_at)) + '</td>'
+        + '<td class="col-station"></td><td class="col-actions"></td>';
+      mountTerminalLabelInput(tr.querySelector('.col-note'), row);
       const sel = document.createElement('select');
       fillStationSelectEl(sel, row.default_station_id || '', function (sid) {
         void saveTerminalStation(row.id, sid).catch(reportError);
       });
-      tr.children[4].appendChild(sel);
-      const actions = tr.lastChild;
+      tr.querySelector('.col-station').appendChild(sel);
+      const actions = tr.querySelector('.col-actions');
       if (row.active) {
         const btn = document.createElement('button');
         btn.type = 'button';
