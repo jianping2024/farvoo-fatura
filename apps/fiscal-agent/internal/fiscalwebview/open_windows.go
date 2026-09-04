@@ -137,9 +137,20 @@ func runHTMLWindowOnThread(opts HTMLWindowOptions) error {
 	if wv == nil {
 		return webView2MissingError()
 	}
-	for name, fn := range opts.Bind {
-		if err := wv.Bind(name, fn); err != nil {
-			return err
+	// closeHTMLDialog is the ONLY Bind-side exit for HTML windows (not return-true from Go).
+	var closeOnce sync.Once
+	closeHTMLDialog := func() {
+		closeOnce.Do(func() {
+			wv.Dispatch(func() {
+				wv.Terminate()
+			})
+		})
+	}
+	if opts.Bind != nil {
+		for name, fn := range opts.Bind(closeHTMLDialog) {
+			if err := wv.Bind(name, fn); err != nil {
+				return err
+			}
 		}
 	}
 	wv.SetHtml(opts.HTML)

@@ -117,6 +117,44 @@ func TestWebViewSoleConstructionPath(t *testing.T) {
 	if strings.Contains(ss, "go-webview2") || strings.Contains(ss, "webview2.New") {
 		t.Fatal("settings_windows.go must use fiscalwebview.RunHTMLWindow only")
 	}
+	if !strings.Contains(ss, "finishSettings :=") {
+		t.Fatal("settings must define finishSettings as ONLY result+close path")
+	}
+	if strings.Count(ss, "closeDialog()") < 1 {
+		t.Fatal("settings finishSettings must call closeDialog()")
+	}
+	if strings.Contains(ss, "(bool, error)") {
+		t.Fatal("settings must not use (bool, error) as fake close signal")
+	}
+	if !strings.Contains(ss, "Bind: func(closeDialog func())") {
+		t.Fatal("settings must use HTMLWindowOptions.Bind(closeDialog) factory")
+	}
+
+	html := filepath.Join(agent, "internal", "fiscalclient", "settings.html")
+	hb, err := os.ReadFile(html)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hs := string(hb)
+	if strings.Contains(hs, "closeSettings(base)") || strings.Contains(hs, "await closeSettings") {
+		t.Fatal("settings.html save must not double-call closeSettings after saveSettings")
+	}
+	if !strings.Contains(hs, "await saveSettings(") {
+		t.Fatal("settings.html save must call saveSettings")
+	}
+	if !strings.Contains(hs, "closeSettings('')") {
+		t.Fatal("settings.html cancel must call closeSettings('')")
+	}
+
+	if !strings.Contains(s, "closeHTMLDialog") {
+		t.Fatal("open_windows.go must define closeHTMLDialog as ONLY Bind-side HTML exit")
+	}
+	if strings.Count(s, "wv.Terminate()") != 1 {
+		t.Fatalf("HTML dialog Terminate must appear exactly once in open_windows.go, got %d", strings.Count(s, "wv.Terminate()"))
+	}
+	if !strings.Contains(s, "opts.Bind(closeHTMLDialog)") {
+		t.Fatal("runHTMLWindowOnThread must pass closeHTMLDialog into Bind factory")
+	}
 }
 
 func moduleRoot(t *testing.T) string {

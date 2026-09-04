@@ -27,5 +27,7 @@ type HTMLWindowOptions struct {
 	DataPath string
 	Width    uint
 	Height   uint
-	Bind     map[string]interface{}
+	// Bind is the ONLY registration path for JS↔Go on HTML dialogs.
+	// closeDialog terminates the window (Dispatch+Terminate); call from save/cancel.
+	Bind func(closeDialog func()) map[string]interface{}
 }
