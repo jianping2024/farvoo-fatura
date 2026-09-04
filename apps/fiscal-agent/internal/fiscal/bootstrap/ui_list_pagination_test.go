@@ -62,14 +62,13 @@ func TestAdminHTMLInvoiceListPaginationUnique(t *testing.T) {
 		`id="invoiceListPagination"`,
 		`id="productsListPagination"`,
 		`id="customersListPagination"`,
-		`id="ordersListPagination"`,
 		`id="billsListPagination"`,
 	} {
 		if strings.Count(adminHTML, id) != 1 {
 			t.Fatalf("%s must exist exactly once", id)
 		}
 	}
-	if strings.Count(adminHTML, "admin-list-panel") < 5 {
+	if strings.Count(adminHTML, "admin-list-panel") < 4 {
 		t.Fatal("browse lists must use admin-list-panel shell")
 	}
 	for _, fn := range []string{

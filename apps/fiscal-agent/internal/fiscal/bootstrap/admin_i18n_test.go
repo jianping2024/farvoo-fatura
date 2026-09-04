@@ -128,8 +128,8 @@ func TestAdminSettingsI18nUniqueWriters(t *testing.T) {
 	if strings.Contains(html, "LIST_PAGE_INFO_ROWS") {
 		t.Fatal("LIST_PAGE_INFO_ROWS must not remain")
 	}
-	if n := strings.Count(html, "getLabels: listPagerLabels"); n != 6 {
-		t.Fatalf("all 6 pagination bars must use listPagerLabels, got %d", n)
+	if n := strings.Count(html, "getLabels: listPagerLabels"); n != 5 {
+		t.Fatalf("all 5 pagination bars must use listPagerLabels, got %d", n)
 	}
 	if n := strings.Count(html, "getLabels: listDateRangeLabels"); n != 1 {
 		t.Fatalf("invoice date filter must use listDateRangeLabels once, got %d", n)
@@ -157,7 +157,7 @@ func TestAdminSettingsI18nUniqueWriters(t *testing.T) {
 		"brand.name", "login.enter", "home.cta.new_order", "col.doc_no", "doc.FT",
 		"buyer.nif", "action.reprint", "orders.new", "bills.action.select",
 		"split.issue_person", "invoice.detail.title", "adjust.title",
-		"products.new", "customers.new", "nav.orders",
+		"products.new", "customers.new", "nav.invoices",
 	} {
 		if !strings.Contains(html, `data-i18n="`+key+`"`) && !strings.Contains(html, "FiscalAdminI18n.t('"+key+"')") && !strings.Contains(html, "FiscalAdminI18n.fmt('"+key+"'") {
 			// doc.FT is via t('doc.' + t) — allow doc. prefix usage

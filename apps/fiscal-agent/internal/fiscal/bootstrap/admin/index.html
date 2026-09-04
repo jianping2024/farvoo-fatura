@@ -281,7 +281,7 @@
       padding-bottom: 1rem; border-bottom: 1px solid var(--line);
     }
     .topbar h1 { font-size: 1.4rem; font-weight: 800; margin: 0; letter-spacing: -0.025em; }
-    #view-home { margin: -1.5rem -1.75rem 0; }
+    #view-invoices { margin: -1.5rem -1.75rem 0; }
     .home-topbar {
       height: 52px; background: rgba(255,255,255,.75); backdrop-filter: blur(8px);
       border-bottom: 1px solid var(--line);
@@ -296,54 +296,28 @@
     }
     .home-body { padding: 1.25rem 1.75rem 2.5rem; }
     .home-greeting { font-size: 0.82rem; color: var(--muted); margin: 0 0 1.25rem; font-weight: 500; }
-    .panel.home-recent { padding: 0; overflow: hidden; }
-    .home-recent .panel-head {
-      position: relative; display: flex; justify-content: space-between; align-items: center;
-      padding: 1rem 1.25rem; border-bottom: 1px solid var(--line);
-    }
-    .home-recent .panel-head::after {
-      content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px;
-      background: linear-gradient(90deg, var(--brand-mid), var(--gold));
-    }
-    .home-recent .panel-title { font-size: 0.875rem; font-weight: 700; }
-    /* ONLY clerk invoice tables (home today + invoice list):
+    /* ONLY clerk invoice list table:
      * 签发时刻 / 票号 / 购方 / 来源 / 付款方式 / 金额 / 操作；购方+来源吃中间宽度；票号量最长。 */
-    .home-recent .list-table,
     .invoices-table.list-table { table-layout: fixed; width: 100%; }
-    .home-recent .list-table th,
-    .home-recent .list-table td,
     .invoices-table.list-table th,
     .invoices-table.list-table td { padding-left: 0.75rem; padding-right: 0.75rem; }
-    .home-recent .list-table th:first-child,
-    .home-recent .list-table td:first-child,
     .invoices-table.list-table th:first-child,
     .invoices-table.list-table td:first-child { padding-left: 1.25rem; }
-    .home-recent .list-table th:last-child,
-    .home-recent .list-table td:last-child,
     .invoices-table.list-table th:last-child,
     .invoices-table.list-table td:last-child { padding-right: 1.25rem; }
-    .home-recent .list-table .col-when,
     .invoices-table.list-table .col-when { width: 7.5rem; white-space: nowrap; }
-    .home-recent .list-table .col-no,
-    .invoices-table.list-table .col-no { width: var(--home-col-no-w, 10rem); white-space: nowrap; }
-    .home-recent .list-table .col-buyer,
-    .home-recent .list-table .col-source,
+    .invoices-table.list-table .col-no { width: 10rem; white-space: nowrap; }
     .invoices-table.list-table .col-buyer,
     .invoices-table.list-table .col-source { min-width: 0; overflow: hidden; }
-    .home-recent .list-table td.col-source,
     .invoices-table.list-table td.col-source {
       white-space: nowrap; text-overflow: ellipsis;
     }
-    .home-recent .list-table .col-pay,
     .invoices-table.list-table .col-pay {
       width: 5.75rem; white-space: nowrap;
     }
-    .home-recent .list-table .col-money,
     .invoices-table.list-table .col-money {
       width: 5.5rem; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
     }
-    .home-recent .list-table th.col-actions,
-    .home-recent .list-table td.col-actions,
     .invoices-table.list-table th.col-actions,
     .invoices-table.list-table td.col-actions { width: 4.5rem; white-space: nowrap; }
     .panel {
@@ -668,10 +642,8 @@
         </div>
         <div class="mode-tag" id="sidebarMode" data-i18n="mode.restaurant">餐馆模式</div>
       </div>
-      <button type="button" class="nav-btn active" data-nav="home"><span class="nav-icon" aria-hidden="true">⌂</span><span data-i18n="nav.home">工作台</span></button>
-      <button type="button" class="nav-btn" data-nav="orders"><span class="nav-icon" aria-hidden="true">＋</span><span data-i18n="nav.orders">手工开票</span></button>
+      <button type="button" class="nav-btn active" data-nav="invoices"><span class="nav-icon" aria-hidden="true">◫</span><span data-i18n="nav.invoices">发票</span></button>
       <button type="button" class="nav-btn rest-only" data-nav="bills" id="navBills"><span class="nav-icon" aria-hidden="true">☰</span><span data-i18n="nav.bills">收银账单</span><span class="nav-badge" id="navBillsBadge" aria-hidden="true">0</span></button>
-      <button type="button" class="nav-btn" data-nav="invoices"><span class="nav-icon" aria-hidden="true">◫</span><span data-i18n="nav.invoices">发票</span></button>
       <button type="button" class="nav-btn" data-nav="products"><span class="nav-icon" aria-hidden="true">▦</span><span data-i18n="nav.products">商品</span></button>
       <button type="button" class="nav-btn" data-nav="customers"><span class="nav-icon" aria-hidden="true">◉</span><span data-i18n="nav.customers">客户</span></button>
       <button type="button" class="nav-btn settings-access-only" data-nav="settings" id="navSettings"><span class="nav-icon" aria-hidden="true">⚙</span><span data-i18n="nav.settings">设置</span></button>
@@ -686,83 +658,7 @@
     </aside>
 
     <main class="main">
-      <section class="view" id="view-home">
-        <header class="home-topbar">
-          <h1 data-i18n="home.title">工作台</h1>
-          <div class="home-topbar-right">
-            <span class="date-chip" id="homeDateChip"></span>
-            <button type="button" id="ctaNewOrder" data-goto="order-new" data-i18n="home.cta.new_order">＋ 新建开票</button>
-          </div>
-        </header>
-        <div class="home-body">
-          <p class="home-greeting" id="homeGreeting"></p>
-          <div class="stat-row">
-            <div class="stat">
-              <div class="stat-top"><div class="k" data-i18n="home.stat.pending_orders">手工待开</div><div class="stat-icon gold" aria-hidden="true">📋</div></div>
-              <div class="v" id="statPendingOrders">0</div>
-            </div>
-            <div class="stat">
-              <div class="stat-top"><div class="k" data-i18n="home.stat.today_invoices">今日已开发票</div><div class="stat-icon green" aria-hidden="true">✓</div></div>
-              <div class="v" id="statTodayInvoices">0</div>
-            </div>
-            <button type="button" class="stat rest-only" id="ctaPendingBills" data-nav="bills">
-              <div class="stat-top"><div class="k" data-i18n="nav.bills">收银账单</div><div class="stat-icon blue" aria-hidden="true">⬡</div></div>
-              <div class="v" id="statPendingBills">0</div>
-              <div class="stat-cta-label" data-i18n="home.stat.bills_cta">处理收银账单</div>
-            </button>
-            <div class="stat retail-only">
-              <div class="stat-top"><div class="k" data-i18n="home.stat.today_sales">今日营业额</div><div class="stat-icon gold" aria-hidden="true">€</div></div>
-              <div class="v" id="statTodaySales">€0</div>
-            </div>
-          </div>
-          <div class="panel home-recent">
-            <div class="panel-head">
-              <span class="panel-title" data-i18n="home.recent.title">今日发票</span>
-              <button type="button" class="ghost" data-nav="invoices" data-i18n="home.recent.see_all">查看全部</button>
-            </div>
-            <div class="table-scroll">
-              <table class="list-table">
-                <thead><tr>
-                  <th class="col-when" data-i18n="col.issued_at">签发时刻</th>
-                  <th class="col-no" data-i18n="col.doc_no">票号</th>
-                  <th class="col-buyer" data-i18n="col.buyer">购方</th>
-                  <th class="col-source" data-i18n="col.source">来源</th>
-                  <th class="col-pay" data-i18n="pay.label">付款方式</th>
-                  <th class="col-money" data-i18n="col.amount">金额</th>
-                  <th class="col-actions" data-i18n="common.actions">操作</th>
-                </tr></thead>
-                <tbody id="homeRecentInvoicesTbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="view hidden" id="view-orders">
-        <div class="topbar">
-          <div>
-            <h1 data-i18n="nav.orders">手工开票</h1>
-          </div>
-          <button type="button" data-goto="order-new" data-i18n="orders.new">新建开票</button>
-        </div>
-        <div class="panel admin-list-panel">
-          <div class="admin-list-filter-row">
-            <div class="field admin-list-search-field">
-              <label for="ordersSearch" data-i18n="common.search">搜索</label>
-              <input id="ordersSearch" placeholder="单号 / 来源" data-i18n="orders.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
-            </div>
-          </div>
-          <div class="table-scroll">
-            <table class="list-table">
-              <thead><tr><th data-i18n="col.order_no">单号</th><th data-i18n="col.source">来源</th><th data-i18n="col.amount">金额</th><th data-i18n="common.status">状态</th><th class="col-actions" data-i18n="common.actions">操作</th></tr></thead>
-              <tbody id="ordersTbody"></tbody>
-            </table>
-          </div>
-          <div id="ordersListPagination"></div>
-        </div>
-      </section>
-
-      <section class="view hidden" id="view-order-new">
+      <section class="view" id="view-order-new">
         <div class="flow-bar" id="flowBarNew">
           <div class="flow-step active" data-step="1"><span class="num">1</span><span data-i18n="order.flow.create">创建开票</span></div>
           <div class="flow-step" data-step="2"><span class="num">2</span><span data-i18n="order.flow.add">添加商品</span></div>
@@ -773,7 +669,7 @@
           <div>
             <h1 id="orderNewTitle" data-i18n="orders.new">新建开票</h1>
           </div>
-          <button type="button" class="secondary" data-nav="orders" data-i18n="common.back_list">返回列表</button>
+          <button type="button" class="secondary" id="btnOrderNewCancel" data-i18n="common.cancel">取消</button>
         </div>
         <div class="panel">
           <div class="field rest-only">
@@ -862,7 +758,7 @@
             <div class="actions">
               <button type="button" id="btnIssueInvoice" data-i18n="order.issue_print">签发发票并打印</button>
               <button type="button" class="secondary hidden" id="btnOrderReprint" data-i18n="action.reprint">重打</button>
-              <button type="button" class="secondary" id="btnOrderInvoiceBack" data-nav="orders" data-i18n="order.issue_later">稍后开票</button>
+              <button type="button" class="secondary" id="btnOrderInvoiceCancel" data-i18n="common.cancel">取消</button>
             </div>
           </div>
         </div>
@@ -944,44 +840,64 @@
         </div>
       </section>
 
-      <section class="view hidden" id="view-invoices">
-        <div class="topbar">
-          <div>
-            <h1 data-i18n="nav.invoices">发票</h1>
+      <section class="view" id="view-invoices">
+        <header class="home-topbar">
+          <h1 data-i18n="nav.invoices">发票</h1>
+          <div class="home-topbar-right">
+            <span class="date-chip" id="homeDateChip"></span>
+            <button type="button" id="ctaNewOrder" data-goto="order-new" data-i18n="home.cta.new_order">＋ 新建开票</button>
+            <button type="button" class="secondary" id="btnRefreshInvoices" data-i18n="common.refresh">刷新</button>
           </div>
-          <button type="button" class="secondary" id="btnRefreshInvoices" data-i18n="common.refresh">刷新</button>
-        </div>
-        <div class="panel admin-list-panel invoice-list-panel">
-          <div class="invoice-type-tabs" id="invoiceTypeTabs" role="tablist">
-            <button type="button" class="secondary active" data-invoice-type="FT" role="tab">FT<small data-i18n="doc.tab.FT">完整发票</small></button>
-            <button type="button" class="secondary" data-invoice-type="FS" role="tab">FS<small data-i18n="doc.tab.FS">简式发票</small></button>
-            <button type="button" class="secondary" data-invoice-type="NC" role="tab">NC<small data-i18n="doc.tab.NC">冲销单</small></button>
-            <button type="button" class="secondary" data-invoice-type="ND" role="tab">ND<small data-i18n="doc.tab.ND">借记单</small></button>
-          </div>
-          <div class="admin-list-filter-row">
-            <div id="invoiceDateFilter"></div>
-            <div class="field admin-list-search-field">
-              <label for="invoiceSearch" data-i18n="common.search">搜索</label>
-              <input id="invoiceSearch" placeholder="票号 / NIF / 桌号" data-i18n="invoices.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
+        </header>
+        <div class="home-body">
+          <p class="home-greeting" id="homeGreeting"></p>
+          <div class="stat-row">
+            <div class="stat">
+              <div class="stat-top"><div class="k" data-i18n="home.stat.today_invoices">今日已开发票</div><div class="stat-icon green" aria-hidden="true">✓</div></div>
+              <div class="v" id="statTodayInvoices">0</div>
+            </div>
+            <button type="button" class="stat rest-only" id="ctaPendingBills" data-nav="bills">
+              <div class="stat-top"><div class="k" data-i18n="nav.bills">收银账单</div><div class="stat-icon blue" aria-hidden="true">⬡</div></div>
+              <div class="v" id="statPendingBills">0</div>
+              <div class="stat-cta-label" data-i18n="home.stat.bills_cta">处理收银账单</div>
+            </button>
+            <div class="stat retail-only">
+              <div class="stat-top"><div class="k" data-i18n="home.stat.today_sales">今日营业额</div><div class="stat-icon gold" aria-hidden="true">€</div></div>
+              <div class="v" id="statTodaySales">€0</div>
             </div>
           </div>
-          <div class="table-scroll">
-            <table class="invoices-table list-table">
-              <thead>
-                <tr>
-                  <th class="col-when" data-i18n="col.issued_at">签发时刻</th>
-                  <th class="col-no" data-i18n="col.doc_no">票号</th>
-                  <th class="col-buyer" data-i18n="col.buyer">购方</th>
-                  <th class="col-source" data-i18n="col.source">来源</th>
-                  <th class="col-pay" data-i18n="pay.label">付款方式</th>
-                  <th class="col-money" data-i18n="col.amount">金额</th>
-                  <th class="col-actions" data-i18n="common.actions">操作</th>
-                </tr>
-              </thead>
-              <tbody id="invoicesTbody"></tbody>
-            </table>
+          <div class="panel admin-list-panel invoice-list-panel">
+            <div class="invoice-type-tabs" id="invoiceTypeTabs" role="tablist">
+              <button type="button" class="secondary active" data-invoice-type="FT" role="tab">FT<small data-i18n="doc.tab.FT">完整发票</small></button>
+              <button type="button" class="secondary" data-invoice-type="FS" role="tab">FS<small data-i18n="doc.tab.FS">简式发票</small></button>
+              <button type="button" class="secondary" data-invoice-type="NC" role="tab">NC<small data-i18n="doc.tab.NC">冲销单</small></button>
+              <button type="button" class="secondary" data-invoice-type="ND" role="tab">ND<small data-i18n="doc.tab.ND">借记单</small></button>
+            </div>
+            <div class="admin-list-filter-row">
+              <div id="invoiceDateFilter"></div>
+              <div class="field admin-list-search-field">
+                <label for="invoiceSearch" data-i18n="common.search">搜索</label>
+                <input id="invoiceSearch" placeholder="票号 / NIF / 桌号" data-i18n="invoices.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
+              </div>
+            </div>
+            <div class="table-scroll">
+              <table class="invoices-table list-table">
+                <thead>
+                  <tr>
+                    <th class="col-when" data-i18n="col.issued_at">签发时刻</th>
+                    <th class="col-no" data-i18n="col.doc_no">票号</th>
+                    <th class="col-buyer" data-i18n="col.buyer">购方</th>
+                    <th class="col-source" data-i18n="col.source">来源</th>
+                    <th class="col-pay" data-i18n="pay.label">付款方式</th>
+                    <th class="col-money" data-i18n="col.amount">金额</th>
+                    <th class="col-actions" data-i18n="common.actions">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="invoicesTbody"></tbody>
+              </table>
+            </div>
+            <div id="invoiceListPagination"></div>
           </div>
-          <div id="invoiceListPagination"></div>
         </div>
       </section>
 
@@ -1612,7 +1528,7 @@
       renderHomeGreeting(loggedInOperator.display_name || FiscalAdminI18n.t('home.greet.operator_fallback'));
     }
     if (setupStatusCache) applySettingsStatusUI(setupStatusCache);
-    [ordersListPaginationCtrl, billsListPaginationCtrl, productListPaginationCtrl,
+    [billsListPaginationCtrl, productListPaginationCtrl,
       customerListPaginationCtrl, invoiceListPaginationCtrl, auditLogPaginationCtrl,
       invoiceDateFilterCtrl]
       .forEach(function (c) { if (c && c.relabel) c.relabel(); });
@@ -1624,7 +1540,6 @@
       void loadPrinterStations().catch(function () {});
       void refreshEffectivePrintStation().catch(function () {});
       void refreshHomeStats().catch(function () {});
-      if (ordersListReady) renderOrdersList();
       if (billsListReady) void refreshBills().catch(function () {});
       if (invoiceFiltersReady) void refreshInvoices().catch(function () {});
       if (productFiltersReady) void refreshProducts().catch(function () {});
@@ -1840,33 +1755,6 @@
     finally { btn.disabled = false; btn.textContent = prev; }
   }
 
-  function loadOrders() {
-    try {
-      const list = JSON.parse(sessionStorage.getItem('fiscal_orders') || '[]');
-      return list.filter(o => o && o.status !== 'issued');
-    }
-    catch (_) { return []; }
-  }
-
-  function removeOrder(id) {
-    saveOrders(loadOrders().filter(o => o.id !== id));
-  }
-
-  function saveOrders(list) {
-    sessionStorage.setItem('fiscal_orders', JSON.stringify(list));
-  }
-
-  function upsertOrder(order) {
-    const list = loadOrders();
-    const i = list.findIndex(o => o.id === order.id);
-    if (i >= 0) list[i] = order; else list.unshift(order);
-    saveOrders(list);
-  }
-
-  function getOrder(id) {
-    return loadOrders().find(o => o.id === id) || null;
-  }
-
   function genOrderId() {
     return 'ORD-' + Date.now().toString().slice(-6);
   }
@@ -1945,9 +1833,6 @@
   let auditFiltersReady = false;
   let customerSearchDebounce = null;
   let customerFiltersReady = false;
-  let ordersListState = { page: 1, pageSize: FiscalUI.LIST_DEFAULT_PAGE_SIZE, filter: '' };
-  let ordersListPaginationCtrl = null;
-  let ordersListReady = false;
   let billsListCache = [];
   let billsListState = { page: 1, pageSize: FiscalUI.LIST_DEFAULT_PAGE_SIZE, filter: '' };
   let billsListPaginationCtrl = null;
@@ -1961,7 +1846,7 @@
     return s.slice(0, 8) + '…' + s.slice(-4);
   }
 
-  /** ONLY buyer cell formatter for invoice list + home today. */
+  /** ONLY buyer cell formatter for invoice list. */
   function formatInvoiceBuyerCell(inv) {
     const nif = String(inv.customer_tax_id || '').trim();
     const name = String(inv.customer_name || '').trim();
@@ -1974,23 +1859,23 @@
     return '—';
   }
 
-  /** ONLY invoice-no cell text (home today + invoice list). */
+  /** ONLY invoice-no cell text (invoice list). */
   function formatInvoiceNoCell(inv) {
     return (inv && inv.invoice_no) ? inv.invoice_no : '—';
   }
 
-  /** ONLY issued-at cell text (home today + invoice list). */
+  /** ONLY issued-at cell text (invoice list). */
   function formatInvoiceWhenCell(inv) {
     return fmtTime((inv && (inv.system_entry_date || inv.issued_at)) || '');
   }
 
-  /** ONLY source/order label cell text (home today + invoice list). */
+  /** ONLY source/order label cell text (invoice list). */
   function formatInvoiceOrderCell(inv) {
     const label = inv && inv.order_label;
     return label ? String(label) : '—';
   }
 
-  /** ONLY payment-method label (home + invoice list + detail); maps pay.* codes. */
+  /** ONLY payment-method label (invoice list + detail); maps pay.* codes. */
   function formatInvoicePaymentLabel(inv) {
     const code = String((inv && inv.payment_method) || '').trim().toUpperCase();
     if (!code) return '—';
@@ -2882,64 +2767,12 @@
     el.textContent = ymd + ' ' + weekday;
   }
 
-  /** ONLY reprint control HTML (invoice list + home recent). */
+  /** ONLY reprint control HTML (invoice list). */
   function invoiceReprintButtonHtml(documentId) {
     return '<button type="button" class="secondary btn-sm" data-reprint="' + documentId + '">' + FiscalAdminI18n.t('action.reprint') + '</button>';
   }
 
-  /** ONLY canvas text-width helper for Admin column sizing. */
-  let adminTableTextMeasureCtx = null;
-  function measureAdminTableTextPx(fontSourceEl, text) {
-    if (!fontSourceEl) return 0;
-    if (!adminTableTextMeasureCtx) {
-      adminTableTextMeasureCtx = document.createElement('canvas').getContext('2d');
-    }
-    adminTableTextMeasureCtx.font = getComputedStyle(fontSourceEl).font;
-    return adminTableTextMeasureCtx.measureText(String(text == null ? '' : text)).width;
-  }
-
-  /** ONLY set --home-col-no-w from longest invoice_no (+ header label) in this home table. */
-  function applyHomeRecentColNoWidth(rows) {
-    const table = document.querySelector('.home-recent .list-table');
-    const th = table && table.querySelector('th.col-no');
-    if (!th) return;
-    const tdProbe = table.querySelector('td.col-no') || th;
-    let maxPx = measureAdminTableTextPx(th, FiscalAdminI18n.t('col.doc_no'));
-    (rows || []).forEach(inv => {
-      maxPx = Math.max(maxPx, measureAdminTableTextPx(tdProbe, formatInvoiceNoCell(inv)));
-    });
-    const cs = getComputedStyle(tdProbe);
-    const pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
-    table.style.setProperty('--home-col-no-w', Math.ceil(maxPx + pad) + 'px');
-  }
-
-  /** ONLY writer for #homeRecentInvoicesTbody. */
-  function renderHomeRecentInvoices(list) {
-    const tbody = $('#homeRecentInvoicesTbody');
-    if (!tbody) return;
-    const rows = (list || []).slice(0, 8);
-    if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="7" class="hint">' + FiscalAdminI18n.t('home.recent.empty') + '</td></tr>';
-      applyHomeRecentColNoWidth([]);
-      return;
-    }
-    tbody.innerHTML = rows.map(inv =>
-      '<tr class="clickable" data-inv="' + inv.document_id + '">' +
-        '<td class="col-when">' + formatInvoiceWhenCell(inv) + '</td>' +
-        '<td class="col-no">' + formatInvoiceNoCell(inv) + '</td>' +
-        '<td class="col-buyer">' + formatInvoiceBuyerCell(inv) + '</td>' +
-        '<td class="col-source">' + formatInvoiceOrderCell(inv) + '</td>' +
-        '<td class="col-pay">' + formatInvoicePaymentLabel(inv) + '</td>' +
-        '<td class="col-money">' + fmtMoney(inv.gross_total) + '</td>' +
-        '<td class="col-actions">' + invoiceReprintButtonHtml(inv.document_id) + '</td></tr>'
-    ).join('');
-    applyHomeRecentColNoWidth(rows);
-  }
-
   function renderHomeStats(totalInvoices, grossTotalSum) {
-    const orders = loadOrders();
-    const pending = orders.filter(o => o.status !== 'issued').length;
-    $('#statPendingOrders').textContent = String(pending);
     $('#statTodayInvoices').textContent = String(totalInvoices || 0);
     $('#statTodaySales').textContent = fmtMoney(grossTotalSum || 0);
   }
@@ -2964,7 +2797,6 @@
 
   function resetProductListPage() { productListPage = 1; }
   function resetCustomerListPage() { customerListPage = 1; }
-  function resetOrdersListPage() { ordersListState.page = 1; }
   function resetBillsListPage() { billsListState.page = 1; }
 
   function renderClientPaginatedTable(cfg) {
@@ -2987,28 +2819,6 @@
       return;
     }
     cfg.tbody.innerHTML = pageItems.map(cfg.renderRow).join('');
-  }
-
-  function initOrdersListPanel() {
-    if (ordersListReady) return;
-    $('#ordersSearch').addEventListener('input', () => {
-      ordersListState.filter = $('#ordersSearch').value;
-      resetOrdersListPage();
-      renderOrdersList();
-    });
-    ordersListPaginationCtrl = FiscalUI.createListPaginationBar('#ordersListPagination', {
-      getLabels: listPagerLabels,
-      onPageChange: (nextPage) => {
-        ordersListState.page = nextPage;
-        renderOrdersList();
-      },
-      onPageSizeChange: (nextSize) => {
-        ordersListState.pageSize = nextSize;
-        resetOrdersListPage();
-        renderOrdersList();
-      },
-    });
-    ordersListReady = true;
   }
 
   function initBillsListPanel() {
@@ -3204,34 +3014,6 @@
     return catalogProducts;
   }
 
-  function renderOrdersList() {
-    initOrdersListPanel();
-    const tbody = $('#ordersTbody');
-    if (ordersListPaginationCtrl) ordersListPaginationCtrl.setDisabled(true);
-    renderClientPaginatedTable({
-      items: loadOrders(),
-      filterFn: (o, q) => String(o.id || '').toLowerCase().includes(q) ||
-        String(o.sourceLabel || FiscalAdminI18n.t('orders.source.manual')).toLowerCase().includes(q),
-      renderRow: (o) => {
-        const badge = o.status === 'confirmed'
-          ? '<span class="badge wait">' + FiscalAdminI18n.t('orders.status.open') + '</span>'
-          : '<span class="badge wait">' + FiscalAdminI18n.t('orders.status.editing') + '</span>';
-        const action = o.status === 'confirmed' ? FiscalAdminI18n.t('orders.action.issue') : FiscalAdminI18n.t('orders.action.continue');
-        return '<tr class="clickable" data-open-order="' + o.id + '">' +
-          '<td><strong>' + o.id + '</strong></td>' +
-          '<td>' + (o.sourceLabel || FiscalAdminI18n.t('orders.source.manual')) + '</td>' +
-          '<td>' + fmtMoney(orderTotal(o)) + '</td>' +
-          '<td>' + badge + '</td>' +
-          '<td class="col-actions"><span class="row-action-text">' + action + '</span></td></tr>';
-      },
-      tbody: tbody,
-      colSpan: 5,
-      emptyMsg: FiscalAdminI18n.t('orders.empty'),
-      state: ordersListState,
-      ctrl: ordersListPaginationCtrl,
-    });
-  }
-
   function renderOrderLines() {
     const tbody = $('#orderLines');
     if (!currentOrder || !currentOrder.lines.length) {
@@ -3306,7 +3088,6 @@
     const linkBtn = $('#btnInvLinkedOpen');
     const issueBtn = $('#btnIssueInvoice');
     const reprintBtn = $('#btnOrderReprint');
-    const backBtn = $('#btnOrderInvoiceBack');
     const hint = $('#invOrderHint');
     const fields = [$('#docType'), $('#invNif'), $('#invName'), $('#invPay')];
     fields.forEach(el => { if (el) el.disabled = issued; });
@@ -3321,7 +3102,6 @@
       issueBtn.classList.add('hidden');
       reprintBtn.classList.remove('hidden');
       reprintBtn._reprintDocId = order.documentId;
-      backBtn.textContent = FiscalAdminI18n.t('common.back_list');
     } else {
       if (hint) {
         hint.style.display = 'none';
@@ -3332,7 +3112,6 @@
       issueBtn.classList.remove('hidden');
       reprintBtn.classList.add('hidden');
       delete reprintBtn._reprintDocId;
-      backBtn.textContent = FiscalAdminI18n.t('order.issue_later');
     }
   }
 
@@ -3804,12 +3583,11 @@
     invoiceFiltersReady = true;
   }
 
-  /** ONLY home today-invoice fetch (stats + recent table; not invoice-page filters). */
+  /** ONLY invoice hub today stats (not invoice-page list filters). */
   async function refreshHomeStats() {
     const today = FiscalUI.dateRangePresetToDates('today', INVOICE_TZ);
     const data = await j('GET', buildInvoicesQueryPath(today, '', 1, FiscalUI.LIST_DEFAULT_PAGE_SIZE));
     renderHomeStats(data.total || 0, data.gross_total_sum || 0);
-    renderHomeRecentInvoices(data.invoices || []);
   }
 
   async function refreshInvoices() {
@@ -3918,7 +3696,7 @@
     updateBillsNavBadge(n);
     billsListCache = drafts;
     renderBillsTable();
-    if (!$('#view-home').classList.contains('hidden')) {
+    if (!$('#view-invoices').classList.contains('hidden')) {
       focusHomePrimaryCta(drafts.length);
     }
     if (opts.fromEvent && n > lastOpenBillCount) {
@@ -4499,12 +4277,10 @@
     const res = await j('POST', '/local/v1/fiscal-documents/manual', body);
     const docId = res.document_id || '';
     const invNo = res.invoice_no || '';
-    removeOrder(currentOrder.id);
     currentOrder = null;
     await pollPrintJob(res.print_job_id, FiscalAdminI18n.fmt('order.toast.issued', { no: (invNo || 'FT') }));
     await refreshHomeStats();
     await refreshInvoices();
-    renderOrdersList();
     if (docId) {
       await openInvoiceDetail(docId);
     }
@@ -4548,31 +4324,43 @@
     await refreshHomeStats();
   }
 
+  /** Discard in-progress manual order and return to invoice hub. */
+  function cancelManualOrderFlow() {
+    currentOrder = null;
+    showView('invoices');
+  }
+
+  function currentViewName() {
+    const visible = document.querySelector('.view:not(.hidden)');
+    if (!visible || !visible.id || !visible.id.startsWith('view-')) return '';
+    return visible.id.slice('view-'.length);
+  }
+
   function showView(name) {
+    const from = currentViewName();
+    if ((from === 'order-new' || from === 'order-invoice') &&
+        name !== 'order-new' && name !== 'order-invoice') {
+      currentOrder = null;
+    }
     if (name === 'settings' && !canAccessSettings()) {
       toast(FiscalAdminI18n.t('settings.toast.access_denied'), 'error');
-      name = 'home';
+      name = 'invoices';
     }
     $$('.view').forEach(v => v.classList.add('hidden'));
     const el = $('#view-' + name);
     if (el) el.classList.remove('hidden');
-    const navName = name === 'bill-split' ? 'bills' : name;
+    const navName = name === 'bill-split' ? 'bills'
+      : (name === 'order-new' || name === 'order-invoice' ? 'invoices' : name);
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.nav === navName));
-    if (name === 'orders') renderOrdersList();
-    if (name === 'home') {
-      renderHomeDateChip();
-      refreshHomeStats().catch(() => {
-        renderHomeStats(0, 0);
-        renderHomeRecentInvoices([]);
-      });
-      if (mode === 'restaurant') refreshBills().catch(() => focusHomePrimaryCta(0));
-      else focusHomePrimaryCta(0);
-    }
     if (name === 'products') refreshProducts().catch(reportError);
     if (name === 'customers') refreshCustomers().catch(reportError);
     if (name === 'invoices') {
+      renderHomeDateChip();
       initInvoiceFilters();
       refreshInvoices().catch(reportError);
+      refreshHomeStats().catch(() => renderHomeStats(0, 0));
+      if (mode === 'restaurant') refreshBills().catch(() => focusHomePrimaryCta(0));
+      else focusHomePrimaryCta(0);
     }
     if (name === 'bills') refreshBills().catch(reportError);
     if (name === 'settings') {
@@ -4622,7 +4410,7 @@
     await ensureSetupStatus();
     applyMode();
     refreshLocalizedSelects();
-    showView('home');
+    showView('invoices');
     loadPrinterStations().catch(() => {});
     refreshEffectivePrintStation().catch(() => {});
     ensureCustomerCatalog().catch(() => {});
@@ -4978,14 +4766,6 @@
       else showView(goto.dataset.goto);
       return;
     }
-    const openOrder = e.target.closest('[data-open-order]');
-    if (openOrder) {
-      const o = getOrder(openOrder.dataset.openOrder);
-      if (!o) return;
-      if (o.status === 'confirmed') openOrderForInvoice(o);
-      else openOrderEditor(o);
-      return;
-    }
     const billOpen = e.target.closest('[data-bill-open]');
     if (billOpen) {
       e.stopPropagation();
@@ -5148,10 +4928,12 @@
     }
     currentOrder.status = 'confirmed';
     currentOrder.confirmedAt = new Date().toISOString();
-    upsertOrder(currentOrder);
     openOrderForInvoice(currentOrder);
     toast(FiscalAdminI18n.t('order.toast.confirmed'), 'success');
   });
+
+  $('#btnOrderNewCancel').onclick = () => cancelManualOrderFlow();
+  $('#btnOrderInvoiceCancel').onclick = () => cancelManualOrderFlow();
 
   $('#btnIssueInvoice').onclick = () => withBusy($('#btnIssueInvoice'), FiscalAdminI18n.t('common.issuing'), async () => {
     await issueCurrentOrder();
@@ -5286,7 +5068,9 @@
   });
 
   $('#btnRefreshInvoices').onclick = () => withBusy($('#btnRefreshInvoices'), FiscalAdminI18n.t('common.refreshing'), async () => {
-    await refreshInvoices(); toast(FiscalAdminI18n.t('common.refreshed'), 'success');
+    await refreshHomeStats();
+    await refreshInvoices();
+    toast(FiscalAdminI18n.t('common.refreshed'), 'success');
   });
 
   $('#btnNewProd').onclick = () => {

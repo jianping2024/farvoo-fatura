@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.97
+
+**发票页合并工作台 + 手工列表；取消草稿/稍后开票**
+
+- **唯一写法 · 发票 hub 页：**侧栏默认「发票」；顶栏 `home-topbar`（`nav.invoices` 标题、日期 chip、＋新建开票、刷新）+ 问候语 + 今日统计 + 下方完整发票列表（FT/FS/NC/ND Tab）。
+- **唯一写法 · 无草稿列表：**移除 `sessionStorage fiscal_orders`、手工开票列表页、`稍后开票`；中途取消/侧栏离开丢弃 `currentOrder`，不恢复草稿。
+- **唯一写法 · 取消即回发票：**`btnOrderNewCancel` / `btnOrderInvoiceCancel` → `cancelManualOrderFlow` → `showView('invoices')`；登录/设置拒绝默认 `invoices`。
+
 ## 0.4.96
 
 **发票列表/详情/工作台：展示付款方式（来源与金额之间）**
