@@ -1424,6 +1424,7 @@
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const toast = FiscalUI.showToast;
   const errText = FiscalUI.formatError;
+  const reportError = FiscalUI.reportError;
   const INVOICE_TZ = 'Europe/Lisbon';
   const DEFAULT_SALE_DOC = 'FS';
   const SALE_DOC_TYPES = ['FT', 'FS'];
@@ -1751,11 +1752,11 @@
         body: body ? JSON.stringify(body) : undefined
       });
     } catch (net) {
-      throw { error: 'network', message: String(net && net.message || net) };
+      throw { error: 'network', message: FiscalAdminI18n.t('errors.network') };
     }
     try { t = await r.json(); } catch (_) {
-      const raw = await r.text();
-      throw { error: 'bad_response', message: raw || ('HTTP ' + r.status) };
+      await r.text();
+      throw { error: 'bad_response', message: FiscalAdminI18n.t('errors.bad_response') };
     }
     if (!r.ok) {
       const code = t && t.error;
@@ -1772,11 +1773,13 @@
     return t;
   }
 
+  /** Busy wrapper: reportError once on failure (fn must throw, not toast the same error). */
   async function withBusy(btn, labelBusy, fn) {
     const prev = btn.textContent;
     btn.disabled = true;
     btn.textContent = labelBusy || FiscalAdminI18n.t('common.processing');
     try { await fn(); }
+    catch (er) { reportError(er); }
     finally { btn.disabled = false; btn.textContent = prev; }
   }
 
@@ -2002,13 +2005,8 @@
   async function openInvoiceDetail(documentId) {
     await ensureSetupStatus();
     let inv = invoiceListCache.find(i => i.document_id === documentId) || { document_id: documentId };
-    try {
-      const detail = await j('GET', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId));
-      inv = Object.assign({}, inv, detail);
-    } catch (er) {
-      toast(errText(er), 'error');
-      return;
-    }
+    const detail = await j('GET', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId));
+    inv = Object.assign({}, inv, detail);
     if (!inv.document_id) {
       toast(FiscalAdminI18n.t('invoice.toast.not_found'), 'error');
       return;
@@ -2171,8 +2169,7 @@
   function requireStation() {
     const sid = ((window.__effectivePrintStation && window.__effectivePrintStation.station_id) || '').trim();
     if (!sid) {
-      toast(FiscalAdminI18n.t('settings.printers.need'), 'error');
-      throw { error: 'validation_failed', message: 'station_id required' };
+      throw { error: 'validation_failed', message: FiscalAdminI18n.t('settings.printers.need') };
     }
     return sid;
   }
@@ -2425,8 +2422,7 @@
   /** ONLY taxpayer save path. */
   async function saveTaxpayerSettings(btn) {
     if (!validateTaxpayerForm()) {
-      toast(FiscalAdminI18n.t('common.fix_fields'), 'error');
-      throw { error: 'validation_failed' };
+      throw { error: 'validation_failed', message: FiscalAdminI18n.t('common.fix_fields') };
     }
     const st = await j('PUT', '/local/v1/setup/taxpayer', {
       tax_registration_number: $('#nif').value.trim(),
@@ -2446,8 +2442,7 @@
   /** ONLY AT credentials save path. */
   async function saveATCredentialsSettings(btn) {
     if (!validateATForm()) {
-      toast(FiscalAdminI18n.t('common.fix_fields'), 'error');
-      throw { error: 'validation_failed' };
+      throw { error: 'validation_failed', message: FiscalAdminI18n.t('common.fix_fields') };
     }
     const st = await j('PUT', '/local/v1/setup/at-credentials', {
       username: $('#atuser').value.trim(),
@@ -2683,11 +2678,10 @@
       if (code === 'ops_activate_pending') {
         setActCloudStatus('wait', text);
         if (!quiet) toast(FiscalAdminI18n.t('settings.series.pending_ops'), 'info');
-      } else {
-        setActCloudStatus('fail', text);
-        if (!quiet) toast(text, 'error');
+        return;
       }
-      throw er;
+      setActCloudStatus('fail', text);
+      throw { error: code || 'sync_failed', message: text };
     }
   }
 
@@ -2925,19 +2919,19 @@
       clearTimeout(productSearchDebounce);
       productSearchDebounce = setTimeout(() => {
         resetProductListPage();
-        refreshProducts().catch(e => toast(errText(e), 'error'));
+        refreshProducts().catch(reportError);
       }, 300);
     });
     productListPaginationCtrl = FiscalUI.createListPaginationBar('#productsListPagination', {
       getLabels: listPagerLabels,
       onPageChange: (nextPage) => {
         productListPage = nextPage;
-        refreshProducts().catch(e => toast(errText(e), 'error'));
+        refreshProducts().catch(reportError);
       },
       onPageSizeChange: (nextSize) => {
         productListPageSize = nextSize;
         resetProductListPage();
-        refreshProducts().catch(e => toast(errText(e), 'error'));
+        refreshProducts().catch(reportError);
       },
     });
     productFiltersReady = true;
@@ -2949,19 +2943,19 @@
       clearTimeout(customerSearchDebounce);
       customerSearchDebounce = setTimeout(() => {
         resetCustomerListPage();
-        refreshCustomers().catch(e => toast(errText(e), 'error'));
+        refreshCustomers().catch(reportError);
       }, 300);
     });
     customerListPaginationCtrl = FiscalUI.createListPaginationBar('#customersListPagination', {
       getLabels: listPagerLabels,
       onPageChange: (nextPage) => {
         customerListPage = nextPage;
-        refreshCustomers().catch(e => toast(errText(e), 'error'));
+        refreshCustomers().catch(reportError);
       },
       onPageSizeChange: (nextSize) => {
         customerListPageSize = nextSize;
         resetCustomerListPage();
-        refreshCustomers().catch(e => toast(errText(e), 'error'));
+        refreshCustomers().catch(reportError);
       },
     });
     customerFiltersReady = true;
@@ -3056,29 +3050,29 @@
     if (actionSel) {
       actionSel.addEventListener('change', () => {
         auditLogPage = 1;
-        refreshAuditLog().catch(e => toast(errText(e), 'error'));
+        refreshAuditLog().catch(reportError);
       });
     }
     if (opSel) {
       opSel.addEventListener('change', () => {
         auditLogPage = 1;
-        refreshAuditLog().catch(e => toast(errText(e), 'error'));
+        refreshAuditLog().catch(reportError);
       });
     }
     $('#btnAuditRefresh').addEventListener('click', () => {
-      refreshAuditLog().catch(e => toast(errText(e), 'error'));
+      refreshAuditLog().catch(reportError);
     });
     auditLogPaginationCtrl = FiscalUI.createListPaginationBar('#auditLogPagination', {
       getLabels: listPagerLabels,
       pageSizes: [10, 20, 50, 100],
       onPageChange: (nextPage) => {
         auditLogPage = nextPage;
-        refreshAuditLog().catch(e => toast(errText(e), 'error'));
+        refreshAuditLog().catch(reportError);
       },
       onPageSizeChange: (nextSize) => {
         auditLogPageSize = nextSize;
         auditLogPage = 1;
-        refreshAuditLog().catch(e => toast(errText(e), 'error'));
+        refreshAuditLog().catch(reportError);
       },
     });
     auditFiltersReady = true;
@@ -3426,8 +3420,7 @@
   function handleReprintClick(btn, documentId) {
     if (!btn || !documentId) return;
     withBusy(btn, FiscalAdminI18n.t('common.reprinting'), async () => {
-      try { await reprintInvoice(documentId); }
-      catch (er) { toast(errText(er), 'error'); throw er; }
+      await reprintInvoice(documentId);
     });
   }
 
@@ -3651,7 +3644,7 @@
       if (!btn || btn.classList.contains('active')) return;
       setInvoiceListDocType(btn.dataset.invoiceType);
       resetInvoiceListPage();
-      refreshInvoices().catch(err => toast(errText(err), 'error'));
+      refreshInvoices().catch(reportError);
     });
   }
 
@@ -3666,26 +3659,26 @@
       getLabels: listDateRangeLabels,
       onChange: () => {
         resetInvoiceListPage();
-        refreshInvoices().catch(e => toast(errText(e), 'error'));
+        refreshInvoices().catch(reportError);
       },
     });
     $('#invoiceSearch').addEventListener('input', () => {
       clearTimeout(invoiceSearchDebounce);
       invoiceSearchDebounce = setTimeout(() => {
         resetInvoiceListPage();
-        refreshInvoices().catch(e => toast(errText(e), 'error'));
+        refreshInvoices().catch(reportError);
       }, 300);
     });
     invoiceListPaginationCtrl = FiscalUI.createListPaginationBar('#invoiceListPagination', {
       getLabels: listPagerLabels,
       onPageChange: (nextPage) => {
         invoiceListPage = nextPage;
-        refreshInvoices().catch(e => toast(errText(e), 'error'));
+        refreshInvoices().catch(reportError);
       },
       onPageSizeChange: (nextSize) => {
         invoiceListPageSize = nextSize;
         resetInvoiceListPage();
-        refreshInvoices().catch(e => toast(errText(e), 'error'));
+        refreshInvoices().catch(reportError);
       },
     });
     invoiceFiltersReady = true;
@@ -4246,8 +4239,7 @@
   function assertSplitNotOverAllocated(people) {
     const msgs = splitOverAllocMessages(currentBillDetail, people || splitState.people);
     if (msgs.length) {
-      toast(msgs[0], 'error');
-      throw new Error(msgs[0]);
+      throw { error: 'validation_failed', message: msgs[0] };
     }
   }
 
@@ -4450,17 +4442,17 @@
       if (mode === 'restaurant') refreshBills().catch(() => focusHomePrimaryCta(0));
       else focusHomePrimaryCta(0);
     }
-    if (name === 'products') refreshProducts().catch(e => toast(errText(e), 'error'));
-    if (name === 'customers') refreshCustomers().catch(e => toast(errText(e), 'error'));
+    if (name === 'products') refreshProducts().catch(reportError);
+    if (name === 'customers') refreshCustomers().catch(reportError);
     if (name === 'invoices') {
       initInvoiceFilters();
-      refreshInvoices().catch(e => toast(errText(e), 'error'));
+      refreshInvoices().catch(reportError);
     }
-    if (name === 'bills') refreshBills().catch(e => toast(errText(e), 'error'));
+    if (name === 'bills') refreshBills().catch(reportError);
     if (name === 'settings') {
       document.querySelector('.main').classList.add('settings-page');
       initSettingsView(setupStatusCache);
-      refreshSetupStatus({ autoSync: true }).catch(e => toast(errText(e), 'error'));
+      refreshSetupStatus({ autoSync: true }).catch(reportError);
       refreshOperatorsPanel().catch(() => {});
       initAuditLogPanel();
       refreshAuditLog().catch(() => {});
@@ -4527,14 +4519,10 @@
     const pairing_code = ($('#loginPairCode').value || '').trim();
     const label = ($('#loginPairLabel').value || '').trim();
     if (!pairing_code) { toast(FiscalAdminI18n.t('settings.terminals.need_code'), 'error'); return; }
-    try {
-      await j('POST', '/local/v1/setup/terminals/pair', { pairing_code, label });
-      toast(FiscalAdminI18n.t('settings.terminals.paired'), 'success');
-      $('#loginTerminalPair').classList.add('hidden');
-      if (loggedInOperator) await enterApp();
-    } catch (e) {
-      toast(errText(e), 'error');
-    }
+    await j('POST', '/local/v1/setup/terminals/pair', { pairing_code, label });
+    toast(FiscalAdminI18n.t('settings.terminals.paired'), 'success');
+    $('#loginTerminalPair').classList.add('hidden');
+    if (loggedInOperator) await enterApp();
   }
 
   async function refreshLanAccessPanel() {
@@ -4662,7 +4650,7 @@
       + '<td></td><td></td>';
     const localSel = document.createElement('select');
     fillStationSelectEl(localSel, localStation, function (sid) {
-      void saveLocalStation(sid).catch(function (er) { toast(errText(er), 'error'); });
+      void saveLocalStation(sid).catch(reportError);
     });
     localTr.children[4].appendChild(localSel);
     tb.appendChild(localTr);
@@ -4677,7 +4665,7 @@
         + '<td></td><td></td>';
       const sel = document.createElement('select');
       fillStationSelectEl(sel, row.default_station_id || '', function (sid) {
-        void saveTerminalStation(row.id, sid).catch(function (er) { toast(errText(er), 'error'); });
+        void saveTerminalStation(row.id, sid).catch(reportError);
       });
       tr.children[4].appendChild(sel);
       const actions = tr.lastChild;
@@ -4782,7 +4770,7 @@
       $$('#pinDots i').forEach(d => d.classList.remove('on'));
       await enterApp();
     } catch (e) {
-      toast(errText(e), 'error');
+      reportError(e);
       pin = '';
       $$('#pinDots i').forEach(d => d.classList.remove('on'));
     }
@@ -4804,12 +4792,7 @@
   $('#btnChangePin').onclick = () => openChangePinModal();
   $('#btnChangePinCancel').onclick = () => closeChangePinModal();
   $('#btnChangePinSubmit').onclick = () => withBusy($('#btnChangePinSubmit'), FiscalAdminI18n.t('common.saving'), async () => {
-    try {
-      await submitChangePin();
-    } catch (er) {
-      toast(errText(er), 'error');
-      throw er;
-    }
+    await submitChangePin();
   });
   $('#changePinModal').addEventListener('click', e => {
     if (e.target === $('#changePinModal')) closeChangePinModal();
@@ -4835,12 +4818,12 @@
     const billOpen = e.target.closest('[data-bill-open]');
     if (billOpen) {
       e.stopPropagation();
-      openBillDetail(billOpen.dataset.billOpen).catch(er => toast(errText(er), 'error'));
+      openBillDetail(billOpen.dataset.billOpen).catch(reportError);
       return;
     }
     const billRow = e.target.closest('[data-bill-id]');
     if (billRow && !e.target.closest('button')) {
-      openBillDetail(billRow.dataset.billId).catch(er => toast(errText(er), 'error'));
+      openBillDetail(billRow.dataset.billId).catch(reportError);
       return;
     }
     const reprint = e.target.closest('[data-reprint]');
@@ -4851,7 +4834,7 @@
     }
     const invRow = e.target.closest('tr[data-inv]');
     if (invRow && !e.target.closest('button')) {
-      openInvoiceDetail(invRow.dataset.inv).catch(e => toast(errText(e), 'error'));
+      openInvoiceDetail(invRow.dataset.inv).catch(reportError);
       return;
     }
     const editProd = e.target.closest('[data-edit-prod]');
@@ -4865,7 +4848,7 @@
         }
         if (p) await openProductWorkbench('edit', p);
         else toast(FiscalAdminI18n.t('picker.toast.not_found'), 'error');
-      })().catch(er => toast(errText(er), 'error'));
+      })().catch(reportError);
     }
   });
 
@@ -4924,7 +4907,7 @@
     const origBtn = e.target.closest('[data-open-original]');
     if (origBtn) {
       e.preventDefault();
-      openInvoiceDetail(origBtn.dataset.openOriginal).catch(er => toast(errText(er), 'error'));
+      openInvoiceDetail(origBtn.dataset.openOriginal).catch(reportError);
       return;
     }
     const copyBtn = e.target.closest('[data-copy-hash]');
@@ -4959,7 +4942,7 @@
     try {
       const payload = readAdjustSubmitPayload();
       showAdjustConfirm(payload);
-    } catch (er) { toast(errText(er), 'error'); }
+    } catch (er) { reportError(er); }
   };
   $('#btnAdjustConfirmBack').onclick = () => closeAdjustConfirmModal();
   $('#adjustConfirmModal').addEventListener('click', e => {
@@ -4968,17 +4951,15 @@
   $('#btnAdjustSubmit').onclick = () => withBusy($('#btnAdjustSubmit'), FiscalAdminI18n.t('common.submitting'), async () => {
     const payload = $('#adjustConfirmModal')._payload;
     if (!payload || !adjustTargetDetail || !adjustKind) return;
-    try {
-      if (adjustKind === 'debit') {
-        await debitInvoice(adjustTargetDetail.document_id, payload);
-        toast(FiscalAdminI18n.t('adjust.toast.ok_nd'), 'success');
-      } else {
-        await creditInvoice(adjustTargetDetail.document_id, payload);
-        toast(FiscalAdminI18n.t('adjust.toast.ok_nc'), 'success');
-      }
-      closeAdjustConfirmModal();
-      closeAdjustModal();
-    } catch (er) { toast(errText(er), 'error'); throw er; }
+    if (adjustKind === 'debit') {
+      await debitInvoice(adjustTargetDetail.document_id, payload);
+      toast(FiscalAdminI18n.t('adjust.toast.ok_nd'), 'success');
+    } else {
+      await creditInvoice(adjustTargetDetail.document_id, payload);
+      toast(FiscalAdminI18n.t('adjust.toast.ok_nc'), 'success');
+    }
+    closeAdjustConfirmModal();
+    closeAdjustModal();
   });
 
   $('#btnConfirmOrder').onclick = () => withBusy($('#btnConfirmOrder'), FiscalAdminI18n.t('common.confirming'), async () => {
@@ -5002,8 +4983,7 @@
   });
 
   $('#btnIssueInvoice').onclick = () => withBusy($('#btnIssueInvoice'), FiscalAdminI18n.t('common.issuing'), async () => {
-    try { await issueCurrentOrder(); }
-    catch (er) { toast(errText(er), 'error'); throw er; }
+    await issueCurrentOrder();
   });
   $('#btnOrderReprint').onclick = () => {
     handleReprintClick($('#btnOrderReprint'), $('#btnOrderReprint')._reprintDocId);
@@ -5012,7 +4992,7 @@
     const btn = $('#btnInvLinkedOpen');
     const id = btn._openOriginalDocId;
     if (!id) return;
-    openInvoiceDetail(id).catch(er => toast(errText(er), 'error'));
+    openInvoiceDetail(id).catch(reportError);
   };
 
   bindCustomerNifAutofill($('#invNif'), $('#invName'));
@@ -5027,34 +5007,30 @@
       body: FiscalAdminI18n.t('split.discard_body'),
       submitLabel: FiscalAdminI18n.t('split.discard_submit'),
       onConfirm: () => withBusy($('#btnSplitDiscard'), FiscalAdminI18n.t('common.processing'), async () => {
-        try {
           await j('POST', '/local/v1/bill-drafts/' + encodeURIComponent(currentBill) + '/discard', {});
           toast(FiscalAdminI18n.t('split.toast.discarded'), 'success');
           showView('bills');
           await refreshBills();
-        } catch (er) { toast(errText(er), 'error'); throw er; }
       })
     });
   };
 
   $('#splitPersonName').addEventListener('blur', () => {
     try { applySplitMarkerNameFromInput(); }
-    catch (er) { toast(errText(er), 'error'); }
+    catch (er) { reportError(er); }
   });
   $('#splitPersonName').addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
     try { applySplitMarkerNameFromInput(); }
-    catch (er) { toast(errText(er), 'error'); }
+    catch (er) { reportError(er); }
   });
 
   $('#btnSplitWholeIssue').onclick = () => withBusy($('#btnSplitWholeIssue'), FiscalAdminI18n.t('common.issuing'), async () => {
-    try { await issueBill('whole_table'); }
-    catch (er) { toast(errText(er), 'error'); throw er; }
+    await issueBill('whole_table');
   });
 
   $('#btnSplitPersonIssue').onclick = () => withBusy($('#btnSplitPersonIssue'), FiscalAdminI18n.t('common.issuing'), async () => {
-    try {
       syncCurrentSharesFromDom();
       applySplitMarkerNameFromInput();
       if (!splitState.currentScopeId) { toast(FiscalAdminI18n.t('split.toast.need_marker'), 'error'); return; }
@@ -5065,7 +5041,6 @@
       await issueBill('person', splitState.currentScopeId, {
         nif: $('#splitNif').value, name: $('#splitName').value
       });
-    } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
   $('#splitPoolBody').addEventListener('click', e => {
@@ -5134,21 +5109,18 @@
   }, true);
 
   $('#btnRefreshBills').onclick = () => withBusy($('#btnRefreshBills'), FiscalAdminI18n.t('common.refreshing'), async () => {
-    try { await refreshBills(); toast(FiscalAdminI18n.t('common.refreshed'), 'success'); }
-    catch (er) { toast(errText(er), 'error'); throw er; }
+    await refreshBills(); toast(FiscalAdminI18n.t('common.refreshed'), 'success');
   });
 
   $('#btnRefreshInvoices').onclick = () => withBusy($('#btnRefreshInvoices'), FiscalAdminI18n.t('common.refreshing'), async () => {
-    try { await refreshInvoices(); toast(FiscalAdminI18n.t('common.refreshed'), 'success'); }
-    catch (er) { toast(errText(er), 'error'); throw er; }
+    await refreshInvoices(); toast(FiscalAdminI18n.t('common.refreshed'), 'success');
   });
 
   $('#btnNewProd').onclick = () => {
-    openProductWorkbench('create').catch(er => toast(errText(er), 'error'));
+    openProductWorkbench('create').catch(reportError);
   };
 
   $('#btnSaveProduct').onclick = () => withBusy($('#btnSaveProduct'), FiscalAdminI18n.t('common.saving'), async () => {
-    try {
       const saved = await saveProductFromFields();
       if (!saved) return;
       if (productWorkbenchMode === 'pick') {
@@ -5158,14 +5130,12 @@
         toast(FiscalAdminI18n.t('product.toast.saved'), 'success');
       }
       closeProductWorkbench();
-    } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
   $('#btnNewCustomer').onclick = () => $('#customerForm').classList.remove('hidden');
   $('#btnCancelCustomer').onclick = () => $('#customerForm').classList.add('hidden');
 
   $('#btnSaveCustomer').onclick = () => withBusy($('#btnSaveCustomer'), FiscalAdminI18n.t('common.saving'), async () => {
-    try {
       const tax = $('#cNif').value.trim();
       if (!assertCustomerNifOrToast(tax)) return;
       if (!tax) {
@@ -5181,7 +5151,6 @@
       catalogCustomers = [];
       await ensureCustomerCatalog();
       await refreshCustomers();
-    } catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
   async function refreshSAFTExports() {
@@ -5222,26 +5191,21 @@
   $('#saftMonth').value = String(new Date().getMonth() + 1);
 
   $('#btnRefreshSetup').onclick = () => withBusy($('#btnRefreshSetup'), FiscalAdminI18n.t('common.refreshing'), async () => {
-    try { await refreshSetupStatus({ autoSync: true }); toast(FiscalAdminI18n.t('settings.status.refreshed'), 'success'); }
-    catch (er) { toast(errText(er), 'error'); throw er; }
+    await refreshSetupStatus({ autoSync: true }); toast(FiscalAdminI18n.t('settings.status.refreshed'), 'success');
   });
 
   $('#btnTerminalsRefresh').onclick = () => withBusy($('#btnTerminalsRefresh'), FiscalAdminI18n.t('common.refreshing'), async () => {
-    try { await refreshTerminalsPanel(); toast(FiscalAdminI18n.t('settings.terminals.refreshed'), 'success'); }
-    catch (er) { toast(errText(er), 'error'); throw er; }
+    await refreshTerminalsPanel(); toast(FiscalAdminI18n.t('settings.terminals.refreshed'), 'success');
   });
   $('#btnTerminalsAllowNext').onclick = () => withBusy($('#btnTerminalsAllowNext'), FiscalAdminI18n.t('common.generating'), async () => {
-    try { await startAddTerminalWizard(); }
-    catch (er) { toast(errText(er), 'error'); throw er; }
+    await startAddTerminalWizard();
   });
   $('#btnTerminalsMaxSave').onclick = () => withBusy($('#btnTerminalsMaxSave'), FiscalAdminI18n.t('common.saving'), async () => {
-    try { await saveTerminalMax(); }
-    catch (er) { toast(errText(er), 'error'); throw er; }
+    await saveTerminalMax();
   });
   if ($('#btnLanAccessSave')) {
     $('#btnLanAccessSave').onclick = () => withBusy($('#btnLanAccessSave'), FiscalAdminI18n.t('common.saving'), async () => {
-      try { await saveLanAccess(); }
-      catch (er) { toast(errText(er), 'error'); throw er; }
+      await saveLanAccess();
     });
   }
   if ($('#btnLanCopyEndpoint')) {
@@ -5249,7 +5213,7 @@
       const t = ($('#lanAccessEndpoint') && $('#lanAccessEndpoint').textContent) || '';
       if (!t) return;
       try { await navigator.clipboard.writeText(t); toast(FiscalAdminI18n.t('settings.lan.copied'), 'success'); }
-      catch (er) { toast(errText(er), 'error'); }
+      catch (er) { reportError(er); }
     };
   }
   if ($('#btnTerminalsWizardClose')) {
@@ -5263,38 +5227,34 @@
       const t = ($('#terminalsWizardCode') && $('#terminalsWizardCode').textContent) || '';
       if (!t) return;
       try { await navigator.clipboard.writeText(t); toast(FiscalAdminI18n.t('settings.lan.copied'), 'success'); }
-      catch (er) { toast(errText(er), 'error'); }
+      catch (er) { reportError(er); }
     };
   }
   $('#btnLoginPairTerminal').onclick = () => withBusy($('#btnLoginPairTerminal'), FiscalAdminI18n.t('common.pairing'), async () => {
-    try { await submitTerminalPairFromLogin(); }
-    catch (er) { toast(errText(er), 'error'); throw er; }
+    await submitTerminalPairFromLogin();
   });
 
   $('#btnSaftExport').onclick = () => withBusy($('#btnSaftExport'), FiscalAdminI18n.t('common.exporting'), async () => {
-    try {
       const res = await exportSAFT();
       await refreshSAFTExports();
       toast(FiscalAdminI18n.fmt('settings.saft.exported', { count: res.invoice_count, status: res.validation_status }), 'success');
-    } catch (er) { toast(errText(er), 'error'); throw er; }
   });
   $('#btnSaftRefresh').onclick = () => withBusy($('#btnSaftRefresh'), FiscalAdminI18n.t('common.refreshing'), async () => {
-    try { await refreshSAFTExports(); toast(FiscalAdminI18n.t('settings.saft.list_refreshed'), 'success'); }
-    catch (er) { toast(errText(er), 'error'); throw er; }
+    await refreshSAFTExports(); toast(FiscalAdminI18n.t('settings.saft.list_refreshed'), 'success');
   });
 
   $('#btnTax').onclick = () => withBusy($('#btnTax'), FiscalAdminI18n.t('common.saving'), async () => {
-    try { await saveTaxpayerSettings($('#btnTax')); } catch (er) { if (er && er.error !== 'validation_failed') toast(errText(er), 'error'); throw er; }
+    await saveTaxpayerSettings($('#btnTax'));
   });
 
   $('#btnAT').onclick = () => withBusy($('#btnAT'), FiscalAdminI18n.t('common.saving'), async () => {
-    try { await saveATCredentialsSettings($('#btnAT')); } catch (er) { if (er && er.error !== 'validation_failed') toast(errText(er), 'error'); throw er; }
+    await saveATCredentialsSettings($('#btnAT'));
   });
 
-  $('#btnSeries').onclick = () => registerSeries($('#btnSeries'), '#series', 'FT', 'FT').catch(er => { toast(errText(er), 'error'); throw er; });
-  $('#btnSeriesFs').onclick = () => registerSeries($('#btnSeriesFs'), '#seriesFs', 'FS', 'FS').catch(er => { toast(errText(er), 'error'); throw er; });
-  $('#btnSeriesNc').onclick = () => registerSeries($('#btnSeriesNc'), '#seriesNc', 'NC', 'NC').catch(er => { toast(errText(er), 'error'); throw er; });
-  $('#btnSeriesNd').onclick = () => registerSeries($('#btnSeriesNd'), '#seriesNd', 'ND', 'ND').catch(er => { toast(errText(er), 'error'); throw er; });
+  $('#btnSeries').onclick = () => registerSeries($('#btnSeries'), '#series', 'FT', 'FT');
+  $('#btnSeriesFs').onclick = () => registerSeries($('#btnSeriesFs'), '#seriesFs', 'FS', 'FS');
+  $('#btnSeriesNc').onclick = () => registerSeries($('#btnSeriesNc'), '#seriesNc', 'NC', 'NC');
+  $('#btnSeriesNd').onclick = () => registerSeries($('#btnSeriesNd'), '#seriesNd', 'ND', 'ND');
 
   /** ONLY Admin path to POST /local/v1/setup/series/register. */
   async function registerSeries(btn, inputId, docType, label) {
@@ -5319,20 +5279,17 @@
   });
 
   $('#btnAct').onclick = () => withBusy($('#btnAct'), FiscalAdminI18n.t('common.activating'), async () => {
-    try {
-      const pem = $('#pem').value.trim();
-      if (!pem) {
-        setFieldError($('#pem'), $('#pemError'), FiscalAdminI18n.t('settings.series.pem_required'));
-        toast(FiscalAdminI18n.t('settings.series.pem_required'), 'error');
-        throw { error: 'validation_failed' };
-      }
-      setFieldError($('#pem'), $('#pemError'), '');
-      const st = await j('POST', '/local/v1/setup/activate', { product_private_key_pem: pem });
-      applySetupStatusFromResponse(st);
-      setActCloudStatus('ok', FiscalAdminI18n.t('settings.series.ok'));
-      markSaveSuccess($('#btnAct'));
-      toast(FiscalAdminI18n.t('settings.series.activated'), 'success');
-    } catch (er) { if (er && er.error !== 'validation_failed') toast(errText(er), 'error'); throw er; }
+    const pem = $('#pem').value.trim();
+    if (!pem) {
+      setFieldError($('#pem'), $('#pemError'), FiscalAdminI18n.t('settings.series.pem_required'));
+      throw { error: 'validation_failed', message: FiscalAdminI18n.t('settings.series.pem_required') };
+    }
+    setFieldError($('#pem'), $('#pemError'), '');
+    const st = await j('POST', '/local/v1/setup/activate', { product_private_key_pem: pem });
+    applySetupStatusFromResponse(st);
+    setActCloudStatus('ok', FiscalAdminI18n.t('settings.series.ok'));
+    markSaveSuccess($('#btnAct'));
+    toast(FiscalAdminI18n.t('settings.series.activated'), 'success');
   });
 
   $('#btnSettingsShowFull').onclick = () => setSettingsViewMode('full', setupStatusCache);
@@ -5341,7 +5298,7 @@
     try { localStorage.setItem(SETTINGS_WIZARD_STEP_KEY, String(settingsWizardStep)); } catch (_) { /* */ }
     setSettingsViewMode('wizard', setupStatusCache);
   };
-  $('#btnWizardNext').onclick = () => wizardNextStep().catch(er => toast(errText(er), 'error'));
+  $('#btnWizardNext').onclick = () => wizardNextStep().catch(reportError);
   $('#btnWizardPrev').onclick = () => wizardPrevStep();
 
   let operatorManageCache = [];
@@ -5400,7 +5357,7 @@
       else if (action === 'reset-pin') openOperatorResetPinModal(id);
       else if (action === 'deactivate') await toggleOperatorActive(id, false);
       else if (action === 'activate') await toggleOperatorActive(id, true);
-    } catch (er) { toast(errText(er), 'error'); }
+    } catch (er) { reportError(er); }
   }
 
   async function refreshOperatorsPanel() {
@@ -5558,18 +5515,18 @@
   $('#btnOperatorAdd').onclick = () => {
     try {
       openOperatorFormModal('add');
-    } catch (er) { toast(errText(er), 'error'); }
+    } catch (er) { reportError(er); }
   };
   $('#btnOperatorFormCancel').onclick = () => closeOperatorFormModal();
   $('#btnOperatorFormSubmit').onclick = () => withBusy($('#btnOperatorFormSubmit'), FiscalAdminI18n.t('common.saving'), async () => {
-    try { await submitOperatorForm(); } catch (er) { toast(errText(er), 'error'); throw er; }
+    await submitOperatorForm();
   });
   $('#operatorFormModal').addEventListener('click', e => {
     if (e.target === $('#operatorFormModal')) closeOperatorFormModal();
   });
   $('#btnOperatorResetPinCancel').onclick = () => closeOperatorResetPinModal();
   $('#btnOperatorResetPinSubmit').onclick = () => withBusy($('#btnOperatorResetPinSubmit'), FiscalAdminI18n.t('common.resetting'), async () => {
-    try { await submitOperatorResetPin(); } catch (er) { toast(errText(er), 'error'); throw er; }
+    await submitOperatorResetPin();
   });
   $('#operatorResetPinModal').addEventListener('click', e => {
     if (e.target === $('#operatorResetPinModal')) closeOperatorResetPinModal();
@@ -5606,7 +5563,7 @@
     if (e.target.id === 'confirmActionModal') closeConfirmActionModal();
   });
   $('#btnConfirmActionSubmit').onclick = () => withBusy($('#btnConfirmActionSubmit'), FiscalAdminI18n.t('common.processing'), async () => {
-    try { await runConfirmAction(); } catch (er) { toast(errText(er), 'error'); throw er; }
+    await runConfirmAction();
   });
   $('#operatorsTbody').addEventListener('change', async e => {
     const nc = e.target.closest('[data-op-nc]');
@@ -5617,43 +5574,37 @@
       toast(FiscalAdminI18n.t('settings.ops.nc_updated'), 'success');
     } catch (er) {
       nc.checked = !nc.checked;
-      toast(errText(er), 'error');
+      reportError(er);
     }
   });
 
   $('#btnLoginBootstrapOwner').onclick = () => withBusy($('#btnLoginBootstrapOwner'), FiscalAdminI18n.t('common.creating'), async () => {
-    try {
-      await bootstrapOwnerAndLogin($('#loginBootstrapName').value, $('#loginBootstrapPin').value);
-    } catch (er) { toast(errText(er), 'error'); throw er; }
+    await bootstrapOwnerAndLogin($('#loginBootstrapName').value, $('#loginBootstrapPin').value);
   });
 
   $('#btnFiscalBackup').onclick = () => withBusy($('#btnFiscalBackup'), FiscalAdminI18n.t('common.backing_up'), async () => {
-    try {
-      const res = await j('POST', '/local/v1/setup/backup', {});
-      toast(FiscalAdminI18n.fmt('settings.advanced.backup_toast', { path: res.backup_path || '' }), 'success');
-      $('#integrityResult').textContent = FiscalAdminI18n.fmt('settings.advanced.backup_line', { path: res.backup_path || '', bytes: res.bytes || 0 });
-    } catch (er) { toast(errText(er), 'error'); throw er; }
+    const res = await j('POST', '/local/v1/setup/backup', {});
+    toast(FiscalAdminI18n.fmt('settings.advanced.backup_toast', { path: res.backup_path || '' }), 'success');
+    $('#integrityResult').textContent = FiscalAdminI18n.fmt('settings.advanced.backup_line', { path: res.backup_path || '', bytes: res.bytes || 0 });
   });
 
   $('#btnIntegrityVerify').onclick = () => withBusy($('#btnIntegrityVerify'), FiscalAdminI18n.t('common.verifying'), async () => {
-    try {
-      const res =       await j('POST', '/local/v1/setup/integrity/verify', {
-        block_on_fail: true,
-        heal_on_pass: !!$('#chkIntegrityHeal').checked
-      });
-      const msg = res.ok
-        ? FiscalAdminI18n.fmt('settings.advanced.verify_ok', {
-            n: res.checked,
-            heal: res.healed ? FiscalAdminI18n.fmt('settings.advanced.verify_heal', { n: res.healed }) : ''
-          })
-        : FiscalAdminI18n.fmt('settings.advanced.verify_fail', {
-            failed: res.failed,
-            blocked: res.blocked ? FiscalAdminI18n.fmt('settings.advanced.verify_blocked', { n: res.blocked }) : ''
-          });
-      $('#integrityResult').textContent = msg;
-      toast(msg, res.ok ? 'success' : 'error');
-      await refreshSetupStatus();
-    } catch (er) { toast(errText(er), 'error'); throw er; }
+    const res = await j('POST', '/local/v1/setup/integrity/verify', {
+      block_on_fail: true,
+      heal_on_pass: !!$('#chkIntegrityHeal').checked
+    });
+    const msg = res.ok
+      ? FiscalAdminI18n.fmt('settings.advanced.verify_ok', {
+          n: res.checked,
+          heal: res.healed ? FiscalAdminI18n.fmt('settings.advanced.verify_heal', { n: res.healed }) : ''
+        })
+      : FiscalAdminI18n.fmt('settings.advanced.verify_fail', {
+          failed: res.failed,
+          blocked: res.blocked ? FiscalAdminI18n.fmt('settings.advanced.verify_blocked', { n: res.blocked }) : ''
+        });
+    $('#integrityResult').textContent = msg;
+    toast(msg, res.ok ? 'success' : 'error');
+    await refreshSetupStatus();
   });
 
   $('#btnPrepareSwap').onclick = () => {
@@ -5662,16 +5613,14 @@
       body: FiscalAdminI18n.t('settings.advanced.swap_body'),
       submitLabel: FiscalAdminI18n.t('settings.advanced.swap_submit'),
       onConfirm: () => withBusy($('#btnPrepareSwap'), FiscalAdminI18n.t('common.processing'), async () => {
-        try {
-          const res = await j('POST', '/local/v1/setup/prepare-swap', { backup: true });
-          const path = res.backup_path || '';
-          $('#integrityResult').textContent = FiscalAdminI18n.fmt('settings.advanced.swap_done', { path: path });
-          toast(FiscalAdminI18n.fmt('settings.advanced.swap_toast', {
-            path: path ? FiscalAdminI18n.fmt('settings.advanced.swap_path', { path: path }) : ''
-          }), 'success');
-          setActCloudStatus('wait', FiscalAdminI18n.t('settings.advanced.swap_status'));
-          await refreshSetupStatus();
-        } catch (er) { toast(errText(er), 'error'); throw er; }
+        const res = await j('POST', '/local/v1/setup/prepare-swap', { backup: true });
+        const path = res.backup_path || '';
+        $('#integrityResult').textContent = FiscalAdminI18n.fmt('settings.advanced.swap_done', { path: path });
+        toast(FiscalAdminI18n.fmt('settings.advanced.swap_toast', {
+          path: path ? FiscalAdminI18n.fmt('settings.advanced.swap_path', { path: path }) : ''
+        }), 'success');
+        setActCloudStatus('wait', FiscalAdminI18n.t('settings.advanced.swap_status'));
+        await refreshSetupStatus();
       })
     });
   };
@@ -5689,7 +5638,7 @@
         applyAdminLocale(data.ui_locale, data.invoice_locale);
         toast(FiscalAdminI18n.t('lang.saved'), 'success');
       } catch (er) {
-        toast(errText(er), 'error');
+        reportError(er);
         uiLocaleSelect.value = prev;
         await loadUILocale();
       } finally {

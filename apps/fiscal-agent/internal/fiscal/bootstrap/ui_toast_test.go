@@ -38,11 +38,55 @@ func TestAdminHTMLUsesSharedToastOnly(t *testing.T) {
 	if !strings.Contains(string(fiscalUIToastJS), `FiscalUI.showToast`) {
 		t.Fatal("toast.js must export FiscalUI.showToast")
 	}
+	if !strings.Contains(string(fiscalUIToastJS), `FiscalUI.reportError`) {
+		t.Fatal("toast.js must export FiscalUI.reportError")
+	}
+	if !strings.Contains(adminHTML, `const reportError = FiscalUI.reportError`) {
+		t.Fatal("admin must bind FiscalUI.reportError")
+	}
+	if strings.Contains(adminHTML, `toast(errText`) {
+		t.Fatal("do not toast(errText); use reportError (single error-toast path)")
+	}
+	if strings.Contains(adminHTML, `station_id required`) {
+		t.Fatal("requireStation must throw i18n message, not English station_id required")
+	}
+	if strings.Contains(adminHTML, `reportError(er); throw`) || strings.Contains(adminHTML, "reportError(er);\n      throw") {
+		t.Fatal("do not reportError then throw (withBusy already reports; would double-toast)")
+	}
+	if n := strings.Count(adminHTML, "async function withBusy"); n != 1 {
+		t.Fatalf("withBusy must appear exactly once, got %d", n)
+	}
+	wbIdx := strings.Index(adminHTML, "async function withBusy")
+	wbEnd := strings.Index(adminHTML[wbIdx+1:], "\n  async function ")
+	if wbEnd < 0 {
+		wbEnd = strings.Index(adminHTML[wbIdx+1:], "\n  function ")
+	}
+	if wbEnd < 0 {
+		t.Fatal("cannot bound withBusy")
+	}
+	wbBody := adminHTML[wbIdx : wbIdx+1+wbEnd]
+	if strings.Count(wbBody, "reportError(er)") != 1 {
+		t.Fatalf("withBusy must call reportError exactly once, got %d", strings.Count(wbBody, "reportError(er)"))
+	}
+	if !strings.Contains(adminHTML, "function requireStation") {
+		t.Fatal("admin must define requireStation")
+	}
+	// requireStation must throw-only (no toast before throw).
+	reqIdx := strings.Index(adminHTML, "function requireStation")
+	reqEnd := strings.Index(adminHTML[reqIdx:], "\n  function ")
+	if reqEnd < 0 {
+		t.Fatal("cannot bound requireStation")
+	}
+	body := adminHTML[reqIdx : reqIdx+reqEnd]
+	if strings.Contains(body, "toast(") {
+		t.Fatal("requireStation must not toast; throw only (withBusy/reportError speaks)")
+	}
+	if strings.Count(string(fiscalUIToastCSS), "max-width: calc(100% - 2rem)") != 1 {
+		t.Fatalf("toast max-width 100 percent writing must appear once, got %d",
+			strings.Count(string(fiscalUIToastCSS), "max-width: calc(100% - 2rem)"))
+	}
 	if strings.Contains(string(fiscalUIToastCSS), "100vw") {
 		t.Fatal("toast.css must not use 100vw")
-	}
-	if n := strings.Count(string(fiscalUIToastCSS), "max-width: calc(100% - 2rem)"); n != 1 {
-		t.Fatalf("toast max-width 100 percent writing must appear once, got %d", n)
 	}
 }
 

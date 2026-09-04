@@ -1,0 +1,34 @@
+---
+description: Fiscal Admin error toast — throw vs report (single speaker)
+globs: apps/fiscal-agent/internal/fiscal/bootstrap/**/*
+alwaysApply: false
+---
+
+# Fiscal Admin error reporting
+
+**状态：** 定稿 · 权威本文件 + `ui/toast.js`（`FiscalUI.reportError`）
+
+## P0 规矩（谁说话）
+
+1. **业务函数只 `throw`，不自己 `toast` 同一失败。** 形态：`throw { error: '…', message: FiscalAdminI18n.t('…') }`（`message` 已是用户文案）。
+2. **只有一处把 thrown/API 错误打成 error toast：** `FiscalUI.reportError`（Admin 里绑成 `reportError`）。
+3. **`withBusy` 内部 catch → `reportError` 一次，不再向外抛。** 包在 `withBusy` 里的 `fn` 禁止再 `catch { reportError }`。
+4. **禁止** `toast` 完再 `throw` 同一错误；禁止 `toast(errText(er))`（改 `reportError(er)`）；禁止 `formatError` 拼出 `code: message` 给店员看。
+
+## 允许的例外
+
+- **成功 / info** 仍用 `toast(…, 'success'|'info')` + i18n。
+- **早退校验**（不 throw）：`toast(FiscalAdminI18n.t(…), 'error'); return;`（如缺 PIN、缺分单标记）。
+- **字段红字** `setFieldError` 可本地标；同一失败仍只 throw，由外层 `reportError`。
+- **`j()` 里 401/403 副作用**（登出、配对提示）可做，但仍 throw；文案交给 `reportError` 或已有专用 i18n toast（终端配对引导）。
+
+## SOLID 口径（本仓）
+
+本仓**没有**单独 SOLID 规范文件。本约束对应：
+
+- **S**：展示（`showToast`）与「把错误变成一句用户话」（`formatError` / `reportError`）分开；业务只负责发现错误。
+- **不要**为 SOLID 再加一层抽象框架——维持上述唯一入口即可。
+
+## 测试钉死
+
+`ui_toast_test.go`：`FiscalUI.reportError` 导出；Admin 不得 `toast(errText`；`requireStation` 不得 toast；`withBusy` 内 `reportError` 恰好一处。
