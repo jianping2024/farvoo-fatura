@@ -60,10 +60,11 @@ func routeAuthFor(r *http.Request) routeAuth {
 		return authAdmin
 	}
 	managerPaths := map[string]bool{
-		"/local/v1/setup/taxpayer":             true,
-		"/local/v1/setup/operator":             true,
-		"/local/v1/setup/terminals":            true,
-		"/local/v1/setup/terminals/allow-next": true,
+		"/local/v1/setup/taxpayer":              true,
+		"/local/v1/setup/operator":              true,
+		"/local/v1/setup/terminals":             true,
+		"/local/v1/setup/terminals/allow-next":  true,
+		"/local/v1/setup/print-station/local":   true,
 	}
 	if managerPaths[p] {
 		return authManager
@@ -71,8 +72,17 @@ func routeAuthFor(r *http.Request) routeAuth {
 	if p == "/local/v1/setup/operators/manage" {
 		return authManager
 	}
-	if strings.HasPrefix(p, "/local/v1/setup/terminals/") && strings.HasSuffix(p, "/revoke") {
-		return authManager
+	if strings.HasPrefix(p, "/local/v1/setup/terminals/") {
+		switch {
+		case strings.HasSuffix(p, "/revoke") && r.Method == http.MethodPost:
+			return authManager
+		case strings.HasSuffix(p, "/activate") && r.Method == http.MethodPost:
+			return authManager
+		case strings.HasSuffix(p, "/delete") && r.Method == http.MethodPost:
+			return authManager
+		case strings.HasSuffix(p, "/station") && r.Method == http.MethodPut:
+			return authManager
+		}
 	}
 	if strings.HasPrefix(p, "/local/v1/saft/exports") {
 		return authManager

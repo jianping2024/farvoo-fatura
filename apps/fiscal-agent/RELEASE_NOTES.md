@@ -2,6 +2,18 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.91
+
+**开票电脑：重新启用 / 删除停用行 / 每机默认打印档口**
+
+- **唯一写法 · 启用：**仅 `ActivateFiscalTerminal`（占 `active=1` 名额；旧 Cookie 恢复可用）。
+- **唯一写法 · 删除：**仅 `DeleteInactiveFiscalTerminal`（只删 `active=0`）。
+- **唯一写法 · LAN 档口：**仅 `SetFiscalTerminalDefaultStation`（`fiscal_terminals.default_station_id`）。
+- **唯一写法 · 本机档口：**仅 `SetLocalDefaultStation` / `GetLocalDefaultStation`（`taxpayer_settings.local_default_station_id`，不占名额）。
+- **唯一写法 · 开票有效档口：**仅 `ResolveEffectivePrintStation`；Admin `refreshEffectivePrintStation`。
+- 设备页去掉档口下拉，仅「档口打印机映射：打开配置向导」；发票页改为只读当前档口提示。
+- 「多台电脑开票」列表：本机 127.0.0.1 行 + 各电脑档口列；停用可启用/删除。
+
 ## 0.4.90
 
 **托盘 Restart：继任进程必须持有单实例 Mutex（收掉无锁跑 Agent）**

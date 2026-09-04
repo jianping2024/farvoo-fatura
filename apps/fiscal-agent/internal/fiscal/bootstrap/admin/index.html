@@ -820,7 +820,7 @@
             </div>
             <div class="field">
               <label data-i18n="settings.printers.title">打印机</label>
-              <select id="invStationSel"><option value="" data-i18n="settings.printers.loading">（加载中…）</option></select>
+              <p class="hint" id="invStationHint" data-i18n="settings.printers.loading">（加载中…）</p>
             </div>
             <div class="actions">
               <button type="button" id="btnIssueInvoice" data-i18n="order.issue_print">签发发票并打印</button>
@@ -1159,14 +1159,10 @@
             <details class="settings-panel" id="settings-section-printers" data-settings-section="printers">
               <summary data-i18n="settings.printers.title">打印机</summary>
               <div class="settings-panel-body">
-                <div class="field">
-                  <label for="stationSel" data-i18n="settings.printers.station">默认档口</label>
-                  <select id="stationSel"><option value="">（加载中…）</option></select>
-                </div>
-                <div class="panel-footer" style="border:0;justify-content:flex-start">
-                  <button type="button" class="secondary" id="btnPrinters" data-i18n="settings.printers.refresh">刷新档口</button>
-                  <a href="http://127.0.0.1:17892/configure" target="_blank" rel="noopener" class="hint" data-i18n="settings.printers.manage">管理档口打印机 →</a>
-                </div>
+                <p class="hint">
+                  <a href="http://127.0.0.1:17892/configure" target="_blank" rel="noopener" data-i18n="settings.printers.configure_link">档口打印机映射：打开配置向导</a>
+                </p>
+                <p class="hint" data-i18n="settings.printers.configure_hint">在配置向导里把每个档口绑定到物理打印机；本页「多台电脑开票」为每台电脑指定默认档口。</p>
               </div>
             </details>
 
@@ -1225,7 +1221,7 @@
                 </div>
                 <div class="table-scroll">
                   <table class="list-table" id="terminalsTable">
-                    <thead><tr><th data-i18n="settings.terminals.note">电脑名称</th><th data-i18n="common.status">状态</th><th data-i18n="settings.terminals.ip">最近 IP</th><th data-i18n="settings.terminals.seen">最近使用</th><th></th></tr></thead>
+                    <thead><tr><th data-i18n="settings.terminals.note">电脑名称</th><th data-i18n="common.status">状态</th><th data-i18n="settings.terminals.ip">最近 IP</th><th data-i18n="settings.terminals.seen">最近使用</th><th data-i18n="settings.terminals.print_station">打印档口</th><th></th></tr></thead>
                     <tbody id="terminalsTbody"></tbody>
                   </table>
                 </div>
@@ -1428,7 +1424,6 @@
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const toast = FiscalUI.showToast;
   const errText = FiscalUI.formatError;
-  const STATION_LS = 'fiscal_station_id';
   const INVOICE_TZ = 'Europe/Lisbon';
   const DEFAULT_SALE_DOC = 'FS';
   const SALE_DOC_TYPES = ['FT', 'FS'];
@@ -1568,7 +1563,8 @@
       void refreshTerminalsPanel();
       if (auditFiltersReady) void refreshAuditLog();
       void refreshSAFTExports().catch(function () {});
-      void refreshPrinters().catch(function () {});
+      void loadPrinterStations().catch(function () {});
+      void refreshEffectivePrintStation().catch(function () {});
       void refreshHomeStats().catch(function () {});
       if (ordersListReady) renderOrdersList();
       if (billsListReady) void refreshBills().catch(function () {});
@@ -2122,18 +2118,64 @@
     }
   }
 
-  function setStationId(id) {
-    if (!id) return;
-    localStorage.setItem(STATION_LS, id);
-    sessionStorage.setItem('fiscal_station_id', id);
+  async function loadPrinterStations() {
+    const data = await j('GET', '/local/v1/printers');
+    window.__printerStations = data.stations || [];
+    return window.__printerStations;
   }
 
-  function getStationId() {
-    return sessionStorage.getItem('fiscal_station_id') ||
-      localStorage.getItem(STATION_LS) || '';
+  function fillStationSelectEl(sel, currentId, onChange) {
+    if (!sel) return;
+    const stations = window.__printerStations || [];
+    sel.innerHTML = '';
+    const empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = stations.length
+      ? FiscalAdminI18n.t('settings.printers.empty')
+      : FiscalAdminI18n.t('settings.printers.none');
+    sel.appendChild(empty);
+    stations.forEach(function (s) {
+      const o = document.createElement('option');
+      o.value = s.id;
+      o.textContent = FiscalUI.formatPrinterStationOption(s);
+      sel.appendChild(o);
+    });
+    if (currentId && stations.some(function (s) { return s.id === currentId; })) {
+      sel.value = currentId;
+    } else {
+      sel.value = '';
+    }
+    sel.onchange = function () {
+      if (typeof onChange === 'function') onChange(sel.value);
+    };
   }
 
-  /** Sync payload scope_type: whole_table | split. Issue API mode: whole_table | person. */
+  async function refreshEffectivePrintStation() {
+    const data = await j('GET', '/local/v1/setup/print-station');
+    window.__effectivePrintStation = data;
+    const hint = $('#invStationHint');
+    if (hint) {
+      const label = (data.station_label || '').trim();
+      const sid = (data.station_id || '').trim();
+      if (label) {
+        hint.textContent = label;
+      } else if (sid) {
+        hint.textContent = sid;
+      } else {
+        hint.textContent = FiscalAdminI18n.t('settings.printers.none');
+      }
+    }
+    return data;
+  }
+
+  function requireStation() {
+    const sid = ((window.__effectivePrintStation && window.__effectivePrintStation.station_id) || '').trim();
+    if (!sid) {
+      toast(FiscalAdminI18n.t('settings.printers.need'), 'error');
+      throw { error: 'validation_failed', message: 'station_id required' };
+    }
+    return sid;
+  }
   function syncScopeType(snap, draft) {
     const s = snap || {};
     const d = draft || {};
@@ -2236,46 +2278,6 @@
       catalogCustomers = data.customers || [];
       renderCustomerNifDatalist();
     } catch (_) { /* list may stay empty */ }
-  }
-
-  async function refreshPrinters() {
-    const sels = [$('#stationSel'), $('#invStationSel')].filter(Boolean);
-    const data = await j('GET', '/local/v1/printers');
-    const stations = data.stations || [];
-    const prev = getStationId();
-    sels.forEach(sel => {
-      sel.innerHTML = '';
-      if (!stations.length) {
-        const o = document.createElement('option');
-        o.value = '';
-        o.textContent = FiscalAdminI18n.t('settings.printers.empty');
-        sel.appendChild(o);
-        return;
-      }
-      stations.forEach(s => {
-        const o = document.createElement('option');
-        o.value = s.id;
-        o.textContent = FiscalUI.formatPrinterStationOption(s);
-        sel.appendChild(o);
-      });
-    });
-    if (stations.length) {
-      const pick = (prev && stations.some(s => s.id === prev)) ? prev : stations[0].id;
-      sels.forEach(sel => { if (sel.options.length) sel.value = pick; });
-      setStationId(pick);
-    }
-    return stations;
-  }
-
-  function requireStation(sel) {
-    const sid = ((sel && sel.value) || getStationId() || '').trim();
-    const hasMapped = sel && [...sel.options].some(o => (o.value || '').trim());
-    if (!sid && hasMapped) {
-      toast(FiscalAdminI18n.t('settings.printers.need'), 'error');
-      throw { error: 'validation_failed', message: 'station_id required' };
-    }
-    if (sid) setStationId(sid);
-    return sid;
   }
 
   async function pollPrintJob(jobId, baseMsg) {
@@ -3413,7 +3415,7 @@
 
   /** ONLY reprint API path (list + detail + order buttons). */
   async function reprintInvoice(documentId) {
-    const sid = requireStation($('#invStationSel').options.length ? $('#invStationSel') : $('#stationSel'));
+    const sid = requireStation();
     const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/reprints', {
       station_id: sid
     });
@@ -3431,7 +3433,7 @@
 
   /** ONLY debit-note path for invoice detail drawer (full + partial). */
   async function debitInvoice(documentId, opts) {
-    const sid = requireStation($('#invStationSel').options.length ? $('#invStationSel') : $('#stationSel'));
+    const sid = requireStation();
     const reason = typeof opts === 'string' ? opts : opts.reason;
     const debitFull = typeof opts === 'string' ? true : !!opts.debit_full;
     const body = {
@@ -3457,7 +3459,7 @@
 
   /** ONLY credit-note path for invoice detail drawer (full + partial). */
   async function creditInvoice(documentId, opts) {
-    const sid = requireStation($('#invStationSel').options.length ? $('#invStationSel') : $('#stationSel'));
+    const sid = requireStation();
     const reason = typeof opts === 'string' ? opts : opts.reason;
     const creditFull = typeof opts === 'string' ? true : !!opts.credit_full;
     const body = {
@@ -4349,7 +4351,7 @@
 
   async function issueCurrentOrder() {
     if (!currentOrder || currentOrder.status === 'issued') return;
-    const sid = requireStation($('#invStationSel'));
+    const sid = requireStation();
     const nif = $('#invNif').value.trim();
     if (!assertCustomerNifOrToast(nif)) return;
     const name = $('#invName').value.trim() || 'Consumidor Final';
@@ -4394,7 +4396,7 @@
 
   async function issueBill(mode, scopeId, buyer) {
     if (!currentBill) return;
-    const sid = requireStation($('#stationSel'));
+    const sid = requireStation();
     let nif = '';
     let name = '';
     if (mode === 'person') {
@@ -4462,7 +4464,8 @@
       refreshOperatorsPanel().catch(() => {});
       initAuditLogPanel();
       refreshAuditLog().catch(() => {});
-      refreshPrinters().catch(() => {});
+      loadPrinterStations().catch(() => {});
+      refreshEffectivePrintStation().catch(() => {});
       refreshTerminalsPanel().catch(() => {});
       refreshSAFTExports().catch(() => {});
     } else {
@@ -4502,7 +4505,8 @@
     applyMode();
     refreshLocalizedSelects();
     showView('home');
-    refreshPrinters().catch(() => {});
+    loadPrinterStations().catch(() => {});
+    refreshEffectivePrintStation().catch(() => {});
     ensureCustomerCatalog().catch(() => {});
     startBillDraftEvents();
   }
@@ -4594,35 +4598,109 @@
     }
   }
 
+  async function saveLocalStation(stationId) {
+    await j('PUT', '/local/v1/setup/print-station/local', { station_id: stationId || '' });
+    toast(FiscalAdminI18n.t('settings.terminals.station_saved'), 'success');
+    await refreshEffectivePrintStation();
+  }
+
+  async function saveTerminalStation(terminalId, stationId) {
+    await j('PUT', '/local/v1/setup/terminals/' + encodeURIComponent(terminalId) + '/station', {
+      station_id: stationId || ''
+    });
+    toast(FiscalAdminI18n.t('settings.terminals.station_saved'), 'success');
+  }
+
+  async function activateTerminal(id) {
+    openConfirmAction({
+      title: FiscalAdminI18n.t('settings.terminals.activate_title'),
+      body: FiscalAdminI18n.t('settings.terminals.activate_body'),
+      submitLabel: FiscalAdminI18n.t('settings.terminals.activate_btn'),
+      onConfirm: async () => {
+        await j('POST', '/local/v1/setup/terminals/' + encodeURIComponent(id) + '/activate', {});
+        toast(FiscalAdminI18n.t('settings.terminals.activated'), 'success');
+        await refreshTerminalsPanel();
+      }
+    });
+  }
+
+  async function deleteTerminal(id) {
+    openConfirmAction({
+      title: FiscalAdminI18n.t('settings.terminals.delete_title'),
+      body: FiscalAdminI18n.t('settings.terminals.delete_body'),
+      submitLabel: FiscalAdminI18n.t('settings.terminals.delete_btn'),
+      onConfirm: async () => {
+        await j('POST', '/local/v1/setup/terminals/' + encodeURIComponent(id) + '/delete', {});
+        toast(FiscalAdminI18n.t('settings.terminals.deleted'), 'success');
+        await refreshTerminalsPanel();
+      }
+    });
+  }
+
   async function refreshTerminalsPanel() {
     if (!canManageTerminals()) return;
     await refreshLanAccessPanel();
+    await loadPrinterStations().catch(function () {});
     const data = await j('GET', '/local/v1/setup/terminals');
     const used = data.terminals_used || 0;
     const max = data.max_fiscal_terminals || 1;
+    const localStation = data.local_default_station_id || '';
     $('#terminalsQuotaHint').textContent = FiscalAdminI18n.fmt('settings.terminals.quota', { used: used, max: max });
     const maxInput = $('#terminalsMaxInput');
     if (maxInput && document.activeElement !== maxInput) maxInput.value = String(max);
     const rows = data.terminals || [];
     const emptyHint = $('#terminalsEmptyHint');
-    if (emptyHint) emptyHint.classList.toggle('hidden', rows.length > 0);
+    if (emptyHint) emptyHint.classList.toggle('hidden', true);
     const tb = $('#terminalsTbody');
     tb.innerHTML = '';
-    rows.forEach(row => {
+
+    const localTr = document.createElement('tr');
+    localTr.innerHTML = '<td>' + escHtml(FiscalAdminI18n.t('settings.terminals.local_row')) + '</td>'
+      + '<td>' + FiscalAdminI18n.t('settings.terminals.active') + '</td>'
+      + '<td>127.0.0.1</td>'
+      + '<td>—</td>'
+      + '<td></td><td></td>';
+    const localSel = document.createElement('select');
+    fillStationSelectEl(localSel, localStation, function (sid) {
+      void saveLocalStation(sid).catch(function (er) { toast(errText(er), 'error'); });
+    });
+    localTr.children[4].appendChild(localSel);
+    tb.appendChild(localTr);
+
+    rows.forEach(function (row) {
       const tr = document.createElement('tr');
       const status = row.active ? FiscalAdminI18n.t('settings.terminals.active') : FiscalAdminI18n.t('common.disabled');
       tr.innerHTML = '<td>' + escHtml(row.label || FiscalAdminI18n.t('settings.terminals.no_label')) + '</td>'
         + '<td>' + status + '</td>'
         + '<td>' + escHtml(row.last_seen_ip || '—') + '</td>'
         + '<td>' + escHtml(row.last_seen_at || row.registered_at || '—') + '</td>'
-        + '<td></td>';
+        + '<td></td><td></td>';
+      const sel = document.createElement('select');
+      fillStationSelectEl(sel, row.default_station_id || '', function (sid) {
+        void saveTerminalStation(row.id, sid).catch(function (er) { toast(errText(er), 'error'); });
+      });
+      tr.children[4].appendChild(sel);
+      const actions = tr.lastChild;
       if (row.active) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'secondary';
         btn.textContent = FiscalAdminI18n.t('settings.terminals.revoke_btn');
-        btn.onclick = () => { void revokeTerminal(row.id); };
-        tr.lastChild.appendChild(btn);
+        btn.onclick = function () { void revokeTerminal(row.id); };
+        actions.appendChild(btn);
+      } else {
+        const actBtn = document.createElement('button');
+        actBtn.type = 'button';
+        actBtn.textContent = FiscalAdminI18n.t('settings.terminals.activate_btn');
+        actBtn.onclick = function () { void activateTerminal(row.id); };
+        actions.appendChild(actBtn);
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'secondary';
+        delBtn.textContent = FiscalAdminI18n.t('settings.terminals.delete_btn');
+        delBtn.style.marginLeft = '0.35rem';
+        delBtn.onclick = function () { void deleteTerminal(row.id); };
+        actions.appendChild(delBtn);
       }
       tb.appendChild(tr);
     });
@@ -5148,13 +5226,6 @@
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
-  $('#btnPrinters').onclick = () => withBusy($('#btnPrinters'), FiscalAdminI18n.t('common.refreshing'), async () => {
-    try {
-      const st = await refreshPrinters();
-      toast(st.length ? FiscalAdminI18n.fmt('settings.printers.count', { n: st.length }) : FiscalAdminI18n.t('settings.printers.none'), 'success');
-    } catch (er) { toast(errText(er), 'error'); throw er; }
-  });
-
   $('#btnTerminalsRefresh').onclick = () => withBusy($('#btnTerminalsRefresh'), FiscalAdminI18n.t('common.refreshing'), async () => {
     try { await refreshTerminalsPanel(); toast(FiscalAdminI18n.t('settings.terminals.refreshed'), 'success'); }
     catch (er) { toast(errText(er), 'error'); throw er; }
@@ -5211,9 +5282,6 @@
     try { await refreshSAFTExports(); toast(FiscalAdminI18n.t('settings.saft.list_refreshed'), 'success'); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
-
-  $('#stationSel').onchange = () => setStationId($('#stationSel').value);
-  $('#invStationSel').onchange = () => setStationId($('#invStationSel').value);
 
   $('#btnTax').onclick = () => withBusy($('#btnTax'), FiscalAdminI18n.t('common.saving'), async () => {
     try { await saveTaxpayerSettings($('#btnTax')); } catch (er) { if (er && er.error !== 'validation_failed') toast(errText(er), 'error'); throw er; }
