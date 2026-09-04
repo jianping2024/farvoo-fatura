@@ -14,5 +14,6 @@ alwaysApply: true
 **On-demand**
 
 - [`release-and-ci.mdc`](./release-and-ci.mdc) — fiscal-agent push/tag 前必须 `./scripts/check-fiscal-agent.sh`（含 Windows 交叉编译）
+- [`fiscal-admin-error-toast.mdc`](./fiscal-admin-error-toast.mdc) — Admin：业务只 throw；`FiscalUI.reportError` / `withBusy` 唯一 error toast
 
 Product / release truth under `docs/`（尤其 `docs/ci-and-release.zh.md`、`docs/fiscal-sqlite-schema.zh.md`）。
