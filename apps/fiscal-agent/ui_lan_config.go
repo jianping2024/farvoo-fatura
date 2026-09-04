@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net"
 	"os"
 	"strings"
@@ -20,7 +21,7 @@ func loadAgentFiscalAllowLANState() (set bool, allow bool) {
 
 // setAgentFiscalAllowLAN is the ONLY config.json writer for fiscal_allow_lan.
 func setAgentFiscalAllowLAN(allow bool) error {
-	if lanEnvLockedAllow || lanEnvLockedBind {
+	if lanOpsLockedAllow || lanOpsLockedBind {
 		return api.ErrLanEnvLocked
 	}
 	path := defaultConfigPath()
@@ -34,7 +35,8 @@ func setAgentFiscalAllowLAN(allow bool) error {
 
 // buildAgentLanAccessSnapshot is the ONLY Agent-side LAN status builder for Admin GET/PUT.
 func buildAgentLanAccessSnapshot(listenBind string) api.LanAccessSnapshot {
-	envLocked := lanEnvLockedAllow || lanEnvLockedBind
+	captureLanOpsEnvLocksOnce()
+	envLocked := lanOpsLockedAllow || lanOpsLockedBind
 	bind := strings.TrimSpace(listenBind)
 	if bind == "" {
 		bind = strings.TrimSpace(os.Getenv("FISCAL_BIND"))
@@ -89,10 +91,14 @@ func agentLanAccessSet(allow bool) (api.LanAccessSnapshot, error) {
 	if err := setAgentFiscalAllowLAN(allow); err != nil {
 		return api.LanAccessSnapshot{}, err
 	}
+	// Apply listen change in-process (disk is authority). Avoids stale loopback from cold shell.
+	if err := startEmbeddedFiscal(nil); err != nil {
+		log.Printf("fiscal: lan rebind after save: %v", err)
+	}
 	snap := buildAgentLanAccessSnapshot(embeddedListenBind())
 	snap.AllowLAN = allow
-	snap.RestartRequired = !snap.EnvLocked && allow != snap.ListeningLAN
 	snap.Source = "config"
+	snap.RestartRequired = !snap.EnvLocked && allow != snap.ListeningLAN
 	return snap, nil
 }
 

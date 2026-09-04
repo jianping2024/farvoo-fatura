@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.87
+
+**LAN 监听落地：磁盘权威 + 本机壳永不打开 0.0.0.0 + 禁止误锁 env**
+
+- **唯一写法 · ops env 锁定捕获：**仅 `captureLanOpsEnvLocksOnce`（进程首次 apply 前快照；禁止把自身 `Setenv` 当成锁定）。
+- **唯一写法 · LAN env 灌入：**仅 `applyFiscalRuntimeFromConfig`（磁盘 `fiscal_allow_lan` → `FISCAL_ALLOW_LAN` / `FISCAL_BIND`；关 LAN 时 `Unsetenv(FISCAL_BIND)`）。
+- **唯一写法 · 本机打开 URL：**仅 `loopbackAdminURL`（`0.0.0.0` → `127.0.0.1`）；`fiscalAdminBaseURL` 唯一调用。
+- **唯一写法 · 监听重绑：**仅 `startEmbeddedFiscal`（listen URL 变化时 Close 再 Listen）；保存后 `agentLanAccessSet` 调它一次。
+- 收掉「每次看当前 env 非空就 env_locked」的错误路径。
+
 ## 0.4.86
 
 **发票日期筛选：接入 Admin i18n（收掉硬编码中文）**

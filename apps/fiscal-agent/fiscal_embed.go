@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -20,7 +21,7 @@ import (
 var (
 	embeddedFiscalMu  sync.Mutex
 	embeddedFiscal    *bootstrap.Runtime
-	embeddedFiscalURL string
+	embeddedFiscalURL string // listen URL (may be http://0.0.0.0:17880); shell uses loopbackAdminURL
 )
 
 // fiscalBillSyncPuller returns a Puller bound to the embedded fiscal DB, or nil.
@@ -36,14 +37,33 @@ func fiscalBillSyncPuller(cfg *config) *billsync.Puller {
 	return &billsync.Puller{APIBase: cfg.APIBase, JWT: cfg.AgentJWT, DB: embeddedFiscal.DB}
 }
 
-// lanEnvLocked* set by applyFiscalRuntimeFromConfig — ONLY markers for Admin env_locked.
+// lanOpsEnv* — ONLY ops/CI lock markers. Captured once from the process environment
+// before this process writes FISCAL_ALLOW_LAN / FISCAL_BIND. Never treat our own Setenv as lock.
 var (
-	lanEnvLockedAllow bool
-	lanEnvLockedBind  bool
+	lanOpsEnvCaptured    bool
+	lanOpsLockedAllow    bool
+	lanOpsLockedBind     bool
 )
 
+// resetLanOpsEnvCaptureForTest resets capture state between unit tests. ONLY for tests.
+func resetLanOpsEnvCaptureForTest() {
+	lanOpsEnvCaptured = false
+	lanOpsLockedAllow = false
+	lanOpsLockedBind = false
+}
+
+func captureLanOpsEnvLocksOnce() {
+	if lanOpsEnvCaptured {
+		return
+	}
+	lanOpsLockedAllow = strings.TrimSpace(os.Getenv("FISCAL_ALLOW_LAN")) != ""
+	lanOpsLockedBind = strings.TrimSpace(os.Getenv("FISCAL_BIND")) != ""
+	lanOpsEnvCaptured = true
+}
+
 // applyFiscalRuntimeFromConfig installs process env used by fiscal packages.
-// ONLY agent-side applicator; env already set wins (regression scripts / ops override).
+// ONLY agent-side applicator. LAN listen intent: disk config.json unless ops env was
+// present before first apply (CI / Machine env override).
 func applyFiscalRuntimeFromConfig(cfg *config) {
 	if strings.TrimSpace(os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION")) == "" {
 		allow := false
@@ -66,23 +86,24 @@ func applyFiscalRuntimeFromConfig(cfg *config) {
 		_ = os.Setenv("FISCAL_AT_ENV", at)
 	}
 
-	if strings.TrimSpace(os.Getenv("FISCAL_ALLOW_LAN")) != "" {
-		lanEnvLockedAllow = true
-	} else {
-		lanEnvLockedAllow = false
-		allowLAN := cfg != nil && cfg.FiscalAllowLAN != nil && *cfg.FiscalAllowLAN
+	captureLanOpsEnvLocksOnce()
+
+	if !lanOpsLockedAllow {
+		allowLAN := false
+		if set, allow := loadAgentFiscalAllowLANState(); set {
+			allowLAN = allow
+		}
 		if allowLAN {
 			_ = os.Setenv("FISCAL_ALLOW_LAN", "1")
 		} else {
 			_ = os.Setenv("FISCAL_ALLOW_LAN", "0")
 		}
 	}
-	if strings.TrimSpace(os.Getenv("FISCAL_BIND")) != "" {
-		lanEnvLockedBind = true
-	} else {
-		lanEnvLockedBind = false
+	if !lanOpsLockedBind {
 		if os.Getenv("FISCAL_ALLOW_LAN") == "1" {
 			_ = os.Setenv("FISCAL_BIND", "0.0.0.0:17880")
+		} else {
+			_ = os.Unsetenv("FISCAL_BIND")
 		}
 	}
 }
@@ -112,19 +133,32 @@ func resolveEmbedStoreID(cfg *config) string {
 func startEmbeddedFiscal(cfg *config) error {
 	embeddedFiscalMu.Lock()
 	defer embeddedFiscalMu.Unlock()
-	if embeddedFiscal != nil {
-		if cfg != nil && embeddedFiscal.Service != nil {
-			embeddedFiscal.Service.SetCloudProvision(service.CloudProvision{
-				APIBase:  strings.TrimSpace(cfg.APIBase),
-				JWT:      strings.TrimSpace(cfg.AgentJWT),
-				DeviceID: strings.TrimSpace(cfg.DeviceID),
-			})
-			go embeddedFiscal.Service.TryPullCloudProvisionIfNeeded(context.Background())
-		}
-		return nil
-	}
 
 	applyFiscalRuntimeFromConfig(cfg)
+	bind := strings.TrimSpace(os.Getenv("FISCAL_BIND"))
+	if bind == "" {
+		bind = "127.0.0.1:17880"
+	}
+	wantURL := "http://" + bind
+
+	if embeddedFiscal != nil {
+		if embeddedFiscalURL == wantURL {
+			if cfg != nil && embeddedFiscal.Service != nil {
+				embeddedFiscal.Service.SetCloudProvision(service.CloudProvision{
+					APIBase:  strings.TrimSpace(cfg.APIBase),
+					JWT:      strings.TrimSpace(cfg.AgentJWT),
+					DeviceID: strings.TrimSpace(cfg.DeviceID),
+				})
+				go embeddedFiscal.Service.TryPullCloudProvisionIfNeeded(context.Background())
+			}
+			return nil
+		}
+		// Bind intent changed (e.g. cold shell started loopback before disk LAN applied).
+		log.Printf("fiscal: rebind %s → %s", embeddedFiscalURL, wantURL)
+		_ = embeddedFiscal.Close()
+		embeddedFiscal = nil
+		embeddedFiscalURL = ""
+	}
 
 	dataRoot := agentDataDir()
 	if dataRoot == "" {
@@ -137,10 +171,6 @@ func startEmbeddedFiscal(cfg *config) error {
 	}
 	if v := strings.TrimSpace(os.Getenv("FISCAL_DATA_DIR")); v != "" {
 		dataDir = v
-	}
-	bind := strings.TrimSpace(os.Getenv("FISCAL_BIND"))
-	if bind == "" {
-		bind = "127.0.0.1:17880"
 	}
 	storeID := resolveEmbedStoreID(cfg)
 
@@ -203,7 +233,7 @@ func startEmbeddedFiscal(cfg *config) error {
 		go rt.Service.TryPullCloudProvisionIfNeeded(context.Background())
 	}
 	embeddedFiscal = rt
-	embeddedFiscalURL = "http://" + bind
+	embeddedFiscalURL = wantURL
 	log.Printf("fiscal: embedded on %s db=%s store=%s", embeddedFiscalURL, dbPath, storeID)
 	return nil
 }
@@ -215,15 +245,36 @@ func stopEmbeddedFiscal() {
 		_ = embeddedFiscal.Close()
 		embeddedFiscal = nil
 	}
+	embeddedFiscalURL = ""
 }
 
 func fiscalAdminBaseURL() string {
 	embeddedFiscalMu.Lock()
 	defer embeddedFiscalMu.Unlock()
 	if embeddedFiscalURL != "" {
-		return embeddedFiscalURL
+		// Shell always uses loopback; LAN bind 0.0.0.0 is for remote Clients only.
+		return loopbackAdminURL(embeddedFiscalURL)
 	}
 	return "http://127.0.0.1:17880"
+}
+
+// loopbackAdminURL is the ONLY mapper from listen URL → WebView/base URL (0.0.0.0 → 127.0.0.1).
+func loopbackAdminURL(listenURL string) string {
+	u := strings.TrimRight(strings.TrimSpace(listenURL), "/")
+	u = strings.TrimPrefix(u, "http://")
+	u = strings.TrimPrefix(u, "https://")
+	host, port, err := net.SplitHostPort(u)
+	if err != nil {
+		return "http://127.0.0.1:17880"
+	}
+	host = strings.Trim(host, "[]")
+	if host == "0.0.0.0" || host == "::" || host == "" {
+		host = "127.0.0.1"
+	}
+	if port == "" {
+		port = "17880"
+	}
+	return "http://" + net.JoinHostPort(host, port)
 }
 
 // runFiscalStandalone runs only embedded fiscal (no cloud print loops) for M2 UAT on Mac.
