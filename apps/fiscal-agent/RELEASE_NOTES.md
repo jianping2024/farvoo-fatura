@@ -2,6 +2,18 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.85
+
+**多台电脑开票：LAN 开关 + 傻瓜登记（收掉「允许下一台」）**
+
+- **唯一写法 · config→env LAN：**仅 `applyFiscalRuntimeFromConfig`（`fiscal_allow_lan` → `FISCAL_ALLOW_LAN` / 默认 `FISCAL_BIND`）。
+- **唯一写法 · config.json 读写：**仅 `loadAgentFiscalAllowLANState` / `setAgentFiscalAllowLAN`。
+- **唯一写法 · LAN 快照：**仅 `buildAgentLanAccessSnapshot`；HTTP 仅 `handleGetLanAccess` / `handlePutLanAccess`。
+- **唯一写法 · 店内 IPv4 列表：**仅 `api.AgentLANIPv4`。
+- **唯一写法 · Admin LAN 块：**仅 `refreshLanAccessPanel` / `saveLanAccess`。
+- **唯一写法 · 发卡：**仅 `startAddTerminalWizard`（仍调 `allow-next` API；UI 禁止「允许下一台」文案）。
+- Admin 页拆成 ① 连接 ② 批准电脑；登录页话术对齐；env 锁定可覆盖。
+
 ## 0.4.84
 
 **设置页屏幕 i18n（zh/en/pt）一次写完，不留第二套文案**

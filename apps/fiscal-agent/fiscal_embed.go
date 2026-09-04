@@ -36,6 +36,12 @@ func fiscalBillSyncPuller(cfg *config) *billsync.Puller {
 	return &billsync.Puller{APIBase: cfg.APIBase, JWT: cfg.AgentJWT, DB: embeddedFiscal.DB}
 }
 
+// lanEnvLocked* set by applyFiscalRuntimeFromConfig — ONLY markers for Admin env_locked.
+var (
+	lanEnvLockedAllow bool
+	lanEnvLockedBind  bool
+)
+
 // applyFiscalRuntimeFromConfig installs process env used by fiscal packages.
 // ONLY agent-side applicator; env already set wins (regression scripts / ops override).
 func applyFiscalRuntimeFromConfig(cfg *config) {
@@ -58,6 +64,26 @@ func applyFiscalRuntimeFromConfig(cfg *config) {
 			}
 		}
 		_ = os.Setenv("FISCAL_AT_ENV", at)
+	}
+
+	if strings.TrimSpace(os.Getenv("FISCAL_ALLOW_LAN")) != "" {
+		lanEnvLockedAllow = true
+	} else {
+		lanEnvLockedAllow = false
+		allowLAN := cfg != nil && cfg.FiscalAllowLAN != nil && *cfg.FiscalAllowLAN
+		if allowLAN {
+			_ = os.Setenv("FISCAL_ALLOW_LAN", "1")
+		} else {
+			_ = os.Setenv("FISCAL_ALLOW_LAN", "0")
+		}
+	}
+	if strings.TrimSpace(os.Getenv("FISCAL_BIND")) != "" {
+		lanEnvLockedBind = true
+	} else {
+		lanEnvLockedBind = false
+		if os.Getenv("FISCAL_ALLOW_LAN") == "1" {
+			_ = os.Setenv("FISCAL_BIND", "0.0.0.0:17880")
+		}
 	}
 }
 
@@ -152,6 +178,8 @@ func startEmbeddedFiscal(cfg *config) error {
 		Seed:              os.Getenv("FISCAL_SEED") == "1",
 		UILocaleGet:           loadAgentUILocale,
 		UILocaleSet:           setAgentUILocale,
+		LanAccessGet:          agentLanAccessGet,
+		LanAccessSet:          agentLanAccessSet,
 		AutoSessionSecretFile: true, // ONLY Retail embed entry; see docs/fiscal-session-secret.zh.md
 	}
 	if opts.Seed {

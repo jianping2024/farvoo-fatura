@@ -34,6 +34,8 @@ type Options struct {
 	PrintBytesFn              worker.PrintBytesFn      // Agent: parsePrinterTarget+printToTarget ONLY
 	UILocaleGet               func() string            // nil → file prefs under DataDir
 	UILocaleSet               func(string) error
+	LanAccessGet              func() (api.LanAccessSnapshot, error)
+	LanAccessSet              func(allow bool) (api.LanAccessSnapshot, error)
 	AutoSessionSecretFile     bool                     // ONLY fiscal_embed sets true (Retail session_hmac.key)
 }
 
@@ -157,6 +159,8 @@ func StartCore(opts Options) (*Runtime, error) {
 		UIEvents:          hub,
 		UILocaleGet:       uiGet,
 		UILocaleSet:       uiSet,
+		LanAccessGet:      opts.LanAccessGet,
+		LanAccessSet:      opts.LanAccessSet,
 		Sessions:          sessions,
 	}); err != nil {
 		cancel()

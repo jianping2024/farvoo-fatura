@@ -15,6 +15,7 @@
 | 纳税人、AT 凭证、系列、签名钥、发票、税务打印队列 | **SQLite** | Fiscal Local API / Core |
 | 开票员 PIN | SQLite `operators` | Admin 设置（本地创建 + 设 PIN） |
 | `fiscal_allow_local_provision` / `fiscal_at_env` | `config.json` | 本机开关（默认允许粘贴 PEM 激活；AT 默认 mock）。环境变量若已设则优先 |
+| `fiscal_allow_lan` | `config.json` | 店内其它电脑连接 Admin（true → 启动时灌 `FISCAL_ALLOW_LAN=1` + `FISCAL_BIND=0.0.0.0:17880`）。`FISCAL_ALLOW_LAN` / `FISCAL_BIND` 若启动前已设则优先并锁定 Admin 开关 |
 
 ## 税务打印机解析（唯一）
 
@@ -37,7 +38,7 @@
 | 服务 | 默认 |
 |------|------|
 | 托盘配对/打印机设置 | `:17892`（既有） |
-| Fiscal Local API + Admin | `FISCAL_BIND` 默认 `127.0.0.1:17880`；**店内多端**见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.8：`FISCAL_ALLOW_LAN=1` + 非 loopback bind |
+| Fiscal Local API + Admin | 默认 `127.0.0.1:17880`；店内多端：Admin「多台电脑开票」① 或 env `FISCAL_ALLOW_LAN=1` + `FISCAL_BIND=0.0.0.0:17880`（见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.8） |
 | SQLite 路径（可选覆盖） | `FISCAL_DB` / `FISCAL_DATA_DIR`（UAT；默认在 Agent 数据目录下） |
 
 二者同进程；Fiscal **不**占用配对端口。
