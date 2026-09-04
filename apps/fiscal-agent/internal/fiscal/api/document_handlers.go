@@ -112,6 +112,7 @@ func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps Handle
 		"tax_payable":     detail.TaxPayable,
 		"source_sale_id":  detail.SourceSaleID,
 		"order_label":     detail.OrderLabel,
+		"payment_method":  detail.PaymentMethod,
 		"issued_at":       detail.IssuedAt.UTC().Format(time.RFC3339),
 		"hash":            detail.Hash,
 	}

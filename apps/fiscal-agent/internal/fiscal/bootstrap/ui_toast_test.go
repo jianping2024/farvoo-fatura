@@ -245,6 +245,7 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 		"function formatInvoiceNoCell",
 		"function formatInvoiceWhenCell",
 		"function formatInvoiceOrderCell",
+		"function formatInvoicePaymentLabel",
 		"function measureAdminTableTextPx",
 		"function applyHomeRecentColNoWidth",
 	} {
@@ -298,6 +299,16 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	if strings.Count(adminHTML, "+ formatInvoiceOrderCell(inv)") != 2 {
 		t.Fatal("order/source cells must call formatInvoiceOrderCell only (home + invoice list)")
 	}
+	if strings.Count(adminHTML, "function formatInvoicePaymentLabel") != 1 {
+		t.Fatal("formatInvoicePaymentLabel must be defined exactly once")
+	}
+	if strings.Count(adminHTML, "+ formatInvoicePaymentLabel(inv)") != 2 {
+		t.Fatal("payment cells must call formatInvoicePaymentLabel only (home + invoice list)")
+	}
+	if strings.Count(adminHTML, "formatInvoicePaymentLabel(inv)") != 4 {
+		// def + home cell + invoice list + detail drawer
+		t.Fatal("formatInvoicePaymentLabel(inv) must appear only in def, home, invoice list, and detail")
+	}
 	if strings.Contains(adminHTML, "inv.order_label || '—'") {
 		t.Fatal("do not inline order_label fallback; use formatInvoiceOrderCell")
 	}
@@ -327,6 +338,7 @@ func TestAdminHTMLHomeRecentInvoicesLayout(t *testing.T) {
 		`class="col-no" data-i18n="col.doc_no"`,
 		`class="col-buyer" data-i18n="col.buyer"`,
 		`class="col-source" data-i18n="col.source"`,
+		`class="col-pay" data-i18n="pay.label"`,
 		`class="col-money" data-i18n="col.amount"`,
 		`class="col-actions" data-i18n="common.actions"`,
 	} {
@@ -341,12 +353,15 @@ func TestAdminHTMLHomeRecentInvoicesLayout(t *testing.T) {
 		t.Fatal("home recent must not show redundant 类型 column (type is in invoice_no)")
 	}
 	for _, css := range []string{
-		".home-recent .list-table { table-layout: fixed; width: 100%; }",
-		".home-recent .list-table .col-no { width: var(--home-col-no-w, 10rem); white-space: nowrap; }",
+		".home-recent .list-table,",
+		".invoices-table.list-table { table-layout: fixed; width: 100%; }",
+		".home-recent .list-table .col-no,",
+		".invoices-table.list-table .col-no { width: var(--home-col-no-w, 10rem); white-space: nowrap; }",
 		".home-recent .list-table .col-buyer,",
+		".home-recent .list-table .col-pay,",
 	} {
 		if n := strings.Count(adminHTML, css); n != 1 {
-			t.Fatalf("home recent layout CSS %q must appear exactly once, got %d", css, n)
+			t.Fatalf("clerk invoice layout CSS %q must appear exactly once, got %d", css, n)
 		}
 	}
 	if strings.Count(adminHTML, "function applyHomeRecentColNoWidth") != 1 {
@@ -364,11 +379,14 @@ func TestAdminHTMLHomeRecentInvoicesLayout(t *testing.T) {
 	if strings.Contains(adminHTML, "padding-right: 0.15rem") {
 		t.Fatal("col-actions must not use clipped padding-right: 0.15rem")
 	}
-	if !strings.Contains(adminHTML, `colspan="6" class="hint">' + FiscalAdminI18n.t('home.recent.empty')`) {
-		t.Fatal("home empty row colspan must match 6 columns via home.recent.empty")
+	if !strings.Contains(adminHTML, `colspan="7" class="hint">' + FiscalAdminI18n.t('home.recent.empty')`) {
+		t.Fatal("home empty row colspan must match 7 columns via home.recent.empty")
 	}
 	if !strings.Contains(adminHTML, "formatInvoiceBuyerCell(inv)") || !strings.Contains(adminHTML, "formatInvoiceOrderCell(inv)") {
 		t.Fatal("home recent must render 购方/来源 via shared formatters")
+	}
+	if !strings.Contains(adminHTML, "formatInvoicePaymentLabel(inv)") {
+		t.Fatal("home recent must render 付款方式 via formatInvoicePaymentLabel")
 	}
 }
 
@@ -518,11 +536,12 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 	section := adminHTML[start : start+end]
 
 	requiredHeaders := []string{
-		`data-i18n="col.issued_at"`,
-		`data-i18n="col.doc_no"`,
-		`data-i18n="col.amount"`,
-		`data-i18n="col.buyer"`,
-		`data-i18n="col.source"`,
+		`class="col-when" data-i18n="col.issued_at"`,
+		`class="col-no" data-i18n="col.doc_no"`,
+		`class="col-buyer" data-i18n="col.buyer"`,
+		`class="col-source" data-i18n="col.source"`,
+		`class="col-pay" data-i18n="pay.label"`,
+		`class="col-money" data-i18n="col.amount"`,
 	}
 	for _, h := range requiredHeaders {
 		if n := strings.Count(section, h); n != 1 {
@@ -600,6 +619,12 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 	}
 	if !strings.Contains(adminHTML, "formatInvoiceWhenCell(inv)") {
 		t.Fatal("invoice list must render issued-at via formatInvoiceWhenCell only")
+	}
+	if !strings.Contains(adminHTML, "formatInvoicePaymentLabel(inv)") {
+		t.Fatal("invoice list must render payment via formatInvoicePaymentLabel only")
+	}
+	if !strings.Contains(adminHTML, `colspan="7" class="hint">' + FiscalAdminI18n.t('common.loading')`) {
+		t.Fatal("invoice list loading colspan must be 7")
 	}
 	if strings.Contains(adminHTML, "truncateHash(inv.") || strings.Contains(adminHTML, `title="' + (inv.hash`) {
 		t.Fatal("invoice list must not show hash columns or title tooltips")
