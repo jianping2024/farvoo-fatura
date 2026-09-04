@@ -14,8 +14,9 @@ const errorAlreadyExists = syscall.Errno(183)
 // Held until process exit so the mutex stays owned by this instance.
 var agentInstanceMutex syscall.Handle
 
-// acquireAgentSingleInstance is the sole tray-agent mutex acquire.
-// Returns false if another agent holds the mutex or CreateMutex fails (fail-closed).
+// acquireAgentSingleInstance is the sole tray-agent mutex try-acquire (cold start +
+// each poll tick inside waitAcquireAgentSingleInstance). Returns false if another
+// agent holds the mutex or CreateMutex fails (fail-closed).
 func acquireAgentSingleInstance() bool {
 	if agentInstanceMutex != 0 {
 		return true
