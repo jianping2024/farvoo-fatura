@@ -123,3 +123,36 @@ func TestTerminalActivateDeleteAndStations(t *testing.T) {
 		t.Fatalf("cleared local station=%q err=%v", got, err)
 	}
 }
+
+func TestSetFiscalTerminalLabel(t *testing.T) {
+	dir := t.TempDir()
+	db, err := Open(filepath.Join(dir, "fiscal.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	storeID := "store-term-label"
+	if err := db.UpsertTaxpayer(TaxpayerInput{
+		StoreID: storeID, LegalName: "T", TaxRegistrationNumber: "789",
+		Country: "PT", Timezone: "Europe/Lisbon", SoftwareCertificateNumber: "0",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	id, err := db.RegisterLocalFiscalTerminal(storeID, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.SetFiscalTerminalLabel(storeID, id, "  "); err == nil {
+		t.Fatal("empty label must fail")
+	}
+	if err := db.SetFiscalTerminalLabel(storeID, id, " 吧台 "); err != nil {
+		t.Fatal(err)
+	}
+	row, err := db.GetFiscalTerminalByID(storeID, id)
+	if err != nil || row.Label != "吧台" {
+		t.Fatalf("label=%q err=%v", row.Label, err)
+	}
+	if err := db.SetFiscalTerminalLabel(storeID, "missing", "x"); err != ErrNotFound {
+		t.Fatalf("missing want ErrNotFound got %v", err)
+	}
+}

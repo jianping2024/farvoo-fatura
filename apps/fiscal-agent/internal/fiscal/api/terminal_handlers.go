@@ -100,12 +100,7 @@ func handleAllowNextTerminal(w http.ResponseWriter, r *http.Request, deps Handle
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	res, err := deps.Fiscal.AllowNextTerminal(deps.StoreID, actor, body.Label)
 	if err != nil {
-		var ce *service.CodedError
-		if errors.As(err, &ce) {
-			writeErr(w, http.StatusForbidden, ce.Code, ce.Msg)
-			return
-		}
-		writeErr(w, http.StatusInternalServerError, "allow_failed", err.Error())
+		writeTerminalCoded(w, err, "allow_failed")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -212,6 +207,51 @@ func handleSetTerminalStation(w http.ResponseWriter, r *http.Request, deps Handl
 		"terminal_id": id,
 		"station_id":  strings.TrimSpace(body.StationID),
 	})
+}
+
+func handleSetTerminalLabel(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	actor, ok := RequireOperatorID(w, r)
+	if !ok {
+		return
+	}
+	id := r.PathValue("terminalId")
+	if id == "" {
+		writeErr(w, http.StatusBadRequest, "id_required", "terminal id required")
+		return
+	}
+	var body struct {
+		Label string `json:"label"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid_json", "invalid body")
+		return
+	}
+	if err := deps.Fiscal.SetFiscalTerminalLabel(deps.StoreID, id, body.Label, actor); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeErr(w, http.StatusNotFound, "not_found", "terminal not found")
+			return
+		}
+		writeTerminalCoded(w, err, "label_failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"terminal_id": id,
+		"label":       strings.TrimSpace(body.Label),
+	})
+}
+
+// writeTerminalCoded maps service.CodedError to HTTP; validation → 400, else 403.
+func writeTerminalCoded(w http.ResponseWriter, err error, fallbackCode string) {
+	var ce *service.CodedError
+	if errors.As(err, &ce) {
+		status := http.StatusForbidden
+		if ce.Code == service.ErrCodeValidationFailed {
+			status = http.StatusBadRequest
+		}
+		writeErr(w, status, ce.Code, ce.Msg)
+		return
+	}
+	writeErr(w, http.StatusInternalServerError, fallbackCode, err.Error())
 }
 
 func handleSetLocalPrintStation(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {

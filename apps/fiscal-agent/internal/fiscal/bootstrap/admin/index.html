@@ -1206,7 +1206,7 @@
                   </div>
                 </div>
                 <div class="panel-footer" style="border:0;justify-content:flex-start;gap:0.5rem;flex-wrap:wrap">
-                  <input id="terminalsAllowLabel" placeholder="如：收银台 2" data-i18n="settings.terminals.placeholder" data-i18n-attr="placeholder" style="max-width:12rem" />
+                  <input id="terminalsAllowLabel" required placeholder="如：收银台 2" data-i18n="settings.terminals.placeholder" data-i18n-attr="placeholder" style="max-width:12rem" />
                   <button type="button" id="btnTerminalsAllowNext" data-i18n="settings.terminals.allow">添加开票电脑</button>
                   <button type="button" class="secondary" id="btnTerminalsRefresh" data-i18n="common.refresh">刷新</button>
                 </div>
@@ -1225,7 +1225,7 @@
                 </div>
                 <div class="table-scroll">
                   <table class="list-table" id="terminalsTable">
-                    <thead><tr><th data-i18n="settings.terminals.note">电脑名称</th><th data-i18n="common.status">状态</th><th data-i18n="settings.terminals.ip">最近 IP</th><th data-i18n="settings.terminals.seen">最近使用</th><th data-i18n="settings.terminals.print_station">打印档口</th><th></th></tr></thead>
+                    <thead><tr><th data-i18n="settings.terminals.note">备注</th><th data-i18n="common.status">状态</th><th data-i18n="settings.terminals.ip">最近 IP</th><th data-i18n="settings.terminals.seen">最近使用</th><th data-i18n="settings.terminals.print_station">打印档口</th><th></th></tr></thead>
                     <tbody id="terminalsTbody"></tbody>
                   </table>
                 </div>
@@ -4646,6 +4646,46 @@
     toast(FiscalAdminI18n.t('settings.terminals.station_saved'), 'success');
   }
 
+  // saveTerminalLabel is the ONLY Admin writer for fiscal terminal notes (DB column label).
+  async function saveTerminalLabel(terminalId, label) {
+    const trimmed = String(label || '').trim();
+    if (!trimmed) {
+      toast(FiscalAdminI18n.t('settings.terminals.need_label'), 'error');
+      await refreshTerminalsPanel();
+      return;
+    }
+    await j('PUT', '/local/v1/setup/terminals/' + encodeURIComponent(terminalId) + '/label', {
+      label: trimmed
+    });
+    toast(FiscalAdminI18n.t('settings.terminals.note_saved'), 'success');
+  }
+
+  // mountTerminalLabelInput is the ONLY terminals-table label cell builder (inline edit).
+  function mountTerminalLabelInput(td, row) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = row.label || '';
+    input.placeholder = FiscalAdminI18n.t('settings.terminals.no_label');
+    input.setAttribute('aria-label', FiscalAdminI18n.t('settings.terminals.note'));
+    input.style.maxWidth = '10rem';
+    input.dataset.savedLabel = row.label || '';
+    input.onblur = function () {
+      const next = (input.value || '').trim();
+      if (next === (input.dataset.savedLabel || '')) return;
+      void saveTerminalLabel(row.id, next).then(function () {
+        input.dataset.savedLabel = next;
+        input.value = next;
+      }).catch(function (er) {
+        input.value = input.dataset.savedLabel || '';
+        reportError(er);
+      });
+    };
+    input.onkeydown = function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    };
+    td.appendChild(input);
+  }
+
   async function activateTerminal(id) {
     openConfirmAction({
       title: FiscalAdminI18n.t('settings.terminals.activate_title'),
@@ -4705,11 +4745,12 @@
     rows.forEach(function (row) {
       const tr = document.createElement('tr');
       const status = row.active ? FiscalAdminI18n.t('settings.terminals.active') : FiscalAdminI18n.t('common.disabled');
-      tr.innerHTML = '<td>' + escHtml(row.label || FiscalAdminI18n.t('settings.terminals.no_label')) + '</td>'
+      tr.innerHTML = '<td></td>'
         + '<td>' + status + '</td>'
         + '<td>' + escHtml(row.last_seen_ip || '—') + '</td>'
         + '<td>' + escHtml(row.last_seen_at || row.registered_at || '—') + '</td>'
         + '<td></td><td></td>';
+      mountTerminalLabelInput(tr.children[0], row);
       const sel = document.createElement('select');
       fillStationSelectEl(sel, row.default_station_id || '', function (sid) {
         void saveTerminalStation(row.id, sid).catch(reportError);
@@ -4779,6 +4820,10 @@
       return;
     }
     const label = ($('#terminalsAllowLabel').value || '').trim();
+    if (!label) {
+      toast(FiscalAdminI18n.t('settings.terminals.need_label'), 'error');
+      return;
+    }
     const res = await j('POST', '/local/v1/setup/terminals/allow-next', { label });
     const wiz = $('#terminalsAddWizard');
     const codeEl = $('#terminalsWizardCode');
@@ -4790,6 +4835,7 @@
       });
     }
     if (wiz) wiz.classList.remove('hidden');
+    if ($('#terminalsAllowLabel')) $('#terminalsAllowLabel').value = '';
     toast(FiscalAdminI18n.t('settings.terminals.code_toast'), 'success');
     await refreshTerminalsPanel();
   }

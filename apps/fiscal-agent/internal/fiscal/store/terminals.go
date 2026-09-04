@@ -207,6 +207,24 @@ func (d *DB) SetFiscalTerminalDefaultStation(storeID, id, stationID string) erro
 	return nil
 }
 
+// SetFiscalTerminalLabel writes LAN terminal note — ONLY terminal label writer.
+func (d *DB) SetFiscalTerminalLabel(storeID, id, label string) error {
+	label = strings.TrimSpace(label)
+	if label == "" {
+		return fmt.Errorf("store: terminal label required")
+	}
+	res, err := d.SQL.Exec(`UPDATE fiscal_terminals SET label=? WHERE store_id=? AND id=?`,
+		label, storeID, id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // GetLocalDefaultStation reads loopback default print station — ONLY local station reader.
 func (d *DB) GetLocalDefaultStation(storeID string) (string, error) {
 	var sid sql.NullString

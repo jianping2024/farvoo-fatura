@@ -39,6 +39,21 @@ func TestAdminMultiPC_NoAllowNextCopyAndSingleWizard(t *testing.T) {
 	if strings.Count(adminHTML, "function refreshTerminalsPanel") != 1 {
 		t.Fatal("ONLY refreshTerminalsPanel for terminals UI")
 	}
+	if strings.Count(adminHTML, "function saveTerminalLabel") != 1 {
+		t.Fatal("ONLY saveTerminalLabel for terminal label writes")
+	}
+	if strings.Count(adminHTML, "function mountTerminalLabelInput") != 1 {
+		t.Fatal("ONLY mountTerminalLabelInput for label cells")
+	}
+	if strings.Count(adminHTML, "/label'") != 1 {
+		t.Fatalf("want exactly one …/label PUT call site, got %d", strings.Count(adminHTML, "/label'"))
+	}
+	if strings.Contains(adminHTML, "电脑名称") {
+		t.Fatal("column header must be 备注, not 电脑名称")
+	}
+	if !strings.Contains(string(fiscalUIAdminI18nJS), "'settings.terminals.need_label'") {
+		t.Fatal("need_label i18n required")
+	}
 	if strings.Count(adminHTML, "function refreshEffectivePrintStation") != 1 {
 		t.Fatal("ONLY refreshEffectivePrintStation for effective station")
 	}
