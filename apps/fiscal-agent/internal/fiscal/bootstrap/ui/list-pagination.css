@@ -153,12 +153,12 @@ button.btn-filter-toggle.active {
   font-weight: 700;
 }
 
-/* ONLY Filtrar panel (dates / advanced filters); closed = display:none. */
+/* ONLY Filtrar panel (dates); closed = display:none. No footer row. */
 .admin-list-filter-panel {
   margin: -0.25rem 0 0.75rem;
-  padding: 0.85rem 0.9rem;
+  padding: 0.75rem 0.9rem;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius, 12px);
   background: #faf9f6;
 }
 
@@ -166,14 +166,21 @@ button.btn-filter-toggle.active {
   display: none;
 }
 
-.admin-list-filter-panel__footer {
+.admin-list-filter-panel__row {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  padding-top: 0.65rem;
-  border-top: 1px solid var(--line);
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.admin-list-filter-panel__row #invoiceDateFilter {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-list-filter-panel__row #btnInvoiceFilterClear {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 /* Settings / audit still use filter-row (not listoo browse toolbar). */
