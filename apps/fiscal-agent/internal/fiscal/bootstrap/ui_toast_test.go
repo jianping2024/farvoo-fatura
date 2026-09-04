@@ -130,10 +130,10 @@ func TestAdminHTMLSchemeACopyUnique(t *testing.T) {
 		`data-i18n="home.title">工作台</h1>`,
 		`id="homeGreeting"`,
 		`id="operatorName"`,
-		"＋ 新建开票",
-		"处理收银账单",
-		"有新的收银账单",
-		"暂无收银账单",
+		`data-i18n="home.cta.new_order"`,
+		`data-i18n="home.stat.bills_cta"`,
+		`FiscalAdminI18n.t('bills.toast.new')`,
+		`FiscalAdminI18n.t('bills.empty')`,
 		`id="uiLocaleSelect"`,
 		`/fiscal-ui/admin-i18n.js`,
 	}
@@ -254,16 +254,16 @@ func TestAdminHTMLHomeRecentInvoicesLayout(t *testing.T) {
 	if strings.Contains(section, "最近发票") {
 		t.Fatal("home panel title must be 今日发票 (data is today-scoped), not 最近发票")
 	}
-	if !strings.Contains(section, ">今日发票<") {
-		t.Fatal("home panel title must be 今日发票")
+	if !strings.Contains(section, `data-i18n="home.recent.title"`) {
+		t.Fatal("home panel title must use home.recent.title")
 	}
 	for _, h := range []string{
-		`class="col-when">签发时刻</th>`,
-		`class="col-no">票号</th>`,
-		`class="col-buyer">购方</th>`,
-		`class="col-source">来源</th>`,
-		`class="col-money">金额</th>`,
-		`class="col-actions">操作</th>`,
+		`class="col-when" data-i18n="col.issued_at"`,
+		`class="col-no" data-i18n="col.doc_no"`,
+		`class="col-buyer" data-i18n="col.buyer"`,
+		`class="col-source" data-i18n="col.source"`,
+		`class="col-money" data-i18n="col.amount"`,
+		`class="col-actions" data-i18n="common.actions"`,
 	} {
 		if n := strings.Count(section, h); n != 1 {
 			t.Fatalf("home recent header %q must appear once, got %d", h, n)
@@ -299,8 +299,8 @@ func TestAdminHTMLHomeRecentInvoicesLayout(t *testing.T) {
 	if strings.Contains(adminHTML, "padding-right: 0.15rem") {
 		t.Fatal("col-actions must not use clipped padding-right: 0.15rem")
 	}
-	if !strings.Contains(adminHTML, `colspan="6" class="hint">今日暂无发票`) {
-		t.Fatal("home empty row colspan must match 6 columns")
+	if !strings.Contains(adminHTML, `colspan="6" class="hint">' + FiscalAdminI18n.t('home.recent.empty')`) {
+		t.Fatal("home empty row colspan must match 6 columns via home.recent.empty")
 	}
 	if !strings.Contains(adminHTML, "formatInvoiceBuyerCell(inv)") || !strings.Contains(adminHTML, "formatInvoiceOrderCell(inv)") {
 		t.Fatal("home recent must render 购方/来源 via shared formatters")
@@ -453,11 +453,11 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 	section := adminHTML[start : start+end]
 
 	requiredHeaders := []string{
-		"<th>签发时刻</th>",
-		"<th>票号</th>",
-		"<th>金额</th>",
-		"<th>购方</th>",
-		"<th>来源</th>",
+		`data-i18n="col.issued_at"`,
+		`data-i18n="col.doc_no"`,
+		`data-i18n="col.amount"`,
+		`data-i18n="col.buyer"`,
+		`data-i18n="col.source"`,
 	}
 	for _, h := range requiredHeaders {
 		if n := strings.Count(section, h); n != 1 {
