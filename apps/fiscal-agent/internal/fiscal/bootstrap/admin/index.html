@@ -282,20 +282,23 @@
       padding-bottom: 1rem; border-bottom: 1px solid var(--line);
     }
     .topbar h1 { font-size: 1.4rem; font-weight: 800; margin: 0; letter-spacing: -0.025em; }
-    #view-invoices { margin: -1.5rem -1.75rem 0; }
     .home-topbar {
       height: 52px; background: rgba(255,255,255,.75); backdrop-filter: blur(8px);
       border-bottom: 1px solid var(--line);
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 1.75rem; gap: 1rem; position: sticky; top: 0; z-index: 10;
+      padding: 0; gap: 1rem; position: sticky; top: 0; z-index: 10;
+      margin-bottom: 0.85rem;
     }
-    .home-topbar h1 { font-size: 0.8125rem; font-weight: 600; margin: 0; letter-spacing: 0; }
-    .home-topbar-right { display: flex; align-items: center; gap: 0.75rem; }
+    .home-topbar .home-greeting {
+      font-size: 0.9rem; font-weight: 600; margin: 0; color: var(--ink);
+      letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .home-topbar-right { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
     .date-chip {
       font-size: 0.75rem; color: var(--muted); background: var(--paper);
       border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.65rem;
     }
-    .home-body { padding: 0.85rem 1.75rem 1.5rem; }
+    .home-body { padding: 0 0 1.5rem; }
     /* ONLY invoice-hub entry strip (metric + peer bills CTA; no tall KPI cards / greeting). */
     .hub-entry-strip {
       display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.65rem;
@@ -842,7 +845,7 @@
 
       <section class="view" id="view-invoices">
         <header class="home-topbar">
-          <h1 data-i18n="nav.invoices">发票</h1>
+          <p class="home-greeting" id="homeGreeting"></p>
           <div class="home-topbar-right">
             <span class="date-chip" id="homeDateChip"></span>
             <button type="button" id="ctaNewOrder" data-goto="order-new" data-i18n="home.cta.new_order">＋ 新建开票</button>
@@ -1546,6 +1549,9 @@
     refreshLocalizedSelects();
     applyMode();
     renderHomeDateChip();
+    if (loggedInOperator) {
+      renderHomeGreeting(loggedInOperator.display_name || FiscalAdminI18n.t('home.greet.operator_fallback'));
+    }
     if (setupStatusCache) applySettingsStatusUI(setupStatusCache);
     [billsListPaginationCtrl, productListPaginationCtrl,
       customerListPaginationCtrl, invoiceListPaginationCtrl, auditLogPaginationCtrl,
@@ -2765,6 +2771,16 @@
   async function ensureSetupStatus() {
     if (setupStatusCache) return setupStatusCache;
     return refreshSetupStatus();
+  }
+
+  /** ONLY writer for #homeGreeting (invoice topbar welcome). */
+  function renderHomeGreeting(displayName) {
+    const greetEl = $('#homeGreeting');
+    if (!greetEl) return;
+    const name = String(displayName || '').trim() || FiscalAdminI18n.t('home.greet.operator_fallback');
+    const h = new Date().getHours();
+    const greetKey = h < 12 ? 'home.greet.morning' : h < 18 ? 'home.greet.afternoon' : 'home.greet.evening';
+    greetEl.textContent = FiscalAdminI18n.fmt('home.greet.fmt', { greet: FiscalAdminI18n.t(greetKey), name: name });
   }
 
   /** ONLY writer for #homeDateChip (locale weekday). */
@@ -4452,6 +4468,9 @@
     if (name === 'customers') refreshCustomers().catch(reportError);
     if (name === 'invoices') {
       renderHomeDateChip();
+      if (loggedInOperator) {
+        renderHomeGreeting(loggedInOperator.display_name || FiscalAdminI18n.t('home.greet.operator_fallback'));
+      }
       initInvoiceFilters();
       refreshInvoices().catch(reportError);
       refreshHomeStats().catch(() => renderHomeStats(0, 0));
@@ -4479,6 +4498,7 @@
     const op = loggedInOperator || {};
     const displayName = op.display_name || FiscalAdminI18n.t('home.greet.operator_fallback');
     $('#operatorName').textContent = displayName;
+    renderHomeGreeting(displayName);
     const avatar = $('#operatorAvatar');
     if (avatar) {
       const parts = String(displayName).trim().split(/\s+/).filter(Boolean);
