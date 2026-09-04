@@ -145,6 +145,21 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/setup/terminals/{terminalId}/revoke", g(func(w http.ResponseWriter, r *http.Request) {
 		handleRevokeTerminal(w, r, deps)
 	}))
+	mux.HandleFunc("POST /local/v1/setup/terminals/{terminalId}/activate", g(func(w http.ResponseWriter, r *http.Request) {
+		handleActivateTerminal(w, r, deps)
+	}))
+	mux.HandleFunc("POST /local/v1/setup/terminals/{terminalId}/delete", g(func(w http.ResponseWriter, r *http.Request) {
+		handleDeleteTerminal(w, r, deps)
+	}))
+	mux.HandleFunc("PUT /local/v1/setup/terminals/{terminalId}/station", g(func(w http.ResponseWriter, r *http.Request) {
+		handleSetTerminalStation(w, r, deps)
+	}))
+	mux.HandleFunc("PUT /local/v1/setup/print-station/local", g(func(w http.ResponseWriter, r *http.Request) {
+		handleSetLocalPrintStation(w, r, deps)
+	}))
+	mux.HandleFunc("GET /local/v1/setup/print-station", g(func(w http.ResponseWriter, r *http.Request) {
+		handleGetEffectivePrintStation(w, r, deps)
+	}))
 	mux.HandleFunc("PUT /local/v1/setup/terminals/max", g(func(w http.ResponseWriter, r *http.Request) {
 		handleSetTerminalMax(w, r, deps)
 	}))

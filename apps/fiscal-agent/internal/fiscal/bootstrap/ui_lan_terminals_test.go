@@ -36,4 +36,16 @@ func TestAdminMultiPC_NoAllowNextCopyAndSingleWizard(t *testing.T) {
 	if strings.Count(adminHTML, "PUT', '/local/v1/setup/lan-access'") != 1 {
 		t.Fatal("ONLY one lan-access PUT call site")
 	}
+	if strings.Count(adminHTML, "function refreshTerminalsPanel") != 1 {
+		t.Fatal("ONLY refreshTerminalsPanel for terminals UI")
+	}
+	if strings.Count(adminHTML, "function refreshEffectivePrintStation") != 1 {
+		t.Fatal("ONLY refreshEffectivePrintStation for effective station")
+	}
+	if strings.Contains(adminHTML, `id="stationSel"`) || strings.Contains(adminHTML, `id="invStationSel"`) {
+		t.Fatal("stationSel and invStationSel must be removed")
+	}
+	if !strings.Contains(adminHTML, "settings.printers.configure_link") {
+		t.Fatal("configure_link i18n key required in printers section")
+	}
 }

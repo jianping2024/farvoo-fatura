@@ -408,6 +408,11 @@ LAN 已鉴权路由：requireActiveLANTerminal（本机 loopback 免检）
 | GET | `/local/v1/setup/terminals` | manager | 列表 + used/max |
 | POST | `/local/v1/setup/terminals/allow-next` | manager | 生成配对码 |
 | POST | `/local/v1/setup/terminals/{id}/revoke` | manager | 停用 |
+| POST | `/local/v1/setup/terminals/{id}/activate` | manager | 重新启用（占名额） |
+| POST | `/local/v1/setup/terminals/{id}/delete` | manager | 删除已停用行 |
+| PUT | `/local/v1/setup/terminals/{id}/station` | manager | LAN 终端默认档口 |
+| PUT | `/local/v1/setup/print-station/local` | manager | 本机默认档口 |
+| GET | `/local/v1/setup/print-station` | session | 当前会话有效档口 |
 | PUT | `/local/v1/setup/terminals/max` | **admin** | 改上限 |
 
 **唯一运行时门闩：** `requireActiveLANTerminal`（非 loopback）。

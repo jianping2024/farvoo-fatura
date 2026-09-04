@@ -169,6 +169,79 @@ func (s *FiscalService) RevokeFiscalTerminal(storeID, terminalID, actorID string
 	return nil
 }
 
+// ActivateFiscalTerminal re-enables inactive terminal — ONLY activate orchestration.
+func (s *FiscalService) ActivateFiscalTerminal(storeID, terminalID, actorID string) error {
+	if s == nil || s.db == nil {
+		return fmt.Errorf("fiscal: service nil")
+	}
+	used, max, err := s.TerminalSummary(storeID)
+	if err != nil {
+		return err
+	}
+	if used >= max {
+		return coded(ErrCodeTerminalsFull, "terminal slots full")
+	}
+	if err := s.db.ActivateFiscalTerminal(storeID, terminalID); err != nil {
+		return err
+	}
+	_ = s.db.InsertAuditLog(actorID, "TERMINAL_ACTIVATE", "fiscal_terminal", terminalID, "{}")
+	return nil
+}
+
+// DeleteInactiveFiscalTerminal removes inactive terminal — ONLY delete orchestration.
+func (s *FiscalService) DeleteInactiveFiscalTerminal(storeID, terminalID, actorID string) error {
+	if s == nil || s.db == nil {
+		return fmt.Errorf("fiscal: service nil")
+	}
+	if err := s.db.DeleteInactiveFiscalTerminal(storeID, terminalID); err != nil {
+		return err
+	}
+	_ = s.db.InsertAuditLog(actorID, "TERMINAL_DELETE", "fiscal_terminal", terminalID, "{}")
+	return nil
+}
+
+// SetFiscalTerminalDefaultStation sets LAN terminal print station — ONLY terminal station writer.
+func (s *FiscalService) SetFiscalTerminalDefaultStation(storeID, terminalID, stationID, actorID string) error {
+	if s == nil || s.db == nil {
+		return fmt.Errorf("fiscal: service nil")
+	}
+	if err := s.db.SetFiscalTerminalDefaultStation(storeID, terminalID, stationID); err != nil {
+		return err
+	}
+	_ = s.db.InsertAuditLog(actorID, "TERMINAL_STATION_SET", "fiscal_terminal", terminalID,
+		fmt.Sprintf(`{"station_id":%q}`, strings.TrimSpace(stationID)))
+	return nil
+}
+
+// GetLocalDefaultStation returns loopback default print station.
+func (s *FiscalService) GetLocalDefaultStation(storeID string) (string, error) {
+	if s == nil || s.db == nil {
+		return "", fmt.Errorf("fiscal: service nil")
+	}
+	return s.db.GetLocalDefaultStation(storeID)
+}
+
+// SetLocalDefaultStation sets loopback default print station — ONLY local station writer.
+func (s *FiscalService) SetLocalDefaultStation(storeID, stationID, actorID string) error {
+	if s == nil || s.db == nil {
+		return fmt.Errorf("fiscal: service nil")
+	}
+	if err := s.db.SetLocalDefaultStation(storeID, stationID); err != nil {
+		return err
+	}
+	_ = s.db.InsertAuditLog(actorID, "LOCAL_STATION_SET", "taxpayer_settings", storeID,
+		fmt.Sprintf(`{"station_id":%q}`, strings.TrimSpace(stationID)))
+	return nil
+}
+
+// GetFiscalTerminal returns one LAN terminal row.
+func (s *FiscalService) GetFiscalTerminal(storeID, terminalID string) (*store.FiscalTerminalRow, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("fiscal: service nil")
+	}
+	return s.db.GetFiscalTerminalByID(storeID, terminalID)
+}
+
 // TerminalSummary returns used/max terminal slots (LAN only).
 func (s *FiscalService) TerminalSummary(storeID string) (used, max int, err error) {
 	used, err = s.db.CountActiveFiscalTerminals(storeID)

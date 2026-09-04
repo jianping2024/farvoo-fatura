@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,14 +13,15 @@ import (
 
 // FiscalTerminalRow is a registered LAN terminal slot.
 type FiscalTerminalRow struct {
-	ID             string
-	StoreID        string
-	Label          string
-	Active         bool
-	OpsTerminalRef string
-	RegisteredAt   string
-	LastSeenAt     string
-	LastSeenIP     string
+	ID               string
+	StoreID          string
+	Label            string
+	Active           bool
+	OpsTerminalRef   string
+	RegisteredAt     string
+	LastSeenAt       string
+	LastSeenIP       string
+	DefaultStationID string
 }
 
 // SetMaxFiscalTerminals writes local max — ONLY max write path (admin).
@@ -62,6 +64,13 @@ func terminalLabelOrNull(s string) interface{} {
 	return s
 }
 
+func terminalStationOrNull(s string) interface{} {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	return strings.TrimSpace(s)
+}
+
 // CountActiveFiscalTerminals counts LAN terminals with active=1.
 func (d *DB) CountActiveFiscalTerminals(storeID string) (int, error) {
 	var n int
@@ -71,7 +80,7 @@ func (d *DB) CountActiveFiscalTerminals(storeID string) (int, error) {
 
 // ListFiscalTerminals returns all terminals for store (active and revoked).
 func (d *DB) ListFiscalTerminals(storeID string) ([]FiscalTerminalRow, error) {
-	rows, err := d.SQL.Query(`SELECT id, store_id, label, active, ops_terminal_ref, registered_at, last_seen_at, last_seen_ip
+	rows, err := d.SQL.Query(`SELECT id, store_id, label, active, ops_terminal_ref, registered_at, last_seen_at, last_seen_ip, default_station_id
 		FROM fiscal_terminals WHERE store_id=? ORDER BY registered_at DESC`, storeID)
 	if err != nil {
 		return nil, err
@@ -80,9 +89,9 @@ func (d *DB) ListFiscalTerminals(storeID string) ([]FiscalTerminalRow, error) {
 	var out []FiscalTerminalRow
 	for rows.Next() {
 		var row FiscalTerminalRow
-		var label, last, ip sql.NullString
+		var label, last, ip, station sql.NullString
 		var active int
-		if err := rows.Scan(&row.ID, &row.StoreID, &label, &active, &row.OpsTerminalRef, &row.RegisteredAt, &last, &ip); err != nil {
+		if err := rows.Scan(&row.ID, &row.StoreID, &label, &active, &row.OpsTerminalRef, &row.RegisteredAt, &last, &ip, &station); err != nil {
 			return nil, err
 		}
 		if label.Valid {
@@ -93,6 +102,9 @@ func (d *DB) ListFiscalTerminals(storeID string) ([]FiscalTerminalRow, error) {
 		}
 		if ip.Valid {
 			row.LastSeenIP = ip.String
+		}
+		if station.Valid {
+			row.DefaultStationID = station.String
 		}
 		row.Active = active == 1
 		out = append(out, row)
@@ -106,10 +118,11 @@ func (d *DB) GetFiscalTerminalByID(storeID, id string) (*FiscalTerminalRow, erro
 	var label sql.NullString
 	var last sql.NullString
 	var ip sql.NullString
+	var station sql.NullString
 	var active int
-	err := d.SQL.QueryRow(`SELECT id, store_id, label, active, ops_terminal_ref, registered_at, last_seen_at, last_seen_ip
+	err := d.SQL.QueryRow(`SELECT id, store_id, label, active, ops_terminal_ref, registered_at, last_seen_at, last_seen_ip, default_station_id
 		FROM fiscal_terminals WHERE store_id=? AND id=?`, storeID, id).Scan(
-		&row.ID, &row.StoreID, &label, &active, &row.OpsTerminalRef, &row.RegisteredAt, &last, &ip)
+		&row.ID, &row.StoreID, &label, &active, &row.OpsTerminalRef, &row.RegisteredAt, &last, &ip, &station)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -124,6 +137,9 @@ func (d *DB) GetFiscalTerminalByID(storeID, id string) (*FiscalTerminalRow, erro
 	}
 	if ip.Valid {
 		row.LastSeenIP = ip.String
+	}
+	if station.Valid {
+		row.DefaultStationID = station.String
 	}
 	row.Active = active == 1
 	return &row, nil
@@ -149,6 +165,77 @@ func terminalIPOrNull(s string) interface{} {
 		return nil
 	}
 	return s
+}
+
+// ActivateFiscalTerminal sets active=1 — ONLY local activate path.
+func (d *DB) ActivateFiscalTerminal(storeID, id string) error {
+	res, err := d.SQL.Exec(`UPDATE fiscal_terminals SET active=1 WHERE store_id=? AND id=? AND active=0`, storeID, id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// DeleteInactiveFiscalTerminal removes inactive row — ONLY local delete path.
+func (d *DB) DeleteInactiveFiscalTerminal(storeID, id string) error {
+	res, err := d.SQL.Exec(`DELETE FROM fiscal_terminals WHERE store_id=? AND id=? AND active=0`, storeID, id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// SetFiscalTerminalDefaultStation writes LAN default print station — ONLY terminal station writer.
+func (d *DB) SetFiscalTerminalDefaultStation(storeID, id, stationID string) error {
+	res, err := d.SQL.Exec(`UPDATE fiscal_terminals SET default_station_id=? WHERE store_id=? AND id=?`,
+		terminalStationOrNull(stationID), storeID, id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// GetLocalDefaultStation reads loopback default print station — ONLY local station reader.
+func (d *DB) GetLocalDefaultStation(storeID string) (string, error) {
+	var sid sql.NullString
+	err := d.SQL.QueryRow(`SELECT local_default_station_id FROM taxpayer_settings WHERE store_id=?`, storeID).Scan(&sid)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+	if sid.Valid {
+		return sid.String, nil
+	}
+	return "", nil
+}
+
+// SetLocalDefaultStation writes loopback default print station — ONLY local station writer.
+func (d *DB) SetLocalDefaultStation(storeID, stationID string) error {
+	now := time.Now().UTC().Format(time.RFC3339)
+	res, err := d.SQL.Exec(`UPDATE taxpayer_settings SET local_default_station_id=?, updated_at=? WHERE store_id=?`,
+		terminalStationOrNull(stationID), now, storeID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // RevokeFiscalTerminal sets active=0 — ONLY local revoke path.

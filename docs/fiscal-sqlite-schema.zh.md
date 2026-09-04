@@ -254,6 +254,7 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | tax_country_region | TEXT | 是 | 默认 `PT` |
 | fiscal_profile | TEXT | 否 | **Ops 下发**；`restaurant` 或 `retail`；**激活开票前须已有值**；Agent 只读（§3.9） |
 | max_fiscal_terminals | INTEGER | 否 | **本地 admin** 写入；默认语义 `1`；Ops 下发值**忽略**（§3.8.1） |
+| local_default_station_id | TEXT | 否 | **本机 loopback** 默认打印档口；不占 LAN 名额 |
 | ops_policy_synced_at | TEXT | 否 | 最近一次从 Ops 同步 **fiscal_profile** 的时间 UTC（不含 max） |
 | created_at | TEXT | 是 | UTC |
 | updated_at | TEXT | 是 | UTC |
@@ -270,6 +271,7 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | registered_at | TEXT | 是 | UTC |
 | last_seen_at | TEXT | 否 | UTC |
 | last_seen_ip | TEXT | 否 | 只读展示；不作鉴权 |
+| default_station_id | TEXT | 否 | 该 LAN 终端默认打印档口 |
 
 ### 6.1c `terminal_pair_codes`（允许下一台）
 
