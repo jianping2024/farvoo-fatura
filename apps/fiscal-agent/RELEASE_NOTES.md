@@ -2,6 +2,17 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.98
+
+**发票 hub：矮条入口 + 筛选一行 + 空态引导（收掉问候/大 KPI）**
+
+- **唯一写法 · 入口条：**仅 `.hub-entry-strip`（今日指标 `#statTodayInvoices` / 商超 `#statTodaySales` + 餐馆 `.hub-bills-cta` `#ctaPendingBills`）；禁止问候行、`.stat-row` 高大 KPI 卡。
+- **唯一写法 · 待开计数：**仅 `renderPendingBillsStat` → `#statPendingBills` + CTA `has-open`。
+- **唯一写法 · 空态：**仅 `invoiceListEmptyCellHtml`（`invoices.empty_*` + `empty_next` / `empty_next_search`）。
+- **唯一写法 · 筛选行：**仅 `.admin-list-filter-row`（`align-items: center`）；发票搜索限宽右贴，无中间空洞。
+- **唯一写法 · 0 条藏分页：**仅 `list-pagination.js` `paint` 内 `root.style.display = state.total === 0 ? 'none' : ''`。
+- 票型 Tab：业务名优先、缩写次之；去掉 `renderHomeGreeting` / `home.greet.*`（保留 `operator_fallback`）。
+
 ## 0.4.97
 
 **发票页合并工作台 + 手工列表；取消草稿/稍后开票**

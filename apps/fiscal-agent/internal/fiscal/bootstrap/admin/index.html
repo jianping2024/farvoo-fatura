@@ -294,8 +294,36 @@
       font-size: 0.75rem; color: var(--muted); background: var(--paper);
       border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.65rem;
     }
-    .home-body { padding: 1.25rem 1.75rem 2.5rem; }
-    .home-greeting { font-size: 0.82rem; color: var(--muted); margin: 0 0 1.25rem; font-weight: 500; }
+    .home-body { padding: 0.85rem 1.75rem 1.5rem; }
+    /* ONLY invoice-hub entry strip (metric + peer bills CTA; no tall KPI cards / greeting). */
+    .hub-entry-strip {
+      display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.65rem;
+      margin-bottom: 0.85rem;
+    }
+    .hub-metric {
+      display: inline-flex; align-items: center; gap: 0.65rem;
+      min-height: 2.75rem; padding: 0.5rem 0.9rem;
+      background: #fff; border: 1px solid var(--line); border-radius: 10px;
+      box-shadow: var(--shadow);
+    }
+    .hub-metric .k { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+    .hub-metric .v { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+    button.hub-bills-cta {
+      display: none; align-items: center; gap: 0.65rem;
+      min-height: 2.75rem; margin: 0; padding: 0.5rem 1rem;
+      font-weight: 700;
+    }
+    body.mode-restaurant button.hub-bills-cta.rest-only { display: inline-flex; }
+    body.mode-retail .hub-entry-strip > .retail-only.hub-metric { display: inline-flex; }
+    .hub-bills-count {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 1.5rem; height: 1.5rem; padding: 0 0.4rem;
+      border-radius: 999px; background: rgba(255,255,255,.22);
+      font-size: 0.9rem; font-weight: 800; font-variant-numeric: tabular-nums;
+    }
+    button.hub-bills-cta.has-open { box-shadow: 0 0 0 2px rgba(11,61,46,.28); }
+    .invoice-empty { padding: 1.1rem 1.25rem !important; }
+    .invoice-empty > div + div { margin-top: 0.35rem; font-size: 0.8rem; color: var(--muted); }
     /* ONLY clerk invoice list table:
      * 签发时刻 / 票号 / 购方 / 来源 / 付款方式 / 金额 / 操作；购方+来源吃中间宽度；票号量最长。 */
     .invoices-table.list-table { table-layout: fixed; width: 100%; }
@@ -378,32 +406,6 @@
     .person-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 1rem; }
     .person-chips button { border-radius: 999px; padding: 0.35rem 0.85rem; }
     .person-chips button.active { outline: 2px solid #2d6a4f; }
-    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-    .stat {
-      background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.25rem 1.25rem 1rem;
-      box-shadow: var(--shadow); transition: box-shadow 0.2s, transform 0.2s;
-      position: relative; overflow: hidden;
-    }
-    .stat:hover { box-shadow: 0 4px 16px rgba(0,0,0,.09); transform: translateY(-2px); }
-    button.stat {
-      width: 100%; text-align: left; font: inherit; color: var(--ink);
-      background: #fff; box-shadow: var(--shadow); cursor: pointer;
-    }
-    button.stat:hover {
-      filter: none; color: var(--ink); background: #fff;
-      box-shadow: 0 4px 16px rgba(0,0,0,.09); transform: translateY(-2px);
-    }
-    .stat-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
-    .stat .k { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
-    .stat-icon {
-      width: 32px; height: 32px; border-radius: 6px;
-      display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
-    }
-    .stat-icon.gold { background: #fdf6e3; }
-    .stat-icon.green { background: #e4f5ed; }
-    .stat-icon.blue { background: #eff6ff; }
-    .stat .v { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
-    .stat-cta-label { font-size: 0.7rem; font-weight: 600; color: var(--mode); margin-top: 0.45rem; }
     .cta-big {
       display: inline-flex; align-items: center; text-align: left; padding: 0.65rem 1.25rem;
       background: linear-gradient(135deg, var(--brand-dark), var(--brand-mid));
@@ -581,8 +583,13 @@
     .credit-tabs button { flex: 1; }
     .credit-tabs button.active { border-color: var(--mode); font-weight: 600; }
     .invoice-type-tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
-    .invoice-type-tabs button { min-width: 5.5rem; padding: 0.45rem 0.65rem; line-height: 1.2; }
-    .invoice-type-tabs button small { display: block; font-size: 0.72rem; font-weight: 400; opacity: 0.85; }
+    .invoice-type-tabs button {
+      min-width: 5.5rem; padding: 0.4rem 0.7rem; line-height: 1.2;
+      display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.1rem;
+    }
+    .invoice-type-tabs button small {
+      display: block; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.04em; opacity: 0.65;
+    }
     .invoice-type-tabs button.active { border-color: var(--mode); font-weight: 600; }
     .credit-lines-table { width: 100%; font-size: 0.85rem; margin: 0.5rem 0; }
     .credit-lines-table th, .credit-lines-table td { padding: 0.35rem 0.25rem; text-align: left; }
@@ -595,7 +602,7 @@
     .line-input { width: 4rem; padding: 0.35rem; }
     @media (max-width: 860px) {
       #app-shell.on { grid-template-columns: minmax(0, 1fr); }
-      .split, .stat-row, .mode-pick { grid-template-columns: 1fr; }
+      .split, .mode-pick { grid-template-columns: 1fr; }
       .flow-step { font-size: 0.68rem; padding: 0.5rem 0.25rem; }
     }
   </style>
@@ -850,28 +857,26 @@
           </div>
         </header>
         <div class="home-body">
-          <p class="home-greeting" id="homeGreeting"></p>
-          <div class="stat-row">
-            <div class="stat">
-              <div class="stat-top"><div class="k" data-i18n="home.stat.today_invoices">今日已开发票</div><div class="stat-icon green" aria-hidden="true">✓</div></div>
-              <div class="v" id="statTodayInvoices">0</div>
+          <div class="hub-entry-strip">
+            <div class="hub-metric">
+              <span class="k" data-i18n="home.stat.today_invoices">今日已开发票</span>
+              <strong class="v" id="statTodayInvoices">0</strong>
             </div>
-            <button type="button" class="stat rest-only" id="ctaPendingBills" data-nav="bills">
-              <div class="stat-top"><div class="k" data-i18n="nav.bills">收银账单</div><div class="stat-icon blue" aria-hidden="true">⬡</div></div>
-              <div class="v" id="statPendingBills">0</div>
-              <div class="stat-cta-label" data-i18n="home.stat.bills_cta">处理收银账单</div>
+            <button type="button" class="hub-bills-cta rest-only" id="ctaPendingBills" data-nav="bills">
+              <span data-i18n="home.stat.bills_cta">处理收银账单</span>
+              <span class="hub-bills-count" id="statPendingBills">0</span>
             </button>
-            <div class="stat retail-only">
-              <div class="stat-top"><div class="k" data-i18n="home.stat.today_sales">今日营业额</div><div class="stat-icon gold" aria-hidden="true">€</div></div>
-              <div class="v" id="statTodaySales">€0</div>
+            <div class="hub-metric retail-only">
+              <span class="k" data-i18n="home.stat.today_sales">今日营业额</span>
+              <strong class="v" id="statTodaySales">€0</strong>
             </div>
           </div>
           <div class="panel admin-list-panel invoice-list-panel">
             <div class="invoice-type-tabs" id="invoiceTypeTabs" role="tablist">
-              <button type="button" class="secondary active" data-invoice-type="FT" role="tab">FT<small data-i18n="doc.tab.FT">完整发票</small></button>
-              <button type="button" class="secondary" data-invoice-type="FS" role="tab">FS<small data-i18n="doc.tab.FS">简式发票</small></button>
-              <button type="button" class="secondary" data-invoice-type="NC" role="tab">NC<small data-i18n="doc.tab.NC">冲销单</small></button>
-              <button type="button" class="secondary" data-invoice-type="ND" role="tab">ND<small data-i18n="doc.tab.ND">借记单</small></button>
+              <button type="button" class="secondary active" data-invoice-type="FT" role="tab"><span data-i18n="doc.tab.FT">完整发票</span><small>FT</small></button>
+              <button type="button" class="secondary" data-invoice-type="FS" role="tab"><span data-i18n="doc.tab.FS">简式发票</span><small>FS</small></button>
+              <button type="button" class="secondary" data-invoice-type="NC" role="tab"><span data-i18n="doc.tab.NC">冲销单</span><small>NC</small></button>
+              <button type="button" class="secondary" data-invoice-type="ND" role="tab"><span data-i18n="doc.tab.ND">借记单</span><small>ND</small></button>
             </div>
             <div class="admin-list-filter-row">
               <div id="invoiceDateFilter"></div>
@@ -1524,9 +1529,6 @@
     refreshLocalizedSelects();
     applyMode();
     renderHomeDateChip();
-    if (loggedInOperator) {
-      renderHomeGreeting(loggedInOperator.display_name || FiscalAdminI18n.t('home.greet.operator_fallback'));
-    }
     if (setupStatusCache) applySettingsStatusUI(setupStatusCache);
     [billsListPaginationCtrl, productListPaginationCtrl,
       customerListPaginationCtrl, invoiceListPaginationCtrl, auditLogPaginationCtrl,
@@ -2742,16 +2744,6 @@
     return refreshSetupStatus();
   }
 
-  /** ONLY writer for #homeGreeting. */
-  function renderHomeGreeting(displayName) {
-    const greetEl = $('#homeGreeting');
-    if (!greetEl) return;
-    const name = String(displayName || '').trim() || FiscalAdminI18n.t('home.greet.operator_fallback');
-    const h = new Date().getHours();
-    const greetKey = h < 12 ? 'home.greet.morning' : h < 18 ? 'home.greet.afternoon' : 'home.greet.evening';
-    greetEl.textContent = FiscalAdminI18n.fmt('home.greet.fmt', { greet: FiscalAdminI18n.t(greetKey), name: name });
-  }
-
   /** ONLY writer for #homeDateChip (locale weekday). */
   function renderHomeDateChip() {
     const el = $('#homeDateChip');
@@ -2772,9 +2764,19 @@
     return '<button type="button" class="secondary btn-sm" data-reprint="' + documentId + '">' + FiscalAdminI18n.t('action.reprint') + '</button>';
   }
 
+  /** ONLY writer for hub today metrics (#statTodayInvoices / #statTodaySales). */
   function renderHomeStats(totalInvoices, grossTotalSum) {
     $('#statTodayInvoices').textContent = String(totalInvoices || 0);
     $('#statTodaySales').textContent = fmtMoney(grossTotalSum || 0);
+  }
+
+  /** ONLY writer for #statPendingBills + hub bills CTA has-open. */
+  function renderPendingBillsStat(openCount) {
+    const n = Number(openCount) || 0;
+    const el = $('#statPendingBills');
+    const cta = $('#ctaPendingBills');
+    if (el) el.textContent = String(n);
+    if (cta) cta.classList.toggle('has-open', n > 0);
   }
 
   function buildProductsQueryPath(q, page, pageSize) {
@@ -3616,10 +3618,7 @@
     if (!list.length) {
       const term = String(q || '').trim();
       const typeLabel = invoiceListDocTypeLabel(invoiceListDocType);
-      const emptyMsg = term
-        ? FiscalAdminI18n.fmt('invoices.empty_match', { type: typeLabel })
-        : FiscalAdminI18n.fmt('invoices.empty_range', { type: typeLabel });
-      tbody.innerHTML = '<tr><td colspan="7" class="hint">' + emptyMsg + '</td></tr>';
+      tbody.innerHTML = invoiceListEmptyCellHtml(term, typeLabel);
     } else {
       tbody.innerHTML = list.map(inv =>
         '<tr class="clickable" data-inv="' + inv.document_id + '">' +
@@ -3633,6 +3632,15 @@
       ).join('');
     }
     return list;
+  }
+
+  /** ONLY empty-row HTML for invoice list (message + next-step hint). */
+  function invoiceListEmptyCellHtml(term, typeLabel) {
+    const main = term
+      ? FiscalAdminI18n.fmt('invoices.empty_match', { type: typeLabel })
+      : FiscalAdminI18n.fmt('invoices.empty_range', { type: typeLabel });
+    const next = FiscalAdminI18n.t(term ? 'invoices.empty_next_search' : 'invoices.empty_next');
+    return '<tr><td colspan="7" class="hint invoice-empty"><div>' + main + '</div><div>' + next + '</div></td></tr>';
   }
 
   /** ONLY home CTA focus: pending bills when open drafts exist; else new order. */
@@ -3687,12 +3695,13 @@
     opts = opts || {};
     if (mode !== 'restaurant') {
       updateBillsNavBadge(0);
+      renderPendingBillsStat(0);
       return;
     }
     const data = await j('GET', '/local/v1/bill-drafts');
     const drafts = (data.drafts || []).filter(d => d.status === 'open');
     const n = drafts.length;
-    $('#statPendingBills').textContent = String(n);
+    renderPendingBillsStat(n);
     updateBillsNavBadge(n);
     billsListCache = drafts;
     renderBillsTable();
@@ -4390,7 +4399,6 @@
         ? (parts[0][0] + parts[1][0]).toUpperCase()
         : String(displayName).slice(0, 2).toUpperCase();
     }
-    renderHomeGreeting(displayName);
     applyOperatorAccess();
     $('#view-login').classList.add('hidden');
     $('#app-shell').classList.add('on');
@@ -5069,6 +5077,7 @@
 
   $('#btnRefreshInvoices').onclick = () => withBusy($('#btnRefreshInvoices'), FiscalAdminI18n.t('common.refreshing'), async () => {
     await refreshHomeStats();
+    if (mode === 'restaurant') await refreshBills();
     await refreshInvoices();
     toast(FiscalAdminI18n.t('common.refreshed'), 'success');
   });

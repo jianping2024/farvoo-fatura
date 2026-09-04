@@ -193,7 +193,6 @@ func TestAdminHTMLSchemeACopyUnique(t *testing.T) {
 		`data-i18n="nav.invoices">发票</span>`,
 		`data-i18n="nav.bills">收银账单</span>`,
 		`data-i18n="nav.invoices">发票</h1>`,
-		`id="homeGreeting"`,
 		`id="operatorName"`,
 		`data-i18n="home.cta.new_order"`,
 		`data-i18n="home.stat.bills_cta"`,
@@ -244,10 +243,11 @@ func TestAdminHTMLNoPageXScrollUnique(t *testing.T) {
 
 func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	for _, fn := range []string{
-		"function renderHomeGreeting",
 		"function renderHomeDateChip",
 		"function invoiceReprintButtonHtml",
 		"function renderHomeStats",
+		"function renderPendingBillsStat",
+		"function invoiceListEmptyCellHtml",
 		"function refreshHomeStats",
 		"function focusHomePrimaryCta",
 		"function cancelManualOrderFlow",
@@ -264,7 +264,6 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 		`id="homeDateChip"`,
 		`id="ctaNewOrder"`,
 		`id="ctaPendingBills"`,
-		`id="homeGreeting"`,
 		`id="statTodayInvoices"`,
 		`id="statPendingBills"`,
 		`id="statTodaySales"`,
@@ -284,8 +283,14 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	if strings.Count(adminHTML, `data-reprint="' + documentId + '"`) != 1 {
 		t.Fatal("reprint button markup must exist only in invoiceReprintButtonHtml")
 	}
-	if strings.Contains(adminHTML, "$('#homeGreeting').textContent") || strings.Contains(adminHTML, "$('#homeDateChip').textContent") {
-		t.Fatal("do not write home greeting/date outside renderHomeGreeting/renderHomeDateChip")
+	if strings.Contains(adminHTML, "$('#homeDateChip').textContent") {
+		t.Fatal("do not write home date outside renderHomeDateChip")
+	}
+	if strings.Contains(adminHTML, "homeGreeting") || strings.Contains(adminHTML, "renderHomeGreeting") || strings.Contains(adminHTML, "home-greeting") {
+		t.Fatal("invoice hub must not keep greeting row / renderHomeGreeting")
+	}
+	if strings.Contains(adminHTML, "stat-row") || strings.Contains(adminHTML, "stat-icon") || strings.Contains(adminHTML, "stat-cta-label") {
+		t.Fatal("invoice hub must not keep tall KPI card styles/markup")
 	}
 	if strings.Count(adminHTML, "+ formatInvoiceNoCell(inv)") != 1 {
 		t.Fatal("invoice_no cells must call formatInvoiceNoCell only in invoice list")
@@ -311,6 +316,12 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	if strings.Contains(adminHTML, "inv.invoice_no || inv.document_type") {
 		t.Fatal("do not fall back invoice_no to document_type in list cells")
 	}
+	if strings.Contains(adminHTML, "$('#statPendingBills').textContent") {
+		t.Fatal("do not write pending bills count outside renderPendingBillsStat")
+	}
+	if strings.Count(adminHTML, "invoiceListEmptyCellHtml(") != 2 {
+		t.Fatal("invoiceListEmptyCellHtml must appear only in def and refreshInvoices")
+	}
 }
 
 func TestAdminHTMLInvoiceHubLayout(t *testing.T) {
@@ -326,14 +337,29 @@ func TestAdminHTMLInvoiceHubLayout(t *testing.T) {
 	if !strings.Contains(section, `class="home-topbar"`) {
 		t.Fatal("invoice hub must use home-topbar chrome")
 	}
-	if !strings.Contains(section, `id="homeGreeting"`) || !strings.Contains(section, `id="homeDateChip"`) {
-		t.Fatal("invoice hub must include greeting and date chip")
+	if !strings.Contains(section, `id="homeDateChip"`) {
+		t.Fatal("invoice hub must include date chip")
+	}
+	if strings.Contains(section, `homeGreeting`) || strings.Contains(section, `home-greeting`) {
+		t.Fatal("invoice hub must not include greeting row")
+	}
+	if !strings.Contains(section, `class="hub-entry-strip"`) {
+		t.Fatal("invoice hub must use compact hub-entry-strip")
+	}
+	if !strings.Contains(section, `class="hub-bills-cta rest-only"`) {
+		t.Fatal("pending bills CTA must be hub-bills-cta (peer primary), not tall stat card")
 	}
 	if !strings.Contains(section, `id="statTodayInvoices"`) {
-		t.Fatal("invoice hub must include today invoice stat")
+		t.Fatal("invoice hub must include today invoice metric")
 	}
 	if strings.Contains(section, `statPendingOrders`) || strings.Contains(section, "home-recent") {
 		t.Fatal("invoice hub must not include pending orders or home-recent mini-table")
+	}
+	if !strings.Contains(section, `data-i18n="doc.tab.FT">完整发票</span><small>FT</small>`) {
+		t.Fatal("invoice type tabs must show business label first, abbr second")
+	}
+	if strings.Contains(section, `>FT<small data-i18n="doc.tab.FT"`) {
+		t.Fatal("do not put FT abbr before business label on type tabs")
 	}
 	for _, h := range []string{
 		`class="col-when" data-i18n="col.issued_at"`,

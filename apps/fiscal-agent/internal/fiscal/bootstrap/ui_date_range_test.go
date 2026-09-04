@@ -82,6 +82,12 @@ func TestAdminHTMLInvoiceFiltersUnique(t *testing.T) {
 	if !strings.Contains(adminHTML, "invoices.empty_match") || !strings.Contains(adminHTML, "invoices.empty_range") {
 		t.Fatal("invoice list must distinguish empty range vs empty search via i18n keys")
 	}
+	if !strings.Contains(adminHTML, "invoices.empty_next") || !strings.Contains(adminHTML, "invoices.empty_next_search") {
+		t.Fatal("invoice empty state must include next-step i18n keys")
+	}
+	if !strings.Contains(adminHTML, "function invoiceListEmptyCellHtml") {
+		t.Fatal("invoice empty row must use invoiceListEmptyCellHtml only")
+	}
 	if !strings.Contains(adminHTML, "common.loading") {
 		t.Fatal("invoice list must show loading state via common.loading")
 	}

@@ -31,6 +31,15 @@ func TestAdminListFilterRowUnique(t *testing.T) {
 	if n := strings.Count(css, ".admin-list-filter-row {\n  display: flex;"); n != 1 {
 		t.Fatal("filter-row flex must live in that single .admin-list-filter-row rule")
 	}
+	if !strings.Contains(css, "align-items: center;") {
+		t.Fatal("filter-row must align date presets and search on one baseline")
+	}
+	if n := strings.Count(css, ".invoice-list-panel .admin-list-search-field {"); n != 1 {
+		t.Fatalf("invoice search field toolbar rule must appear once, got %d", n)
+	}
+	if !strings.Contains(string(fiscalUIListPaginationJS), `root.style.display = state.total === 0 ? 'none' : ''`) {
+		t.Fatal("pagination bar must hide when total is 0 (single paint path)")
+	}
 	if n := strings.Count(css, ".admin-list-select-field {"); n != 1 {
 		t.Fatalf(".admin-list-select-field block must appear once, got %d", n)
 	}

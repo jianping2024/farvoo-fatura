@@ -151,17 +151,24 @@
     tr.clickable:hover { background: #f7f3ea; }
     .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.85rem; }
     .split { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 0.85rem; }
-    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
-    .stat { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 0.85rem 1rem; }
-    .stat .k { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
-    .stat .v { font-family: var(--display); font-size: 1.45rem; margin-top: 0.2rem; }
-    .cta-big {
-      display: block; width: 100%; text-align: left; padding: 1.1rem 1.2rem;
-      background: #fff; border: 2px solid var(--mode); border-radius: 14px;
-      color: var(--ink); margin-bottom: 0.75rem;
+    .hub-entry-strip { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.65rem; margin-bottom: 0.85rem; }
+    .hub-metric {
+      display: inline-flex; align-items: center; gap: 0.65rem;
+      min-height: 2.75rem; padding: 0.5rem 0.9rem;
+      background: #fff; border: 1px solid var(--line); border-radius: 10px;
     }
-    .cta-big strong { display: block; font-size: 1.05rem; margin-bottom: 0.25rem; }
-    .cta-big span { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+    .hub-metric .k { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+    .hub-metric .v { font-family: var(--display); font-size: 1.15rem; font-weight: 800; }
+    button.hub-bills-cta {
+      display: none; align-items: center; gap: 0.65rem;
+      min-height: 2.75rem; margin: 0; padding: 0.5rem 1rem; font-weight: 700;
+    }
+    body.mode-restaurant button.hub-bills-cta.rest-only { display: inline-flex; }
+    .hub-bills-count {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 1.5rem; height: 1.5rem; padding: 0 0.4rem; border-radius: 999px;
+      background: rgba(255,255,255,.22); font-weight: 800;
+    }
     .toast {
       position: fixed; right: 1rem; bottom: 1rem; background: var(--ink); color: #fff;
       padding: 0.75rem 1rem; border-radius: 12px; opacity: 0; transition: 0.2s; z-index: 50;
@@ -173,7 +180,7 @@
     body.mode-restaurant tr.rest-only, body.mode-retail tr.retail-only { display: table-row; }
     @media (max-width: 860px) {
       #app-shell.on { grid-template-columns: 1fr; }
-      .split, .stat-row, .mode-pick { grid-template-columns: 1fr; }
+      .split, .mode-pick { grid-template-columns: 1fr; }
       .flow-step { font-size: 0.68rem; padding: 0.5rem 0.25rem; }
     }
   </style>
@@ -382,14 +389,13 @@
           </div>
           <button type="button" data-goto="order-new" id="ctaNewOrder">＋ 新建开票</button>
         </div>
-        <div class="stat-row" style="grid-template-columns: repeat(2, 1fr)">
-          <div class="stat"><div class="k">今日已开发票</div><div class="v">12</div></div>
-          <div class="stat rest-only"><div class="k">收银账单</div><div class="v">1</div></div>
+        <div class="hub-entry-strip">
+          <div class="hub-metric"><span class="k">今日已开发票</span><strong class="v">12</strong></div>
+          <button type="button" class="hub-bills-cta rest-only" data-nav="bills" id="ctaPendingBills">
+            <span>处理收银账单</span><span class="hub-bills-count">1</span>
+          </button>
+          <div class="hub-metric retail-only"><span class="k">今日营业额</span><strong class="v">€128</strong></div>
         </div>
-        <button type="button" class="cta-big rest-only" data-nav="bills" id="ctaPendingBills">
-          <strong>处理收银账单</strong>
-          <span>收银已结账、尚未开票的桌台账单（餐馆）</span>
-        </button>
         <div class="panel">
           <h2>已签发发票</h2>
           <p class="hint" style="margin:-0.35rem 0 0.75rem">可重打副本（2ª Via）</p>
