@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.86
+
+**发票日期筛选：接入 Admin i18n（收掉硬编码中文）**
+
+- **唯一写法 · 日期筛选文案：**仅 `listDateRangeLabels` → `FiscalUI.createDateRangeFilter({ getLabels })`；切语言仅 `relabel`（与分页同一条 locale 循环）。
+- **唯一写法 · 预设/校验渲染：**仅 `date-range.js` 内 `paint`（`getLabels` 再读）；禁止 PRESET 上硬编码 `label: '今天'`。
+- 字典 `date.*`（zh/en/pt）：今天/昨天/近7天/本月/自定义、从/至/应用与校验句。
+
 ## 0.4.85
 
 **多台电脑开票：LAN 开关 + 傻瓜登记（收掉「允许下一台」）**
