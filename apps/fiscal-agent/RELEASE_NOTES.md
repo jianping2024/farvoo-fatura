@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.101
+
+**Admin 列表：listoo 工具条 + sticky ⋯ 操作列（收掉三行筛选架 / 顶栏文字刷新）**
+
+- **唯一写法 · 列表工具条：**仅 `.admin-list-toolbar`（搜索 + 可选条数 + 右侧 `btn-icon-refresh` ↻ + 可选「筛选」）；发票 / 账单 / 商品 / 客户 / 开票员 / 审计 / 开票电脑 / SAF-T 刷新同口径。
+- **唯一写法 · 日期筛选：**仅 `FiscalUI.createDateRangeFilter` 挂在 `#invoiceFilterPanel`（Filtrar）；storage key `fiscal_invoice_date_range_v2`；禁止主区常驻三行日期架。
+- **唯一写法 · 票型 Tab：**`全部|FT|FS|NC|ND`，默认全部（`fiscal_invoice_doc_type_v2` 空串）；API 空 `document_type` = 全部。
+- **唯一写法 · 行操作：**仅 `listRowMenuTriggerHtml` → `#listRowMenuPop`（发票重打 / 商品编辑 / 账单进入 / 开票员 / 开票电脑）；sticky `.col-actions` 仅 `list-pagination.css`。
+- 顶栏去掉文字「刷新」；新建开票仍在顶栏。
+
 ## 0.4.100
 
 **发票日期筛选：mesa DatePicker 口径（选中可见、无纵向晃动）**

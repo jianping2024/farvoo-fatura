@@ -23,19 +23,25 @@ func TestFiscalUIListPaginationAssets(t *testing.T) {
 	}
 }
 
-func TestAdminListFilterRowUnique(t *testing.T) {
+func TestAdminListToolbarUnique(t *testing.T) {
 	css := string(fiscalUIListPaginationCSS)
+	if n := strings.Count(css, ".admin-list-toolbar {"); n != 1 {
+		t.Fatalf(".admin-list-toolbar must have exactly one rule, got %d", n)
+	}
+	if n := strings.Count(css, "button.btn-icon-refresh {"); n != 1 {
+		t.Fatalf("btn-icon-refresh must have exactly one rule, got %d", n)
+	}
+	if n := strings.Count(css, ".admin-list-filter-panel {"); n != 1 {
+		t.Fatalf(".admin-list-filter-panel must have exactly one rule, got %d", n)
+	}
+	if n := strings.Count(css, "/* ONLY sticky last-column actions"); n != 1 {
+		t.Fatalf("sticky col-actions must be the ONLY sticky actions block, got %d", n)
+	}
+	if n := strings.Count(css, "position: sticky;\n  right: 0;"); n != 1 {
+		t.Fatalf("sticky right:0 for actions must appear once, got %d", n)
+	}
 	if n := strings.Count(css, ".admin-list-filter-row {"); n != 1 {
 		t.Fatalf(".admin-list-filter-row must have exactly one rule, got %d", n)
-	}
-	if n := strings.Count(css, ".admin-list-filter-row {\n  display: flex;"); n != 1 {
-		t.Fatal("filter-row flex must live in that single .admin-list-filter-row rule")
-	}
-	if !strings.Contains(css, "align-items: center;") {
-		t.Fatal("filter-row must align date presets and search on one baseline")
-	}
-	if n := strings.Count(css, ".invoice-list-panel .admin-list-search-field {"); n != 1 {
-		t.Fatalf("invoice search field toolbar rule must appear once, got %d", n)
 	}
 	if !strings.Contains(string(fiscalUIListPaginationJS), `root.style.display = state.total === 0 ? 'none' : ''`) {
 		t.Fatal("pagination bar must hide when total is 0 (single paint path)")
@@ -46,14 +52,37 @@ func TestAdminListFilterRowUnique(t *testing.T) {
 	if strings.Contains(css, "invoice-filter-row") || strings.Contains(css, "invoice-search-field") {
 		t.Fatal("list-pagination.css must not keep invoice-filter-row / invoice-search-field")
 	}
-	if strings.Contains(adminHTML, "invoice-filter-row") || strings.Contains(adminHTML, "invoice-search-field") {
-		t.Fatal("admin HTML must use admin-list-filter-row / admin-list-search-field only")
+	if strings.Contains(css, ".invoice-list-panel .admin-list-search-field") {
+		t.Fatal("invoice search must use admin-list-toolbar__search only")
 	}
-	if strings.Contains(adminHTML, ".invoice-filter-row") || strings.Contains(adminHTML, ".admin-list-filter-row {") {
-		t.Fatal("filter-row flex must not be restated in admin index.html")
+	if strings.Contains(adminHTML, "invoice-filter-row") || strings.Contains(adminHTML, "invoice-search-field") {
+		t.Fatal("admin HTML must not keep legacy invoice-filter-row")
+	}
+	if strings.Contains(adminHTML, ".admin-list-toolbar {") || strings.Contains(adminHTML, ".admin-list-filter-row {") {
+		t.Fatal("list toolbar/filter-row flex must not be restated in admin index.html")
 	}
 	if strings.Contains(string(fiscalUIAdminI18nJS), "auditActionLabels") {
 		t.Fatal("do not add a second audit action map in admin-i18n.js")
+	}
+	for _, id := range []string{
+		`id="btnRefreshInvoices"`,
+		`id="btnRefreshBills"`,
+		`id="btnRefreshProducts"`,
+		`id="btnRefreshCustomers"`,
+		`id="btnOperatorsRefresh"`,
+		`id="btnAuditRefresh"`,
+		`id="btnTerminalsRefresh"`,
+		`id="btnSaftRefresh"`,
+	} {
+		if strings.Count(adminHTML, id) != 1 {
+			t.Fatalf("%s must exist exactly once", id)
+		}
+	}
+	if strings.Count(adminHTML, `class="btn-icon-refresh"`) < 8 {
+		t.Fatal("list refresh controls must use btn-icon-refresh")
+	}
+	if strings.Contains(adminHTML, `id="btnRefreshInvoices" data-i18n="common.refresh">刷新</button>`) {
+		t.Fatal("invoice refresh must be icon-only in list toolbar, not topbar text 刷新")
 	}
 }
 
@@ -72,6 +101,8 @@ func TestAdminHTMLInvoiceListPaginationUnique(t *testing.T) {
 		`id="productsListPagination"`,
 		`id="customersListPagination"`,
 		`id="billsListPagination"`,
+		`id="invoiceFilterPanel"`,
+		`id="btnInvoiceFilter"`,
 	} {
 		if strings.Count(adminHTML, id) != 1 {
 			t.Fatalf("%s must exist exactly once", id)
@@ -89,6 +120,7 @@ func TestAdminHTMLInvoiceListPaginationUnique(t *testing.T) {
 		"function initCustomerListPanel",
 		"function renderClientPaginatedTable",
 		"function resetInvoiceListPage",
+		"function setInvoiceFilterPanelOpen",
 		"async function refreshHomeStats",
 		"async function refreshInvoices",
 		"async function refreshProducts",
@@ -97,6 +129,15 @@ func TestAdminHTMLInvoiceListPaginationUnique(t *testing.T) {
 		if n := strings.Count(adminHTML, fn); n != 1 {
 			t.Fatalf("%s must appear exactly once, got %d", fn, n)
 		}
+	}
+	if !strings.Contains(adminHTML, "fiscal_invoice_date_range_v2") {
+		t.Fatal("invoice date storage key must bump to v2 (drop sticky yesterday)")
+	}
+	if !strings.Contains(adminHTML, "fiscal_invoice_doc_type_v2") {
+		t.Fatal("invoice doc-type storage key must bump to v2 (default all)")
+	}
+	if !strings.Contains(adminHTML, `data-invoice-type="" role="tab"`) {
+		t.Fatal("invoice tabs must include 全部 (empty document_type)")
 	}
 	if !strings.Contains(adminHTML, "FiscalUI.createListPaginationBar('#invoiceListPagination'") {
 		t.Fatal("invoice pagination must use FiscalUI.createListPaginationBar")

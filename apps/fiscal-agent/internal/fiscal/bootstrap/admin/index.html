@@ -347,8 +347,7 @@
     .invoices-table.list-table .col-money {
       width: 5.5rem; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
     }
-    .invoices-table.list-table th.col-actions,
-    .invoices-table.list-table td.col-actions { width: 4.5rem; white-space: nowrap; }
+    /* invoice actions width: ONLY list-pagination.css .col-actions */
     .panel {
       background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
       padding: 1.1rem 1.25rem; box-shadow: var(--shadow); margin-bottom: 1rem;
@@ -390,10 +389,7 @@
     th { color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; background: #faf9f6; }
     tr { transition: background 0.12s; }
     tr:hover td { background: #faf8f4; }
-    .list-table th.col-actions, .list-table td.col-actions {
-      text-align: right; white-space: nowrap; width: 1%;
-    }
-    .list-table td.col-actions .row-action-text { color: var(--mode); font-weight: 600; }
+    /* sticky col-actions: ONLY list-pagination.css */
     button.btn-sm { padding: 0.4rem 0.7rem; font-size: 0.85rem; font-weight: 600; }
     tr.clickable { cursor: pointer; }
     tr.clickable:hover { background: #f7f3ea; }
@@ -531,15 +527,8 @@
     .settings-wizard-actions {
       display: flex; justify-content: space-between; gap: 0.75rem; margin-top: 0.85rem;
     }
-    /* 开票员表：6 等宽列（scoped override，不叠 colgroup / nth-child） */
+    /* 开票员表：fixed；操作列宽度走 list-pagination sticky .col-actions */
     #operatorsTable.list-table { table-layout: fixed; width: 100%; }
-    #operatorsTable.list-table th,
-    #operatorsTable.list-table td { width: calc(100% / 6); }
-    #operatorsTable.list-table th.col-actions,
-    #operatorsTable.list-table td.col-actions {
-      text-align: center;
-      width: calc(100% / 6);
-    }
     #operatorsTable .check-row { margin-top: 0; justify-content: center; }
     /* 开票电脑表：fixed 布局，档口 select 撑满列（唯一宽度写法） */
     #terminalsTable.list-table { table-layout: fixed; width: 100%; }
@@ -550,7 +539,7 @@
     #terminalsTable .col-ip { width: 14%; }
     #terminalsTable .col-seen { width: 18%; }
     #terminalsTable .col-station { width: 28%; }
-    #terminalsTable .col-actions { width: 14%; white-space: nowrap; }
+    /* terminals .col-actions width: ONLY list-pagination sticky */
     #terminalsTable .col-station select,
     #terminalsTable .col-note input {
       width: 100%;
@@ -559,16 +548,17 @@
       box-sizing: border-box;
     }
     tr.muted td { opacity: 0.65; }
-    .btn-op-menu-trigger {
+    /* ONLY list row ⋯ trigger + floating menu */
+    .btn-row-menu-trigger {
       padding: 0.35rem 0.55rem; border-radius: 8px; font-weight: 700; color: var(--muted);
       min-width: 2rem; line-height: 1;
     }
-    #operatorMenuPop {
+    #listRowMenuPop {
       position: fixed; z-index: 50; min-width: 8.5rem;
       background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
       box-shadow: var(--shadow); padding: 0.35rem; display: flex; flex-direction: column; gap: 0.15rem;
     }
-    #operatorMenuPop button { width: 100%; text-align: left; padding: 0.45rem 0.55rem; font-size: 0.85rem; }
+    #listRowMenuPop button { width: 100%; text-align: left; padding: 0.45rem 0.55rem; font-size: 0.85rem; }
     @media (max-width: 900px) {
       .settings-shell { grid-template-columns: 1fr; }
       .settings-nav { display: none; }
@@ -777,18 +767,20 @@
           <div>
             <h1 data-i18n="nav.bills">收银账单</h1>
           </div>
-          <button type="button" class="secondary" id="btnRefreshBills" data-i18n="common.refresh">刷新</button>
         </div>
         <div class="panel admin-list-panel">
-          <div class="admin-list-filter-row">
-            <div class="field admin-list-search-field">
+          <div class="admin-list-toolbar">
+            <div class="field admin-list-toolbar__search">
               <label for="billsSearch" data-i18n="common.search">搜索</label>
               <input id="billsSearch" placeholder="桌号" data-i18n="bills.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
+            </div>
+            <div class="admin-list-toolbar__actions">
+              <button type="button" class="btn-icon-refresh" id="btnRefreshBills" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
             </div>
           </div>
           <div class="table-scroll">
             <table class="list-table">
-              <thead><tr><th data-i18n="col.table">桌号</th><th data-i18n="col.scope">范围</th><th data-i18n="col.amount">金额</th><th data-i18n="col.synced_at">同步时间</th><th class="col-actions" data-i18n="common.actions">操作</th></tr></thead>
+              <thead><tr><th data-i18n="col.table">桌号</th><th data-i18n="col.scope">范围</th><th data-i18n="col.amount">金额</th><th data-i18n="col.synced_at">同步时间</th><th class="col-actions"></th></tr></thead>
               <tbody id="billsTbody"></tbody>
             </table>
           </div>
@@ -854,7 +846,6 @@
           <div class="home-topbar-right">
             <span class="date-chip" id="homeDateChip"></span>
             <button type="button" id="ctaNewOrder" data-goto="order-new" data-i18n="home.cta.new_order">＋ 新建开票</button>
-            <button type="button" class="secondary" id="btnRefreshInvoices" data-i18n="common.refresh">刷新</button>
           </div>
         </header>
         <div class="home-body">
@@ -874,16 +865,28 @@
           </div>
           <div class="panel admin-list-panel invoice-list-panel">
             <div class="invoice-type-tabs" id="invoiceTypeTabs" role="tablist">
-              <button type="button" class="secondary active" data-invoice-type="FT" role="tab"><span data-i18n="doc.tab.FT">完整发票</span><small>FT</small></button>
+              <button type="button" class="secondary active" data-invoice-type="" role="tab"><span data-i18n="common.all">全部</span></button>
+              <button type="button" class="secondary" data-invoice-type="FT" role="tab"><span data-i18n="doc.tab.FT">完整发票</span><small>FT</small></button>
               <button type="button" class="secondary" data-invoice-type="FS" role="tab"><span data-i18n="doc.tab.FS">简式发票</span><small>FS</small></button>
               <button type="button" class="secondary" data-invoice-type="NC" role="tab"><span data-i18n="doc.tab.NC">冲销单</span><small>NC</small></button>
               <button type="button" class="secondary" data-invoice-type="ND" role="tab"><span data-i18n="doc.tab.ND">借记单</span><small>ND</small></button>
             </div>
-            <div class="admin-list-filter-row">
-              <div id="invoiceDateFilter"></div>
-              <div class="field admin-list-search-field">
+            <div class="admin-list-toolbar">
+              <div class="field admin-list-toolbar__search">
                 <label for="invoiceSearch" data-i18n="common.search">搜索</label>
                 <input id="invoiceSearch" placeholder="票号 / NIF / 桌号" data-i18n="invoices.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
+              </div>
+              <p class="admin-list-toolbar__count" id="invoiceListCount" hidden></p>
+              <div class="admin-list-toolbar__actions">
+                <button type="button" class="btn-icon-refresh" id="btnRefreshInvoices" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
+                <button type="button" class="secondary btn-filter-toggle" id="btnInvoiceFilter" aria-expanded="false" data-i18n="common.filter">筛选</button>
+              </div>
+            </div>
+            <div class="admin-list-filter-panel hidden" id="invoiceFilterPanel">
+              <div id="invoiceDateFilter"></div>
+              <div class="admin-list-filter-panel__footer">
+                <button type="button" class="secondary" id="btnInvoiceFilterClear" data-i18n="common.clear_filters">清除</button>
+                <button type="button" id="btnInvoiceFilterApply" data-i18n="common.apply_filters">应用</button>
               </div>
             </div>
             <div class="table-scroll">
@@ -896,7 +899,7 @@
                     <th class="col-source" data-i18n="col.source">来源</th>
                     <th class="col-pay" data-i18n="pay.label">付款方式</th>
                     <th class="col-money" data-i18n="col.amount">金额</th>
-                    <th class="col-actions" data-i18n="common.actions">操作</th>
+                    <th class="col-actions"></th>
                   </tr>
                 </thead>
                 <tbody id="invoicesTbody"></tbody>
@@ -913,15 +916,18 @@
           <button type="button" id="btnNewProd" data-i18n="products.new">新建商品</button>
         </div>
         <div class="panel admin-list-panel">
-          <div class="admin-list-filter-row">
-            <div class="field admin-list-search-field">
+          <div class="admin-list-toolbar">
+            <div class="field admin-list-toolbar__search">
               <label for="productsSearch" data-i18n="common.search">搜索</label>
               <input id="productsSearch" placeholder="编码 / 名称" data-i18n="products.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
+            </div>
+            <div class="admin-list-toolbar__actions">
+              <button type="button" class="btn-icon-refresh" id="btnRefreshProducts" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
             </div>
           </div>
           <div class="table-scroll">
             <table class="list-table">
-              <thead><tr><th data-i18n="col.code">编码</th><th data-i18n="common.name">名称</th><th data-i18n="col.price">售价</th><th>IVA</th><th class="col-actions" data-i18n="common.actions">操作</th></tr></thead>
+              <thead><tr><th data-i18n="col.code">编码</th><th data-i18n="common.name">名称</th><th data-i18n="col.price">售价</th><th>IVA</th><th class="col-actions"></th></tr></thead>
               <tbody id="productsTbody"></tbody>
             </table>
           </div>
@@ -946,15 +952,18 @@
           </div>
         </div>
         <div class="panel admin-list-panel">
-          <div class="admin-list-filter-row">
-            <div class="field admin-list-search-field">
+          <div class="admin-list-toolbar">
+            <div class="field admin-list-toolbar__search">
               <label for="customersSearch" data-i18n="common.search">搜索</label>
               <input id="customersSearch" placeholder="NIF / 名称" data-i18n="customers.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
+            </div>
+            <div class="admin-list-toolbar__actions">
+              <button type="button" class="btn-icon-refresh" id="btnRefreshCustomers" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
             </div>
           </div>
           <div class="table-scroll">
             <table class="list-table">
-              <thead><tr><th>NIF</th><th data-i18n="common.name">名称</th><th class="col-actions" data-i18n="common.actions">操作</th></tr></thead>
+              <thead><tr><th>NIF</th><th data-i18n="common.name">名称</th><th class="col-actions"></th></tr></thead>
               <tbody id="customersTbody"></tbody>
             </table>
           </div>
@@ -1081,13 +1090,16 @@
               <summary data-i18n="settings.nav.operators">人员</summary>
               <div class="settings-panel-body">
                 <p class="hint" id="fiscalProfileHint" data-i18n="settings.ops.profile_loading">门店业态：加载中…</p>
-                <div class="admin-list-filter-row settings-access-only" id="operatorsToolbar">
-                  <button type="button" id="btnOperatorAdd" data-i18n="settings.ops.add">添加开票员</button>
+                <div class="admin-list-toolbar settings-access-only" id="operatorsToolbar">
+                  <div class="admin-list-toolbar__actions">
+                    <button type="button" class="btn-icon-refresh" id="btnOperatorsRefresh" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
+                    <button type="button" id="btnOperatorAdd" data-i18n="settings.ops.add">添加开票员</button>
+                  </div>
                 </div>
                 <div class="table-scroll">
                   <table class="list-table" id="operatorsTable">
                     <thead><tr>
-                      <th data-i18n="common.name">姓名</th><th data-i18n="common.role">角色</th><th data-i18n="settings.ops.pin">PIN</th><th data-i18n="settings.ops.can_nc">可冲销</th><th data-i18n="common.status">状态</th><th class="col-actions" data-i18n="common.actions">操作</th>
+                      <th data-i18n="common.name">姓名</th><th data-i18n="common.role">角色</th><th data-i18n="settings.ops.pin">PIN</th><th data-i18n="settings.ops.can_nc">可冲销</th><th data-i18n="common.status">状态</th><th class="col-actions"></th>
                     </tr></thead>
                     <tbody id="operatorsTbody"></tbody>
                   </table>
@@ -1099,7 +1111,7 @@
             <details class="settings-panel settings-access-only admin-list-panel" id="settings-section-audit" data-settings-section="audit">
               <summary data-i18n="settings.nav.audit">操作记录</summary>
               <div class="settings-panel-body">
-                <div class="admin-list-filter-row">
+                <div class="admin-list-toolbar">
                   <div class="field admin-list-select-field">
                     <label for="auditActionFilter" data-i18n="settings.audit.action_type">操作类型</label>
                     <select id="auditActionFilter"><option value="">全部</option></select>
@@ -1108,7 +1120,9 @@
                     <label for="auditOperatorFilter" data-i18n="settings.audit.operator">开票员</label>
                     <select id="auditOperatorFilter"><option value="">全部</option></select>
                   </div>
-                  <button type="button" class="secondary" id="btnAuditRefresh" data-i18n="common.refresh">刷新</button>
+                  <div class="admin-list-toolbar__actions">
+                    <button type="button" class="btn-icon-refresh" id="btnAuditRefresh" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
+                  </div>
                 </div>
                 <div class="table-scroll">
                   <table class="list-table" id="auditLogTable">
@@ -1165,10 +1179,15 @@
                     <button type="button" class="secondary" id="btnTerminalsMaxSave" data-i18n="settings.terminals.save_max">保存上限</button>
                   </div>
                 </div>
-                <div class="panel-footer" style="border:0;justify-content:flex-start;gap:0.5rem;flex-wrap:wrap">
-                  <input id="terminalsAllowLabel" required placeholder="如：收银台 2" data-i18n="settings.terminals.placeholder" data-i18n-attr="placeholder" style="max-width:12rem" />
-                  <button type="button" id="btnTerminalsAllowNext" data-i18n="settings.terminals.allow">添加开票电脑</button>
-                  <button type="button" class="secondary" id="btnTerminalsRefresh" data-i18n="common.refresh">刷新</button>
+                <div class="admin-list-toolbar">
+                  <div class="field admin-list-toolbar__search" style="max-width:12rem;flex:1 1 10rem">
+                    <label for="terminalsAllowLabel" class="sr-only" data-i18n="settings.terminals.note">备注</label>
+                    <input id="terminalsAllowLabel" required placeholder="如：收银台 2" data-i18n="settings.terminals.placeholder" data-i18n-attr="placeholder" autocomplete="off" />
+                  </div>
+                  <div class="admin-list-toolbar__actions">
+                    <button type="button" class="btn-icon-refresh" id="btnTerminalsRefresh" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
+                    <button type="button" id="btnTerminalsAllowNext" data-i18n="settings.terminals.allow">添加开票电脑</button>
+                  </div>
                 </div>
                 <div id="terminalsAddWizard" class="hidden" style="margin:0.75rem 0;padding:1rem;border:1px solid #c5d6cc;border-radius:8px;background:#f7faf8">
                   <p class="hint" style="margin:0 0 0.5rem" data-i18n="settings.terminals.wizard_title">添加开票电脑</p>
@@ -1207,9 +1226,11 @@
                   <div class="field"><label for="saftYear" data-i18n="settings.saft.year">年份</label><input id="saftYear" type="number" min="2000" max="2100" /></div>
                   <div class="field"><label for="saftMonth" data-i18n="settings.saft.month">月份</label><input id="saftMonth" type="number" min="1" max="12" /></div>
                 </div>
-                <div class="panel-footer" style="border:0;justify-content:flex-start">
-                  <button type="button" id="btnSaftExport" data-i18n="settings.saft.export">导出 SAF-T</button>
-                  <button type="button" class="secondary" id="btnSaftRefresh" data-i18n="settings.saft.refresh">刷新列表</button>
+                <div class="admin-list-toolbar">
+                  <div class="admin-list-toolbar__actions" style="margin-left:0">
+                    <button type="button" class="btn-icon-refresh" id="btnSaftRefresh" data-i18n="settings.saft.refresh" data-i18n-attr="aria-label title" aria-label="刷新列表" title="刷新列表">↻</button>
+                    <button type="button" id="btnSaftExport" data-i18n="settings.saft.export">导出 SAF-T</button>
+                  </div>
                 </div>
                 <ul class="checklist" id="saftExportList"></ul>
               </div>
@@ -1348,12 +1369,7 @@
     </div>
   </div>
 
-  <div id="operatorMenuPop" class="hidden" role="menu" aria-hidden="true">
-    <button type="button" class="ghost" data-op-action="edit" data-i18n="common.edit">编辑</button>
-    <button type="button" class="ghost" data-op-action="reset-pin" data-i18n="settings.ops.reset_pin">重置 PIN</button>
-    <button type="button" class="ghost" data-op-action="deactivate" data-i18n="settings.ops.deactivate">停用</button>
-    <button type="button" class="ghost hidden" data-op-action="activate" data-i18n="settings.ops.activate">启用</button>
-  </div>
+  <div id="listRowMenuPop" class="hidden" role="menu" aria-hidden="true"></div>
 
   <div id="productPicker" class="modal-backdrop hidden">
     <div class="modal">
@@ -1813,13 +1829,19 @@
   let invoiceListPageSize = FiscalUI.LIST_DEFAULT_PAGE_SIZE;
   /** ONLY pagination bar for invoice list (FiscalUI.createListPaginationBar). */
   let invoiceListPaginationCtrl = null;
-  /** ONLY active document-type tab on invoice list (FT / FS / NC / ND). */
-  const INVOICE_LIST_DOC_TYPES = ['FT', 'FS', 'NC', 'ND'];
+  /** ONLY active document-type tab on invoice list ('' = all, or FT / FS / NC / ND). */
+  const INVOICE_LIST_DOC_TYPES = ['', 'FT', 'FS', 'NC', 'ND'];
+  /** ONLY invoice type label for empty-state copy. */
   function invoiceListDocTypeLabel(t) {
-    return FiscalAdminI18n.t('doc.tab.' + t);
+    const code = String(t || '').trim().toUpperCase();
+    if (!code) return FiscalAdminI18n.t('invoices.doc_all');
+    return FiscalAdminI18n.t('doc.tab.' + code);
   }
-  let invoiceListDocType = sessionStorage.getItem('fiscal_invoice_doc_type') || 'FT';
-  if (!INVOICE_LIST_DOC_TYPES.includes(invoiceListDocType)) invoiceListDocType = 'FT';
+  let invoiceListDocType = sessionStorage.getItem('fiscal_invoice_doc_type_v2');
+  if (invoiceListDocType == null) invoiceListDocType = '';
+  invoiceListDocType = String(invoiceListDocType).trim().toUpperCase();
+  if (!INVOICE_LIST_DOC_TYPES.includes(invoiceListDocType)) invoiceListDocType = '';
+  let invoiceFilterPanelOpen = false;
 
   const CATALOG_PICKER_PAGE_SIZE = 500;
   let productListPage = 1;
@@ -2761,9 +2783,15 @@
     el.textContent = ymd + ' ' + weekday;
   }
 
-  /** ONLY reprint control HTML (invoice list). */
-  function invoiceReprintButtonHtml(documentId) {
-    return '<button type="button" class="secondary btn-sm" data-reprint="' + documentId + '">' + FiscalAdminI18n.t('action.reprint') + '</button>';
+  /** ONLY list row ⋯ trigger HTML (invoice / product / bill / operator). */
+  function listRowMenuTriggerHtml(dataAttrs) {
+    return '<button type="button" class="ghost btn-row-menu-trigger" data-row-menu-trigger ' + dataAttrs +
+      ' aria-label="' + FiscalAdminI18n.t('common.actions') + '">⋯</button>';
+  }
+
+  /** ONLY invoice list row actions (⋯ → reprint). */
+  function invoiceRowActionsHtml(documentId) {
+    return listRowMenuTriggerHtml('data-row-kind="invoice" data-doc-id="' + documentId + '"');
   }
 
   /** ONLY writer for hub today metrics (#statTodayInvoices / #statTodaySales). */
@@ -3273,11 +3301,11 @@
     }
     tbody.innerHTML = list.map(p => {
       const src = (p.source === 'REMOTE_SYNC') ? FiscalAdminI18n.t('products.source.pos') : FiscalAdminI18n.t('products.source.local');
-      const editBtn = (p.source === 'REMOTE_SYNC')
+      const actions = (p.source === 'REMOTE_SYNC')
         ? '<span class="hint">' + src + '</span>'
-        : '<button type="button" class="secondary btn-sm" data-edit-prod="' + p.product_code + '">' + FiscalAdminI18n.t('common.edit') + '</button>';
+        : listRowMenuTriggerHtml('data-row-kind="product" data-product-code="' + escHtml(p.product_code) + '"');
       return '<tr><td>' + p.product_code + '</td><td>' + p.display_name + '</td><td>' + p.unit_price_gross +
-        '</td><td>' + p.vat_rate + '%</td><td class="col-actions">' + editBtn + '</td></tr>';
+        '</td><td>' + p.vat_rate + '%</td><td class="col-actions">' + actions + '</td></tr>';
     }).join('');
   }
 
@@ -3523,12 +3551,14 @@
 
   /** ONLY invoice type tab UI sync (active state + sessionStorage). */
   function setInvoiceListDocType(nextType) {
-    const t = String(nextType || '').trim().toUpperCase();
+    let t = String(nextType == null ? '' : nextType).trim().toUpperCase();
+    if (t === 'ALL') t = '';
     if (!INVOICE_LIST_DOC_TYPES.includes(t)) return;
     invoiceListDocType = t;
-    sessionStorage.setItem('fiscal_invoice_doc_type', t);
+    sessionStorage.setItem('fiscal_invoice_doc_type_v2', t);
     $$('#invoiceTypeTabs [data-invoice-type]').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.invoiceType === t);
+      const bt = String(btn.getAttribute('data-invoice-type') || '').trim().toUpperCase();
+      btn.classList.toggle('active', bt === t);
     });
   }
 
@@ -3545,18 +3575,42 @@
     tabs.addEventListener('click', e => {
       const btn = e.target.closest('[data-invoice-type]');
       if (!btn || btn.classList.contains('active')) return;
-      setInvoiceListDocType(btn.dataset.invoiceType);
+      setInvoiceListDocType(btn.getAttribute('data-invoice-type') || '');
       resetInvoiceListPage();
       refreshInvoices().catch(reportError);
     });
   }
 
-  /** ONLY invoice filter initializer (date presets + search). */
+  /** ONLY invoice Filtrar panel open/close + filter-button active state. */
+  function setInvoiceFilterPanelOpen(open) {
+    invoiceFilterPanelOpen = !!open;
+    const panel = $('#invoiceFilterPanel');
+    const btn = $('#btnInvoiceFilter');
+    if (panel) panel.classList.toggle('hidden', !invoiceFilterPanelOpen);
+    if (btn) {
+      btn.classList.toggle('active', invoiceFilterPanelOpen || invoiceFilterIsNonDefault());
+      btn.setAttribute('aria-expanded', invoiceFilterPanelOpen ? 'true' : 'false');
+    }
+  }
+
+  function invoiceFilterIsNonDefault() {
+    if (!invoiceDateFilterCtrl || !invoiceDateFilterCtrl.getRange) return false;
+    const range = invoiceDateFilterCtrl.getRange();
+    return !!(range && range.preset && range.preset !== 'today');
+  }
+
+  function syncInvoiceFilterToggle() {
+    const btn = $('#btnInvoiceFilter');
+    if (!btn) return;
+    btn.classList.toggle('active', invoiceFilterPanelOpen || invoiceFilterIsNonDefault());
+  }
+
+  /** ONLY invoice filter initializer (toolbar search + Filtrar date panel). */
   function initInvoiceFilters() {
     if (invoiceFiltersReady) return;
     initInvoiceTypeTabs();
     invoiceDateFilterCtrl = FiscalUI.createDateRangeFilter('#invoiceDateFilter', {
-      storageKey: 'fiscal_invoice_date_range',
+      storageKey: 'fiscal_invoice_date_range_v2',
       timezone: INVOICE_TZ,
       defaultPreset: 'today',
       getLabels: listDateRangeLabels,
@@ -3566,6 +3620,7 @@
       },
       onChange: () => {
         resetInvoiceListPage();
+        syncInvoiceFilterToggle();
         refreshInvoices().catch(reportError);
       },
     });
@@ -3576,6 +3631,32 @@
         refreshInvoices().catch(reportError);
       }, 300);
     });
+    const filterBtn = $('#btnInvoiceFilter');
+    if (filterBtn && !filterBtn._bound) {
+      filterBtn._bound = true;
+      filterBtn.addEventListener('click', () => {
+        setInvoiceFilterPanelOpen(!invoiceFilterPanelOpen);
+      });
+    }
+    const clearBtn = $('#btnInvoiceFilterClear');
+    if (clearBtn && !clearBtn._bound) {
+      clearBtn._bound = true;
+      clearBtn.addEventListener('click', () => {
+        if (invoiceDateFilterCtrl) invoiceDateFilterCtrl.setPreset('today');
+        setInvoiceFilterPanelOpen(false);
+        syncInvoiceFilterToggle();
+      });
+    }
+    const applyBtn = $('#btnInvoiceFilterApply');
+    if (applyBtn && !applyBtn._bound) {
+      applyBtn._bound = true;
+      applyBtn.addEventListener('click', () => {
+        setInvoiceFilterPanelOpen(false);
+        syncInvoiceFilterToggle();
+        resetInvoiceListPage();
+        refreshInvoices().catch(reportError);
+      });
+    }
     invoiceListPaginationCtrl = FiscalUI.createListPaginationBar('#invoiceListPagination', {
       getLabels: listPagerLabels,
       onPageChange: (nextPage) => {
@@ -3588,6 +3669,7 @@
         refreshInvoices().catch(reportError);
       },
     });
+    syncInvoiceFilterToggle();
     invoiceFiltersReady = true;
   }
 
@@ -3634,7 +3716,7 @@
           '<td class="col-source">' + formatInvoiceOrderCell(inv) + '</td>' +
           '<td class="col-pay">' + formatInvoicePaymentLabel(inv) + '</td>' +
           '<td class="col-money">' + fmtMoney(inv.gross_total) + '</td>' +
-          '<td class="col-actions">' + invoiceReprintButtonHtml(inv.document_id) + '</td></tr>'
+          '<td class="col-actions">' + invoiceRowActionsHtml(inv.document_id) + '</td></tr>'
       ).join('');
     }
     return list;
@@ -3687,7 +3769,7 @@
           '<td>' + scope + '</td>' +
           '<td>' + amt + '</td>' +
           '<td>' + fmtTimeShort(d.updated_at) + '</td>' +
-          '<td class="col-actions"><button type="button" class="secondary btn-sm" data-bill-open="' + d.id + '">' + FiscalAdminI18n.t('bills.action.select') + '</button></td></tr>';
+          '<td class="col-actions">' + listRowMenuTriggerHtml('data-row-kind="bill" data-bill-id="' + d.id + '"') + '</td></tr>';
       },
       tbody: tbody,
       colSpan: 5,
@@ -4637,27 +4719,9 @@
       });
       tr.querySelector('.col-station').appendChild(sel);
       const actions = tr.querySelector('.col-actions');
-      if (row.active) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'secondary';
-        btn.textContent = FiscalAdminI18n.t('settings.terminals.revoke_btn');
-        btn.onclick = function () { void revokeTerminal(row.id); };
-        actions.appendChild(btn);
-      } else {
-        const actBtn = document.createElement('button');
-        actBtn.type = 'button';
-        actBtn.textContent = FiscalAdminI18n.t('settings.terminals.activate_btn');
-        actBtn.onclick = function () { void activateTerminal(row.id); };
-        actions.appendChild(actBtn);
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'secondary';
-        delBtn.textContent = FiscalAdminI18n.t('settings.terminals.delete_btn');
-        delBtn.style.marginLeft = '0.35rem';
-        delBtn.onclick = function () { void deleteTerminal(row.id); };
-        actions.appendChild(delBtn);
-      }
+      actions.innerHTML = listRowMenuTriggerHtml(
+        'data-row-kind="terminal" data-term-id="' + escHtml(row.id) + '" data-term-active="' + (row.active ? '1' : '0') + '"'
+      );
       tb.appendChild(tr);
     });
     const addBtn = $('#btnTerminalsAllowNext');
@@ -4780,15 +4844,15 @@
       else showView(goto.dataset.goto);
       return;
     }
-    const billOpen = e.target.closest('[data-bill-open]');
-    if (billOpen) {
-      e.stopPropagation();
-      openBillDetail(billOpen.dataset.billOpen).catch(reportError);
-      return;
-    }
     const billRow = e.target.closest('[data-bill-id]');
     if (billRow && !e.target.closest('button')) {
       openBillDetail(billRow.dataset.billId).catch(reportError);
+      return;
+    }
+    const rowMenuTrigger = e.target.closest('[data-row-menu-trigger]');
+    if (rowMenuTrigger) {
+      e.stopPropagation();
+      openListRowMenu(rowMenuTrigger, listRowMenuCtxForTrigger(rowMenuTrigger), listRowMenuItemsForTrigger(rowMenuTrigger));
       return;
     }
     const reprint = e.target.closest('[data-reprint]');
@@ -4801,19 +4865,6 @@
     if (invRow && !e.target.closest('button')) {
       openInvoiceDetail(invRow.dataset.inv).catch(reportError);
       return;
-    }
-    const editProd = e.target.closest('[data-edit-prod]');
-    if (editProd) {
-      (async () => {
-        const code = editProd.dataset.editProd;
-        let p = catalogProducts.find(x => x.product_code === code);
-        if (!p) {
-          const data = await j('GET', buildProductsQueryPath(code, 1, 1));
-          p = (data.products || []).find(x => x.product_code === code);
-        }
-        if (p) await openProductWorkbench('edit', p);
-        else toast(FiscalAdminI18n.t('picker.toast.not_found'), 'error');
-      })().catch(reportError);
     }
   });
 
@@ -5088,6 +5139,23 @@
     toast(FiscalAdminI18n.t('common.refreshed'), 'success');
   });
 
+  $('#btnRefreshProducts').onclick = () => withBusy($('#btnRefreshProducts'), FiscalAdminI18n.t('common.refreshing'), async () => {
+    await refreshProducts();
+    toast(FiscalAdminI18n.t('common.refreshed'), 'success');
+  });
+
+  $('#btnRefreshCustomers').onclick = () => withBusy($('#btnRefreshCustomers'), FiscalAdminI18n.t('common.refreshing'), async () => {
+    await refreshCustomers();
+    toast(FiscalAdminI18n.t('common.refreshed'), 'success');
+  });
+
+  if ($('#btnOperatorsRefresh')) {
+    $('#btnOperatorsRefresh').onclick = () => withBusy($('#btnOperatorsRefresh'), FiscalAdminI18n.t('common.refreshing'), async () => {
+      await refreshOperatorsPanel();
+      toast(FiscalAdminI18n.t('common.refreshed'), 'success');
+    });
+  }
+
   $('#btnNewProd').onclick = () => {
     openProductWorkbench('create').catch(reportError);
   };
@@ -5274,33 +5342,24 @@
   $('#btnWizardPrev').onclick = () => wizardPrevStep();
 
   let operatorManageCache = [];
-  let operatorMenuTargetId = null;
-  let operatorMenuAnchor = null;
+  let listRowMenuCtx = null;
+  let listRowMenuAnchor = null;
 
-  function closeOperatorMenuPop() {
-    const pop = $('#operatorMenuPop');
+  /** ONLY close path for #listRowMenuPop. */
+  function closeListRowMenu() {
+    const pop = $('#listRowMenuPop');
     if (!pop) return;
     pop.classList.add('hidden');
     pop.setAttribute('aria-hidden', 'true');
-    operatorMenuTargetId = null;
-    operatorMenuAnchor = null;
+    pop.innerHTML = '';
+    listRowMenuCtx = null;
+    listRowMenuAnchor = null;
   }
 
-  function openOperatorMenuPop(anchor, operatorId, active, role) {
-    const pop = $('#operatorMenuPop');
+  /** ONLY positioner for #listRowMenuPop (fixed under/over ⋯). */
+  function positionListRowMenu(anchor) {
+    const pop = $('#listRowMenuPop');
     if (!pop || !anchor) return;
-    if (operatorMenuAnchor === anchor && !pop.classList.contains('hidden')) {
-      closeOperatorMenuPop();
-      return;
-    }
-    closeOperatorMenuPop();
-    operatorMenuTargetId = operatorId;
-    operatorMenuAnchor = anchor;
-    pop.querySelector('[data-op-action="edit"]').classList.toggle('hidden', !operatorMenuActionVisible('edit', operatorId, role, active));
-    pop.querySelector('[data-op-action="reset-pin"]').classList.toggle('hidden', !operatorMenuActionVisible('reset-pin', operatorId, role, active));
-    pop.querySelector('[data-op-action="deactivate"]').classList.toggle('hidden', !operatorMenuActionVisible('deactivate', operatorId, role, active));
-    pop.querySelector('[data-op-action="activate"]').classList.toggle('hidden', !operatorMenuActionVisible('activate', operatorId, role, active));
-    pop.setAttribute('aria-hidden', 'false');
     const rect = anchor.getBoundingClientRect();
     const margin = 6;
     pop.style.visibility = 'hidden';
@@ -5318,18 +5377,116 @@
     pop.style.visibility = '';
   }
 
-  async function runOperatorMenuAction(action) {
-    const id = operatorMenuTargetId;
-    closeOperatorMenuPop();
-    if (!id) return;
+  /** ONLY open path for list row ⋯ menu (invoice / product / bill / operator / terminal). */
+  function openListRowMenu(anchor, ctx, items) {
+    if (!anchor || !items || !items.length) return;
+    if (listRowMenuAnchor === anchor && $('#listRowMenuPop') && !$('#listRowMenuPop').classList.contains('hidden')) {
+      closeListRowMenu();
+      return;
+    }
+    closeListRowMenu();
+    const visible = items.filter(function (i) { return i && !i.hidden; });
+    if (!visible.length) return;
+    listRowMenuCtx = ctx;
+    listRowMenuAnchor = anchor;
+    const pop = $('#listRowMenuPop');
+    if (!pop) return;
+    pop.innerHTML = visible.map(function (i) {
+      return '<button type="button" class="ghost" role="menuitem" data-row-action="' + i.action + '">' + i.label + '</button>';
+    }).join('');
+    pop.setAttribute('aria-hidden', 'false');
+    positionListRowMenu(anchor);
+  }
+
+  /** ONLY dispatcher for list row menu actions. */
+  async function runListRowMenuAction(action) {
+    const ctx = listRowMenuCtx;
+    closeListRowMenu();
+    if (!ctx || !action) return;
     try {
-      const op = operatorManageCache.find(x => x.id === id);
-      if (!op && action !== 'edit') return;
-      if (action === 'edit') await openOperatorFormModal('edit', id);
-      else if (action === 'reset-pin') openOperatorResetPinModal(id);
-      else if (action === 'deactivate') await toggleOperatorActive(id, false);
-      else if (action === 'activate') await toggleOperatorActive(id, true);
+      if (ctx.kind === 'invoice' && action === 'reprint') {
+        await reprintInvoice(ctx.docId);
+        return;
+      }
+      if (ctx.kind === 'product' && action === 'edit') {
+        const code = ctx.productCode;
+        let p = catalogProducts.find(x => x.product_code === code);
+        if (!p) {
+          const data = await j('GET', buildProductsQueryPath(code, 1, 1));
+          p = (data.products || []).find(x => x.product_code === code);
+        }
+        if (p) await openProductWorkbench('edit', p);
+        else toast(FiscalAdminI18n.t('picker.toast.not_found'), 'error');
+        return;
+      }
+      if (ctx.kind === 'bill' && action === 'open') {
+        await openBillDetail(ctx.billId);
+        return;
+      }
+      if (ctx.kind === 'operator') {
+        const id = ctx.opId;
+        if (!id) return;
+        const op = operatorManageCache.find(x => x.id === id);
+        if (!op && action !== 'edit') return;
+        if (action === 'edit') await openOperatorFormModal('edit', id);
+        else if (action === 'reset-pin') openOperatorResetPinModal(id);
+        else if (action === 'deactivate') await toggleOperatorActive(id, false);
+        else if (action === 'activate') await toggleOperatorActive(id, true);
+        return;
+      }
+      if (ctx.kind === 'terminal') {
+        const id = ctx.termId;
+        if (!id) return;
+        if (action === 'revoke') await revokeTerminal(id);
+        else if (action === 'activate') await activateTerminal(id);
+        else if (action === 'delete') await deleteTerminal(id);
+      }
     } catch (er) { reportError(er); }
+  }
+
+  /** ONLY builder of menu items for a row ⋯ trigger. */
+  function listRowMenuItemsForTrigger(trigger) {
+    const kind = trigger.dataset.rowKind || '';
+    if (kind === 'invoice') {
+      return [{ action: 'reprint', label: FiscalAdminI18n.t('action.reprint') }];
+    }
+    if (kind === 'product') {
+      return [{ action: 'edit', label: FiscalAdminI18n.t('common.edit') }];
+    }
+    if (kind === 'bill') {
+      return [{ action: 'open', label: FiscalAdminI18n.t('bills.action.select') }];
+    }
+    if (kind === 'operator') {
+      const id = trigger.dataset.opId;
+      const active = trigger.dataset.opActive === '1';
+      const role = trigger.dataset.opRole || 'cashier';
+      return [
+        { action: 'edit', label: FiscalAdminI18n.t('common.edit'), hidden: !operatorMenuActionVisible('edit', id, role, active) },
+        { action: 'reset-pin', label: FiscalAdminI18n.t('settings.ops.reset_pin'), hidden: !operatorMenuActionVisible('reset-pin', id, role, active) },
+        { action: 'deactivate', label: FiscalAdminI18n.t('settings.ops.deactivate'), hidden: !operatorMenuActionVisible('deactivate', id, role, active) },
+        { action: 'activate', label: FiscalAdminI18n.t('settings.ops.activate'), hidden: !operatorMenuActionVisible('activate', id, role, active) }
+      ];
+    }
+    if (kind === 'terminal') {
+      const active = trigger.dataset.termActive === '1';
+      return [
+        { action: 'revoke', label: FiscalAdminI18n.t('settings.terminals.revoke_btn'), hidden: !active },
+        { action: 'activate', label: FiscalAdminI18n.t('settings.terminals.activate_btn'), hidden: active },
+        { action: 'delete', label: FiscalAdminI18n.t('settings.terminals.delete_btn'), hidden: active }
+      ];
+    }
+    return [];
+  }
+
+  /** ONLY ctx for a row ⋯ trigger. */
+  function listRowMenuCtxForTrigger(trigger) {
+    const kind = trigger.dataset.rowKind || '';
+    if (kind === 'invoice') return { kind: kind, docId: trigger.dataset.docId };
+    if (kind === 'product') return { kind: kind, productCode: trigger.dataset.productCode };
+    if (kind === 'bill') return { kind: kind, billId: trigger.dataset.billId };
+    if (kind === 'operator') return { kind: kind, opId: trigger.dataset.opId };
+    if (kind === 'terminal') return { kind: kind, termId: trigger.dataset.termId };
+    return { kind: kind };
   }
 
   async function refreshOperatorsPanel() {
@@ -5337,7 +5494,7 @@
     const empty = $('#operatorsEmptyHint');
     if (!tbody) return;
     if (!canManageOperators()) return;
-    closeOperatorMenuPop();
+    closeListRowMenu();
     try {
       const ops = await loadOperatorManageCache();
       if (empty) empty.classList.toggle('hidden', ops.length > 0);
@@ -5349,7 +5506,9 @@
         const ncToggle = o.active
           ? '<label class="check-row"><input type="checkbox" data-op-nc="' + o.id + '"' + (o.can_issue_nc ? ' checked' : '') + ' aria-label="' + FiscalAdminI18n.t('settings.ops.can_nc') + '" /></label>'
           : '—';
-        const actions = '<button type="button" class="ghost btn-op-menu-trigger" data-op-menu-trigger data-op-id="' + o.id + '" data-op-active="' + (o.active ? '1' : '0') + '" data-op-role="' + escHtml(o.role) + '" aria-label="' + FiscalAdminI18n.t('common.actions') + '">⋯</button>';
+        const actions = listRowMenuTriggerHtml(
+          'data-row-kind="operator" data-op-id="' + o.id + '" data-op-active="' + (o.active ? '1' : '0') + '" data-op-role="' + escHtml(o.role) + '"'
+        );
         return '<tr' + (o.active ? '' : ' class="muted"') + '>' +
           '<td>' + escHtml(o.display_name) + '</td>' +
           '<td>' + operatorRoleLabel(o.role) + '</td>' +
@@ -5504,23 +5663,23 @@
     if (e.target === $('#operatorResetPinModal')) closeOperatorResetPinModal();
   });
   $('#operatorsTbody').addEventListener('click', e => {
-    const trigger = e.target.closest('[data-op-menu-trigger]');
+    const trigger = e.target.closest('[data-row-menu-trigger]');
     if (!trigger) return;
     e.stopPropagation();
-    openOperatorMenuPop(trigger, trigger.dataset.opId, trigger.dataset.opActive === '1', trigger.dataset.opRole || 'cashier');
+    openListRowMenu(trigger, listRowMenuCtxForTrigger(trigger), listRowMenuItemsForTrigger(trigger));
   });
-  $('#operatorMenuPop').addEventListener('click', e => {
-    const btn = e.target.closest('[data-op-action]');
+  $('#listRowMenuPop').addEventListener('click', e => {
+    const btn = e.target.closest('[data-row-action]');
     if (!btn) return;
     e.stopPropagation();
-    void runOperatorMenuAction(btn.dataset.opAction);
+    void runListRowMenuAction(btn.dataset.rowAction);
   });
   document.addEventListener('click', e => {
-    const pop = $('#operatorMenuPop');
+    const pop = $('#listRowMenuPop');
     if (!pop || pop.classList.contains('hidden')) return;
     if (pop.contains(e.target)) return;
-    if (e.target.closest('[data-op-menu-trigger]')) return;
-    closeOperatorMenuPop();
+    if (e.target.closest('[data-row-menu-trigger]')) return;
+    closeListRowMenu();
   });
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
@@ -5528,7 +5687,7 @@
       closeConfirmActionModal();
       return;
     }
-    closeOperatorMenuPop();
+    closeListRowMenu();
   });
   $('#btnConfirmActionCancel').onclick = () => closeConfirmActionModal();
   $('#confirmActionModal').addEventListener('click', e => {

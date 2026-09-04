@@ -244,7 +244,8 @@ func TestAdminHTMLNoPageXScrollUnique(t *testing.T) {
 func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	for _, fn := range []string{
 		"function renderHomeDateChip",
-		"function invoiceReprintButtonHtml",
+		"function invoiceRowActionsHtml",
+		"function listRowMenuTriggerHtml",
 		"function renderHomeStats",
 		"function renderPendingBillsStat",
 		"function invoiceListEmptyCellHtml",
@@ -280,8 +281,11 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	if strings.Contains(adminHTML, `class="cta-big" id="ctaNewOrder"`) || strings.Contains(adminHTML, `class="cta-big rest-only" id="ctaPendingBills"`) {
 		t.Fatal("home CTAs must not use leftover cta-big")
 	}
-	if strings.Count(adminHTML, `data-reprint="' + documentId + '"`) != 1 {
-		t.Fatal("reprint button markup must exist only in invoiceReprintButtonHtml")
+	if strings.Count(adminHTML, `data-row-kind="invoice"`) != 1 {
+		t.Fatal("invoice ⋯ trigger markup must exist only in invoiceRowActionsHtml")
+	}
+	if strings.Contains(adminHTML, `data-reprint="' + documentId + '"`) {
+		t.Fatal("invoice list must not inline data-reprint buttons; use invoiceRowActionsHtml ⋯")
 	}
 	if strings.Contains(adminHTML, "$('#homeDateChip').textContent") {
 		t.Fatal("do not write home date outside renderHomeDateChip")
@@ -368,11 +372,14 @@ func TestAdminHTMLInvoiceHubLayout(t *testing.T) {
 		`class="col-source" data-i18n="col.source"`,
 		`class="col-pay" data-i18n="pay.label"`,
 		`class="col-money" data-i18n="col.amount"`,
-		`class="col-actions" data-i18n="common.actions"`,
+		`class="col-actions"`,
 	} {
 		if n := strings.Count(section, h); n != 1 {
 			t.Fatalf("invoice list header %q must appear once in hub, got %d", h, n)
 		}
+	}
+	if strings.Contains(section, `class="col-actions" data-i18n="common.actions"`) {
+		t.Fatal("invoice actions header must be blank (⋯ column), not labeled 操作")
 	}
 	for _, css := range []string{
 		".invoices-table.list-table { table-layout: fixed; width: 100%; }",
@@ -777,30 +784,34 @@ func TestAdminHTMLOperatorManageM32bSinglePath(t *testing.T) {
 	}
 }
 
-func TestAdminHTMLOperatorMenuSinglePath(t *testing.T) {
+func TestAdminHTMLListRowMenuSinglePath(t *testing.T) {
 	for _, fn := range []string{
-		"function openOperatorMenuPop",
-		"function closeOperatorMenuPop",
-		"function runOperatorMenuAction",
+		"function openListRowMenu",
+		"function closeListRowMenu",
+		"function positionListRowMenu",
+		"async function runListRowMenuAction",
+		"function listRowMenuItemsForTrigger",
+		"function listRowMenuCtxForTrigger",
+		"function listRowMenuTriggerHtml",
 	} {
 		if n := strings.Count(adminHTML, fn); n != 1 {
 			t.Fatalf("%s must appear exactly once, got %d", fn, n)
 		}
 	}
-	if n := strings.Count(adminHTML, `id="operatorMenuPop"`); n != 1 {
-		t.Fatalf("operatorMenuPop must exist exactly once, got %d", n)
+	if n := strings.Count(adminHTML, `id="listRowMenuPop"`); n != 1 {
+		t.Fatalf("listRowMenuPop must exist exactly once, got %d", n)
 	}
-	if strings.Contains(adminHTML, "class=\"op-menu\"") || strings.Contains(adminHTML, "op-menu-pop") {
-		t.Fatal("remove op-menu; use #operatorMenuPop fixed popover only")
+	if strings.Contains(adminHTML, "operatorMenuPop") || strings.Contains(adminHTML, "openOperatorMenuPop") {
+		t.Fatal("operator menu must be folded into #listRowMenuPop only")
 	}
-	if strings.Contains(adminHTML, `<details class="op-menu"`) {
-		t.Fatal("operator row menu must not use details/op-menu")
+	if strings.Contains(adminHTML, "data-op-menu-trigger") || strings.Contains(adminHTML, "btn-op-menu-trigger") {
+		t.Fatal("use data-row-menu-trigger / btn-row-menu-trigger only")
 	}
-	if strings.Contains(adminHTML, "menu.open = false") {
-		t.Fatal("remove details menu.open close path")
+	if strings.Contains(adminHTML, "class=\"op-menu\"") || strings.Contains(adminHTML, `<details class="op-menu"`) {
+		t.Fatal("row menu must not use details/op-menu")
 	}
 	if strings.Contains(adminHTML, `data-op-action="edit" data-op-id`) {
-		t.Fatal("row template must not embed inline menu actions; use #operatorMenuPop")
+		t.Fatal("row template must not embed inline menu actions; use #listRowMenuPop")
 	}
 }
 
@@ -873,7 +884,10 @@ func TestAdminHTMLOperatorsTableLayout(t *testing.T) {
 	if strings.Count(adminHTML, `id="operatorsTable"`) != 1 {
 		t.Fatal("operators table must exist exactly once")
 	}
-	if !strings.Contains(adminHTML, "#operatorsTable.list-table th.col-actions") {
-		t.Fatal("operators table must override list-table col-actions width")
+	if strings.Contains(adminHTML, "#operatorsTable.list-table th.col-actions") {
+		t.Fatal("operators actions width must use shared sticky .col-actions only (list-pagination.css)")
+	}
+	if !strings.Contains(string(fiscalUIListPaginationCSS), "/* ONLY sticky last-column actions") {
+		t.Fatal("sticky col-actions must live in list-pagination.css")
 	}
 }
