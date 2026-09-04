@@ -40,6 +40,9 @@ type config struct {
 	FiscalAllowLocalProvision *bool `json:"fiscal_allow_local_provision,omitempty"`
 	// FiscalATEnv: mock | test | prod. Empty → mock. Env FISCAL_AT_ENV wins when set.
 	FiscalATEnv string `json:"fiscal_at_env,omitempty"`
+	// FiscalAllowLAN: allow Admin listen on LAN (0.0.0.0:17880). nil/false → loopback only.
+	// Env FISCAL_ALLOW_LAN / FISCAL_BIND win when set at process start (CI / ops override).
+	FiscalAllowLAN *bool `json:"fiscal_allow_lan,omitempty"`
 }
 
 // hasRealtimeSession is true when claim returned Supabase Auth credentials for Realtime.

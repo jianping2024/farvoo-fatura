@@ -189,9 +189,10 @@ apps/fiscal-agent/
 
 ## 11. 运维话术（引用）
 
-1. Agent 机：Ops 开 `FISCAL_ALLOW_LAN=1`，固定店网 IP，防火墙 **17880**。  
+1. Agent 机：Admin **多台电脑开票** → 打开「允许店内其它电脑连接本机」→ 保存 → **托盘重启**；必要时按页内提示放行防火墙 **17880**。  
 2. LAN PC：安装 **Farvoo Fiscal Client**（不是 Agent）→ 填 Agent IP → 开票。  
-3. Agent IP 变更：各 Client **设置里改 IP**。
+3. Agent IP 变更：各 Client **设置里改 IP**。  
+4. 批准新电脑：Agent 上「添加开票电脑」→ 新电脑登录页输配对码。
 
 ---
 

@@ -53,6 +53,9 @@ func routeAuthFor(r *http.Request) routeAuth {
 		"/local/v1/setup/prepare-swap":        true,
 		"/local/v1/setup/terminals/max":       true,
 	}
+	if p == "/local/v1/setup/lan-access" && r.Method == http.MethodPut {
+		return authAdmin
+	}
 	if adminPaths[p] {
 		return authAdmin
 	}

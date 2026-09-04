@@ -27,6 +27,8 @@ type HandlerDeps struct {
 	UIEvents          *uievents.Hub            // Admin SSE; may be nil in unit tests
 	UILocaleGet       func() string            // live ui_locale; nil → zh
 	UILocaleSet       func(string) error       // persist ui_locale; required for PUT
+	LanAccessGet      func() (LanAccessSnapshot, error)
+	LanAccessSet      func(allow bool) (LanAccessSnapshot, error)
 }
 
 // Mount registers fiscal local routes. Prefix: /local/v1
@@ -88,6 +90,12 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	}))
 	mux.HandleFunc("PUT /local/v1/setup/ui-locale", g(func(w http.ResponseWriter, r *http.Request) {
 		handlePutUILocale(w, r, deps)
+	}))
+	mux.HandleFunc("GET /local/v1/setup/lan-access", g(func(w http.ResponseWriter, r *http.Request) {
+		handleGetLanAccess(w, r, deps)
+	}))
+	mux.HandleFunc("PUT /local/v1/setup/lan-access", g(func(w http.ResponseWriter, r *http.Request) {
+		handlePutLanAccess(w, r, deps)
 	}))
 	mux.HandleFunc("PUT /local/v1/setup/taxpayer", g(func(w http.ResponseWriter, r *http.Request) {
 		handleUpsertTaxpayer(w, r, deps)

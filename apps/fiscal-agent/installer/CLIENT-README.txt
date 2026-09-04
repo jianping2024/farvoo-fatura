@@ -8,8 +8,9 @@ Requirements
 ------------
 - Windows 10/11 x64
 - Microsoft Edge WebView2 Runtime (installer can install it if missing)
-- Farvoo Fiscal Agent running on another PC with LAN fiscal enabled:
-  FISCAL_ALLOW_LAN=1 and FISCAL_BIND=0.0.0.0:17880
+- Farvoo Fiscal Agent on another PC with LAN enabled in Admin:
+  Settings → Multi-PC invoicing → allow other store PCs to connect → restart Agent
+  (or ops env: FISCAL_ALLOW_LAN=1 and FISCAL_BIND=0.0.0.0:17880)
 
 First run
 ---------
@@ -17,7 +18,7 @@ First run
 2. On first launch, enter the Agent PC IP (store LAN) and port 17880.
 3. Click Test connection, then Save and open.
 4. Log in with operator PIN. If this PC is not registered, enter the one-time
-   pairing code from Agent settings → 开票电脑 → 允许下一台 (store manager).
+   pairing code from Agent settings → Multi-PC invoicing → Add invoicing PC.
 
 Change Agent IP
 ---------------

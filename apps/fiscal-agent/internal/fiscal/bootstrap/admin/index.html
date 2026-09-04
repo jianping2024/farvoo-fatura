@@ -612,13 +612,13 @@
         <div class="field"><label class="hint">6 位 PIN</label><input id="loginBootstrapPin" inputmode="numeric" maxlength="6" style="margin-bottom:0.75rem" /></div>
         <button type="button" id="btnLoginBootstrapOwner" style="width:100%">创建管理员并登录</button>
       </div>
-      <div id="loginTerminalPair" class="hidden" style="margin-top:1rem;border-top:1px solid #dce8e0;padding-top:1rem">
-        <p class="hint" id="loginTerminalPairHint">本机尚未登记为开票电脑。请向店长索取一次性配对码。</p>
-        <div class="field"><label class="hint" for="loginPairCode">配对码</label>
-          <input id="loginPairCode" maxlength="8" placeholder="如 AB12CD" style="margin-bottom:0.5rem;text-transform:uppercase" /></div>
-        <div class="field"><label class="hint" for="loginPairLabel">备注（可选）</label>
-          <input id="loginPairLabel" placeholder="如：吧台电脑" style="margin-bottom:0.75rem" /></div>
-        <button type="button" id="btnLoginPairTerminal" style="width:100%">登记本机</button>
+        <div id="loginTerminalPair" class="hidden" style="margin-top:1rem;border-top:1px solid #dce8e0;padding-top:1rem">
+        <p class="hint" id="loginTerminalPairHint" data-i18n="settings.terminals.login_need">这台电脑还不能开票。请店长在 Agent 电脑：设置 → 多台电脑开票 → 添加开票电脑，把屏幕上的码输入这里。</p>
+        <div class="field"><label class="hint" for="loginPairCode" data-i18n="settings.terminals.pair_code_label">配对码</label>
+          <input id="loginPairCode" maxlength="8" placeholder="如 AB12CD" data-i18n="settings.terminals.pair_code_ph" data-i18n-attr="placeholder" style="margin-bottom:0.5rem;text-transform:uppercase" /></div>
+        <div class="field"><label class="hint" for="loginPairLabel" data-i18n="settings.terminals.pair_label_label">备注（可选）</label>
+          <input id="loginPairLabel" placeholder="如：吧台电脑" data-i18n="settings.terminals.pair_label_ph" data-i18n-attr="placeholder" style="margin-bottom:0.75rem" /></div>
+        <button type="button" id="btnLoginPairTerminal" style="width:100%" data-i18n="settings.terminals.pair_submit">确认，登记这台电脑</button>
       </div>
     </div>
   </section>
@@ -1031,7 +1031,7 @@
             <a href="#settings-section-operators" data-settings-nav="operators" data-i18n="settings.nav.operators">人员</a>
             <a href="#settings-section-audit" data-settings-nav="audit" class="settings-access-only" data-i18n="settings.nav.audit">操作记录</a>
             <a href="#settings-section-printers" data-settings-nav="printers" data-i18n="settings.nav.printers">设备</a>
-            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only" data-i18n="settings.nav.terminals">开票电脑</a>
+            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only" data-i18n="settings.nav.terminals">多台电脑开票</a>
             <a href="#settings-section-saft" data-settings-nav="saft" data-i18n="settings.nav.saft">合规</a>
             <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </nav>
@@ -1042,7 +1042,7 @@
             <a href="#settings-section-operators" data-settings-nav="operators" data-i18n="settings.nav.operators">人员</a>
             <a href="#settings-section-audit" data-settings-nav="audit" class="settings-access-only" data-i18n="settings.nav.audit">操作记录</a>
             <a href="#settings-section-printers" data-settings-nav="printers" data-i18n="settings.nav.printers">设备</a>
-            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only" data-i18n="settings.nav.terminals">开票电脑</a>
+            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only" data-i18n="settings.nav.terminals">多台电脑开票</a>
             <a href="#settings-section-saft" data-settings-nav="saft" data-i18n="settings.nav.saft">合规</a>
             <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </div>
@@ -1184,28 +1184,66 @@
             </details>
 
             <details class="settings-panel settings-access-only admin-list-panel" id="settings-section-terminals" data-settings-section="terminals">
-              <summary data-i18n="settings.nav.terminals">开票电脑</summary>
+              <summary data-i18n="settings.nav.terminals">多台电脑开票</summary>
               <div class="settings-panel-body">
-                <p class="hint" id="terminalsQuotaHint" data-i18n="settings.terminals.quota_placeholder">终端 —/—</p>
+                <h3 class="settings-subhead" data-i18n="settings.lan.heading">① 其它电脑能否连上本机</h3>
+                <p class="hint" id="lanAccessStatus" data-i18n="settings.lan.status_local">仅本机可开票</p>
+                <p class="hint hidden" id="lanAccessEndpointRow">
+                  <span data-i18n="settings.lan.endpoint_label">其它电脑请填写</span>
+                  <code id="lanAccessEndpoint"></code>
+                  <button type="button" class="secondary" id="btnLanCopyEndpoint" data-i18n="settings.lan.copy">复制</button>
+                </p>
+                <div class="field settings-admin-only" id="lanAccessToggleRow">
+                  <label class="check-row" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+                    <input type="checkbox" id="lanAccessAllow" />
+                    <span data-i18n="settings.lan.toggle">允许店内其它电脑连接本机</span>
+                  </label>
+                  <p class="hint" data-i18n="settings.lan.toggle_hint">打开后，其它电脑安装「Farvoo 开票」，填入上面的地址即可连接。</p>
+                  <p class="hint hidden" id="lanAccessEnvLocked" data-i18n="settings.lan.env_locked">已由系统环境变量锁定，请在本机取消 FISCAL_ALLOW_LAN / FISCAL_BIND 后使用此开关。</p>
+                  <div class="panel-footer" style="border:0;justify-content:flex-start;gap:0.5rem;padding:0.5rem 0 0">
+                    <button type="button" id="btnLanAccessSave" data-i18n="settings.lan.save">保存连接设置</button>
+                  </div>
+                  <details class="hint" style="margin-top:0.5rem">
+                    <summary data-i18n="settings.lan.fw_summary">连不上时：放行防火墙 17880</summary>
+                    <p data-i18n="settings.lan.fw_body">管理员 PowerShell：</p>
+                    <code id="lanAccessFwCmd" style="display:block;white-space:pre-wrap;user-select:all">New-NetFirewallRule -DisplayName "Farvoo Fiscal 17880" -Direction Inbound -Protocol TCP -LocalPort 17880 -Action Allow</code>
+                  </details>
+                </div>
+
+                <h3 class="settings-subhead" style="margin-top:1.25rem" data-i18n="settings.terminals.reg_heading">② 批准哪些电脑可以开票</h3>
+                <p class="hint" id="terminalsQuotaHint" data-i18n="settings.terminals.quota_placeholder">已批准 — / 最多 —（本机不占名额）</p>
                 <div class="field settings-admin-only" id="terminalsMaxRow">
-                  <label for="terminalsMaxInput" data-i18n="settings.terminals.max">最大开票台数</label>
+                  <label for="terminalsMaxInput" data-i18n="settings.terminals.max">最多几台外来电脑可开票</label>
                   <div class="panel-footer" style="border:0;justify-content:flex-start;gap:0.5rem;padding:0">
                     <input id="terminalsMaxInput" type="number" min="1" max="99" style="width:5rem" />
                     <button type="button" class="secondary" id="btnTerminalsMaxSave" data-i18n="settings.terminals.save_max">保存上限</button>
                   </div>
                 </div>
-                <div class="panel-footer" style="border:0;justify-content:flex-start;gap:0.5rem">
-                  <input id="terminalsAllowLabel" placeholder="新电脑备注（可选）" data-i18n="settings.terminals.placeholder" data-i18n-attr="placeholder" style="max-width:12rem" />
-                  <button type="button" id="btnTerminalsAllowNext" data-i18n="settings.terminals.allow">允许下一台</button>
+                <div class="panel-footer" style="border:0;justify-content:flex-start;gap:0.5rem;flex-wrap:wrap">
+                  <input id="terminalsAllowLabel" placeholder="如：收银台 2" data-i18n="settings.terminals.placeholder" data-i18n-attr="placeholder" style="max-width:12rem" />
+                  <button type="button" id="btnTerminalsAllowNext" data-i18n="settings.terminals.allow">添加开票电脑</button>
                   <button type="button" class="secondary" id="btnTerminalsRefresh" data-i18n="common.refresh">刷新</button>
                 </div>
-                <p class="hint hidden" id="terminalsAllowCodeHint"></p>
+                <div id="terminalsAddWizard" class="hidden" style="margin:0.75rem 0;padding:1rem;border:1px solid #c5d6cc;border-radius:8px;background:#f7faf8">
+                  <p class="hint" style="margin:0 0 0.5rem" data-i18n="settings.terminals.wizard_title">添加开票电脑</p>
+                  <ol class="hint" style="margin:0 0 0.75rem;padding-left:1.25rem">
+                    <li data-i18n="settings.terminals.wizard_step1">在新电脑打开 Farvoo 开票，填入本机地址并测试连接</li>
+                    <li data-i18n="settings.terminals.wizard_step2">在新电脑登录页输入下面的配对码</li>
+                  </ol>
+                  <p style="font-size:1.75rem;letter-spacing:0.2em;font-weight:700;margin:0.5rem 0;text-align:center" id="terminalsWizardCode"></p>
+                  <p class="hint" id="terminalsWizardMeta" style="text-align:center"></p>
+                  <div class="panel-footer" style="border:0;justify-content:center;gap:0.5rem;padding-top:0.5rem">
+                    <button type="button" class="secondary" id="btnTerminalsWizardCopy" data-i18n="settings.lan.copy">复制</button>
+                    <button type="button" id="btnTerminalsWizardClose" data-i18n="settings.terminals.wizard_close">码已抄走，关闭</button>
+                  </div>
+                </div>
                 <div class="table-scroll">
                   <table class="list-table" id="terminalsTable">
-                    <thead><tr><th data-i18n="settings.terminals.note">备注</th><th data-i18n="common.status">状态</th><th data-i18n="settings.terminals.ip">最近 IP</th><th data-i18n="settings.terminals.seen">最近活跃</th><th></th></tr></thead>
+                    <thead><tr><th data-i18n="settings.terminals.note">电脑名称</th><th data-i18n="common.status">状态</th><th data-i18n="settings.terminals.ip">最近 IP</th><th data-i18n="settings.terminals.seen">最近使用</th><th></th></tr></thead>
                     <tbody id="terminalsTbody"></tbody>
                   </table>
                 </div>
+                <p class="hint" id="terminalsEmptyHint" data-i18n="settings.terminals.empty">还没有外来开票电脑。本机开票不用登记。</p>
               </div>
             </details>
 
@@ -4397,7 +4435,9 @@
         $('#app-shell').classList.remove('on');
         $('#view-login').classList.remove('hidden');
         showTerminalPairPrompt(e.error);
-        toast(e.error === 'terminal_revoked' ? '本机开票登记已失效，请重新配对' : '请先登记本机为开票电脑', 'error');
+        toast(e.error === 'terminal_revoked'
+          ? FiscalAdminI18n.t('settings.terminals.login_revoked')
+          : FiscalAdminI18n.t('settings.terminals.login_need'), 'error');
         return;
       }
     }
@@ -4435,17 +4475,83 @@
     }
   }
 
+  async function refreshLanAccessPanel() {
+    const statusEl = $('#lanAccessStatus');
+    const epRow = $('#lanAccessEndpointRow');
+    const ep = $('#lanAccessEndpoint');
+    const cb = $('#lanAccessAllow');
+    const locked = $('#lanAccessEnvLocked');
+    const saveBtn = $('#btnLanAccessSave');
+    if (!statusEl) return;
+    try {
+      const data = await j('GET', '/local/v1/setup/lan-access');
+      window.__lanAccessSnap = data;
+      const ips = data.agent_lan_ips || [];
+      let prefer = '';
+      for (const ip of ips) {
+        if (/^(10\.|192\.168\.|172\.)/.test(ip)) { prefer = ip; break; }
+      }
+      if (!prefer && ips.length) prefer = ips[0];
+      const port = data.port || '17880';
+      const endpoint = prefer ? (prefer + ':' + port) : '';
+      if (data.listening_lan && endpoint) {
+        statusEl.textContent = FiscalAdminI18n.fmt('settings.lan.status_open', { endpoint: endpoint });
+        epRow.classList.remove('hidden');
+        ep.textContent = endpoint;
+      } else if (data.allow_lan && data.restart_required) {
+        statusEl.textContent = FiscalAdminI18n.t('settings.lan.status_restart');
+        if (endpoint) {
+          epRow.classList.remove('hidden');
+          ep.textContent = endpoint;
+        } else {
+          epRow.classList.add('hidden');
+        }
+      } else {
+        statusEl.textContent = FiscalAdminI18n.t('settings.lan.status_local');
+        epRow.classList.add('hidden');
+      }
+      if (cb) cb.checked = !!data.allow_lan;
+      const envLocked = !!data.env_locked;
+      if (locked) locked.classList.toggle('hidden', !envLocked);
+      if (cb) cb.disabled = envLocked || !canSetTerminalMax();
+      if (saveBtn) saveBtn.disabled = envLocked || !canSetTerminalMax();
+    } catch (e) {
+      statusEl.textContent = FiscalAdminI18n.t('settings.lan.status_local');
+      if (epRow) epRow.classList.add('hidden');
+    }
+  }
+
+  async function saveLanAccess() {
+    if (!canSetTerminalMax()) {
+      toast(FiscalAdminI18n.t('settings.lan.save_denied'), 'error');
+      return;
+    }
+    const allow = !!($('#lanAccessAllow') && $('#lanAccessAllow').checked);
+    const res = await j('PUT', '/local/v1/setup/lan-access', { allow_lan: allow });
+    window.__lanAccessSnap = res;
+    await refreshLanAccessPanel();
+    if (res.restart_required) {
+      toast(FiscalAdminI18n.t('settings.lan.restart_toast'), 'success');
+    } else {
+      toast(FiscalAdminI18n.t('settings.lan.saved'), 'success');
+    }
+  }
+
   async function refreshTerminalsPanel() {
     if (!canManageTerminals()) return;
+    await refreshLanAccessPanel();
     const data = await j('GET', '/local/v1/setup/terminals');
     const used = data.terminals_used || 0;
     const max = data.max_fiscal_terminals || 1;
     $('#terminalsQuotaHint').textContent = FiscalAdminI18n.fmt('settings.terminals.quota', { used: used, max: max });
     const maxInput = $('#terminalsMaxInput');
     if (maxInput && document.activeElement !== maxInput) maxInput.value = String(max);
+    const rows = data.terminals || [];
+    const emptyHint = $('#terminalsEmptyHint');
+    if (emptyHint) emptyHint.classList.toggle('hidden', rows.length > 0);
     const tb = $('#terminalsTbody');
     tb.innerHTML = '';
-    (data.terminals || []).forEach(row => {
+    rows.forEach(row => {
       const tr = document.createElement('tr');
       const status = row.active ? FiscalAdminI18n.t('settings.terminals.active') : FiscalAdminI18n.t('common.disabled');
       tr.innerHTML = '<td>' + escHtml(row.label || FiscalAdminI18n.t('settings.terminals.no_label')) + '</td>'
@@ -4457,19 +4563,25 @@
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'secondary';
-        btn.textContent = FiscalAdminI18n.t('settings.ops.deactivate');
+        btn.textContent = FiscalAdminI18n.t('settings.terminals.revoke_btn');
         btn.onclick = () => { void revokeTerminal(row.id); };
         tr.lastChild.appendChild(btn);
       }
       tb.appendChild(tr);
     });
+    const addBtn = $('#btnTerminalsAllowNext');
+    if (addBtn) {
+      const full = used >= max;
+      addBtn.disabled = full;
+      addBtn.title = full ? FiscalAdminI18n.t('settings.terminals.full_hint') : '';
+    }
   }
 
   async function revokeTerminal(id) {
     openConfirmAction({
       title: FiscalAdminI18n.t('settings.terminals.revoke_title'),
       body: FiscalAdminI18n.t('settings.terminals.revoke_body'),
-      submitLabel: FiscalAdminI18n.t('settings.ops.deactivate'),
+      submitLabel: FiscalAdminI18n.t('settings.terminals.revoke_btn'),
       onConfirm: async () => {
         await j('POST', '/local/v1/setup/terminals/' + encodeURIComponent(id) + '/revoke', {});
         toast(FiscalAdminI18n.t('settings.terminals.revoked'), 'success');
@@ -4478,12 +4590,36 @@
     });
   }
 
-  async function allowNextTerminal() {
+  async function startAddTerminalWizard() {
+    const snap = window.__lanAccessSnap;
+    if (snap && !snap.listening_lan && !snap.allow_lan) {
+      openConfirmAction({
+        title: FiscalAdminI18n.t('settings.terminals.need_lan_title'),
+        body: FiscalAdminI18n.t('settings.terminals.need_lan_body'),
+        submitLabel: FiscalAdminI18n.t('settings.lan.save'),
+        onConfirm: async () => {
+          if ($('#lanAccessAllow')) $('#lanAccessAllow').checked = true;
+          await saveLanAccess();
+        }
+      });
+      return;
+    }
+    if (snap && snap.allow_lan && snap.restart_required) {
+      toast(FiscalAdminI18n.t('settings.lan.restart_toast'), 'error');
+      return;
+    }
     const label = ($('#terminalsAllowLabel').value || '').trim();
     const res = await j('POST', '/local/v1/setup/terminals/allow-next', { label });
-    const hint = $('#terminalsAllowCodeHint');
-    hint.classList.remove('hidden');
-    hint.textContent = FiscalAdminI18n.fmt('settings.terminals.code_hint', { code: res.pairing_code, expires: res.expires_at || '' });
+    const wiz = $('#terminalsAddWizard');
+    const codeEl = $('#terminalsWizardCode');
+    const meta = $('#terminalsWizardMeta');
+    if (codeEl) codeEl.textContent = res.pairing_code || '';
+    if (meta) {
+      meta.textContent = FiscalAdminI18n.fmt('settings.terminals.wizard_meta', {
+        expires: res.expires_at || ''
+      });
+    }
+    if (wiz) wiz.classList.remove('hidden');
     toast(FiscalAdminI18n.t('settings.terminals.code_toast'), 'success');
     await refreshTerminalsPanel();
   }
@@ -4965,13 +5101,41 @@
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
   $('#btnTerminalsAllowNext').onclick = () => withBusy($('#btnTerminalsAllowNext'), FiscalAdminI18n.t('common.generating'), async () => {
-    try { await allowNextTerminal(); }
+    try { await startAddTerminalWizard(); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
   $('#btnTerminalsMaxSave').onclick = () => withBusy($('#btnTerminalsMaxSave'), FiscalAdminI18n.t('common.saving'), async () => {
     try { await saveTerminalMax(); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
+  if ($('#btnLanAccessSave')) {
+    $('#btnLanAccessSave').onclick = () => withBusy($('#btnLanAccessSave'), FiscalAdminI18n.t('common.saving'), async () => {
+      try { await saveLanAccess(); }
+      catch (er) { toast(errText(er), 'error'); throw er; }
+    });
+  }
+  if ($('#btnLanCopyEndpoint')) {
+    $('#btnLanCopyEndpoint').onclick = async () => {
+      const t = ($('#lanAccessEndpoint') && $('#lanAccessEndpoint').textContent) || '';
+      if (!t) return;
+      try { await navigator.clipboard.writeText(t); toast(FiscalAdminI18n.t('settings.lan.copied'), 'success'); }
+      catch (er) { toast(errText(er), 'error'); }
+    };
+  }
+  if ($('#btnTerminalsWizardClose')) {
+    $('#btnTerminalsWizardClose').onclick = () => {
+      const wiz = $('#terminalsAddWizard');
+      if (wiz) wiz.classList.add('hidden');
+    };
+  }
+  if ($('#btnTerminalsWizardCopy')) {
+    $('#btnTerminalsWizardCopy').onclick = async () => {
+      const t = ($('#terminalsWizardCode') && $('#terminalsWizardCode').textContent) || '';
+      if (!t) return;
+      try { await navigator.clipboard.writeText(t); toast(FiscalAdminI18n.t('settings.lan.copied'), 'success'); }
+      catch (er) { toast(errText(er), 'error'); }
+    };
+  }
   $('#btnLoginPairTerminal').onclick = () => withBusy($('#btnLoginPairTerminal'), FiscalAdminI18n.t('common.pairing'), async () => {
     try { await submitTerminalPairFromLogin(); }
     catch (er) { toast(errText(er), 'error'); throw er; }
