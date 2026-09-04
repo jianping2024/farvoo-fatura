@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.99
+
+**FISCAL_SEED demo 开票员带 PIN（修登录「无法加载开票员」）**
+
+- **唯一写法 · seed PIN：**`SeedDemo` 仅用 `hashPIN(SeedDemoOperatorPIN="123456")` 写入 demo cashier；并对旧库 pinless 行 `UPDATE … WHERE pin_hash IS NULL OR ''` 回填。
+- 根因：`FISCAL_SEED=1` 曾插无 PIN 的 `op-demo-cashier` → `operators_count≥1` 关掉 bootstrap，登录列表又只要有 PIN → 空下拉显示「无法加载开票员」。
+
 ## 0.4.98
 
 **发票 hub：矮条入口 + 筛选一行 + 空态引导（收掉问候/大 KPI）**

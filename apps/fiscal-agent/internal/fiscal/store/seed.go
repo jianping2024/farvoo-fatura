@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+// SeedDemoOperatorPIN is the ONLY known PIN for FISCAL_SEED demo cashier (fiscal-local / UAT).
+const SeedDemoOperatorPIN = "123456"
+
 // SeedDemoParams seeds the minimum rows for local FT issuance (no AT SOAP).
 type SeedDemoParams struct {
 	StoreID                   string
@@ -33,6 +36,7 @@ type SeedDemoParams struct {
 }
 
 // SeedDemo inserts identity + ACTIVE FT/FS series + consumidor final if missing.
+// Demo cashier is inserted with SeedDemoOperatorPIN so Admin login is not stuck on pinless rows.
 func (d *DB) SeedDemo(p SeedDemoParams) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	if p.Timezone == "" {
@@ -49,6 +53,11 @@ func (d *DB) SeedDemo(p SeedDemoParams) error {
 	}
 	if p.SigningKeyVersion == 0 {
 		p.SigningKeyVersion = 1
+	}
+
+	pinHash, err := hashPIN(SeedDemoOperatorPIN)
+	if err != nil {
+		return fmt.Errorf("seed operator pin: %w", err)
 	}
 
 	tx, err := d.SQL.Begin()
@@ -89,10 +98,17 @@ func (d *DB) SeedDemo(p SeedDemoParams) error {
 
 	_, err = tx.Exec(`INSERT OR IGNORE INTO operators (
 		id, mesa_user_id, store_id, role, display_name, active, pin_hash, can_issue_nc, synced_at, created_at, updated_at
-	) VALUES (?, ?, ?, 'cashier', ?, 1, NULL, 0, ?, ?, ?)`,
-		p.OperatorID, "mesa-"+p.OperatorID, p.StoreID, p.OperatorName, now, now, now)
+	) VALUES (?, ?, ?, 'cashier', ?, 1, ?, 0, ?, ?, ?)`,
+		p.OperatorID, "mesa-"+p.OperatorID, p.StoreID, p.OperatorName, pinHash, now, now, now)
 	if err != nil {
 		return fmt.Errorf("seed operator: %w", err)
+	}
+	// Re-seed of older DBs: pinless demo cashier blocked Admin login (bootstrap_required=false + empty login list).
+	_, err = tx.Exec(`UPDATE operators SET pin_hash=?, updated_at=?
+		WHERE id=? AND store_id=? AND (pin_hash IS NULL OR pin_hash='')`,
+		pinHash, now, p.OperatorID, p.StoreID)
+	if err != nil {
+		return fmt.Errorf("seed operator pin backfill: %w", err)
 	}
 
 	_, err = tx.Exec(`INSERT OR IGNORE INTO customers (
