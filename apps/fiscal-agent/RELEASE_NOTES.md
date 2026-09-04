@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.102
+
+**日期筛选：收掉「自定义」pill**
+
+- **唯一写法 · 快捷区间：**仅 `PRESET_IDS = today|yesterday|last7|month`（点即查）。
+- **唯一写法 · 自由区间：**改起止 DatePicker → 内部 `preset=custom` →「应用」；禁止第五颗「自定义」chip / `date.custom` 文案。
+
 ## 0.4.101
 
 **Admin 列表：listoo 工具条 + sticky ⋯ 操作列（收掉三行筛选架 / 顶栏文字刷新）**
