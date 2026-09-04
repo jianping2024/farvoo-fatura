@@ -180,7 +180,7 @@
 </head>
 <body class="mode-restaurant">
   <div class="proto-banner">
-    Farvoo 开票 · <strong>v2 流程原型</strong>（假数据）— 业务语言：手工开票 / 收银账单 → 开票 → 发票 · 不含「草稿/API」等开发词
+    Farvoo 开票 · <strong>v2 流程原型</strong>（假数据）— 发票 hub / 收银账单 → 开票；无草稿列表 · 不含「草稿/API」等开发词
   </div>
 
   <!-- ① 登录 + 选业态 -->
@@ -214,10 +214,8 @@
     <aside class="sidebar">
       <div class="logo">Farvoo 开票</div>
       <div class="mode-tag" id="sidebarMode">餐馆模式</div>
-      <button type="button" class="nav-btn active" data-nav="home">工作台<small>今日概览</small></button>
-      <button type="button" class="nav-btn" data-nav="orders">手工开票<small>本机新建</small></button>
+      <button type="button" class="nav-btn active" data-nav="invoices">发票<small>今日统计 / 查询重打</small></button>
       <button type="button" class="nav-btn rest-only" data-nav="bills">收银账单<small>待开票 · 来自收银</small></button>
-      <button type="button" class="nav-btn" data-nav="invoices">发票<small>查询 / 重打</small></button>
       <button type="button" class="nav-btn" data-nav="products">商品<small>本店商品维护</small></button>
       <button type="button" class="nav-btn" data-nav="customers">客户<small>常用购方</small></button>
       <button type="button" class="nav-btn owner-only" data-nav="settings" id="navSettings">设置<small>店名 / 打印机</small></button>
@@ -229,63 +227,6 @@
     </aside>
 
     <main class="main">
-      <!-- 工作台 -->
-      <section class="view" id="view-home">
-        <div class="topbar">
-          <div>
-            <h1>工作台</h1>
-            <p class="hint" id="homeSubtitle">餐馆 · 先建单，后发票</p>
-          </div>
-        </div>
-        <div class="stat-row">
-          <div class="stat"><div class="k">手工待开</div><div class="v">2</div></div>
-          <div class="stat"><div class="k">今日已开发票</div><div class="v">12</div></div>
-          <div class="stat rest-only"><div class="k">收银账单</div><div class="v">1</div></div>
-          <div class="stat retail-only"><div class="k">今日营业额</div><div class="v">€842</div></div>
-        </div>
-        <button type="button" class="cta-big" data-goto="order-new" id="ctaNewOrder">
-          <strong>＋ 新建开票</strong>
-          <span>添加商品 → 确认 → 选择开票类型 → 签发发票</span>
-        </button>
-        <button type="button" class="cta-big rest-only" data-nav="bills" id="ctaPendingBills">
-          <strong>处理收银账单</strong>
-          <span>收银已结账、尚未开票的桌台账单（餐馆）</span>
-        </button>
-      </section>
-
-      <!-- 手工开票列表 -->
-      <section class="view hidden" id="view-orders">
-        <div class="topbar">
-          <div>
-            <h1>手工开票</h1>
-            <p class="hint">未开票前可改商品；开票后生成发票，本单只读。</p>
-          </div>
-          <button type="button" data-goto="order-new">新建开票</button>
-        </div>
-        <div class="panel">
-          <table>
-            <thead><tr><th>单号</th><th>来源</th><th>金额</th><th>状态</th><th></th></tr></thead>
-            <tbody>
-              <tr class="clickable" data-open-order="ORD-1008">
-                <td><strong>ORD-1008</strong></td>
-                <td class="rest-only">桌 018</td>
-                <td class="retail-only">收银台 2</td>
-                <td>€28.30</td>
-                <td><span class="badge wait">待开票</span></td>
-                <td>继续 →</td>
-              </tr>
-              <tr class="clickable" data-open-order="ORD-1007">
-                <td><strong>ORD-1007</strong></td>
-                <td>手动创建</td>
-                <td>€15.00</td>
-                <td><span class="badge done">已开票</span></td>
-                <td>查看 →</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       <!-- 新建开票：步骤 1–2 加商品 -->
       <section class="view hidden" id="view-order-new">
         <div class="flow-bar" id="flowBarNew">
@@ -299,7 +240,7 @@
             <h1>新建开票</h1>
             <p class="hint">先完成本单，再进入开票步骤。</p>
           </div>
-          <button type="button" class="secondary" data-nav="orders">返回列表</button>
+          <button type="button" class="secondary" data-nav="invoices">取消</button>
         </div>
         <div class="panel">
           <div class="field rest-only">
@@ -387,7 +328,7 @@
             </div>
             <div class="actions">
               <button type="button" id="btnIssueInvoice">签发发票并打印</button>
-              <button type="button" class="secondary" data-nav="orders">稍后开票</button>
+              <button type="button" class="secondary" data-nav="invoices">取消</button>
             </div>
           </div>
         </div>
@@ -432,15 +373,26 @@
         </div>
       </section>
 
-      <!-- 发票 -->
+      <!-- 发票 hub -->
       <section class="view hidden" id="view-invoices">
         <div class="topbar">
           <div>
             <h1>发票</h1>
-            <p class="hint">已签发发票 · 可重打副本（2ª Via）</p>
+            <p class="hint" id="invoiceHubSubtitle">餐馆 · 收银账单 → 开票 → 发票列表</p>
           </div>
+          <button type="button" data-goto="order-new" id="ctaNewOrder">＋ 新建开票</button>
         </div>
+        <div class="stat-row" style="grid-template-columns: repeat(2, 1fr)">
+          <div class="stat"><div class="k">今日已开发票</div><div class="v">12</div></div>
+          <div class="stat rest-only"><div class="k">收银账单</div><div class="v">1</div></div>
+        </div>
+        <button type="button" class="cta-big rest-only" data-nav="bills" id="ctaPendingBills">
+          <strong>处理收银账单</strong>
+          <span>收银已结账、尚未开票的桌台账单（餐馆）</span>
+        </button>
         <div class="panel">
+          <h2>已签发发票</h2>
+          <p class="hint" style="margin:-0.35rem 0 0.75rem">可重打副本（2ª Via）</p>
           <table>
             <thead><tr><th>票号</th><th>来源</th><th>时间</th><th>金额</th><th></th></tr></thead>
             <tbody>
@@ -525,16 +477,16 @@
       document.body.classList.toggle('mode-restaurant', mode === 'restaurant');
       document.body.classList.toggle('mode-retail', mode === 'retail');
       $('#sidebarMode').textContent = mode === 'restaurant' ? '餐馆模式' : '商超模式';
-      $('#homeSubtitle').textContent = mode === 'restaurant'
-        ? '餐馆 · 收银账单 → 开票 → 发票'
-        : '商超 · 新建开票 → 发票';
+      $('#invoiceHubSubtitle').textContent = mode === 'restaurant'
+        ? '餐馆 · 收银账单 → 开票 → 发票列表'
+        : '商超 · 新建开票 → 发票列表';
     }
 
     function enterApp() {
       applyMode();
       $('#view-login').classList.add('hidden');
       $('#app-shell').classList.add('on');
-      showView('home');
+      showView('invoices');
       toast(mode === 'restaurant' ? '已进入 · 餐馆模式' : '已进入 · 商超模式');
     }
 
@@ -574,10 +526,6 @@
       showView('order-invoice');
       toast('已确认 · 请选择发票类型');
     };
-    $$('[data-open-order]').forEach(r => r.addEventListener('click', () => {
-      $('#invOrderNo').textContent = r.dataset.openOrder;
-      showView('order-invoice');
-    }));
     $('#btnIssueInvoice').onclick = () => {
       toast('已签发 FT · 已打印（原型）');
       showView('invoices');
