@@ -40,6 +40,44 @@ func TestSoleSingleInstanceWritings(t *testing.T) {
 		t.Fatal("acquireAgentSingleInstance must be defined exactly once")
 	}
 
+	common, err := os.ReadFile(filepath.Join(agent, "single_instance_common.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	csCommon := string(common)
+	if strings.Count(csCommon, "func waitAcquireAgentSingleInstance(") != 1 {
+		t.Fatal("waitAcquireAgentSingleInstance must be defined exactly once")
+	}
+	if strings.Count(csCommon, "func waitAcquireAgentSingleInstancePoll(") != 1 {
+		t.Fatal("waitAcquireAgentSingleInstancePoll must be defined exactly once")
+	}
+
+	mainSrc, err := os.ReadFile(filepath.Join(agent, "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ms := string(mainSrc)
+	restartIdx := strings.Index(ms, `os.Args[1] == "--restart-wait"`)
+	if restartIdx < 0 {
+		t.Fatal("main must handle --restart-wait")
+	}
+	rest := ms[restartIdx:]
+	endMark := "runAgent(nil)\n\t\treturn"
+	endIdx := strings.Index(rest, endMark)
+	if endIdx < 0 {
+		t.Fatal("--restart-wait must end with runAgent(nil); return")
+	}
+	restartBlock := rest[:endIdx+len(endMark)]
+	if !strings.Contains(restartBlock, "waitAcquireAgentSingleInstance(") {
+		t.Fatal("main --restart-wait must call waitAcquireAgentSingleInstance")
+	}
+	if strings.Contains(restartBlock, "guardMainAgentSingleInstance()") {
+		t.Fatal("--restart-wait must not call guardMainAgentSingleInstance (use waitAcquire)")
+	}
+	if strings.Contains(restartBlock, "time.Sleep(1 * time.Second)") {
+		t.Fatal("--restart-wait must not fixed-Sleep(1s); waitAcquire polls instead")
+	}
+
 	shell, err := os.ReadFile(filepath.Join(agent, "fiscal_shell_windows.go"))
 	if err != nil {
 		t.Fatal(err)

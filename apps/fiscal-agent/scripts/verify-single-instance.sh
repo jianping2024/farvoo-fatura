@@ -9,6 +9,42 @@ grep -q 'guardMainAgentSingleInstance' "$ROOT/main.go" || {
 }
 
 grep -q 'func guardMainAgentSingleInstance' "$ROOT/single_instance_common.go" || exit 1
+grep -q 'func waitAcquireAgentSingleInstance' "$ROOT/single_instance_common.go" || {
+  echo "FAIL: waitAcquireAgentSingleInstance must be the sole Restart successor gate"
+  exit 1
+}
+# Exactly one waitAcquire definition (not duplicated in windows/stub)
+n_wait=$(grep -c 'func waitAcquireAgentSingleInstance(' "$ROOT/single_instance_common.go" || true)
+if [[ "$n_wait" != "1" ]]; then
+  echo "FAIL: want exactly 1 waitAcquireAgentSingleInstance in single_instance_common.go, got $n_wait"
+  exit 1
+fi
+if grep -n 'func waitAcquireAgentSingleInstance' "$ROOT"/single_instance_windows.go "$ROOT"/single_instance_stub.go 2>/dev/null; then
+  echo "FAIL: waitAcquire must live only in single_instance_common.go"
+  exit 1
+fi
+grep -q 'waitAcquireAgentSingleInstance' "$ROOT/main.go" || {
+  echo "FAIL: main --restart-wait must call waitAcquireAgentSingleInstance"
+  exit 1
+}
+# Restart branch only (until its return) — must not Sleep(1s) or one-shot guard
+restart_block="$(awk '
+  /os\.Args\[1\] == "--restart-wait"/ {on=1}
+  on {print}
+  on && /runAgent\(nil\)/ {getline; print; exit}
+' "$ROOT/main.go")"
+echo "$restart_block" | grep -q 'waitAcquireAgentSingleInstance' || {
+  echo "FAIL: restart block must call waitAcquireAgentSingleInstance"
+  exit 1
+}
+if echo "$restart_block" | grep -q 'time.Sleep(1 \* time.Second)'; then
+  echo "FAIL: --restart-wait must not fixed-Sleep(1s)"
+  exit 1
+fi
+if echo "$restart_block" | grep -q 'guardMainAgentSingleInstance()'; then
+  echo "FAIL: --restart-wait must not call one-shot guardMainAgentSingleInstance"
+  exit 1
+fi
 grep -q 'FarvooFiscalAgent-SingleInstance-v1' "$ROOT/internal/fiscalipc/constants.go" || {
   echo "FAIL: AgentMutexName must be FarvooFiscalAgent-SingleInstance-v1"
   exit 1
@@ -74,7 +110,7 @@ fi
 
 (
   cd "$ROOT"
-  go test -count=1 -run 'TestIsMainAgentInvocation' .
+  go test -count=1 -run 'TestIsMainAgentInvocation|TestWaitAcquireAgentSingleInstancePoll_' .
   go test -count=1 -run 'TestAgentMutexNameStable|TestCommandOpenFiscalStable|TestSoleSingleInstanceWritings' ./internal/fiscalipc
   go test -count=1 -run 'TestClientMutexNameStable' ./internal/fiscalclient
 )

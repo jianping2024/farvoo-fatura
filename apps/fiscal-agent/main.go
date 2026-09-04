@@ -167,8 +167,12 @@ func summarizeJobPayload(job printJob) string {
 func main() {
 	windowsPrepareConsole(os.Args)
 	if len(os.Args) > 1 && os.Args[1] == "--restart-wait" {
-		time.Sleep(1 * time.Second)
-		guardMainAgentSingleInstance()
+		// Sole Restart successor: poll-acquire mutex, then become the tray agent.
+		// Do not Sleep+one-shot guard (races parent / leaves mutex free for fiscal).
+		if !waitAcquireAgentSingleInstance(0) {
+			log.Println("single-instance: restart successor failed to acquire mutex — exit")
+			os.Exit(1)
+		}
 		runAgent(nil)
 		return
 	}

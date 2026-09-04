@@ -2,7 +2,17 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.90
+
+**托盘 Restart：继任进程必须持有单实例 Mutex（收掉无锁跑 Agent）**
+
+- **唯一写法 · Restart 继任抢锁：**仅 `waitAcquireAgentSingleInstance`（轮询 `acquireAgentSingleInstance` 至持锁或超时 fail-closed）；`--restart-wait` 成功后才 `runAgent`。
+- **唯一写法 · 冷启动/重复启动：**仍仅 `guardMainAgentSingleInstance` → 一次 `acquireAgentSingleInstance` / `exitAlreadyRunning`。
+- 收掉：`--restart-wait` 固定 `Sleep(1s)` + 空转的 `guardMainAgentSingleInstance`（因 `isMainAgentInvocation` 排除导致无锁进 `runAgent`，再点桌面「Farvoo 开票」会第二份 Agent）。
+- `verify-single-instance.sh` + `TestSoleSingleInstanceWritings` 锁定上述唯一路径。
+
 ## 0.4.89
+
 
 **Client 设置窗：保存/取消真正关窗后再开开票页**
 
