@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.93
+
+**设置菜单：「开票电脑」缩短文案**
+
+- 侧栏/摘要菜单由「多台电脑开票」改为「开票电脑」（EN: Invoice PCs；PT: PCs de faturação）。
+- 相关提示、Client README、运维文档路径同步。
+
 ## 0.4.92
 
 **Admin 报错 toast：只说一次 + i18n（收掉双弹窗）**
@@ -20,7 +27,7 @@ Each release section starts with `## X.Y.Z`. The release workflow reads the matc
 - **唯一写法 · 本机档口：**仅 `SetLocalDefaultStation` / `GetLocalDefaultStation`（`taxpayer_settings.local_default_station_id`，不占名额）。
 - **唯一写法 · 开票有效档口：**仅 `ResolveEffectivePrintStation`；Admin `refreshEffectivePrintStation`。
 - 设备页去掉档口下拉，仅「档口打印机映射：打开配置向导」；发票页改为只读当前档口提示。
-- 「多台电脑开票」列表：本机 127.0.0.1 行 + 各电脑档口列；停用可启用/删除。
+- 「开票电脑」列表：本机 127.0.0.1 行 + 各电脑档口列；停用可启用/删除。
 
 ## 0.4.90
 
