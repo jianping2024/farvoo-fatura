@@ -613,7 +613,7 @@
         <button type="button" id="btnLoginBootstrapOwner" style="width:100%" data-i18n="login.bootstrap.submit">创建管理员并登录</button>
       </div>
       <div id="loginTerminalPair" class="hidden" style="margin-top:1rem;border-top:1px solid #dce8e0;padding-top:1rem">
-        <p class="hint" id="loginTerminalPairHint" data-i18n="settings.terminals.login_need">这台电脑还不能开票。请店长在 Agent 电脑：设置 → 多台电脑开票 → 添加开票电脑，把屏幕上的码输入这里。</p>
+        <p class="hint" id="loginTerminalPairHint" data-i18n="settings.terminals.login_need">这台电脑还不能开票。请店长在 Agent 电脑：设置 → 开票电脑 → 添加开票电脑，把屏幕上的码输入这里。</p>
         <div class="field"><label class="hint" for="loginPairCode" data-i18n="settings.terminals.pair_code_label">配对码</label>
           <input id="loginPairCode" maxlength="8" placeholder="如 AB12CD" data-i18n="settings.terminals.pair_code_ph" data-i18n-attr="placeholder" style="margin-bottom:0.5rem;text-transform:uppercase" /></div>
         <div class="field"><label class="hint" for="loginPairLabel" data-i18n="settings.terminals.pair_label_label">备注（可选）</label>
@@ -1018,7 +1018,7 @@
             <a href="#settings-section-operators" data-settings-nav="operators" data-i18n="settings.nav.operators">人员</a>
             <a href="#settings-section-audit" data-settings-nav="audit" class="settings-access-only" data-i18n="settings.nav.audit">操作记录</a>
             <a href="#settings-section-printers" data-settings-nav="printers" data-i18n="settings.nav.printers">设备</a>
-            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only" data-i18n="settings.nav.terminals">多台电脑开票</a>
+            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only" data-i18n="settings.nav.terminals">开票电脑</a>
             <a href="#settings-section-saft" data-settings-nav="saft" data-i18n="settings.nav.saft">合规</a>
             <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </nav>
@@ -1029,7 +1029,7 @@
             <a href="#settings-section-operators" data-settings-nav="operators" data-i18n="settings.nav.operators">人员</a>
             <a href="#settings-section-audit" data-settings-nav="audit" class="settings-access-only" data-i18n="settings.nav.audit">操作记录</a>
             <a href="#settings-section-printers" data-settings-nav="printers" data-i18n="settings.nav.printers">设备</a>
-            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only" data-i18n="settings.nav.terminals">多台电脑开票</a>
+            <a href="#settings-section-terminals" data-settings-nav="terminals" class="settings-access-only" data-i18n="settings.nav.terminals">开票电脑</a>
             <a href="#settings-section-saft" data-settings-nav="saft" data-i18n="settings.nav.saft">合规</a>
             <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </div>
@@ -1162,12 +1162,12 @@
                 <p class="hint">
                   <a href="http://127.0.0.1:17892/configure" target="_blank" rel="noopener" data-i18n="settings.printers.configure_link">档口打印机映射：打开配置向导</a>
                 </p>
-                <p class="hint" data-i18n="settings.printers.configure_hint">在配置向导里把每个档口绑定到物理打印机；本页「多台电脑开票」为每台电脑指定默认档口。</p>
+                <p class="hint" data-i18n="settings.printers.configure_hint">在配置向导里把每个档口绑定到物理打印机；本页「开票电脑」为每台电脑指定默认档口。</p>
               </div>
             </details>
 
             <details class="settings-panel settings-access-only admin-list-panel" id="settings-section-terminals" data-settings-section="terminals">
-              <summary data-i18n="settings.nav.terminals">多台电脑开票</summary>
+              <summary data-i18n="settings.nav.terminals">开票电脑</summary>
               <div class="settings-panel-body">
                 <h3 class="settings-subhead" data-i18n="settings.lan.heading">① 其它电脑能否连上本机</h3>
                 <p class="hint" id="lanAccessStatus" data-i18n="settings.lan.status_local">仅本机可开票</p>

@@ -38,7 +38,7 @@
 | 服务 | 默认 |
 |------|------|
 | 托盘配对/打印机设置 | `:17892`（既有） |
-| Fiscal Local API + Admin | 默认 `127.0.0.1:17880`；店内多端：Admin「多台电脑开票」① → `config.json` `fiscal_allow_lan`（见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.8） |
+| Fiscal Local API + Admin | 默认 `127.0.0.1:17880`；店内多端：Admin「开票电脑」① → `config.json` `fiscal_allow_lan`（见 [`fiscal-m3-2-operators.zh.md`](fiscal-m3-2-operators.zh.md) §3.8） |
 | SQLite 路径（可选覆盖） | `FISCAL_DB` / `FISCAL_DATA_DIR`（UAT；默认在 Agent 数据目录下） |
 
 二者同进程；Fiscal **不**占用配对端口。

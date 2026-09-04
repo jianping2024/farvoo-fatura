@@ -354,7 +354,7 @@ admin 或 owner 停用 cashier
 | 人员 | `operators` **按人**；张三在 A 或 B 登录均为同一账号 |
 | 客户端 | Agent 本机：托盘 / `FarvooFiscalAgent fiscal`（WebView2 → `127.0.0.1:17880`）；LAN 其它 PC：**FarvooFiscalClient**（设置 Agent IP → WebView2）；浏览器直开 URL 仍可用 |
 | 打印机 | 每 PC 选 **档口 / `station_id`**（已有 `station_printers`） |
-| 开启多端 | Admin **多台电脑开票** ① 打开「允许店内其它电脑连接本机」→ 写 `config.json` `fiscal_allow_lan` → 进程内重绑 `0.0.0.0:17880`（本机壳仍开 `127.0.0.1`）。**不要**设系统 `FISCAL_ALLOW_LAN`/`FISCAL_BIND`（Agent 忽略） |
+| 开启多端 | Admin **开票电脑** ① 打开「允许店内其它电脑连接本机」→ 写 `config.json` `fiscal_allow_lan` → 进程内重绑 `0.0.0.0:17880`（本机壳仍开 `127.0.0.1`）。**不要**设系统 `FISCAL_ALLOW_LAN`/`FISCAL_BIND`（Agent 忽略） |
 | 仅本机 | 默认 / 开关关闭 → `127.0.0.1:17880` |
 
 **与 Mesa 区别：** Mesa **不**直连接 API 自动签发；多端 = 店员 **打开开票网页**，不是桌台静默开票。
@@ -369,7 +369,7 @@ admin 或 owner 停用 cashier
 
 | 能力 | 权威 | 门店 UI |
 |------|------|---------|
-| 上限 `max_fiscal_terminals` | **仅 `admin`** | 设置 → 多台电脑开票 → 保存上限 |
+| 上限 `max_fiscal_terminals` | **仅 `admin`** | 设置 → 开票电脑 → 保存上限 |
 | 批准新开票台 | **`admin` / `owner`** | 「添加开票电脑」→ 大号一次性配对码（15 分钟） |
 | 停用 / 腾出名额 | **`admin` / `owner`** | 列表「停止这台开票」 |
 | 登记（新电脑） | 公开 `POST …/terminals/pair` 兑码 | 登录页输入配对码；**不**填 IP 白名单 |
@@ -378,7 +378,7 @@ admin 或 owner 停用 cashier
 
 ```text
 管理员定 max（可选）+ 打开 LAN 连接并重启 Agent
-店长/管理员：设置 → 多台电脑开票 → 添加开票电脑 → 显示大号配对码
+店长/管理员：设置 → 开票电脑 → 添加开票电脑 → 显示大号配对码
        ↓
 新 PC（Client 填 Agent IP）→ 登录页输入配对码 → Cookie fiscal_terminal_id
        ↓
