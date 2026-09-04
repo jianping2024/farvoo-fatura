@@ -86,6 +86,7 @@
       prevBtn.disabled = state.disabled || state.page <= 1;
       nextBtn.disabled = state.disabled || state.page >= state.totalPages;
       navEl.style.display = state.totalPages > 1 ? '' : 'none';
+      root.style.display = state.total === 0 ? 'none' : '';
       sizeEl.disabled = !!state.disabled;
     }
 
