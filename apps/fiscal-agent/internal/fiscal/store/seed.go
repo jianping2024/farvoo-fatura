@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// SeedDemoOperatorPIN is the ONLY known PIN for FISCAL_SEED demo cashier (fiscal-local / UAT).
+// SeedDemoOperatorPIN is the ONLY known PIN for FISCAL_SEED demo admin (fiscal-local / UAT).
 const SeedDemoOperatorPIN = "123456"
 
 // SeedDemoParams seeds the minimum rows for local FT issuance (no AT SOAP).
@@ -36,7 +36,7 @@ type SeedDemoParams struct {
 }
 
 // SeedDemo inserts identity + ACTIVE FT/FS series + consumidor final if missing.
-// Demo cashier is inserted with SeedDemoOperatorPIN so Admin login is not stuck on pinless rows.
+// Demo operator is admin with SeedDemoOperatorPIN so local UAT can open settings (not cashier-locked).
 func (d *DB) SeedDemo(p SeedDemoParams) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	if p.Timezone == "" {
@@ -98,17 +98,17 @@ func (d *DB) SeedDemo(p SeedDemoParams) error {
 
 	_, err = tx.Exec(`INSERT OR IGNORE INTO operators (
 		id, mesa_user_id, store_id, role, display_name, active, pin_hash, can_issue_nc, synced_at, created_at, updated_at
-	) VALUES (?, ?, ?, 'cashier', ?, 1, ?, 0, ?, ?, ?)`,
+	) VALUES (?, ?, ?, 'admin', ?, 1, ?, 1, ?, ?, ?)`,
 		p.OperatorID, "mesa-"+p.OperatorID, p.StoreID, p.OperatorName, pinHash, now, now, now)
 	if err != nil {
 		return fmt.Errorf("seed operator: %w", err)
 	}
-	// Re-seed of older DBs: pinless demo cashier blocked Admin login (bootstrap_required=false + empty login list).
-	_, err = tx.Exec(`UPDATE operators SET pin_hash=?, updated_at=?
-		WHERE id=? AND store_id=? AND (pin_hash IS NULL OR pin_hash='')`,
-		pinHash, now, p.OperatorID, p.StoreID)
+	// Re-seed: pinless / cashier demo must become admin with known PIN (stable OperatorID).
+	_, err = tx.Exec(`UPDATE operators SET role='admin', can_issue_nc=1, pin_hash=?, display_name=?, active=1, updated_at=?
+		WHERE id=? AND store_id=?`,
+		pinHash, p.OperatorName, now, p.OperatorID, p.StoreID)
 	if err != nil {
-		return fmt.Errorf("seed operator pin backfill: %w", err)
+		return fmt.Errorf("seed operator admin ensure: %w", err)
 	}
 
 	_, err = tx.Exec(`INSERT OR IGNORE INTO customers (

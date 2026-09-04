@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.106
+
+**工具条搜索对齐 + FISCAL_SEED 测试账号改管理员**
+
+- **唯一写法 · 工具条搜索壳：**仅 `admin-list-toolbar__search`（`margin:0`）；禁止再套全局 `.field`（`0.85rem` 底距会把同行按钮居中线拉歪）。
+- **唯一写法 · seed 测试账号：**`SeedDemo` 仅写 `role=admin` + `can_issue_nc=1` + `SeedDemoOperatorPIN`；再 seed 时 `UPDATE` 把既有 `op-demo-cashier` 升成管理员（稳定 id，显示名 `Demo Admin`）。
+
 ## 0.4.105
 
 **按钮等级锁定 + 工具条同高 + 新建开票进入口条**

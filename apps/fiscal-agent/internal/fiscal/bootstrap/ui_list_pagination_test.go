@@ -67,6 +67,9 @@ func TestAdminListToolbarUnique(t *testing.T) {
 	if strings.Contains(css, ".invoice-list-panel .admin-list-search-field") {
 		t.Fatal("invoice search must use admin-list-toolbar__search only")
 	}
+	if strings.Contains(adminHTML, "field admin-list-toolbar__search") {
+		t.Fatal("toolbar search must not use .field (form margin skews peer buttons)")
+	}
 	if strings.Contains(adminHTML, "invoice-filter-row") || strings.Contains(adminHTML, "invoice-search-field") {
 		t.Fatal("admin HTML must not keep legacy invoice-filter-row")
 	}
