@@ -14,6 +14,16 @@ Each release section starts with `## X.Y.Z`. The release workflow reads the matc
 - **唯一写法 · 发卡：**仅 `startAddTerminalWizard`（仍调 `allow-next` API；UI 禁止「允许下一台」文案）。
 - Admin 页拆成 ① 连接 ② 批准电脑；登录页话术对齐；env 锁定可覆盖。
 
+**Admin 全屏屏幕 i18n（login / home / orders / bills / invoices / products / customers）一次写完**
+
+- **唯一写法 · Admin 字典：**仅 `FiscalAdminI18n`（`admin-i18n.js`）；插值仅 `fmt`；`data-i18n-attr` 只改属性（不冲导航子节点）。
+- **唯一写法 · 应用语言：**仅 `applyAdminLocale`（唯一 `setLocale`）→ chrome + `refreshLocalizedSelects` + mode/home/lists/split 重绘 + 分页 `relabel`。
+- **唯一写法 · 共享列/单据/购方/动作：**`col.*` / `doc.*` / `buyer.*` / `action.*`（工作台、列表、详情、分单共用，禁止近义第二套）。
+- **唯一写法 · 销售单据/支付下拉：**仅 `saleDocTypeOptionsHtml` / `paymentMethodOptionsHtml`（空 select 由 locale 灌入）。
+- **唯一写法 · 设置残留 toast：**门店/凭证保存与校验改走已有 `settings.store.*` / `common.fix_fields`（不另造「保存成功」近义词）。
+- 登录配对话术复用 `settings.terminals.*`（不另造 `login.pair.*` 近义第二套）。
+- 登录、侧栏、工作台、手工开票、收银分单、发票详情/纠正、商品/客户与 picker 全部挂字典；pt-PT；NIF/FT/FS/NC/ND/PIN/IVA/SAF-T 不跟 UI 译。
+
 ## 0.4.84
 
 **设置页屏幕 i18n（zh/en/pt）一次写完，不留第二套文案**

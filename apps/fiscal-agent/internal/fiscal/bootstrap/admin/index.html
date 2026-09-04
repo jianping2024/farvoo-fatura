@@ -594,25 +594,25 @@
 
   <section id="view-login">
     <div class="login-card">
-      <p class="brand">Farvoo 开票</p>
+      <p class="brand" data-i18n="brand.name">Farvoo 开票</p>
       <div id="loginExisting">
-        <label class="hint" for="loginOperator">开票员</label>
+        <label class="hint" for="loginOperator" data-i18n="dash.operator">开票员</label>
         <select id="loginOperator" style="margin-bottom:0.75rem"></select>
         <div class="pin-dots" id="pinDots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
         <div class="pin-pad" id="pinPad">
           <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
           <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
           <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
-          <button type="button" data-k="C" class="secondary">C</button><button type="button" data-k="0">0</button><button type="button" data-k="OK">进入</button>
+          <button type="button" data-k="C" class="secondary">C</button><button type="button" data-k="0">0</button><button type="button" data-k="OK" data-i18n="login.enter">进入</button>
         </div>
       </div>
       <div id="loginBootstrap" class="hidden">
-        <p class="hint">本机首次使用：创建首位 <strong>管理员</strong>（须在 Agent 主机操作）。</p>
-        <div class="field"><label class="hint">显示名称</label><input id="loginBootstrapName" placeholder="如：管理员" style="margin-bottom:0.5rem" /></div>
-        <div class="field"><label class="hint">6 位 PIN</label><input id="loginBootstrapPin" inputmode="numeric" maxlength="6" style="margin-bottom:0.75rem" /></div>
-        <button type="button" id="btnLoginBootstrapOwner" style="width:100%">创建管理员并登录</button>
+        <p class="hint" data-i18n-html="login.bootstrap.lead">本机首次使用：创建首位 <strong>管理员</strong>（须在 Agent 主机操作）。</p>
+        <div class="field"><label class="hint" data-i18n="settings.ops.display_name">显示名称</label><input id="loginBootstrapName" placeholder="如：管理员" data-i18n="login.bootstrap.name_ph" data-i18n-attr="placeholder" style="margin-bottom:0.5rem" /></div>
+        <div class="field"><label class="hint" data-i18n="login.bootstrap.pin">6 位 PIN</label><input id="loginBootstrapPin" inputmode="numeric" maxlength="6" style="margin-bottom:0.75rem" /></div>
+        <button type="button" id="btnLoginBootstrapOwner" style="width:100%" data-i18n="login.bootstrap.submit">创建管理员并登录</button>
       </div>
-        <div id="loginTerminalPair" class="hidden" style="margin-top:1rem;border-top:1px solid #dce8e0;padding-top:1rem">
+      <div id="loginTerminalPair" class="hidden" style="margin-top:1rem;border-top:1px solid #dce8e0;padding-top:1rem">
         <p class="hint" id="loginTerminalPairHint" data-i18n="settings.terminals.login_need">这台电脑还不能开票。请店长在 Agent 电脑：设置 → 多台电脑开票 → 添加开票电脑，把屏幕上的码输入这里。</p>
         <div class="field"><label class="hint" for="loginPairCode" data-i18n="settings.terminals.pair_code_label">配对码</label>
           <input id="loginPairCode" maxlength="8" placeholder="如 AB12CD" data-i18n="settings.terminals.pair_code_ph" data-i18n-attr="placeholder" style="margin-bottom:0.5rem;text-transform:uppercase" /></div>
@@ -628,9 +628,9 @@
       <div class="logo-area">
         <div class="logo-row">
           <div class="logo-mark" aria-hidden="true">F</div>
-          <div class="logo">Farvoo 开票</div>
+          <div class="logo" data-i18n="brand.name">Farvoo 开票</div>
         </div>
-        <div class="mode-tag" id="sidebarMode">餐馆模式</div>
+        <div class="mode-tag" id="sidebarMode" data-i18n="mode.restaurant">餐馆模式</div>
       </div>
       <button type="button" class="nav-btn active" data-nav="home"><span class="nav-icon" aria-hidden="true">⌂</span><span data-i18n="nav.home">工作台</span></button>
       <button type="button" class="nav-btn" data-nav="orders"><span class="nav-icon" aria-hidden="true">＋</span><span data-i18n="nav.orders">手工开票</span></button>
@@ -642,10 +642,10 @@
       <div class="foot">
         <div class="user-row">
           <div class="avatar" id="operatorAvatar" aria-hidden="true">—</div>
-          <div class="user-name" id="operatorName">开票员</div>
+          <div class="user-name" id="operatorName" data-i18n="dash.operator">开票员</div>
         </div>
-        <button type="button" class="ghost" id="btnChangePin" style="color:#cfe3d7;padding-left:0;margin-top:0.2rem">修改 PIN</button>
-        <button type="button" class="ghost" id="btnLogout" style="color:#cfe3d7;padding-left:0">退出</button>
+        <button type="button" class="ghost" id="btnChangePin" style="color:#cfe3d7;padding-left:0;margin-top:0.2rem" data-i18n="settings.ops.change_pin">修改 PIN</button>
+        <button type="button" class="ghost" id="btnLogout" style="color:#cfe3d7;padding-left:0" data-i18n="common.logout">退出</button>
       </div>
     </aside>
 
@@ -655,44 +655,44 @@
           <h1 data-i18n="home.title">工作台</h1>
           <div class="home-topbar-right">
             <span class="date-chip" id="homeDateChip"></span>
-            <button type="button" id="ctaNewOrder" data-goto="order-new">＋ 新建开票</button>
+            <button type="button" id="ctaNewOrder" data-goto="order-new" data-i18n="home.cta.new_order">＋ 新建开票</button>
           </div>
         </header>
         <div class="home-body">
           <p class="home-greeting" id="homeGreeting"></p>
           <div class="stat-row">
             <div class="stat">
-              <div class="stat-top"><div class="k">手工待开</div><div class="stat-icon gold" aria-hidden="true">📋</div></div>
+              <div class="stat-top"><div class="k" data-i18n="home.stat.pending_orders">手工待开</div><div class="stat-icon gold" aria-hidden="true">📋</div></div>
               <div class="v" id="statPendingOrders">0</div>
             </div>
             <div class="stat">
-              <div class="stat-top"><div class="k">今日已开发票</div><div class="stat-icon green" aria-hidden="true">✓</div></div>
+              <div class="stat-top"><div class="k" data-i18n="home.stat.today_invoices">今日已开发票</div><div class="stat-icon green" aria-hidden="true">✓</div></div>
               <div class="v" id="statTodayInvoices">0</div>
             </div>
             <button type="button" class="stat rest-only" id="ctaPendingBills" data-nav="bills">
-              <div class="stat-top"><div class="k">收银账单</div><div class="stat-icon blue" aria-hidden="true">⬡</div></div>
+              <div class="stat-top"><div class="k" data-i18n="nav.bills">收银账单</div><div class="stat-icon blue" aria-hidden="true">⬡</div></div>
               <div class="v" id="statPendingBills">0</div>
-              <div class="stat-cta-label">处理收银账单</div>
+              <div class="stat-cta-label" data-i18n="home.stat.bills_cta">处理收银账单</div>
             </button>
             <div class="stat retail-only">
-              <div class="stat-top"><div class="k">今日营业额</div><div class="stat-icon gold" aria-hidden="true">€</div></div>
+              <div class="stat-top"><div class="k" data-i18n="home.stat.today_sales">今日营业额</div><div class="stat-icon gold" aria-hidden="true">€</div></div>
               <div class="v" id="statTodaySales">€0</div>
             </div>
           </div>
           <div class="panel home-recent">
             <div class="panel-head">
-              <span class="panel-title">今日发票</span>
-              <button type="button" class="ghost" data-nav="invoices">查看全部</button>
+              <span class="panel-title" data-i18n="home.recent.title">今日发票</span>
+              <button type="button" class="ghost" data-nav="invoices" data-i18n="home.recent.see_all">查看全部</button>
             </div>
             <div class="table-scroll">
               <table class="list-table">
                 <thead><tr>
-                  <th class="col-when">签发时刻</th>
-                  <th class="col-no">票号</th>
-                  <th class="col-buyer">购方</th>
-                  <th class="col-source">来源</th>
-                  <th class="col-money">金额</th>
-                  <th class="col-actions">操作</th>
+                  <th class="col-when" data-i18n="col.issued_at">签发时刻</th>
+                  <th class="col-no" data-i18n="col.doc_no">票号</th>
+                  <th class="col-buyer" data-i18n="col.buyer">购方</th>
+                  <th class="col-source" data-i18n="col.source">来源</th>
+                  <th class="col-money" data-i18n="col.amount">金额</th>
+                  <th class="col-actions" data-i18n="common.actions">操作</th>
                 </tr></thead>
                 <tbody id="homeRecentInvoicesTbody"></tbody>
               </table>
@@ -704,20 +704,20 @@
       <section class="view hidden" id="view-orders">
         <div class="topbar">
           <div>
-            <h1>手工开票</h1>
+            <h1 data-i18n="nav.orders">手工开票</h1>
           </div>
-          <button type="button" data-goto="order-new">新建开票</button>
+          <button type="button" data-goto="order-new" data-i18n="orders.new">新建开票</button>
         </div>
         <div class="panel admin-list-panel">
           <div class="admin-list-filter-row">
             <div class="field admin-list-search-field">
-              <label for="ordersSearch">搜索</label>
-              <input id="ordersSearch" placeholder="单号 / 来源" autocomplete="off" />
+              <label for="ordersSearch" data-i18n="common.search">搜索</label>
+              <input id="ordersSearch" placeholder="单号 / 来源" data-i18n="orders.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
             </div>
           </div>
           <div class="table-scroll">
             <table class="list-table">
-              <thead><tr><th>单号</th><th>来源</th><th>金额</th><th>状态</th><th class="col-actions">操作</th></tr></thead>
+              <thead><tr><th data-i18n="col.order_no">单号</th><th data-i18n="col.source">来源</th><th data-i18n="col.amount">金额</th><th data-i18n="common.status">状态</th><th class="col-actions" data-i18n="common.actions">操作</th></tr></thead>
               <tbody id="ordersTbody"></tbody>
             </table>
           </div>
@@ -727,24 +727,24 @@
 
       <section class="view hidden" id="view-order-new">
         <div class="flow-bar" id="flowBarNew">
-          <div class="flow-step active" data-step="1"><span class="num">1</span>创建开票</div>
-          <div class="flow-step" data-step="2"><span class="num">2</span>添加商品</div>
-          <div class="flow-step" data-step="3"><span class="num">3</span>确认</div>
-          <div class="flow-step" data-step="4"><span class="num">4</span>开票</div>
+          <div class="flow-step active" data-step="1"><span class="num">1</span><span data-i18n="order.flow.create">创建开票</span></div>
+          <div class="flow-step" data-step="2"><span class="num">2</span><span data-i18n="order.flow.add">添加商品</span></div>
+          <div class="flow-step" data-step="3"><span class="num">3</span><span data-i18n="order.flow.confirm">确认</span></div>
+          <div class="flow-step" data-step="4"><span class="num">4</span><span data-i18n="order.flow.issue">开票</span></div>
         </div>
         <div class="topbar">
           <div>
-            <h1 id="orderNewTitle">新建开票</h1>
+            <h1 id="orderNewTitle" data-i18n="orders.new">新建开票</h1>
           </div>
-          <button type="button" class="secondary" data-nav="orders">返回列表</button>
+          <button type="button" class="secondary" data-nav="orders" data-i18n="common.back_list">返回列表</button>
         </div>
         <div class="panel">
           <div class="field rest-only">
-            <label>桌号（可选）</label>
-            <input id="orderTable" placeholder="例如 018" />
+            <label data-i18n="order.table">桌号（可选）</label>
+            <input id="orderTable" placeholder="例如 018" data-i18n="order.table_ph" data-i18n-attr="placeholder" />
           </div>
           <div class="field retail-only">
-            <label>收银台（可选）</label>
+            <label data-i18n="order.register">收银台（可选）</label>
             <select id="orderRegister">
               <option value="">—</option>
               <option value="1">收银台 1</option>
@@ -755,21 +755,21 @@
         </div>
         <div class="split">
           <div class="panel">
-            <h2>本单明细</h2>
+            <h2 data-i18n="order.lines_title">本单明细</h2>
             <table>
-              <thead><tr><th>商品</th><th>数量</th><th>单价</th><th>小计</th><th></th></tr></thead>
+              <thead><tr><th data-i18n="nav.products">商品</th><th data-i18n="col.qty">数量</th><th data-i18n="col.unit">单价</th><th data-i18n="col.subtotal">小计</th><th></th></tr></thead>
               <tbody id="orderLines"></tbody>
             </table>
             <div class="actions">
-              <button type="button" id="btnPickProduct">添加商品</button>
+              <button type="button" id="btnPickProduct" data-i18n="picker.title.add">添加商品</button>
             </div>
           </div>
           <div class="panel">
-            <h2>本单合计</h2>
+            <h2 data-i18n="order.total">本单合计</h2>
             <p style="font-family:var(--display);font-size:1.6rem;margin:0.5rem 0" id="orderTotal">€0.00</p>
-            <p class="hint">含 IVA · 未开票</p>
+            <p class="hint" data-i18n="order.total_hint">含 IVA · 未开票</p>
             <div class="actions" style="margin-top:1.5rem">
-              <button type="button" id="btnConfirmOrder">确认，去开票</button>
+              <button type="button" id="btnConfirmOrder" data-i18n="order.confirm_cta">确认，去开票</button>
             </div>
           </div>
         </div>
@@ -777,65 +777,55 @@
 
       <section class="view hidden" id="view-order-invoice">
         <div class="flow-bar">
-          <div class="flow-step done"><span class="num">✓</span>创建开票</div>
-          <div class="flow-step done"><span class="num">✓</span>添加商品</div>
-          <div class="flow-step done"><span class="num">✓</span>确认</div>
-          <div class="flow-step active"><span class="num">4</span>开票</div>
+          <div class="flow-step done"><span class="num">✓</span><span data-i18n="order.flow.create">创建开票</span></div>
+          <div class="flow-step done"><span class="num">✓</span><span data-i18n="order.flow.add">添加商品</span></div>
+          <div class="flow-step done"><span class="num">✓</span><span data-i18n="order.flow.confirm">确认</span></div>
+          <div class="flow-step active"><span class="num">4</span><span data-i18n="order.flow.issue">开票</span></div>
         </div>
         <div class="topbar">
           <div>
-            <h1>开票 · <span id="invOrderNo">—</span></h1>
+            <h1><span data-i18n="order.issue_title">开票 ·</span> <span id="invOrderNo">—</span></h1>
             <p class="hint" id="invOrderHint" style="display:none"></p>
           </div>
         </div>
         <div class="split">
           <div class="panel">
-            <h2>本单摘要</h2>
+            <h2 data-i18n="order.summary">本单摘要</h2>
             <table>
               <tbody id="invSummaryLines"></tbody>
             </table>
           </div>
           <div class="panel">
-            <h2>发票信息</h2>
+            <h2 data-i18n="order.inv_info">发票信息</h2>
             <div class="detail-row" id="invLinkedRow" style="display:none;margin-bottom:0.75rem">
-              <dt style="font-size:0.8rem;color:var(--muted, #666)">已关联发票</dt>
+              <dt style="font-size:0.8rem;color:var(--muted, #666)" data-i18n="order.linked">已关联发票</dt>
               <dd style="margin:0.25rem 0 0"><button type="button" class="secondary" id="btnInvLinkedOpen">—</button></dd>
             </div>
             <div class="field">
-              <label>发票类型</label>
-              <select id="docType">
-                <option value="FS" selected>FS · 简化发票</option>
-                <option value="FT">FT · 发票（销售）</option>
-              </select>
+              <label data-i18n="doc.type">发票类型</label>
+              <select id="docType"></select>
             </div>
             <div class="field">
-              <label>购方 NIF</label>
-              <input id="invNif" placeholder="空 = 散客 999999990" list="customerNifList" />
+              <label data-i18n="buyer.nif">购方 NIF</label>
+              <input id="invNif" placeholder="空 = 散客 999999990" data-i18n="buyer.nif_ph" data-i18n-attr="placeholder" list="customerNifList" />
               <datalist id="customerNifList"></datalist>
             </div>
             <div class="field">
-              <label>购方名称</label>
+              <label data-i18n="buyer.name">购方名称</label>
               <input id="invName" value="Consumidor Final" />
             </div>
             <div class="field">
-              <label>付款方式</label>
-              <select id="invPay">
-                <option value="CASH">Numerário / 现金</option>
-                <option value="CARD">Cartão / 刷卡</option>
-                <option value="MBWAY">MB WAY</option>
-                <option value="MULTIBANCO">Multibanco</option>
-                <option value="MIXED">Misto / 混合</option>
-                <option value="OTHER">Outro / 其他</option>
-              </select>
+              <label data-i18n="pay.label">付款方式</label>
+              <select id="invPay"></select>
             </div>
             <div class="field">
-              <label>打印机</label>
-              <select id="invStationSel"><option value="">（加载中…）</option></select>
+              <label data-i18n="settings.printers.title">打印机</label>
+              <select id="invStationSel"><option value="" data-i18n="settings.printers.loading">（加载中…）</option></select>
             </div>
             <div class="actions">
-              <button type="button" id="btnIssueInvoice">签发发票并打印</button>
-              <button type="button" class="secondary hidden" id="btnOrderReprint">重打</button>
-              <button type="button" class="secondary" id="btnOrderInvoiceBack" data-nav="orders">稍后开票</button>
+              <button type="button" id="btnIssueInvoice" data-i18n="order.issue_print">签发发票并打印</button>
+              <button type="button" class="secondary hidden" id="btnOrderReprint" data-i18n="action.reprint">重打</button>
+              <button type="button" class="secondary" id="btnOrderInvoiceBack" data-nav="orders" data-i18n="order.issue_later">稍后开票</button>
             </div>
           </div>
         </div>
@@ -844,20 +834,20 @@
       <section class="view hidden rest-only" id="view-bills">
         <div class="topbar">
           <div>
-            <h1>收银账单</h1>
+            <h1 data-i18n="nav.bills">收银账单</h1>
           </div>
-          <button type="button" class="secondary" id="btnRefreshBills">刷新</button>
+          <button type="button" class="secondary" id="btnRefreshBills" data-i18n="common.refresh">刷新</button>
         </div>
         <div class="panel admin-list-panel">
           <div class="admin-list-filter-row">
             <div class="field admin-list-search-field">
-              <label for="billsSearch">搜索</label>
-              <input id="billsSearch" placeholder="桌号" autocomplete="off" />
+              <label for="billsSearch" data-i18n="common.search">搜索</label>
+              <input id="billsSearch" placeholder="桌号" data-i18n="bills.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
             </div>
           </div>
           <div class="table-scroll">
             <table class="list-table">
-              <thead><tr><th>桌号</th><th>范围</th><th>金额</th><th>同步时间</th><th class="col-actions">操作</th></tr></thead>
+              <thead><tr><th data-i18n="col.table">桌号</th><th data-i18n="col.scope">范围</th><th data-i18n="col.amount">金额</th><th data-i18n="col.synced_at">同步时间</th><th class="col-actions" data-i18n="common.actions">操作</th></tr></thead>
               <tbody id="billsTbody"></tbody>
             </table>
           </div>
@@ -868,11 +858,11 @@
       <section class="view hidden rest-only" id="view-bill-split">
         <div class="topbar">
           <div>
-            <h1>分单开票 · 桌 <span id="splitTable">—</span></h1>
+            <h1 id="splitTitle">分单开票 · 桌 —</h1>
           </div>
           <div class="actions">
-            <button type="button" class="secondary" id="btnSplitBack">返回列表</button>
-            <button type="button" class="secondary" id="btnSplitDiscard">不再处理未开部分</button>
+            <button type="button" class="secondary" id="btnSplitBack" data-i18n="common.back_list">返回列表</button>
+            <button type="button" class="secondary" id="btnSplitDiscard" data-i18n="split.discard">不再处理未开部分</button>
           </div>
         </div>
         <p class="hint" id="splitProgress">—</p>
@@ -880,37 +870,34 @@
         <div class="person-chips" id="splitPersonChips"></div>
         <div class="split bill-split-grid">
           <div class="panel">
-            <h2>剩余菜品</h2>
+            <h2 data-i18n="split.pool">剩余菜品</h2>
             <table>
-              <thead><tr><th>菜品</th><th>剩余</th><th></th></tr></thead>
+              <thead><tr><th data-i18n="split.dish">菜品</th><th data-i18n="split.remaining">剩余</th><th></th></tr></thead>
               <tbody id="splitPoolBody"></tbody>
             </table>
             <div class="actions" id="splitWholeActions">
-              <button type="button" id="btnSplitWholeIssue">整桌签发一张</button>
+              <button type="button" id="btnSplitWholeIssue" data-i18n="split.whole_issue">整桌签发一张</button>
             </div>
           </div>
           <div class="panel">
-            <h2>当前人 · <span id="splitCurrentName">—</span></h2>
-            <div class="field"><label>分单标记名</label><input id="splitPersonName" placeholder="输入姓名即建人 / 可改未开人" /></div>
+            <h2><span data-i18n="split.current">当前人 ·</span> <span id="splitCurrentName">—</span></h2>
+            <div class="field"><label data-i18n="split.marker">分单标记名</label><input id="splitPersonName" placeholder="输入姓名即建人 / 可改未开人" data-i18n="split.marker_ph" data-i18n-attr="placeholder" /></div>
             <table>
-              <thead><tr><th>菜品</th><th>整</th><th>分子</th><th>分母</th><th>小计</th><th></th></tr></thead>
+              <thead><tr><th data-i18n="split.dish">菜品</th><th data-i18n="split.col.whole">整</th><th data-i18n="split.col.num">分子</th><th data-i18n="split.col.den">分母</th><th data-i18n="col.subtotal">小计</th><th></th></tr></thead>
               <tbody id="splitShareBody"></tbody>
             </table>
-            <p class="hint" id="splitPersonTotal">本票预估 —</p>
+            <p class="hint" id="splitPersonTotal" data-i18n="split.estimate">本票预估 —</p>
           </div>
           <div class="panel" id="splitIssueRail">
-            <h2>开票</h2>
+            <h2 data-i18n="split.issue">开票</h2>
             <div class="field">
-              <label>发票类型</label>
-              <select id="splitDocType">
-                <option value="FS" selected>FS · 简化发票</option>
-                <option value="FT">FT · 发票（销售）</option>
-              </select>
+              <label data-i18n="doc.type">发票类型</label>
+              <select id="splitDocType"></select>
             </div>
-            <div class="field"><label>购方 NIF</label><input id="splitNif" placeholder="空 = 散客" list="customerNifList" /></div>
-            <div class="field"><label>购方名称</label><input id="splitName" placeholder="Consumidor Final（票面购方）" /></div>
+            <div class="field"><label data-i18n="buyer.nif">购方 NIF</label><input id="splitNif" placeholder="空 = 散客" data-i18n="buyer.nif_ph_short" data-i18n-attr="placeholder" list="customerNifList" /></div>
+            <div class="field"><label data-i18n="buyer.name">购方名称</label><input id="splitName" placeholder="Consumidor Final（票面购方）" data-i18n="buyer.name_ph" data-i18n-attr="placeholder" /></div>
             <div class="actions">
-              <button type="button" id="btnSplitPersonIssue">签发此人发票</button>
+              <button type="button" id="btnSplitPersonIssue" data-i18n="split.issue_person">签发此人发票</button>
             </div>
           </div>
         </div>
@@ -919,34 +906,34 @@
       <section class="view hidden" id="view-invoices">
         <div class="topbar">
           <div>
-            <h1>发票</h1>
+            <h1 data-i18n="nav.invoices">发票</h1>
           </div>
-          <button type="button" class="secondary" id="btnRefreshInvoices">刷新</button>
+          <button type="button" class="secondary" id="btnRefreshInvoices" data-i18n="common.refresh">刷新</button>
         </div>
         <div class="panel admin-list-panel invoice-list-panel">
           <div class="invoice-type-tabs" id="invoiceTypeTabs" role="tablist">
-            <button type="button" class="secondary active" data-invoice-type="FT" role="tab">FT<small>完整发票</small></button>
-            <button type="button" class="secondary" data-invoice-type="FS" role="tab">FS<small>简式发票</small></button>
-            <button type="button" class="secondary" data-invoice-type="NC" role="tab">NC<small>冲销单</small></button>
-            <button type="button" class="secondary" data-invoice-type="ND" role="tab">ND<small>借记单</small></button>
+            <button type="button" class="secondary active" data-invoice-type="FT" role="tab">FT<small data-i18n="doc.tab.FT">完整发票</small></button>
+            <button type="button" class="secondary" data-invoice-type="FS" role="tab">FS<small data-i18n="doc.tab.FS">简式发票</small></button>
+            <button type="button" class="secondary" data-invoice-type="NC" role="tab">NC<small data-i18n="doc.tab.NC">冲销单</small></button>
+            <button type="button" class="secondary" data-invoice-type="ND" role="tab">ND<small data-i18n="doc.tab.ND">借记单</small></button>
           </div>
           <div class="admin-list-filter-row">
             <div id="invoiceDateFilter"></div>
             <div class="field admin-list-search-field">
-              <label for="invoiceSearch">搜索</label>
-              <input id="invoiceSearch" placeholder="票号 / NIF / 桌号" autocomplete="off" />
+              <label for="invoiceSearch" data-i18n="common.search">搜索</label>
+              <input id="invoiceSearch" placeholder="票号 / NIF / 桌号" data-i18n="invoices.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
             </div>
           </div>
           <div class="table-scroll">
             <table class="invoices-table list-table">
               <thead>
                 <tr>
-                  <th>签发时刻</th>
-                  <th>票号</th>
-                  <th>金额</th>
-                  <th>购方</th>
-                  <th>来源</th>
-                  <th class="col-actions">操作</th>
+                  <th data-i18n="col.issued_at">签发时刻</th>
+                  <th data-i18n="col.doc_no">票号</th>
+                  <th data-i18n="col.amount">金额</th>
+                  <th data-i18n="col.buyer">购方</th>
+                  <th data-i18n="col.source">来源</th>
+                  <th class="col-actions" data-i18n="common.actions">操作</th>
                 </tr>
               </thead>
               <tbody id="invoicesTbody"></tbody>
@@ -958,19 +945,19 @@
 
       <section class="view hidden" id="view-products">
         <div class="topbar">
-          <div><h1>商品</h1></div>
-          <button type="button" id="btnNewProd">新建商品</button>
+          <div><h1 data-i18n="nav.products">商品</h1></div>
+          <button type="button" id="btnNewProd" data-i18n="products.new">新建商品</button>
         </div>
         <div class="panel admin-list-panel">
           <div class="admin-list-filter-row">
             <div class="field admin-list-search-field">
-              <label for="productsSearch">搜索</label>
-              <input id="productsSearch" placeholder="编码 / 名称" autocomplete="off" />
+              <label for="productsSearch" data-i18n="common.search">搜索</label>
+              <input id="productsSearch" placeholder="编码 / 名称" data-i18n="products.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
             </div>
           </div>
           <div class="table-scroll">
             <table class="list-table">
-              <thead><tr><th>编码</th><th>名称</th><th>售价</th><th>IVA</th><th class="col-actions">操作</th></tr></thead>
+              <thead><tr><th data-i18n="col.code">编码</th><th data-i18n="common.name">名称</th><th data-i18n="col.price">售价</th><th>IVA</th><th class="col-actions" data-i18n="common.actions">操作</th></tr></thead>
               <tbody id="productsTbody"></tbody>
             </table>
           </div>
@@ -980,30 +967,30 @@
 
       <section class="view hidden" id="view-customers">
         <div class="topbar">
-          <div><h1>客户</h1></div>
-          <button type="button" id="btnNewCustomer">新建客户</button>
+          <div><h1 data-i18n="nav.customers">客户</h1></div>
+          <button type="button" id="btnNewCustomer" data-i18n="customers.new">新建客户</button>
         </div>
         <div class="panel hidden" id="customerForm">
-          <h2>新建客户</h2>
+          <h2 data-i18n="customers.new">新建客户</h2>
           <div class="split">
             <div class="field"><label>NIF</label><input id="cNif" placeholder="123456789" /></div>
-            <div class="field"><label>名称</label><input id="cName" placeholder="Cliente Demo" /></div>
+            <div class="field"><label data-i18n="common.name">名称</label><input id="cName" placeholder="Cliente Demo" /></div>
           </div>
           <div class="actions">
-            <button type="button" id="btnSaveCustomer">保存</button>
-            <button type="button" class="secondary" id="btnCancelCustomer">取消</button>
+            <button type="button" id="btnSaveCustomer" data-i18n="common.save">保存</button>
+            <button type="button" class="secondary" id="btnCancelCustomer" data-i18n="common.cancel">取消</button>
           </div>
         </div>
         <div class="panel admin-list-panel">
           <div class="admin-list-filter-row">
             <div class="field admin-list-search-field">
-              <label for="customersSearch">搜索</label>
-              <input id="customersSearch" placeholder="NIF / 名称" autocomplete="off" />
+              <label for="customersSearch" data-i18n="common.search">搜索</label>
+              <input id="customersSearch" placeholder="NIF / 名称" data-i18n="customers.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
             </div>
           </div>
           <div class="table-scroll">
             <table class="list-table">
-              <thead><tr><th>NIF</th><th>名称</th><th class="col-actions">操作</th></tr></thead>
+              <thead><tr><th>NIF</th><th data-i18n="common.name">名称</th><th class="col-actions" data-i18n="common.actions">操作</th></tr></thead>
               <tbody id="customersTbody"></tbody>
             </table>
           </div>
@@ -1022,9 +1009,9 @@
             <button type="button" class="secondary hidden" id="btnSettingsShowFull" data-i18n="settings.full">查看全部设置</button>
           </div>
         </div>
-        <div id="settingsWizardBar" class="settings-wizard-bar hidden" aria-label="配置进度"></div>
+        <div id="settingsWizardBar" class="settings-wizard-bar hidden" aria-label="配置进度" data-i18n="settings.a11y.wizard" data-i18n-attr="aria-label"></div>
         <div class="settings-shell" id="settingsShell">
-          <nav class="settings-nav" id="settingsNav" aria-label="设置分区">
+          <nav class="settings-nav" id="settingsNav" aria-label="设置分区" data-i18n="settings.a11y.nav" data-i18n-attr="aria-label">
             <a href="#settings-section-overview" data-settings-nav="overview" data-i18n="settings.nav.overview">概览</a>
             <a href="#settings-section-store" data-settings-nav="store" data-i18n="settings.nav.store">门店与税务</a>
             <a href="#settings-section-series" data-settings-nav="series" data-i18n="settings.nav.series">系列与授权</a>
@@ -1035,7 +1022,7 @@
             <a href="#settings-section-saft" data-settings-nav="saft" data-i18n="settings.nav.saft">合规</a>
             <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </nav>
-          <div class="settings-nav-mobile" id="settingsNavMobile" aria-label="设置分区">
+          <div class="settings-nav-mobile" id="settingsNavMobile" aria-label="设置分区" data-i18n="settings.a11y.nav" data-i18n-attr="aria-label">
             <a href="#settings-section-overview" data-settings-nav="overview" data-i18n="settings.nav.overview">概览</a>
             <a href="#settings-section-store" data-settings-nav="store" data-i18n="settings.nav.store">门店与税务</a>
             <a href="#settings-section-series" data-settings-nav="series" data-i18n="settings.nav.series">系列与授权</a>
@@ -1129,7 +1116,7 @@
             <details class="settings-panel admin-list-panel" id="settings-section-operators" data-settings-section="operators">
               <summary data-i18n="settings.nav.operators">人员</summary>
               <div class="settings-panel-body">
-                <p class="hint" id="fiscalProfileHint">门店业态：加载中…</p>
+                <p class="hint" id="fiscalProfileHint" data-i18n="settings.ops.profile_loading">门店业态：加载中…</p>
                 <div class="admin-list-filter-row settings-access-only" id="operatorsToolbar">
                   <button type="button" id="btnOperatorAdd" data-i18n="settings.ops.add">添加开票员</button>
                 </div>
@@ -1294,50 +1281,50 @@
   <div id="invoiceDetailModal" class="modal-backdrop hidden">
     <div class="modal invoice-detail-modal">
       <div class="topbar" style="margin-bottom:0.5rem">
-        <h2 id="invoiceDetailTitle" style="margin:0;font-size:1.15rem">发票详情</h2>
-        <button type="button" class="secondary" id="btnCloseInvoiceDetail">关闭</button>
+        <h2 id="invoiceDetailTitle" style="margin:0;font-size:1.15rem" data-i18n="invoice.detail.title">发票详情</h2>
+        <button type="button" class="secondary" id="btnCloseInvoiceDetail" data-i18n="common.close">关闭</button>
       </div>
       <dl class="detail-grid" id="invoiceDetailBody"></dl>
       <div class="actions">
-        <button type="button" class="secondary hidden" id="btnInvoiceDetailCredit">冲销</button>
-        <button type="button" class="secondary hidden" id="btnInvoiceDetailDebit">借记</button>
-        <button type="button" class="secondary" id="btnInvoiceDetailReprint">重打</button>
+        <button type="button" class="secondary hidden" id="btnInvoiceDetailCredit" data-i18n="action.credit">冲销</button>
+        <button type="button" class="secondary hidden" id="btnInvoiceDetailDebit" data-i18n="action.debit">借记</button>
+        <button type="button" class="secondary" id="btnInvoiceDetailReprint" data-i18n="action.reprint">重打</button>
       </div>
     </div>
   </div>
 
   <div id="adjustModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:560px">
-      <h2 id="adjustModalTitle">纠正发票</h2>
+      <h2 id="adjustModalTitle" data-i18n="adjust.title">纠正发票</h2>
       <div class="credit-tabs">
-        <button type="button" class="secondary" id="adjustTabFull">全额</button>
-        <button type="button" class="secondary active" id="adjustTabPartial">按行</button>
+        <button type="button" class="secondary" id="adjustTabFull" data-i18n="adjust.tab.full">全额</button>
+        <button type="button" class="secondary active" id="adjustTabPartial" data-i18n="adjust.tab.lines">按行</button>
       </div>
       <div id="adjustFullPane" class="hidden">
-        <p class="hint" id="adjustFullHint">将对整张发票剩余金额全额处理。</p>
+        <p class="hint" id="adjustFullHint" data-i18n="adjust.full_hint">将对整张发票剩余金额全额处理。</p>
       </div>
       <div id="adjustPartialPane">
         <table class="credit-lines-table">
-          <thead><tr><th></th><th>行</th><th>描述</th><th>原额</th><th>剩余</th><th id="adjustAmtColHead">本次金额</th></tr></thead>
+          <thead><tr><th></th><th data-i18n="adjust.col.line">行</th><th data-i18n="adjust.col.desc">描述</th><th data-i18n="adjust.col.orig">原额</th><th data-i18n="adjust.col.left">剩余</th><th id="adjustAmtColHead" data-i18n="adjust.col.amt">本次金额</th></tr></thead>
           <tbody id="adjustLinesTbody"></tbody>
         </table>
       </div>
-      <div class="field"><label id="adjustReasonLabel">原因</label><input id="adjustReason" placeholder="" maxlength="200" /></div>
+      <div class="field"><label id="adjustReasonLabel" data-i18n="adjust.reason">原因</label><input id="adjustReason" placeholder="" maxlength="200" /></div>
       <div class="actions">
-        <button type="button" id="btnAdjustNext">下一步</button>
-        <button type="button" class="secondary" id="btnAdjustCancel">取消</button>
+        <button type="button" id="btnAdjustNext" data-i18n="settings.wizard.next">下一步</button>
+        <button type="button" class="secondary" id="btnAdjustCancel" data-i18n="common.cancel">取消</button>
       </div>
     </div>
   </div>
 
   <div id="adjustConfirmModal" class="modal-backdrop hidden">
     <div class="modal">
-      <h2 id="adjustConfirmTitle">确认签发</h2>
-      <p class="hint">签发后不可撤销。</p>
+      <h2 id="adjustConfirmTitle" data-i18n="adjust.confirm_issue">确认签发</h2>
+      <p class="hint" data-i18n="adjust.confirm_hint">签发后不可撤销。</p>
       <dl class="detail-grid" id="adjustConfirmBody"></dl>
       <div class="actions">
-        <button type="button" id="btnAdjustSubmit">确认签发</button>
-        <button type="button" class="secondary" id="btnAdjustConfirmBack">返回</button>
+        <button type="button" id="btnAdjustSubmit" data-i18n="adjust.confirm_issue">确认签发</button>
+        <button type="button" class="secondary" id="btnAdjustConfirmBack" data-i18n="adjust.back">返回</button>
       </div>
     </div>
   </div>
@@ -1404,27 +1391,27 @@
 
   <div id="productPicker" class="modal-backdrop hidden">
     <div class="modal">
-      <h2 id="productPickerTitle">添加商品</h2>
+      <h2 id="productPickerTitle" data-i18n="picker.title.add">添加商品</h2>
       <div id="pickerSearchBlock">
-        <div class="field"><label>检索</label><input id="pickerSearch" placeholder="名称或编码" autocomplete="off" /></div>
+        <div class="field"><label data-i18n="picker.search">检索</label><input id="pickerSearch" placeholder="名称或编码" data-i18n="picker.search_ph" data-i18n-attr="placeholder" autocomplete="off" /></div>
         <div id="pickerList" style="max-height:12rem;overflow:auto;margin:0.75rem 0"></div>
-        <button type="button" class="secondary" id="btnShowProductCreate" style="margin-bottom:0.75rem">没有？新建商品</button>
+        <button type="button" class="secondary" id="btnShowProductCreate" style="margin-bottom:0.75rem" data-i18n="picker.create_link">没有？新建商品</button>
       </div>
       <div id="productFormFields" class="hidden">
         <p class="hint" id="productFormHint"></p>
         <div class="row split">
-          <div class="field"><label>编码</label><input id="pCode" placeholder="TEA-01" /></div>
-          <div class="field"><label>名称</label><input id="pName" placeholder="花茶套餐" /></div>
+          <div class="field"><label data-i18n="product.field.code">编码</label><input id="pCode" placeholder="TEA-01" /></div>
+          <div class="field"><label data-i18n="product.field.name">名称</label><input id="pName" placeholder="花茶套餐" data-i18n="product.name_ph" data-i18n-attr="placeholder" /></div>
         </div>
         <div class="row split">
-          <div class="field"><label>税票名称</label><input id="pSaft" placeholder="Cha sortido" /></div>
-          <div class="field"><label>售价（含税）</label><input id="pPrice" placeholder="4.50" /></div>
+          <div class="field"><label data-i18n="product.field.fiscal_name">税票名称</label><input id="pSaft" placeholder="Cha sortido" /></div>
+          <div class="field"><label data-i18n="product.field.price">售价（含税）</label><input id="pPrice" placeholder="4.50" /></div>
         </div>
         <div class="field"><label>IVA %</label><input id="pVat" placeholder="13.00" value="13.00" /></div>
       </div>
       <div class="actions">
-        <button type="button" id="btnSaveProduct">保存</button>
-        <button type="button" class="secondary" id="btnClosePicker">关闭</button>
+        <button type="button" id="btnSaveProduct" data-i18n="common.save">保存</button>
+        <button type="button" class="secondary" id="btnClosePicker" data-i18n="common.close">关闭</button>
       </div>
     </div>
   </div>
@@ -1506,13 +1493,55 @@
     return r.json();
   }
 
-  /** ONLY Admin locale apply: chrome + settings dynamic panes + pager. */
+  function saleDocTypeOptionsHtml(selected) {
+    const sel = selected || DEFAULT_SALE_DOC;
+    return SALE_DOC_TYPES.map((t) => {
+      const label = FiscalAdminI18n.t('doc.' + t);
+      return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + label + '</option>';
+    }).join('');
+  }
+
+  /** ONLY refresh for sale-doc + pay + register selects (locale / enter). */
+  function refreshLocalizedSelects() {
+    const docSel = $('#docType');
+    if (docSel) {
+      const cur = docSel.value || DEFAULT_SALE_DOC;
+      docSel.innerHTML = saleDocTypeOptionsHtml(cur);
+    }
+    const splitSel = $('#splitDocType');
+    if (splitSel) {
+      const cur = splitSel.value || DEFAULT_SALE_DOC;
+      splitSel.innerHTML = saleDocTypeOptionsHtml(cur);
+    }
+    const paySel = $('#invPay');
+    if (paySel) {
+      const cur = paySel.value || 'CASH';
+      paySel.innerHTML = paymentMethodOptionsHtml();
+      paySel.value = cur;
+    }
+    const reg = $('#orderRegister');
+    if (reg) {
+      const cur = reg.value;
+      reg.innerHTML = '<option value="">—</option>' +
+        [1, 2, 3].map(function (n) {
+          return '<option value="' + n + '">' + FiscalAdminI18n.fmt('order.register_n', { n: n }) + '</option>';
+        }).join('');
+      reg.value = cur;
+    }
+  }
+
+  /** ONLY Admin locale apply: chrome + dynamic panes + lists + mode. */
   function applyAdminLocale(ui, invoiceLocale) {
     FiscalAdminI18n.setLocale(ui);
     const sel = $('#uiLocaleSelect');
     if (sel && ui) sel.value = ui;
     if (invoiceLocale) refreshUILocaleInvoiceHint(invoiceLocale);
+    refreshLocalizedSelects();
+    applyMode();
     renderHomeDateChip();
+    if (loggedInOperator) {
+      renderHomeGreeting(loggedInOperator.display_name || FiscalAdminI18n.t('home.greet.operator_fallback'));
+    }
     if (setupStatusCache) applySettingsStatusUI(setupStatusCache);
     [ordersListPaginationCtrl, billsListPaginationCtrl, productListPaginationCtrl,
       customerListPaginationCtrl, invoiceListPaginationCtrl, auditLogPaginationCtrl]
@@ -1523,15 +1552,17 @@
       if (auditFiltersReady) void refreshAuditLog();
       void refreshSAFTExports().catch(function () {});
       void refreshPrinters().catch(function () {});
+      void refreshHomeStats().catch(function () {});
+      if (ordersListReady) renderOrdersList();
+      if (billsListReady) void refreshBills().catch(function () {});
+      if (invoiceFiltersReady) void refreshInvoices().catch(function () {});
+      if (productFiltersReady) void refreshProducts().catch(function () {});
+      if (customerFiltersReady) void refreshCustomers().catch(function () {});
+      if (currentBillDetail) renderBillSplitWorkbench();
+      if (currentOrder && !$('#view-order-new').classList.contains('hidden')) {
+        renderOrderLines();
+      }
     }
-  }
-
-  function saleDocTypeOptionsHtml(selected) {
-    const sel = selected || DEFAULT_SALE_DOC;
-    return SALE_DOC_TYPES.map((t) => {
-      const label = t === 'FT' ? 'FT · 发票（销售）' : 'FS · 简化发票';
-      return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + label + '</option>';
-    }).join('');
   }
 
   let pin = '';
@@ -1634,9 +1665,9 @@
   }
 
   function operatorRoleLabel(role) {
-    if (role === 'admin') return '管理员';
-    if (role === 'owner') return '店长';
-    return '店员';
+    if (role === 'admin') return FiscalAdminI18n.t('settings.ops.admin');
+    if (role === 'owner') return FiscalAdminI18n.t('settings.ops.owner');
+    return FiscalAdminI18n.t('settings.ops.cashier');
   }
 
   /** ONLY operator manage API write path; applies SetupStatus from response (no extra GET). */
@@ -1662,9 +1693,9 @@
   let confirmActionHandler = null;
 
   function openConfirmAction({ title, body, submitLabel, onConfirm }) {
-    $('#confirmActionTitle').textContent = title || '确认操作';
+    $('#confirmActionTitle').textContent = title || FiscalAdminI18n.t('common.confirm_title');
     $('#confirmActionBody').textContent = body || '';
-    $('#btnConfirmActionSubmit').textContent = submitLabel || '确认';
+    $('#btnConfirmActionSubmit').textContent = submitLabel || FiscalAdminI18n.t('common.confirm');
     confirmActionHandler = onConfirm;
     $('#confirmActionModal').classList.remove('hidden');
   }
@@ -1716,8 +1747,8 @@
     if (!r.ok) {
       const code = t && t.error;
       if (r.status === 401 && code && (code === 'session_revoked' || code === 'operator_inactive' || code === 'unauthorized')) {
-        const msg = code === 'session_revoked' ? '会话已失效，请重新登录'
-          : code === 'operator_inactive' ? '账号已停用，请重新登录' : '请重新登录';
+        const msg = code === 'session_revoked' ? FiscalAdminI18n.t('session.expired')
+          : code === 'operator_inactive' ? FiscalAdminI18n.t('session.disabled') : FiscalAdminI18n.t('session.relogin');
         await forceLogout(msg);
       }
       if (r.status === 403 && (code === 'terminal_required' || code === 'terminal_revoked')) {
@@ -1797,12 +1828,9 @@
   let invoiceListPaginationCtrl = null;
   /** ONLY active document-type tab on invoice list (FT / FS / NC / ND). */
   const INVOICE_LIST_DOC_TYPES = ['FT', 'FS', 'NC', 'ND'];
-  const INVOICE_LIST_DOC_TYPE_LABELS = {
-    FT: '完整发票',
-    FS: '简式发票',
-    NC: '冲销单',
-    ND: '借记单',
-  };
+  function invoiceListDocTypeLabel(t) {
+    return FiscalAdminI18n.t('doc.tab.' + t);
+  }
   let invoiceListDocType = sessionStorage.getItem('fiscal_invoice_doc_type') || 'FT';
   if (!INVOICE_LIST_DOC_TYPES.includes(invoiceListDocType)) invoiceListDocType = 'FT';
 
@@ -1876,7 +1904,7 @@
     if (!full) return invoiceDetailRow(label, '—');
     return '<div class="detail-row hash-detail-row"><dt>' + label + '</dt><dd>' +
       '<span class="hash-preview hash-detail">' + truncateHash(full) + '</span>' +
-      '<button type="button" class="secondary" data-copy-hash="' + copyKey + '">复制全文</button>' +
+      '<button type="button" class="secondary" data-copy-hash="' + copyKey + '">' + FiscalAdminI18n.t('action.copy_hash') + '</button>' +
       '</dd></div>';
   }
 
@@ -1884,39 +1912,39 @@
     const id = inv.original_invoice_id;
     if (!id) return '';
     const label = inv.original_invoice_no || id;
-    return '<div class="detail-row"><dt>原票</dt><dd>' +
+    return '<div class="detail-row"><dt>' + FiscalAdminI18n.t('invoice.detail.original') + '</dt><dd>' +
       '<button type="button" class="secondary" data-open-original="' + id + '">' + label + '</button></dd></div>';
   }
 
   /** ONLY invoice detail drawer renderer (technical fields live here, not in list). */
   function renderInvoiceDetailModal(inv) {
     const when = inv.system_entry_date || inv.issued_at || '';
-    $('#invoiceDetailTitle').textContent = inv.invoice_no || '发票详情';
+    $('#invoiceDetailTitle').textContent = inv.invoice_no || FiscalAdminI18n.t('invoice.detail.title');
     let body =
-      invoiceDetailRow('签发时刻', fmtTime(when)) +
-      invoiceDetailRow('票号', inv.invoice_no) +
-      invoiceDetailRow('金额', fmtMoney(inv.gross_total)) +
-      invoiceDetailRow('购方 NIF', inv.customer_tax_id) +
-      invoiceDetailRow('购方名称', inv.customer_name) +
-      invoiceDetailRow('来源', inv.order_label) +
+      invoiceDetailRow(FiscalAdminI18n.t('col.issued_at'), fmtTime(when)) +
+      invoiceDetailRow(FiscalAdminI18n.t('col.doc_no'), inv.invoice_no) +
+      invoiceDetailRow(FiscalAdminI18n.t('col.amount'), fmtMoney(inv.gross_total)) +
+      invoiceDetailRow(FiscalAdminI18n.t('buyer.nif'), inv.customer_tax_id) +
+      invoiceDetailRow(FiscalAdminI18n.t('buyer.name'), inv.customer_name) +
+      invoiceDetailRow(FiscalAdminI18n.t('col.source'), inv.order_label) +
       invoiceDetailRow('ATCUD', inv.atcud) +
-      invoiceDetailRow('类型', inv.document_type) +
-      invoiceDetailRow('单据状态', inv.document_status) +
-      invoiceDetailRow('打印状态', inv.print_status);
+      invoiceDetailRow(FiscalAdminI18n.t('col.type'), inv.document_type) +
+      invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.doc_status'), inv.document_status) +
+      invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.print_status'), inv.print_status);
     if (inv.document_type === 'NC' || inv.document_type === 'ND') {
       body += invoiceDetailOriginalRow(inv);
       if (inv.credit_reason) {
-        body += invoiceDetailRow(inv.document_type === 'ND' ? '借记原因' : '冲销原因', inv.credit_reason);
+        body += invoiceDetailRow(inv.document_type === 'ND' ? FiscalAdminI18n.t('invoice.detail.nd_reason') : FiscalAdminI18n.t('invoice.detail.nc_reason'), inv.credit_reason);
       }
     }
     if (isAdjustableOriginal(inv.document_type) && inv.remaining_gross_total != null) {
-      body += invoiceDetailRow('已冲金额', fmtMoney(inv.credited_gross_total)) +
-        invoiceDetailRow('剩余可冲', fmtMoney(inv.remaining_gross_total));
+      body += invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.credited'), fmtMoney(inv.credited_gross_total)) +
+        invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.remaining'), fmtMoney(inv.remaining_gross_total));
     }
     if (isAdjustableOriginal(inv.document_type) && inv.debited_gross_total != null && inv.debited_gross_total !== '') {
-      body += invoiceDetailRow('已借记', fmtMoney(inv.debited_gross_total));
+      body += invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.debited'), fmtMoney(inv.debited_gross_total));
     }
-    body += invoiceDetailHashRow('上张 Hash', inv.previous_hash, 'previous_hash') +
+    body += invoiceDetailHashRow(FiscalAdminI18n.t('invoice.detail.prev_hash'), inv.previous_hash, 'previous_hash') +
       invoiceDetailHashRow('Hash', inv.hash, 'hash');
     $('#invoiceDetailBody').innerHTML = body;
     const btn = $('#btnInvoiceDetailReprint');
@@ -1969,7 +1997,7 @@
       return;
     }
     if (!inv.document_id) {
-      toast('找不到该发票', 'error');
+      toast(FiscalAdminI18n.t('invoice.toast.not_found'), 'error');
       return;
     }
     renderInvoiceDetailModal(inv);
@@ -1987,9 +2015,9 @@
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
-      toast('已复制', 'success');
+      toast(FiscalAdminI18n.t('common.copied'), 'success');
     } catch (_) {
-      toast('复制失败', 'error');
+      toast(FiscalAdminI18n.t('common.copy_fail'), 'error');
     }
   }
 
@@ -2017,7 +2045,7 @@
     mode = profile === 'retail' ? 'retail' : 'restaurant';
     document.body.classList.toggle('mode-restaurant', mode === 'restaurant');
     document.body.classList.toggle('mode-retail', mode === 'retail');
-    $('#sidebarMode').textContent = mode === 'restaurant' ? '餐馆模式' : '商超模式';
+    $('#sidebarMode').textContent = FiscalAdminI18n.t(mode === 'restaurant' ? 'mode.restaurant' : 'mode.retail');
   }
 
   function setLoginBootstrapMode(showBootstrap) {
@@ -2100,7 +2128,7 @@
   }
 
   function billScopeLabel(scopeType) {
-    return isSplitSyncScope(scopeType) ? '按人' : '整桌';
+    return isSplitSyncScope(scopeType) ? FiscalAdminI18n.t('bills.scope.person') : FiscalAdminI18n.t('bills.scope.table');
   }
 
   /** ONLY bill-sync payload amount helper (list + detail). */
@@ -2142,8 +2170,8 @@
     const t = String(nif || '').trim();
     if (!t) return '';
     const d = nifDigits(t);
-    if (d.length !== 9) return '购方 NIF 须为 9 位数字';
-    if (!validatePortugueseNif(d)) return '购方 NIF 校验位不正确';
+    if (d.length !== 9) return FiscalAdminI18n.t('customers.err.nif_len');
+    if (!validatePortugueseNif(d)) return FiscalAdminI18n.t('customers.err.nif_check');
     return '';
   }
 
@@ -2243,17 +2271,17 @@
       try {
         const job = await j('GET', '/local/v1/print-jobs/' + encodeURIComponent(jobId));
         if (job.job_status === 'PRINTED') {
-          toast(baseMsg + ' · 已打印', 'success');
+          toast(baseMsg + FiscalAdminI18n.t('print.toast.printed'), 'success');
           return;
         }
         if (job.job_status === 'FAILED' || job.job_status === 'PRINT_FAILED') {
-          toast(baseMsg + ' · 已开票但未出纸: ' + (job.last_error || job.job_status), 'error');
+          toast(baseMsg + FiscalAdminI18n.fmt('print.toast.no_paper', { msg: (job.last_error || job.job_status) }), 'error');
           return;
         }
       } catch (_) { /* retry */ }
       await new Promise(r => setTimeout(r, 500));
     }
-    toast(baseMsg + ' · 打印处理中', 'success');
+    toast(baseMsg + FiscalAdminI18n.t('print.toast.pending'), 'success');
   }
 
   function issuedSet(scopes) {
@@ -2360,9 +2388,9 @@
     const nif = ($('#nif').value || '').trim();
     const legal = ($('#legal').value || '').trim();
     const postal = ($('#postal').value || '').trim();
-    ok = setFieldError($('#nif'), $('#nifError'), nif ? '' : 'NIF 必填') && ok;
-    ok = setFieldError($('#legal'), $('#legalError'), legal ? '' : '店名必填') && ok;
-    ok = setFieldError($('#postal'), $('#postalError'), postal ? '' : '邮编必填') && ok;
+    ok = setFieldError($('#nif'), $('#nifError'), nif ? '' : FiscalAdminI18n.t('settings.store.nif_required')) && ok;
+    ok = setFieldError($('#legal'), $('#legalError'), legal ? '' : FiscalAdminI18n.t('settings.store.name_required')) && ok;
+    ok = setFieldError($('#postal'), $('#postalError'), postal ? '' : FiscalAdminI18n.t('settings.store.postal_required')) && ok;
     return ok;
   }
 
@@ -2370,15 +2398,15 @@
     let ok = true;
     const user = ($('#atuser').value || '').trim();
     const pass = ($('#atpass').value || '').trim();
-    ok = setFieldError($('#atuser'), $('#atuserError'), user ? '' : '用户名必填') && ok;
-    ok = setFieldError($('#atpass'), $('#atpassError'), pass ? '' : '密码必填') && ok;
+    ok = setFieldError($('#atuser'), $('#atuserError'), user ? '' : FiscalAdminI18n.t('settings.store.user_required')) && ok;
+    ok = setFieldError($('#atpass'), $('#atpassError'), pass ? '' : FiscalAdminI18n.t('settings.store.pass_required')) && ok;
     return ok;
   }
 
   /** ONLY taxpayer save path. */
   async function saveTaxpayerSettings(btn) {
     if (!validateTaxpayerForm()) {
-      toast('请修正标红字段', 'error');
+      toast(FiscalAdminI18n.t('common.fix_fields'), 'error');
       throw { error: 'validation_failed' };
     }
     const st = await j('PUT', '/local/v1/setup/taxpayer', {
@@ -2393,13 +2421,13 @@
     });
     applySetupStatusFromResponse(st);
     markSaveSuccess(btn);
-    toast('门店信息保存成功', 'success');
+    toast(FiscalAdminI18n.t('settings.store.saved'), 'success');
   }
 
   /** ONLY AT credentials save path. */
   async function saveATCredentialsSettings(btn) {
     if (!validateATForm()) {
-      toast('请修正标红字段', 'error');
+      toast(FiscalAdminI18n.t('common.fix_fields'), 'error');
       throw { error: 'validation_failed' };
     }
     const st = await j('PUT', '/local/v1/setup/at-credentials', {
@@ -2408,7 +2436,7 @@
     });
     applySetupStatusFromResponse(st);
     markSaveSuccess(btn);
-    toast('凭证保存成功', 'success');
+    toast(FiscalAdminI18n.t('settings.store.at_saved'), 'success');
   }
 
   function renderSetupDashboard(st) {
@@ -2701,10 +2729,10 @@
   function renderHomeGreeting(displayName) {
     const greetEl = $('#homeGreeting');
     if (!greetEl) return;
-    const name = String(displayName || '').trim() || '操作员';
+    const name = String(displayName || '').trim() || FiscalAdminI18n.t('home.greet.operator_fallback');
     const h = new Date().getHours();
-    const greet = h < 12 ? '早上好' : h < 18 ? '下午好' : '晚上好';
-    greetEl.textContent = greet + '，' + name;
+    const greetKey = h < 12 ? 'home.greet.morning' : h < 18 ? 'home.greet.afternoon' : 'home.greet.evening';
+    greetEl.textContent = FiscalAdminI18n.fmt('home.greet.fmt', { greet: FiscalAdminI18n.t(greetKey), name: name });
   }
 
   /** ONLY writer for #homeDateChip (locale weekday). */
@@ -2724,7 +2752,7 @@
 
   /** ONLY reprint control HTML (invoice list + home recent). */
   function invoiceReprintButtonHtml(documentId) {
-    return '<button type="button" class="secondary btn-sm" data-reprint="' + documentId + '">重打</button>';
+    return '<button type="button" class="secondary btn-sm" data-reprint="' + documentId + '">' + FiscalAdminI18n.t('action.reprint') + '</button>';
   }
 
   /** ONLY canvas text-width helper for Admin column sizing. */
@@ -2744,7 +2772,7 @@
     const th = table && table.querySelector('th.col-no');
     if (!th) return;
     const tdProbe = table.querySelector('td.col-no') || th;
-    let maxPx = measureAdminTableTextPx(th, '票号');
+    let maxPx = measureAdminTableTextPx(th, FiscalAdminI18n.t('col.doc_no'));
     (rows || []).forEach(inv => {
       maxPx = Math.max(maxPx, measureAdminTableTextPx(tdProbe, formatInvoiceNoCell(inv)));
     });
@@ -2759,7 +2787,7 @@
     if (!tbody) return;
     const rows = (list || []).slice(0, 8);
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="hint">今日暂无发票</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="hint">' + FiscalAdminI18n.t('home.recent.empty') + '</td></tr>';
       applyHomeRecentColNoWidth([]);
       return;
     }
@@ -2821,7 +2849,7 @@
       cfg.ctrl.setDisabled(false);
     }
     if (!pageItems.length) {
-      const emptyMsg = q ? '未找到匹配' : cfg.emptyMsg;
+      const emptyMsg = q ? FiscalAdminI18n.t('list.no_match') : cfg.emptyMsg;
       cfg.tbody.innerHTML = '<tr><td colspan="' + cfg.colSpan + '" class="hint">' + emptyMsg + '</td></tr>';
       return;
     }
@@ -3050,22 +3078,22 @@
     renderClientPaginatedTable({
       items: loadOrders(),
       filterFn: (o, q) => String(o.id || '').toLowerCase().includes(q) ||
-        String(o.sourceLabel || '手动创建').toLowerCase().includes(q),
+        String(o.sourceLabel || FiscalAdminI18n.t('orders.source.manual')).toLowerCase().includes(q),
       renderRow: (o) => {
         const badge = o.status === 'confirmed'
-          ? '<span class="badge wait">待开票</span>'
-          : '<span class="badge wait">编辑中</span>';
-        const action = o.status === 'confirmed' ? '去开票 →' : '继续 →';
+          ? '<span class="badge wait">' + FiscalAdminI18n.t('orders.status.open') + '</span>'
+          : '<span class="badge wait">' + FiscalAdminI18n.t('orders.status.editing') + '</span>';
+        const action = o.status === 'confirmed' ? FiscalAdminI18n.t('orders.action.issue') : FiscalAdminI18n.t('orders.action.continue');
         return '<tr class="clickable" data-open-order="' + o.id + '">' +
           '<td><strong>' + o.id + '</strong></td>' +
-          '<td>' + (o.sourceLabel || '手动创建') + '</td>' +
+          '<td>' + (o.sourceLabel || FiscalAdminI18n.t('orders.source.manual')) + '</td>' +
           '<td>' + fmtMoney(orderTotal(o)) + '</td>' +
           '<td>' + badge + '</td>' +
           '<td class="col-actions"><span class="row-action-text">' + action + '</span></td></tr>';
       },
       tbody: tbody,
       colSpan: 5,
-      emptyMsg: '暂无未开票草稿 · 点击「新建开票」',
+      emptyMsg: FiscalAdminI18n.t('orders.empty'),
       state: ordersListState,
       ctrl: ordersListPaginationCtrl,
     });
@@ -3074,17 +3102,17 @@
   function renderOrderLines() {
     const tbody = $('#orderLines');
     if (!currentOrder || !currentOrder.lines.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="hint">暂无明细 · 点击「添加商品」</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="hint">' + FiscalAdminI18n.t('order.lines_empty') + '</td></tr>';
       $('#orderTotal').textContent = fmtMoney(0);
       return;
     }
     tbody.innerHTML = currentOrder.lines.map((ln, idx) =>
       '<tr data-line="' + idx + '">' +
-      '<td>' + (ln.name || ln.product_code || '商品') + '</td>' +
+      '<td>' + (ln.name || ln.product_code || FiscalAdminI18n.t('nav.products')) + '</td>' +
       '<td><input class="line-input" type="number" min="0.001" step="0.001" value="' + ln.qty + '" data-qty="' + idx + '" /></td>' +
       '<td>' + Number(ln.price).toFixed(2) + '</td>' +
       '<td>' + (Number(ln.qty) * Number(ln.price)).toFixed(2) + '</td>' +
-      '<td><button type="button" class="ghost" data-del-line="' + idx + '">删</button></td></tr>'
+      '<td><button type="button" class="ghost" data-del-line="' + idx + '">' + FiscalAdminI18n.t('common.delete') + '</button></td></tr>'
     ).join('');
     $('#orderTotal').textContent = fmtMoney(orderTotal(currentOrder));
   }
@@ -3096,13 +3124,15 @@
       '<tr><td>' + (ln.name || ln.product_code) + '</td><td>' + ln.qty + ' × ' + Number(ln.price).toFixed(2) + '</td><td>' +
       (Number(ln.qty) * Number(ln.price)).toFixed(2) + '</td></tr>'
     ).join('');
-    html += '<tr><td colspan="2"><strong>合计</strong></td><td><strong>' + fmtMoney(orderTotal(order)) + '</strong></td></tr>';
+    html += '<tr><td colspan="2"><strong>' + FiscalAdminI18n.t('common.total') + '</strong></td><td><strong>' + fmtMoney(orderTotal(order)) + '</strong></td></tr>';
     tbody.innerHTML = html;
   }
 
   function openOrderEditor(order) {
     currentOrder = order;
-    $('#orderNewTitle').textContent = order.status === 'issued' ? ('单号 ' + order.id) : (order.id ? ('编辑 ' + order.id) : '新建开票');
+    $('#orderNewTitle').textContent = order.status === 'issued'
+      ? (FiscalAdminI18n.t('col.order_no') + ' ' + order.id)
+      : (order.id ? FiscalAdminI18n.fmt('order.edit_title', { no: order.id }) : FiscalAdminI18n.t('orders.new'));
     $('#orderTable').value = order.tableNo || '';
     $('#orderRegister').value = order.registerNo || '';
     renderOrderLines();
@@ -3114,7 +3144,7 @@
       id: genOrderId(),
       createdAt: new Date().toISOString(),
       source: 'manual',
-      sourceLabel: '手动创建',
+      sourceLabel: FiscalAdminI18n.t('orders.source.manual'),
       tableNo: '',
       registerNo: '',
       billDraftId: null,
@@ -3150,7 +3180,7 @@
     if (issued) {
       if (hint) {
         hint.style.display = '';
-        hint.textContent = '本单已开票；可查看关联发票或重打。';
+        hint.textContent = FiscalAdminI18n.t('order.already_issued');
       }
       linkRow.style.display = '';
       linkBtn.textContent = order.invoiceNo || order.documentId;
@@ -3158,7 +3188,7 @@
       issueBtn.classList.add('hidden');
       reprintBtn.classList.remove('hidden');
       reprintBtn._reprintDocId = order.documentId;
-      backBtn.textContent = '返回列表';
+      backBtn.textContent = FiscalAdminI18n.t('common.back_list');
     } else {
       if (hint) {
         hint.style.display = 'none';
@@ -3169,7 +3199,7 @@
       issueBtn.classList.remove('hidden');
       reprintBtn.classList.add('hidden');
       delete reprintBtn._reprintDocId;
-      backBtn.textContent = '稍后开票';
+      backBtn.textContent = FiscalAdminI18n.t('order.issue_later');
     }
   }
 
@@ -3226,7 +3256,7 @@
   function renderPickerList(list) {
     const el = $('#pickerList');
     if (!list.length) {
-      el.innerHTML = '<p class="hint">无匹配商品 · 可点下方新建</p>';
+      el.innerHTML = '<p class="hint">' + FiscalAdminI18n.t('picker.no_match') + '</p>';
       return;
     }
     el.innerHTML = list.map(p =>
@@ -3245,7 +3275,7 @@
     const saveBtn = $('#btnSaveProduct');
     $('#pickerSearch').value = '';
     if (mode === 'pick') {
-      $('#productPickerTitle').textContent = '添加商品';
+      $('#productPickerTitle').textContent = FiscalAdminI18n.t('picker.title.add');
       searchBlock.classList.remove('hidden');
       fields.classList.add('hidden');
       saveBtn.classList.add('hidden');
@@ -3254,28 +3284,28 @@
         fields.classList.remove('hidden');
         saveBtn.classList.remove('hidden');
         clearProductFields();
-        $('#productFormHint').textContent = '暂无商品 · 先新建再加入本单';
+        $('#productFormHint').textContent = FiscalAdminI18n.t('picker.empty');
       } else {
-        $('#productFormHint').textContent = '保存后加入本店商品库，并加入本单';
+        $('#productFormHint').textContent = FiscalAdminI18n.t('picker.hint.create');
       }
     } else if (mode === 'edit' && product) {
-      $('#productPickerTitle').textContent = '编辑商品';
+      $('#productPickerTitle').textContent = FiscalAdminI18n.t('picker.title.edit');
       searchBlock.classList.add('hidden');
       fields.classList.remove('hidden');
       saveBtn.classList.remove('hidden');
-      saveBtn.textContent = '保存';
+      saveBtn.textContent = FiscalAdminI18n.t('common.save');
       fillProductFields(product);
-      $('#productFormHint').textContent = '修改后保存到本店商品库';
+      $('#productFormHint').textContent = FiscalAdminI18n.t('picker.hint.edit');
     } else {
-      $('#productPickerTitle').textContent = '新建商品';
+      $('#productPickerTitle').textContent = FiscalAdminI18n.t('picker.title.create');
       searchBlock.classList.add('hidden');
       fields.classList.remove('hidden');
       saveBtn.classList.remove('hidden');
-      saveBtn.textContent = '保存';
+      saveBtn.textContent = FiscalAdminI18n.t('common.save');
       clearProductFields();
-      $('#productFormHint').textContent = '保存到本店商品库';
+      $('#productFormHint').textContent = FiscalAdminI18n.t('picker.hint.local');
     }
-    if (mode === 'pick') saveBtn.textContent = '保存并加入本单';
+    if (mode === 'pick') saveBtn.textContent = FiscalAdminI18n.t('picker.save_add');
     $('#productPicker').classList.remove('hidden');
     if (mode === 'pick') {
       try { $('#pickerSearch').focus(); } catch (_) { /* ignore */ }
@@ -3292,7 +3322,7 @@
   async function saveProductFromFields() {
     const body = readProductFields();
     if (!body.product_code || !body.display_name || !body.unit_price_gross) {
-      toast('请填写编码、名称与售价', 'error');
+      toast(FiscalAdminI18n.t('product.toast.need_fields'), 'error');
       return null;
     }
     if (!body.saft_name) body.saft_name = body.display_name;
@@ -3305,7 +3335,7 @@
   async function refreshProducts() {
     initProductListPanel();
     const tbody = $('#productsTbody');
-    tbody.innerHTML = '<tr><td colspan="5" class="hint">加载中…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="hint">' + FiscalAdminI18n.t('common.loading') + '</td></tr>';
     if (productListPaginationCtrl) productListPaginationCtrl.setDisabled(true);
     const q = ($('#productsSearch') && $('#productsSearch').value) || '';
     const data = await j('GET', buildProductsQueryPath(q, productListPage, productListPageSize));
@@ -3322,14 +3352,14 @@
     if (!list.length) {
       const term = String(q || '').trim();
       tbody.innerHTML = '<tr><td colspan="5" class="hint">' +
-        (term ? '未找到匹配商品' : '暂无商品') + '</td></tr>';
+        (term ? FiscalAdminI18n.t('products.empty_match') : FiscalAdminI18n.t('products.empty')) + '</td></tr>';
       return;
     }
     tbody.innerHTML = list.map(p => {
-      const src = (p.source === 'REMOTE_SYNC') ? '收银同步' : '本店维护';
+      const src = (p.source === 'REMOTE_SYNC') ? FiscalAdminI18n.t('products.source.pos') : FiscalAdminI18n.t('products.source.local');
       const editBtn = (p.source === 'REMOTE_SYNC')
         ? '<span class="hint">' + src + '</span>'
-        : '<button type="button" class="secondary btn-sm" data-edit-prod="' + p.product_code + '">编辑</button>';
+        : '<button type="button" class="secondary btn-sm" data-edit-prod="' + p.product_code + '">' + FiscalAdminI18n.t('common.edit') + '</button>';
       return '<tr><td>' + p.product_code + '</td><td>' + p.display_name + '</td><td>' + p.unit_price_gross +
         '</td><td>' + p.vat_rate + '%</td><td class="col-actions">' + editBtn + '</td></tr>';
     }).join('');
@@ -3338,7 +3368,7 @@
   async function refreshCustomers() {
     initCustomerListPanel();
     const tbody = $('#customersTbody');
-    tbody.innerHTML = '<tr><td colspan="3" class="hint">加载中…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" class="hint">' + FiscalAdminI18n.t('common.loading') + '</td></tr>';
     if (customerListPaginationCtrl) customerListPaginationCtrl.setDisabled(true);
     const q = ($('#customersSearch') && $('#customersSearch').value) || '';
     const data = await j('GET', buildCustomersQueryPath(q, customerListPage, customerListPageSize));
@@ -3355,7 +3385,7 @@
     if (!list.length) {
       const term = String(q || '').trim();
       tbody.innerHTML = '<tr><td colspan="3" class="hint">' +
-        (term ? '未找到匹配客户' : '暂无客户') + '</td></tr>';
+        (term ? FiscalAdminI18n.t('customers.empty_match') : FiscalAdminI18n.t('customers.empty')) + '</td></tr>';
       return;
     }
     tbody.innerHTML = list.map(c =>
@@ -3370,7 +3400,7 @@
     const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/reprints', {
       station_id: sid
     });
-    await pollPrintJob(res.print_job_id, '重打已提交');
+    await pollPrintJob(res.print_job_id, FiscalAdminI18n.t('toast.reprint_submitted'));
   }
 
   /** ONLY reprint click handler (withBusy + toast). */
@@ -3396,9 +3426,9 @@
     if (!debitFull && opts.lines && opts.lines.length) body.lines = opts.lines;
     const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/debit-notes', body);
     if (res.idempotent_hit) {
-      toast('已存在相同借记，未新开', 'info');
+      toast(FiscalAdminI18n.t('adjust.toast.dup_nd'), 'info');
     } else if (res.print_job_id) {
-      await pollPrintJob(res.print_job_id, '借记已提交');
+      await pollPrintJob(res.print_job_id, FiscalAdminI18n.t('adjust.toast.submitted_nd'));
     }
     await refreshInvoices();
     try {
@@ -3422,9 +3452,9 @@
     if (!creditFull && opts.lines && opts.lines.length) body.lines = opts.lines;
     const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/credit-notes', body);
     if (res.idempotent_hit) {
-      toast('已存在相同冲销，未新开', 'info');
+      toast(FiscalAdminI18n.t('adjust.toast.dup_nc'), 'info');
     } else if (res.print_job_id) {
-      await pollPrintJob(res.print_job_id, '冲销已提交');
+      await pollPrintJob(res.print_job_id, FiscalAdminI18n.t('adjust.toast.submitted_nc'));
     }
     await refreshInvoices();
     try {
@@ -3452,7 +3482,7 @@
     const tbody = $('#adjustLinesTbody');
     const isDebit = adjustKind === 'debit';
     if (!lines.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="hint">无可用行</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="hint">' + FiscalAdminI18n.t('adjust.no_lines') + '</td></tr>';
       return;
     }
     tbody.innerHTML = lines.map(ln => {
@@ -3468,7 +3498,7 @@
         '<td>' + ln.line_gross + '</td>' +
         '<td>' + (isDebit ? '—' : rem) + '</td>' +
         '<td><input class="adjust-line-amt" type="text" inputmode="decimal" value="' + defaultAmt + '"' + maxAttr + disabledCredit +
-        (isDebit ? ' placeholder="纠正金额"' : '') + ' /></td></tr>';
+        (isDebit ? ' placeholder="' + FiscalAdminI18n.t('adjust.amt_ph') + '"' : '') + ' /></td></tr>';
     }).join('');
   }
 
@@ -3477,14 +3507,14 @@
     adjustKind = kind;
     adjustTargetDetail = detail;
     const isDebit = kind === 'debit';
-    $('#adjustModalTitle').textContent = (isDebit ? '借记 · ' : '冲销 · ') + (detail.invoice_no || '');
+    $('#adjustModalTitle').textContent = FiscalAdminI18n.fmt(isDebit ? 'adjust.title_nd' : 'adjust.title_nc', { no: (detail.invoice_no || '') });
     $('#adjustFullHint').textContent = isDebit
-      ? '将按原票各行原额作为本次纠正差额借记（可再开其它差额；不设原票总额上限）。'
-      : '将对整张发票剩余金额全额冲销。';
-    $('#adjustAmtColHead').textContent = isDebit ? '本次借记' : '本次冲销';
+      ? FiscalAdminI18n.t('adjust.full_hint_nd')
+      : FiscalAdminI18n.t('adjust.full_hint_nc');
+    $('#adjustAmtColHead').textContent = isDebit ? FiscalAdminI18n.t('adjust.amt_nd') : FiscalAdminI18n.t('adjust.amt_nc');
     const remHead = $('#adjustPartialPane thead th:nth-child(5)');
-    if (remHead) remHead.textContent = isDebit ? '—' : '剩余';
-    $('#adjustReasonLabel').textContent = isDebit ? '借记原因' : '冲销原因';
+    if (remHead) remHead.textContent = isDebit ? '—' : FiscalAdminI18n.t('adjust.col.left');
+    $('#adjustReasonLabel').textContent = isDebit ? FiscalAdminI18n.t('invoice.detail.nd_reason') : FiscalAdminI18n.t('invoice.detail.nc_reason');
     $('#adjustReason').value = isDebit ? 'Ajuste' : 'Devolucao';
     $('#adjustReason').placeholder = isDebit ? 'Ajuste' : 'Devolucao';
     setAdjustTab(isDebit ? 'partial' : 'full');
@@ -3504,8 +3534,8 @@
 
   function readAdjustSubmitPayload() {
     const reason = String($('#adjustReason').value || '').trim();
-    if (!reason) throw { error: 'validation_failed', message: '请填写原因' };
-    if (reason.length > 200) throw { error: 'validation_failed', message: '原因最多 200 字' };
+    if (!reason) throw { error: 'validation_failed', message: FiscalAdminI18n.t('adjust.err.reason') };
+    if (reason.length > 200) throw { error: 'validation_failed', message: FiscalAdminI18n.t('adjust.err.reason_len') };
     const isDebit = adjustKind === 'debit';
     if (adjustMode === 'full') {
       const rem = isDebit
@@ -3514,7 +3544,7 @@
       const out = {
         reason: reason,
         summaryGross: rem,
-        linesSummary: isDebit ? '按原票行额借记' : '全额冲销'
+        linesSummary: isDebit ? FiscalAdminI18n.t('adjust.mode.nd_lines') : FiscalAdminI18n.t('adjust.mode.nc_full')
       };
       if (isDebit) out.debit_full = true;
       else out.credit_full = true;
@@ -3529,20 +3559,20 @@
       const amtIn = row.querySelector('.adjust-line-amt');
       const amt = String(amtIn.value || '').trim();
       const val = parseFloat(amt);
-      if (!amt || isNaN(val) || val <= 0) throw { error: 'validation_failed', message: '请填写有效金额' };
+      if (!amt || isNaN(val) || val <= 0) throw { error: 'validation_failed', message: FiscalAdminI18n.t('adjust.err.amt') };
       if (!isDebit) {
         const max = parseFloat(amtIn.dataset.max || '0');
-        if (val > max + 0.001) throw { error: 'validation_failed', message: '金额不能超过剩余' };
+        if (val > max + 0.001) throw { error: 'validation_failed', message: FiscalAdminI18n.t('adjust.err.amt_max') };
       }
       selected.push({ original_line_number: ln, line_gross: val.toFixed(2) });
       total += val;
     });
-    if (!selected.length) throw { error: 'validation_failed', message: '请至少选择一行' };
+    if (!selected.length) throw { error: 'validation_failed', message: FiscalAdminI18n.t('adjust.err.need_line') };
     const out = {
       reason: reason,
       lines: selected,
       summaryGross: total.toFixed(2),
-      linesSummary: selected.map(l => '行' + l.original_line_number + ' €' + l.line_gross).join('；')
+      linesSummary: selected.map(l => FiscalAdminI18n.t('adjust.col.line') + l.original_line_number + ' €' + l.line_gross).join('；')
     };
     if (isDebit) out.debit_full = false;
     else out.credit_full = false;
@@ -3551,13 +3581,13 @@
 
   function showAdjustConfirm(payload) {
     const isDebit = adjustKind === 'debit';
-    $('#adjustConfirmTitle').textContent = isDebit ? '确认借记' : '确认冲销';
-    $('#btnAdjustSubmit').textContent = isDebit ? '确认签发 ND' : '确认签发 NC';
+    $('#adjustConfirmTitle').textContent = isDebit ? FiscalAdminI18n.t('adjust.confirm_title_nd') : FiscalAdminI18n.t('adjust.confirm_title_nc');
+    $('#btnAdjustSubmit').textContent = isDebit ? FiscalAdminI18n.t('adjust.confirm_submit_nd') : FiscalAdminI18n.t('adjust.confirm_submit_nc');
     $('#adjustConfirmBody').innerHTML =
-      invoiceDetailRow('原票号', adjustTargetDetail.invoice_no) +
-      invoiceDetailRow(isDebit ? '本 ND 合计' : '本 NC 合计', fmtMoney(payload.summaryGross)) +
-      invoiceDetailRow(isDebit ? '借记行' : '冲销行', payload.linesSummary) +
-      invoiceDetailRow('原因', payload.reason);
+      invoiceDetailRow(FiscalAdminI18n.t('adjust.confirm.orig_no'), adjustTargetDetail.invoice_no) +
+      invoiceDetailRow(isDebit ? FiscalAdminI18n.t('adjust.confirm.nd_total') : FiscalAdminI18n.t('adjust.confirm.nc_total'), fmtMoney(payload.summaryGross)) +
+      invoiceDetailRow(isDebit ? FiscalAdminI18n.t('adjust.confirm.nd_lines') : FiscalAdminI18n.t('adjust.confirm.nc_lines'), payload.linesSummary) +
+      invoiceDetailRow(FiscalAdminI18n.t('adjust.reason'), payload.reason);
     $('#adjustConfirmModal').classList.remove('hidden');
     $('#adjustConfirmModal')._payload = payload;
   }
@@ -3651,7 +3681,7 @@
 
   async function refreshInvoices() {
     const tbody = $('#invoicesTbody');
-    tbody.innerHTML = '<tr><td colspan="6" class="hint">加载中…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="hint">' + FiscalAdminI18n.t('common.loading') + '</td></tr>';
     if (!invoiceDateFilterCtrl) {
       initInvoiceFilters();
     }
@@ -3674,10 +3704,10 @@
     }
     if (!list.length) {
       const term = String(q || '').trim();
-      const typeLabel = INVOICE_LIST_DOC_TYPE_LABELS[invoiceListDocType] || invoiceListDocType;
+      const typeLabel = invoiceListDocTypeLabel(invoiceListDocType);
       const emptyMsg = term
-        ? ('未找到匹配的' + typeLabel)
-        : ('该时段暂无' + typeLabel);
+        ? FiscalAdminI18n.fmt('invoices.empty_match', { type: typeLabel })
+        : FiscalAdminI18n.fmt('invoices.empty_range', { type: typeLabel });
       tbody.innerHTML = '<tr><td colspan="6" class="hint">' + emptyMsg + '</td></tr>';
     } else {
       tbody.innerHTML = list.map(inv =>
@@ -3731,11 +3761,11 @@
           '<td>' + scope + '</td>' +
           '<td>' + amt + '</td>' +
           '<td>' + fmtTimeShort(d.updated_at) + '</td>' +
-          '<td class="col-actions"><button type="button" class="secondary btn-sm" data-bill-open="' + d.id + '">选择开票</button></td></tr>';
+          '<td class="col-actions"><button type="button" class="secondary btn-sm" data-bill-open="' + d.id + '">' + FiscalAdminI18n.t('bills.action.select') + '</button></td></tr>';
       },
       tbody: tbody,
       colSpan: 5,
-      emptyMsg: '暂无收银账单',
+      emptyMsg: FiscalAdminI18n.t('bills.empty'),
       state: billsListState,
       ctrl: billsListPaginationCtrl,
     });
@@ -3759,7 +3789,7 @@
     }
     if (opts.fromEvent && n > lastOpenBillCount) {
       const hint = String(opts.tableHint || '').trim();
-      toast(hint ? ('桌 ' + hint + ' 待开票') : '有新的收银账单', 'success');
+      toast(hint ? FiscalAdminI18n.fmt('bills.toast.new_named', { n: hint }) : FiscalAdminI18n.t('bills.toast.new'), 'success');
     }
     lastOpenBillCount = n;
   }
@@ -4008,8 +4038,12 @@
       const src = parseQtyLabel(ln.qty || '1');
       const allocated = subRat(src, rem);
       msgs.push(
-        '「' + (ln.name || ln.item_code) + '」超分：总量 ' + formatRat(src) +
-        '，已分 ' + formatRat(allocated) + '（超出 ' + formatRat({ num: -normRat(rem).num, den: normRat(rem).den }) + '）'
+        FiscalAdminI18n.fmt('split.over_alloc', {
+          name: (ln.name || ln.item_code),
+          t: formatRat(src),
+          a: formatRat(allocated),
+          x: formatRat({ num: -normRat(rem).num, den: normRat(rem).den })
+        })
       );
     });
     return msgs;
@@ -4025,8 +4059,11 @@
     const overs = splitOverAllocMessages(detail, splitState.people);
     let remHint = Object.keys(live.qty).filter(k => ratPositive(live.qty[k])).length;
     $('#splitProgress').textContent =
-      '进度：已开 ' + Object.keys(issued).length + ' 人 · 剩余行 ' + remHint +
-      ' · 分单版本 ' + splitState.revision;
+      FiscalAdminI18n.fmt('split.progress', {
+        n: Object.keys(issued).length,
+        m: remHint,
+        v: splitState.revision
+      });
     const hint = $('#splitAllocHint');
     if (hint) {
       if (overs.length) {
@@ -4053,7 +4090,7 @@
       if (!ratPositive(leftQ)) return;
       const tr = document.createElement('tr');
       tr.innerHTML = '<td>' + (ln.name || ln.item_code) + '</td><td>' + formatRat(leftQ) + '</td>' +
-        '<td>' + (readonly ? '' : '<button type="button" data-add-share="' + key + '">加入当前人</button>') + '</td>';
+        '<td>' + (readonly ? '' : '<button type="button" data-add-share="' + key + '">' + FiscalAdminI18n.t('split.add_to_person') + '</button>') + '</td>';
       pool.appendChild(tr);
     });
   }
@@ -4084,7 +4121,7 @@
     if (cur && !isSplitPersonIssued(cur.scope_id)) {
       if (personKey(cur.name) === personKey(name)) return;
       if (splitState.people.some(p => p.scope_id !== cur.scope_id && personKey(p.name) === personKey(name))) {
-        toast('禁止重名', 'error');
+        toast(FiscalAdminI18n.t('split.err.dup_name'), 'error');
         $('#splitPersonName').value = cur.name || '';
         return;
       }
@@ -4093,7 +4130,7 @@
       return;
     }
     if (splitState.people.some(p => personKey(p.name) === personKey(name))) {
-      toast('禁止重名', 'error');
+      toast(FiscalAdminI18n.t('split.err.dup_name'), 'error');
       return;
     }
     const id = uuid4();
@@ -4108,7 +4145,9 @@
     if (!detail) return;
     const snap = detail.payload || {};
     const draft = detail.draft || {};
-    $('#splitTable').textContent = snap.table_display_name || draft.source_sale_id || '—';
+    const tableLabel = snap.table_display_name || draft.source_sale_id || '—';
+    const titleEl = $('#splitTitle');
+    if (titleEl) titleEl.textContent = FiscalAdminI18n.fmt('split.title', { n: tableLabel });
     splitState.revision = detail.allocation_revision || 0;
     const issued = splitIssuedMap(detail);
     const lines = sourceLinesOf(detail);
@@ -4118,7 +4157,7 @@
       const done = isSplitPersonIssued(p.scope_id, issued);
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = (p.name || '未命名') + (done ? ' ✓' : '');
+      b.textContent = (p.name || FiscalAdminI18n.t('split.unnamed')) + (done ? ' ✓' : '');
       b.classList.toggle('active', p.scope_id === splitState.currentScopeId);
       b.onclick = () => selectSplitPerson(p.scope_id);
       chips.appendChild(b);
@@ -4126,7 +4165,7 @@
     paintSplitPoolAndHint();
     const cur = currentSplitPerson();
     const readonly = !!(cur && isSplitPersonIssued(cur.scope_id, issued));
-    $('#splitCurrentName').textContent = cur ? (cur.name || '—') : '（输入标记名建人）';
+    $('#splitCurrentName').textContent = cur ? (cur.name || '—') : FiscalAdminI18n.t('split.chip_hint');
     $('#splitPersonName').disabled = readonly;
     $('#splitNif').disabled = readonly;
     $('#splitName').disabled = readonly;
@@ -4156,7 +4195,7 @@
             '<td><input data-sh-num="' + idx + '" value="' + num + '" style="width:3rem" /></td>' +
             '<td><input data-sh-den="' + idx + '" value="' + den + '" style="width:3rem" /></td>' +
             '<td>' + fmtMoney(lineAmt) + '</td>' +
-            '<td><button type="button" class="secondary" data-rm-share="' + idx + '">移除</button></td>';
+            '<td><button type="button" class="secondary" data-rm-share="' + idx + '">' + FiscalAdminI18n.t('common.remove') + '</button></td>';
         }
         shareBody.appendChild(tr);
       });
@@ -4164,10 +4203,10 @@
     const totEl = $('#splitPersonTotal');
     if (totEl) {
       if (!cur) {
-        totEl.textContent = '本票预估 —';
+        totEl.textContent = FiscalAdminI18n.t('split.estimate');
       } else {
         const prev = personGrossPreview(detail, cur);
-        totEl.textContent = '本票预估 · ' + prev.rows + ' 行 · ' + fmtMoney(prev.gross);
+        totEl.textContent = FiscalAdminI18n.fmt('split.estimate_lines', { n: prev.rows, amount: fmtMoney(prev.gross) });
       }
     }
     const hasPersonIssued = Object.keys(issued).some(k => k.indexOf('person:') === 0);
@@ -4257,8 +4296,8 @@
     const names = {};
     for (const p of out) {
       const k = personKey(p.name);
-      if (!k) throw new Error('分单标记名不能为空');
-      if (names[k]) throw new Error('禁止重名');
+      if (!k) throw new Error(FiscalAdminI18n.t('split.err.marker_empty'));
+      if (names[k]) throw new Error(FiscalAdminI18n.t('split.err.dup_name'));
       names[k] = true;
     }
     return { people: out };
@@ -4325,7 +4364,7 @@
     const invNo = res.invoice_no || '';
     removeOrder(currentOrder.id);
     currentOrder = null;
-    await pollPrintJob(res.print_job_id, '已签发 ' + (invNo || 'FT'));
+    await pollPrintJob(res.print_job_id, FiscalAdminI18n.fmt('order.toast.issued', { no: (invNo || 'FT') }));
     await refreshHomeStats();
     await refreshInvoices();
     renderOrdersList();
@@ -4359,8 +4398,8 @@
     if (mode === 'person') body.allocation_revision = splitState.revision;
     const res = await j('POST', '/local/v1/bill-drafts/' + encodeURIComponent(currentBill) + '/issue', body);
     const no = res.invoice_no || res.InvoiceNo || '';
-    let msg = '开票成功 ' + no;
-    if (res.cleanup_pending) msg += '（账单待清理）';
+    let msg = FiscalAdminI18n.fmt('split.toast.issued', { no: no });
+    if (res.cleanup_pending) msg += FiscalAdminI18n.t('split.toast.pending_cleanup');
     await pollPrintJob(res.print_job_id || res.PrintJobID, msg);
     try {
       await openBillDetail(currentBill);
@@ -4373,7 +4412,7 @@
 
   function showView(name) {
     if (name === 'settings' && !canAccessSettings()) {
-      toast('仅管理员或店长可访问设置', 'error');
+      toast(FiscalAdminI18n.t('settings.toast.access_denied'), 'error');
       name = 'home';
     }
     $$('.view').forEach(v => v.classList.add('hidden'));
@@ -4415,7 +4454,7 @@
 
   async function enterApp() {
     const op = loggedInOperator || {};
-    const displayName = op.display_name || '操作员';
+    const displayName = op.display_name || FiscalAdminI18n.t('home.greet.operator_fallback');
     $('#operatorName').textContent = displayName;
     const avatar = $('#operatorAvatar');
     if (avatar) {
@@ -4443,6 +4482,7 @@
     }
     await ensureSetupStatus();
     applyMode();
+    refreshLocalizedSelects();
     showView('home');
     refreshPrinters().catch(() => {});
     ensureCustomerCatalog().catch(() => {});
@@ -4639,8 +4679,8 @@
 
   async function tryLogin() {
     const operatorId = $('#loginOperator').value;
-    if (!operatorId) { toast('请选择开票员', 'error'); return; }
-    if (!/^\d{6}$/.test(pin)) { toast('请输入 6 位 PIN', 'error'); return; }
+    if (!operatorId) { toast(FiscalAdminI18n.t('login.toast.pick_operator'), 'error'); return; }
+    if (!/^\d{6}$/.test(pin)) { toast(FiscalAdminI18n.t('login.toast.pin_need'), 'error'); return; }
     try {
       loggedInOperator = await j('POST', '/local/v1/setup/login', { operator_id: operatorId, pin });
       pin = '';
@@ -4729,7 +4769,7 @@
           p = (data.products || []).find(x => x.product_code === code);
         }
         if (p) await openProductWorkbench('edit', p);
-        else toast('未找到商品', 'error');
+        else toast(FiscalAdminI18n.t('picker.toast.not_found'), 'error');
       })().catch(er => toast(errText(er), 'error'));
     }
   });
@@ -4762,7 +4802,7 @@
   $('#btnShowProductCreate').onclick = () => {
     $('#productFormFields').classList.remove('hidden');
     $('#btnSaveProduct').classList.remove('hidden');
-    $('#btnSaveProduct').textContent = '保存并加入本单';
+    $('#btnSaveProduct').textContent = FiscalAdminI18n.t('picker.save_add');
     clearProductFields();
     const q = $('#pickerSearch').value.trim();
     if (q) $('#pName').value = q;
@@ -4776,7 +4816,7 @@
     if (!p) return;
     addProductToCurrentOrder(p);
     closeProductWorkbench();
-    toast('已添加 ' + p.display_name, 'success');
+    toast(FiscalAdminI18n.fmt('picker.toast.added', { name: p.display_name }), 'success');
   });
 
   $('#btnClosePicker').onclick = () => closeProductWorkbench();
@@ -4836,10 +4876,10 @@
     try {
       if (adjustKind === 'debit') {
         await debitInvoice(adjustTargetDetail.document_id, payload);
-        toast('借记成功', 'success');
+        toast(FiscalAdminI18n.t('adjust.toast.ok_nd'), 'success');
       } else {
         await creditInvoice(adjustTargetDetail.document_id, payload);
-        toast('冲销成功', 'success');
+        toast(FiscalAdminI18n.t('adjust.toast.ok_nc'), 'success');
       }
       closeAdjustConfirmModal();
       closeAdjustModal();
@@ -4848,20 +4888,22 @@
 
   $('#btnConfirmOrder').onclick = () => withBusy($('#btnConfirmOrder'), FiscalAdminI18n.t('common.confirming'), async () => {
     if (!currentOrder) return;
-    if (!currentOrder.lines.length) { toast('请先添加商品', 'error'); return; }
+    if (!currentOrder.lines.length) { toast(FiscalAdminI18n.t('order.toast.need_lines'), 'error'); return; }
     if (mode === 'restaurant') {
       currentOrder.tableNo = $('#orderTable').value.trim();
-      currentOrder.sourceLabel = currentOrder.tableNo ? ('桌 ' + currentOrder.tableNo) : '手动创建';
+      currentOrder.sourceLabel = currentOrder.tableNo
+        ? (FiscalAdminI18n.t('col.table') + ' ' + currentOrder.tableNo)
+        : FiscalAdminI18n.t('orders.source.manual');
     } else {
       const reg = $('#orderRegister').value;
       currentOrder.registerNo = reg;
-      currentOrder.sourceLabel = reg ? ('收银台 ' + reg) : '手动创建';
+      currentOrder.sourceLabel = reg ? FiscalAdminI18n.fmt('order.register_n', { n: reg }) : FiscalAdminI18n.t('orders.source.manual');
     }
     currentOrder.status = 'confirmed';
     currentOrder.confirmedAt = new Date().toISOString();
     upsertOrder(currentOrder);
     openOrderForInvoice(currentOrder);
-    toast('已确认 · 请选择发票类型', 'success');
+    toast(FiscalAdminI18n.t('order.toast.confirmed'), 'success');
   });
 
   $('#btnIssueInvoice').onclick = () => withBusy($('#btnIssueInvoice'), FiscalAdminI18n.t('common.issuing'), async () => {
@@ -4886,13 +4928,13 @@
   $('#btnSplitDiscard').onclick = () => {
     if (!currentBill) return;
     openConfirmAction({
-      title: '放弃未开票部分',
-      body: '未开票部分将不再处理（已开发票保留）。确认？',
-      submitLabel: '确认放弃',
+      title: FiscalAdminI18n.t('split.discard_title'),
+      body: FiscalAdminI18n.t('split.discard_body'),
+      submitLabel: FiscalAdminI18n.t('split.discard_submit'),
       onConfirm: () => withBusy($('#btnSplitDiscard'), FiscalAdminI18n.t('common.processing'), async () => {
         try {
           await j('POST', '/local/v1/bill-drafts/' + encodeURIComponent(currentBill) + '/discard', {});
-          toast('已移除未开部分', 'success');
+          toast(FiscalAdminI18n.t('split.toast.discarded'), 'success');
           showView('bills');
           await refreshBills();
         } catch (er) { toast(errText(er), 'error'); throw er; }
@@ -4920,10 +4962,10 @@
     try {
       syncCurrentSharesFromDom();
       applySplitMarkerNameFromInput();
-      if (!splitState.currentScopeId) { toast('请先输入分单标记名', 'error'); return; }
-      if (isSplitPersonIssued(splitState.currentScopeId)) { toast('此人已开票', 'error'); return; }
+      if (!splitState.currentScopeId) { toast(FiscalAdminI18n.t('split.toast.need_marker'), 'error'); return; }
+      if (isSplitPersonIssued(splitState.currentScopeId)) { toast(FiscalAdminI18n.t('split.toast.person_issued'), 'error'); return; }
       const ready = currentSplitPerson();
-      if (!ready || !(ready.shares || []).length) { toast('请先为当前人分配菜品', 'error'); return; }
+      if (!ready || !(ready.shares || []).length) { toast(FiscalAdminI18n.t('split.toast.need_alloc'), 'error'); return; }
       await commitSplitAllocationForIssue();
       await issueBill('person', splitState.currentScopeId, {
         nif: $('#splitNif').value, name: $('#splitName').value
@@ -4937,12 +4979,12 @@
     if (isSplitPersonIssued(splitState.currentScopeId)) return;
     applySplitMarkerNameFromInput();
     let cur = currentSplitPerson();
-    if (!cur) { toast('请先输入分单标记名', 'error'); return; }
+    if (!cur) { toast(FiscalAdminI18n.t('split.toast.need_marker'), 'error'); return; }
     readSharesFromDom(cur);
     const key = btn.dataset.addShare;
     const live = localRemainingMap(currentBillDetail, splitState.people);
     const leftQ = live.qty[key];
-    if (!leftQ || !ratPositive(leftQ)) { toast('该菜已分完', 'error'); return; }
+    if (!leftQ || !ratPositive(leftQ)) { toast(FiscalAdminI18n.t('split.toast.dish_gone'), 'error'); return; }
     const one = { num: 1, den: 1 };
     const take = (leftQ.num * one.den <= one.num * leftQ.den) ? normRat(leftQ) : one;
     upsertPersonShare(cur, key, take);
@@ -4968,10 +5010,10 @@
     const totEl = $('#splitPersonTotal');
     if (totEl) {
       if (!cur) {
-        totEl.textContent = '本票预估 —';
+        totEl.textContent = FiscalAdminI18n.t('split.estimate');
       } else {
         const prev = personGrossPreview(currentBillDetail, cur);
-        totEl.textContent = '本票预估 · ' + prev.rows + ' 行 · ' + fmtMoney(prev.gross);
+        totEl.textContent = FiscalAdminI18n.fmt('split.estimate_lines', { n: prev.rows, amount: fmtMoney(prev.gross) });
       }
     }
     if (!cur || !currentBillDetail) return;
@@ -4997,12 +5039,12 @@
   }, true);
 
   $('#btnRefreshBills').onclick = () => withBusy($('#btnRefreshBills'), FiscalAdminI18n.t('common.refreshing'), async () => {
-    try { await refreshBills(); toast('已刷新', 'success'); }
+    try { await refreshBills(); toast(FiscalAdminI18n.t('common.refreshed'), 'success'); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
   $('#btnRefreshInvoices').onclick = () => withBusy($('#btnRefreshInvoices'), FiscalAdminI18n.t('common.refreshing'), async () => {
-    try { await refreshInvoices(); toast('已刷新', 'success'); }
+    try { await refreshInvoices(); toast(FiscalAdminI18n.t('common.refreshed'), 'success'); }
     catch (er) { toast(errText(er), 'error'); throw er; }
   });
 
@@ -5016,9 +5058,9 @@
       if (!saved) return;
       if (productWorkbenchMode === 'pick') {
         addProductToCurrentOrder(saved);
-        toast('已保存并加入本单', 'success');
+        toast(FiscalAdminI18n.t('product.toast.saved_add'), 'success');
       } else {
-        toast('商品已保存', 'success');
+        toast(FiscalAdminI18n.t('product.toast.saved'), 'success');
       }
       closeProductWorkbench();
     } catch (er) { toast(errText(er), 'error'); throw er; }
@@ -5032,14 +5074,14 @@
       const tax = $('#cNif').value.trim();
       if (!assertCustomerNifOrToast(tax)) return;
       if (!tax) {
-        toast('客户 NIF 不能为空', 'error');
+        toast(FiscalAdminI18n.t('customers.err.nif_required'), 'error');
         return;
       }
       await j('POST', '/local/v1/customers', {
         customer_tax_id: tax,
         company_name: $('#cName').value.trim()
       });
-      toast('客户已保存', 'success');
+      toast(FiscalAdminI18n.t('customers.toast.saved'), 'success');
       $('#customerForm').classList.add('hidden');
       catalogCustomers = [];
       await ensureCustomerCatalog();
