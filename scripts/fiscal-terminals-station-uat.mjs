@@ -113,10 +113,32 @@ async function main() {
       list0.local_default_station_id === 'kitchen' && list0.max_fiscal_terminals === 2,
       `local=${list0.local_default_station_id} max=${list0.max_fiscal_terminals}`);
 
+    record('allow-next rejects empty label',
+      uatFail(['req', 'POST', '/local/v1/setup/terminals/allow-next', '--body', JSON.stringify({ label: '  ' })], env));
+
+    const allowOk = uatJson(['req', 'POST', '/local/v1/setup/terminals/allow-next', '--body',
+      JSON.stringify({ label: '收银台 2' })], env);
+    record('allow-next with label', !!(allowOk.pairing_code) && allowOk.label === '收银台 2',
+      JSON.stringify(allowOk));
+
     const tid = randomUUID();
     runUat(['exec-db', '--db', dbPath, '--sql',
       `INSERT INTO fiscal_terminals(id,store_id,label,active,ops_terminal_ref,registered_at,last_seen_at,default_station_id) ` +
-      `VALUES('${tid}','${storeId}','Bar',1,'local:${tid}','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z','')`]);
+      `VALUES('${tid}','${storeId}',NULL,1,'local:${tid}','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z','')`]);
+
+    record('label PUT rejects empty',
+      uatFail(['req', 'PUT', `/local/v1/setup/terminals/${tid}/label`, '--body', JSON.stringify({ label: '' })], env));
+
+    const renamed = uatJson(['req', 'PUT', `/local/v1/setup/terminals/${tid}/label`, '--body',
+      JSON.stringify({ label: ' 吧台 ' })], env);
+    record('label PUT trims and saves', renamed.label === '吧台', JSON.stringify(renamed));
+    runUat(['assert-db', '--db', dbPath, '--sql',
+      `SELECT label FROM fiscal_terminals WHERE id='${tid}' AND label='吧台'`, '--expect-count', '1']);
+    record('assert-db terminal label', true, '吧台');
+
+    const listLabeled = uatJson(['req', 'GET', '/local/v1/setup/terminals'], env);
+    const rowLabeled = (listLabeled.terminals || []).find((t) => t.id === tid);
+    record('list shows updated label', rowLabeled && rowLabeled.label === '吧台', JSON.stringify(rowLabeled));
 
     uatJson(['req', 'PUT', `/local/v1/setup/terminals/${tid}/station`, '--body',
       JSON.stringify({ station_id: 'bar' })], env);

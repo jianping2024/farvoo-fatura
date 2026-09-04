@@ -154,6 +154,9 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("PUT /local/v1/setup/terminals/{terminalId}/station", g(func(w http.ResponseWriter, r *http.Request) {
 		handleSetTerminalStation(w, r, deps)
 	}))
+	mux.HandleFunc("PUT /local/v1/setup/terminals/{terminalId}/label", g(func(w http.ResponseWriter, r *http.Request) {
+		handleSetTerminalLabel(w, r, deps)
+	}))
 	mux.HandleFunc("PUT /local/v1/setup/print-station/local", g(func(w http.ResponseWriter, r *http.Request) {
 		handleSetLocalPrintStation(w, r, deps)
 	}))

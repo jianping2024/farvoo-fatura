@@ -265,7 +265,7 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 |----|------|------|------|
 | id | TEXT PK | 是 | Cookie `fiscal_terminal_id` |
 | store_id | TEXT | 是 | |
-| label | TEXT | 否 | 备注 |
+| label | TEXT | 否 | 备注（店员可读名）；**添加开票电脑 / 改备注**须非空；历史可空行可在列表改 |
 | active | INTEGER | 是 | 1=可用；0=本地停用 |
 | ops_terminal_ref | TEXT | 是 | 本地登记为 `local:{id}`（列名历史保留） |
 | registered_at | TEXT | 是 | UTC |

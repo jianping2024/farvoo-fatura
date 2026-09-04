@@ -98,6 +98,10 @@ func (s *FiscalService) AllowNextTerminal(storeID, actorID, label string) (*Allo
 	if s == nil || s.db == nil {
 		return nil, fmt.Errorf("fiscal: service nil")
 	}
+	label = strings.TrimSpace(label)
+	if label == "" {
+		return nil, coded(ErrCodeValidationFailed, "label required")
+	}
 	used, max, err := s.TerminalSummary(storeID)
 	if err != nil {
 		return nil, err
@@ -105,7 +109,7 @@ func (s *FiscalService) AllowNextTerminal(storeID, actorID, label string) (*Allo
 	if used >= max {
 		return nil, coded(ErrCodeTerminalsFull, "terminal slots full")
 	}
-	code, exp, err := s.db.CreateTerminalPairCode(storeID, actorID, strings.TrimSpace(label))
+	code, exp, err := s.db.CreateTerminalPairCode(storeID, actorID, label)
 	if err != nil {
 		return nil, err
 	}
@@ -210,6 +214,23 @@ func (s *FiscalService) SetFiscalTerminalDefaultStation(storeID, terminalID, sta
 	}
 	_ = s.db.InsertAuditLog(actorID, "TERMINAL_STATION_SET", "fiscal_terminal", terminalID,
 		fmt.Sprintf(`{"station_id":%q}`, strings.TrimSpace(stationID)))
+	return nil
+}
+
+// SetFiscalTerminalLabel sets LAN terminal note — ONLY terminal label writer.
+func (s *FiscalService) SetFiscalTerminalLabel(storeID, terminalID, label, actorID string) error {
+	if s == nil || s.db == nil {
+		return fmt.Errorf("fiscal: service nil")
+	}
+	label = strings.TrimSpace(label)
+	if label == "" {
+		return coded(ErrCodeValidationFailed, "label required")
+	}
+	if err := s.db.SetFiscalTerminalLabel(storeID, terminalID, label); err != nil {
+		return err
+	}
+	_ = s.db.InsertAuditLog(actorID, "TERMINAL_LABEL_SET", "fiscal_terminal", terminalID,
+		fmt.Sprintf(`{"label":%q}`, label))
 	return nil
 }
 

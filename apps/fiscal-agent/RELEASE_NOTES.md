@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.94
+
+**开票电脑：备注必填 + 列表可改（收掉「电脑名称」空列）**
+
+- **唯一写法 · 改备注：**仅 `SetFiscalTerminalLabel`（store + service）→ `PUT …/terminals/{id}/label`；Admin 仅 `saveTerminalLabel` / `mountTerminalLabelInput`。
+- **唯一写法 · 添加时备注：**`AllowNextTerminal` 拒绝空 label；Admin `startAddTerminalWizard` 必填后再发卡。
+- 表头 `电脑名称` → `备注`；空态 placeholder `未备注`；历史空备注可在列表内联改。
+
 ## 0.4.93
 
 **设置菜单：「开票电脑」缩短文案**
