@@ -223,6 +223,7 @@ async function main() {
       row.customer_tax_id === '999999990' &&
       !!row.atcud &&
       row.document_status === 'SIGNED' &&
+      row.payment_method === 'CASH' &&
       row.invoice_date === undefined &&
       j.total >= 1 &&
       j.page === 1 &&
@@ -231,7 +232,7 @@ async function main() {
       'list-invoices-hash-customer',
       ok,
       row
-        ? `sed=${!!row.system_entry_date} hash=${!!row.hash} nif=${row.customer_tax_id} total=${j.total}`
+        ? `sed=${!!row.system_entry_date} hash=${!!row.hash} nif=${row.customer_tax_id} pay=${row.payment_method} total=${j.total}`
         : 'row missing',
     );
   } catch (e) {
@@ -294,6 +295,18 @@ async function main() {
     );
   } catch (e) {
     record('list-invoices-pagination-page-size-20', false, String(e));
+  }
+
+  try {
+    const raw = await uatCmd('req', 'GET', `/local/v1/fiscal-documents/${issue.document_id}`);
+    const j = JSON.parse(raw);
+    record(
+      'get-invoice-detail-payment',
+      j.document_id === issue.document_id && j.payment_method === 'CASH',
+      `pay=${j.payment_method}`,
+    );
+  } catch (e) {
+    record('get-invoice-detail-payment', false, String(e));
   }
 
   try {

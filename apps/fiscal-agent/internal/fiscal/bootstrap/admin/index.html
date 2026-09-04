@@ -306,27 +306,46 @@
       background: linear-gradient(90deg, var(--brand-mid), var(--gold));
     }
     .home-recent .panel-title { font-size: 0.875rem; font-weight: 700; }
-    /* ONLY home today-invoice table:
-     * 签发时刻 / 票号 / 购方 / 来源 / 金额 / 操作；购方+来源吃中间宽度；票号量最长。 */
-    .home-recent .list-table { table-layout: fixed; width: 100%; }
+    /* ONLY clerk invoice tables (home today + invoice list):
+     * 签发时刻 / 票号 / 购方 / 来源 / 付款方式 / 金额 / 操作；购方+来源吃中间宽度；票号量最长。 */
+    .home-recent .list-table,
+    .invoices-table.list-table { table-layout: fixed; width: 100%; }
     .home-recent .list-table th,
-    .home-recent .list-table td { padding-left: 0.75rem; padding-right: 0.75rem; }
+    .home-recent .list-table td,
+    .invoices-table.list-table th,
+    .invoices-table.list-table td { padding-left: 0.75rem; padding-right: 0.75rem; }
     .home-recent .list-table th:first-child,
-    .home-recent .list-table td:first-child { padding-left: 1.25rem; }
+    .home-recent .list-table td:first-child,
+    .invoices-table.list-table th:first-child,
+    .invoices-table.list-table td:first-child { padding-left: 1.25rem; }
     .home-recent .list-table th:last-child,
-    .home-recent .list-table td:last-child { padding-right: 1.25rem; }
-    .home-recent .list-table .col-when { width: 7.5rem; white-space: nowrap; }
-    .home-recent .list-table .col-no { width: var(--home-col-no-w, 10rem); white-space: nowrap; }
+    .home-recent .list-table td:last-child,
+    .invoices-table.list-table th:last-child,
+    .invoices-table.list-table td:last-child { padding-right: 1.25rem; }
+    .home-recent .list-table .col-when,
+    .invoices-table.list-table .col-when { width: 7.5rem; white-space: nowrap; }
+    .home-recent .list-table .col-no,
+    .invoices-table.list-table .col-no { width: var(--home-col-no-w, 10rem); white-space: nowrap; }
     .home-recent .list-table .col-buyer,
-    .home-recent .list-table .col-source { min-width: 0; overflow: hidden; }
-    .home-recent .list-table td.col-source {
+    .home-recent .list-table .col-source,
+    .invoices-table.list-table .col-buyer,
+    .invoices-table.list-table .col-source { min-width: 0; overflow: hidden; }
+    .home-recent .list-table td.col-source,
+    .invoices-table.list-table td.col-source {
       white-space: nowrap; text-overflow: ellipsis;
     }
-    .home-recent .list-table .col-money {
+    .home-recent .list-table .col-pay,
+    .invoices-table.list-table .col-pay {
+      width: 5.75rem; white-space: nowrap;
+    }
+    .home-recent .list-table .col-money,
+    .invoices-table.list-table .col-money {
       width: 5.5rem; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
     }
     .home-recent .list-table th.col-actions,
-    .home-recent .list-table td.col-actions { width: 4.5rem; white-space: nowrap; }
+    .home-recent .list-table td.col-actions,
+    .invoices-table.list-table th.col-actions,
+    .invoices-table.list-table td.col-actions { width: 4.5rem; white-space: nowrap; }
     .panel {
       background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
       padding: 1.1rem 1.25rem; box-shadow: var(--shadow); margin-bottom: 1rem;
@@ -708,6 +727,7 @@
                   <th class="col-no" data-i18n="col.doc_no">票号</th>
                   <th class="col-buyer" data-i18n="col.buyer">购方</th>
                   <th class="col-source" data-i18n="col.source">来源</th>
+                  <th class="col-pay" data-i18n="pay.label">付款方式</th>
                   <th class="col-money" data-i18n="col.amount">金额</th>
                   <th class="col-actions" data-i18n="common.actions">操作</th>
                 </tr></thead>
@@ -949,11 +969,12 @@
             <table class="invoices-table list-table">
               <thead>
                 <tr>
-                  <th data-i18n="col.issued_at">签发时刻</th>
-                  <th data-i18n="col.doc_no">票号</th>
-                  <th data-i18n="col.amount">金额</th>
-                  <th data-i18n="col.buyer">购方</th>
-                  <th data-i18n="col.source">来源</th>
+                  <th class="col-when" data-i18n="col.issued_at">签发时刻</th>
+                  <th class="col-no" data-i18n="col.doc_no">票号</th>
+                  <th class="col-buyer" data-i18n="col.buyer">购方</th>
+                  <th class="col-source" data-i18n="col.source">来源</th>
+                  <th class="col-pay" data-i18n="pay.label">付款方式</th>
+                  <th class="col-money" data-i18n="col.amount">金额</th>
                   <th class="col-actions" data-i18n="common.actions">操作</th>
                 </tr>
               </thead>
@@ -1969,6 +1990,15 @@
     return label ? String(label) : '—';
   }
 
+  /** ONLY payment-method label (home + invoice list + detail); maps pay.* codes. */
+  function formatInvoicePaymentLabel(inv) {
+    const code = String((inv && inv.payment_method) || '').trim().toUpperCase();
+    if (!code) return '—';
+    const key = 'pay.' + code;
+    const label = FiscalAdminI18n.t(key);
+    return (label && label !== key) ? label : code;
+  }
+
   function invoiceDetailRow(label, value) {
     return '<div class="detail-row"><dt>' + label + '</dt><dd>' + (value || '—') + '</dd></div>';
   }
@@ -1997,10 +2027,11 @@
     let body =
       invoiceDetailRow(FiscalAdminI18n.t('col.issued_at'), fmtTime(when)) +
       invoiceDetailRow(FiscalAdminI18n.t('col.doc_no'), inv.invoice_no) +
-      invoiceDetailRow(FiscalAdminI18n.t('col.amount'), fmtMoney(inv.gross_total)) +
       invoiceDetailRow(FiscalAdminI18n.t('buyer.nif'), inv.customer_tax_id) +
       invoiceDetailRow(FiscalAdminI18n.t('buyer.name'), inv.customer_name) +
       invoiceDetailRow(FiscalAdminI18n.t('col.source'), inv.order_label) +
+      invoiceDetailRow(FiscalAdminI18n.t('pay.label'), formatInvoicePaymentLabel(inv)) +
+      invoiceDetailRow(FiscalAdminI18n.t('col.amount'), fmtMoney(inv.gross_total)) +
       invoiceDetailRow('ATCUD', inv.atcud) +
       invoiceDetailRow(FiscalAdminI18n.t('col.type'), inv.document_type) +
       invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.doc_status'), inv.document_status) +
@@ -2888,7 +2919,7 @@
     if (!tbody) return;
     const rows = (list || []).slice(0, 8);
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="hint">' + FiscalAdminI18n.t('home.recent.empty') + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="hint">' + FiscalAdminI18n.t('home.recent.empty') + '</td></tr>';
       applyHomeRecentColNoWidth([]);
       return;
     }
@@ -2898,6 +2929,7 @@
         '<td class="col-no">' + formatInvoiceNoCell(inv) + '</td>' +
         '<td class="col-buyer">' + formatInvoiceBuyerCell(inv) + '</td>' +
         '<td class="col-source">' + formatInvoiceOrderCell(inv) + '</td>' +
+        '<td class="col-pay">' + formatInvoicePaymentLabel(inv) + '</td>' +
         '<td class="col-money">' + fmtMoney(inv.gross_total) + '</td>' +
         '<td class="col-actions">' + invoiceReprintButtonHtml(inv.document_id) + '</td></tr>'
     ).join('');
@@ -3782,7 +3814,7 @@
 
   async function refreshInvoices() {
     const tbody = $('#invoicesTbody');
-    tbody.innerHTML = '<tr><td colspan="6" class="hint">' + FiscalAdminI18n.t('common.loading') + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="hint">' + FiscalAdminI18n.t('common.loading') + '</td></tr>';
     if (!invoiceDateFilterCtrl) {
       initInvoiceFilters();
     }
@@ -3809,15 +3841,16 @@
       const emptyMsg = term
         ? FiscalAdminI18n.fmt('invoices.empty_match', { type: typeLabel })
         : FiscalAdminI18n.fmt('invoices.empty_range', { type: typeLabel });
-      tbody.innerHTML = '<tr><td colspan="6" class="hint">' + emptyMsg + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="hint">' + emptyMsg + '</td></tr>';
     } else {
       tbody.innerHTML = list.map(inv =>
         '<tr class="clickable" data-inv="' + inv.document_id + '">' +
-          '<td>' + formatInvoiceWhenCell(inv) + '</td>' +
-          '<td>' + formatInvoiceNoCell(inv) + '</td>' +
-          '<td>' + fmtMoney(inv.gross_total) + '</td>' +
-          '<td>' + formatInvoiceBuyerCell(inv) + '</td>' +
-          '<td>' + formatInvoiceOrderCell(inv) + '</td>' +
+          '<td class="col-when">' + formatInvoiceWhenCell(inv) + '</td>' +
+          '<td class="col-no">' + formatInvoiceNoCell(inv) + '</td>' +
+          '<td class="col-buyer">' + formatInvoiceBuyerCell(inv) + '</td>' +
+          '<td class="col-source">' + formatInvoiceOrderCell(inv) + '</td>' +
+          '<td class="col-pay">' + formatInvoicePaymentLabel(inv) + '</td>' +
+          '<td class="col-money">' + fmtMoney(inv.gross_total) + '</td>' +
           '<td class="col-actions">' + invoiceReprintButtonHtml(inv.document_id) + '</td></tr>'
       ).join('');
     }

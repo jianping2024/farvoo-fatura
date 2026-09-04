@@ -82,11 +82,22 @@ func TestListInvoicesIncludesHashCustomerAndSource(t *testing.T) {
 	if it.OrderLabel != "桌 12 · Ana" {
 		t.Fatalf("order_label: got %q", it.OrderLabel)
 	}
+	if it.PaymentMethod != "CASH" {
+		t.Fatalf("payment_method: got %q want CASH", it.PaymentMethod)
+	}
 	if it.ATCUD == "" || it.InvoiceNo == "" {
 		t.Fatalf("atcud/invoice_no empty: %+v", it)
 	}
 	if page.GrossTotalSum != "10.00" {
 		t.Fatalf("gross_total_sum: got %q", page.GrossTotalSum)
+	}
+
+	detail, err := db.GetInvoiceDetail(rec.DocumentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if detail.PaymentMethod != "CASH" {
+		t.Fatalf("detail payment_method: got %q want CASH", detail.PaymentMethod)
 	}
 }
 

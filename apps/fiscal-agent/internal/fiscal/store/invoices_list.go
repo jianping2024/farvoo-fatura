@@ -26,6 +26,7 @@ type InvoiceListItem struct {
 	CustomerName    string `json:"customer_name,omitempty"`
 	SourceSaleID    string `json:"source_sale_id,omitempty"`
 	OrderLabel      string `json:"order_label,omitempty"`
+	PaymentMethod   string `json:"payment_method,omitempty"` // first invoice_payments.method
 }
 
 // InvoiceListQuery filters GET /local/v1/fiscal-documents (invoice_date + search + pagination).
@@ -51,11 +52,12 @@ type InvoiceListResult struct {
 // InvoiceDetail extends IssueRecord with totals for GET /local/v1/fiscal-documents/{id}.
 type InvoiceDetail struct {
 	IssueRecord
-	GrossTotal          string                `json:"gross_total"`
-	NetTotal            string                `json:"net_total"`
-	TaxPayable          string                `json:"tax_payable"`
-	SourceSaleID        string                `json:"source_sale_id,omitempty"`
-	OrderLabel          string                `json:"order_label,omitempty"`
+	GrossTotal               string                `json:"gross_total"`
+	NetTotal                 string                `json:"net_total"`
+	TaxPayable               string                `json:"tax_payable"`
+	SourceSaleID             string                `json:"source_sale_id,omitempty"`
+	OrderLabel               string                `json:"order_label,omitempty"`
+	PaymentMethod            string                `json:"payment_method,omitempty"` // first invoice_payments.method
 	CreditedGrossTotal       string                `json:"credited_gross_total,omitempty"`
 	RemainingGrossTotal      string                `json:"remaining_gross_total,omitempty"`
 	Lines                    []CreditLineRemaining `json:"lines,omitempty"`
@@ -145,7 +147,8 @@ func (d *DB) ListInvoices(q InvoiceListQuery) (*InvoiceListResult, error) {
 		SELECT i.id, i.invoice_no, i.atcud, i.document_type, i.document_status, i.print_status,
 			i.gross_total, i.system_entry_date, i.hash, IFNULL(i.previous_hash,''),
 			IFNULL(cs.customer_tax_id,''), IFNULL(cs.company_name,''),
-			IFNULL(i.source_sale_id,''), IFNULL(i.display_meta_json,'')` + where +
+			IFNULL(i.source_sale_id,''), IFNULL(i.display_meta_json,''),
+			IFNULL(` + primaryPaymentMethodSubquery + `, '')` + where +
 		` ORDER BY i.created_at DESC LIMIT ? OFFSET ?`
 	selectArgs := append(append([]any{}, args...), pageSize, offset)
 
@@ -163,7 +166,7 @@ func (d *DB) ListInvoices(q InvoiceListQuery) (*InvoiceListResult, error) {
 			&it.DocumentID, &it.InvoiceNo, &it.ATCUD, &it.DocumentType, &it.DocumentStatus, &it.PrintStatus,
 			&it.GrossTotal, &it.SystemEntryDate, &it.Hash, &it.PreviousHash,
 			&it.CustomerTaxID, &it.CustomerName,
-			&it.SourceSaleID, &displayMeta,
+			&it.SourceSaleID, &displayMeta, &it.PaymentMethod,
 		); err != nil {
 			return nil, err
 		}
@@ -184,6 +187,23 @@ func (d *DB) ListInvoices(q InvoiceListQuery) (*InvoiceListResult, error) {
 	}, nil
 }
 
+// primaryPaymentMethodSubquery is the ONLY SQL rule for Admin payment_method
+// (first invoice_payments row by rowid). Expects invoices aliased as `i`.
+const primaryPaymentMethodSubquery = `(SELECT p.method FROM invoice_payments p WHERE p.invoice_id = i.id ORDER BY p.rowid LIMIT 1)`
+
+// primaryPaymentMethod is the ONLY Go reader for a single invoice's Admin payment_method.
+func (d *DB) primaryPaymentMethod(invoiceID string) (string, error) {
+	var method string
+	err := d.SQL.QueryRow(
+		`SELECT IFNULL((SELECT p.method FROM invoice_payments p WHERE p.invoice_id = ? ORDER BY p.rowid LIMIT 1), '')`,
+		invoiceID,
+	).Scan(&method)
+	if err != nil {
+		return "", err
+	}
+	return method, nil
+}
+
 // GetInvoiceDetail loads one invoice by id.
 func (d *DB) GetInvoiceDetail(invoiceID string) (*InvoiceDetail, error) {
 	rec, err := d.GetIssueRecordByID(invoiceID)
@@ -200,13 +220,18 @@ func (d *DB) GetInvoiceDetail(invoiceID string) (*InvoiceDetail, error) {
 	if err != nil {
 		return nil, err
 	}
+	pay, err := d.primaryPaymentMethod(invoiceID)
+	if err != nil {
+		return nil, err
+	}
 	return &InvoiceDetail{
-		IssueRecord:  *rec,
-		GrossTotal:   gross,
-		NetTotal:     net,
-		TaxPayable:   tax,
-		SourceSaleID: sourceID,
-		OrderLabel:   orderLabelFromMeta(sourceID, displayMeta),
+		IssueRecord:   *rec,
+		GrossTotal:    gross,
+		NetTotal:      net,
+		TaxPayable:    tax,
+		SourceSaleID:  sourceID,
+		OrderLabel:    orderLabelFromMeta(sourceID, displayMeta),
+		PaymentMethod: pay,
 	}, nil
 }
 

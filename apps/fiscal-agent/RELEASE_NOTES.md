@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.96
+
+**发票列表/详情/工作台：展示付款方式（来源与金额之间）**
+
+- **唯一写法 · 取数：**列表 SQL 仅 `primaryPaymentMethodSubquery`；详情仅 `primaryPaymentMethod`（皆为首条 `invoice_payments` by rowid）→ JSON `payment_method`。
+- **唯一写法 · 文案：**Admin 仅 `formatInvoicePaymentLabel`（`pay.*`）；表头复用 `pay.label`。
+- **唯一写法 · 列序/列宽：**工作台今日发票与发票列表同为 签发时刻→票号→购方→来源→付款方式→金额→操作；共用 clerk 表列宽 CSS（仍在工作台顶栏同宽主栏内，不加宽）。
+
 ## 0.4.95
 
 **开票电脑：档口下拉撑满列 + 停用两字 + 最近使用时分秒**
