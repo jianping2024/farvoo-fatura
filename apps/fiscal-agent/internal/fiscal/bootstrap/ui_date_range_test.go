@@ -52,6 +52,12 @@ func TestFiscalUIDateRangeAssets(t *testing.T) {
 	if n := strings.Count(js, "function paintPresets()"); n != 1 {
 		t.Fatalf("paintPresets must appear once, got %d", n)
 	}
+	if n := strings.Count(js, "var PRESET_IDS = ['today', 'yesterday', 'last7', 'month'];"); n != 1 {
+		t.Fatalf("PRESET_IDS must be the four quick pills only (no custom chip), got %d", n)
+	}
+	if strings.Contains(js, "['today', 'yesterday', 'last7', 'month', 'custom']") {
+		t.Fatal("must not keep custom as a clickable PRESET_IDS chip")
+	}
 	if strings.Contains(js, "label: '今天'") || strings.Contains(js, "label: \"今天\"") {
 		t.Fatal("preset labels must not be hardcoded on PRESET ids; use getLabels only")
 	}
@@ -121,12 +127,18 @@ func TestAdminHTMLInvoiceFiltersUnique(t *testing.T) {
 		t.Fatalf("relabel() must be invoked from exactly one locale loop, got %d", n)
 	}
 	for _, key := range []string{
-		"date.today", "date.yesterday", "date.last7", "date.month", "date.custom",
+		"date.today", "date.yesterday", "date.last7", "date.month",
 		"date.group_aria", "date.from", "date.to", "date.apply", "date.err_need", "date.err_order",
 	} {
 		if !strings.Contains(string(fiscalUIAdminI18nJS), "'"+key+"'") {
 			t.Fatalf("admin-i18n missing %s", key)
 		}
+	}
+	if strings.Contains(string(fiscalUIAdminI18nJS), "'date.custom'") {
+		t.Fatal("date.custom i18n must be removed (no custom preset pill)")
+	}
+	if strings.Contains(adminHTML, "date.custom") {
+		t.Fatal("listDateRangeLabels must not reference date.custom")
 	}
 	if !strings.Contains(adminHTML, "invoices.empty_match") || !strings.Contains(adminHTML, "invoices.empty_range") {
 		t.Fatal("invoice list must distinguish empty range vs empty search via i18n keys")

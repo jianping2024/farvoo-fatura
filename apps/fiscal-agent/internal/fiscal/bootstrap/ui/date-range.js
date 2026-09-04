@@ -1,4 +1,5 @@
-/* Fiscal Admin date range — presets + always-on from/to DatePickers (no expand layout shift).
+/* Fiscal Admin date range — quick presets + always-on from/to DatePickers.
+ * Free range: edit pickers → internal preset "custom" → Apply (no "自定义" pill).
  * API: FiscalUI.createDateRangeFilter(container, options) -> { getRange, setPreset, relabel }
  *       FiscalUI.dateRangePresetToDates(preset, timezone)
  * Labels: options.getLabels() is the ONLY live copy path (re-read on paint/relabel).
@@ -7,7 +8,8 @@
 (function (global) {
   'use strict';
 
-  var PRESET_IDS = ['today', 'yesterday', 'last7', 'month', 'custom'];
+  /** ONLY clickable preset pills (free range is pickers, not a fifth chip). */
+  var PRESET_IDS = ['today', 'yesterday', 'last7', 'month'];
 
   function ymdInTZ(date, tz) {
     return new Intl.DateTimeFormat('en-CA', {
@@ -35,11 +37,10 @@
     return ymdInTZ(new Date(utc), tz);
   }
 
-  /** ONLY preset → {from,to} calculator (invoice_date filter). */
+  /** ONLY preset → {from,to} calculator (invoice_date filter). Unknown → today. */
   function dateRangePresetToDates(preset, timezone) {
     var tz = timezone || 'Europe/Lisbon';
     var today = ymdInTZ(new Date(), tz);
-    if (preset === 'today') return { preset: 'today', from: today, to: today };
     if (preset === 'yesterday') {
       var y = addDaysYMD(today, -1, tz);
       return { preset: 'yesterday', from: y, to: y };
@@ -52,7 +53,7 @@
       var monthStart = parts.y + '-' + String(parts.m).padStart(2, '0') + '-01';
       return { preset: 'month', from: monthStart, to: today };
     }
-    return { preset: 'custom', from: today, to: today };
+    return { preset: 'today', from: today, to: today };
   }
 
   function resolveContainer(container) {
@@ -84,7 +85,6 @@
       yesterday: '昨天',
       last7: '近7天',
       month: '本月',
-      custom: '自定义',
       groupAria: '日期筛选',
       from: '从',
       to: '至',
@@ -120,7 +120,7 @@
     el.classList.add('fiscal-date-range');
     el.innerHTML =
       '<div class="fiscal-date-presets" role="group" data-role="presets"></div>' +
-      '<div class="fiscal-date-custom" data-role="custom">' +
+      '<div class="fiscal-date-custom" data-role="range">' +
       '  <div class="fiscal-date-picker-mount" data-role="from-mount"></div>' +
       '  <span class="fiscal-date-sep" aria-hidden="true">—</span>' +
       '  <div class="fiscal-date-picker-mount" data-role="to-mount"></div>' +
@@ -129,7 +129,7 @@
       '<p class="fiscal-date-error hidden" data-role="error"></p>';
 
     var presetRoot = el.querySelector('[data-role="presets"]');
-    var customPanel = el.querySelector('[data-role="custom"]');
+    var rangePanel = el.querySelector('[data-role="range"]');
     var fromMount = el.querySelector('[data-role="from-mount"]');
     var toMount = el.querySelector('[data-role="to-mount"]');
     var applyBtn = el.querySelector('[data-role="apply"]');
@@ -139,15 +139,18 @@
     var syncingPickers = false;
 
     var stored = loadStored(storageKey);
-    if (stored && stored.preset) state.preset = stored.preset;
     if (stored && stored.preset === 'custom' && stored.from && stored.to) {
+      state.preset = 'custom';
       state.from = stored.from;
       state.to = stored.to;
+    } else if (stored && PRESET_IDS.indexOf(stored.preset) >= 0) {
+      state.preset = stored.preset;
     }
 
     function syncRangeFromPreset() {
       if (state.preset === 'custom') return;
       var r = dateRangePresetToDates(state.preset, tz);
+      state.preset = r.preset;
       state.from = r.from;
       state.to = r.to;
     }
@@ -167,7 +170,7 @@
         state.preset = 'custom';
         state.from = ymd;
         paintPresets();
-        syncCustomEnabled();
+        syncApplyVisible();
       },
     });
     var toPicker = global.FiscalUI.createDatePicker(toMount, {
@@ -180,7 +183,7 @@
         state.preset = 'custom';
         state.to = ymd;
         paintPresets();
-        syncCustomEnabled();
+        syncApplyVisible();
       },
     });
 
@@ -191,9 +194,10 @@
       syncingPickers = false;
     }
 
-    function syncCustomEnabled() {
+    /** Apply only for free-range edits (preset clicks query immediately). */
+    function syncApplyVisible() {
       var isCustom = state.preset === 'custom';
-      customPanel.classList.toggle('is-custom', isCustom);
+      rangePanel.classList.toggle('is-custom', isCustom);
       applyBtn.disabled = !isCustom;
       applyBtn.classList.toggle('hidden', !isCustom);
     }
@@ -220,7 +224,7 @@
       paintPresets();
       syncRangeFromPreset();
       syncPickersFromState();
-      syncCustomEnabled();
+      syncApplyVisible();
       errEl.classList.add('hidden');
       errEl.textContent = '';
       fromPicker.relabel();
@@ -252,17 +256,13 @@
       onChange(getRange());
     }
 
+    /** ONLY quick-preset setter (today/yesterday/last7/month). Free range = pickers. */
     function setPreset(preset) {
+      if (PRESET_IDS.indexOf(preset) < 0) return;
       state.preset = preset;
-      if (preset !== 'custom') {
-        syncRangeFromPreset();
-      } else if (!state.from || !state.to) {
-        var fallback = dateRangePresetToDates('today', tz);
-        if (!state.from) state.from = fallback.from;
-        if (!state.to) state.to = fallback.to;
-      }
+      syncRangeFromPreset();
       paint();
-      if (preset !== 'custom') emitChange();
+      emitChange();
     }
 
     function getRange() {
