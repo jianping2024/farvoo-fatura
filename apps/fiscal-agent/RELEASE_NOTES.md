@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.92
+
+**Admin 报错 toast：只说一次 + i18n（收掉双弹窗）**
+
+- **唯一写法 · 错误 toast：**仅 `FiscalUI.reportError`（`formatError` 优先用户文案 / `errors.*`，不拼 `code: message`）。
+- **唯一写法 · 按钮忙态失败：**仅 `withBusy` 内 `catch → reportError`；业务函数（如 `requireStation`）只 `throw`，禁止先 toast 再 throw。
+- 约束：`.cursor/rules/fiscal-admin-error-toast.mdc`；缺默认档口不再叠中文引导 + `validation_failed: station_id required`。
+
 ## 0.4.91
 
 **开票电脑：重新启用 / 删除停用行 / 每机默认打印档口**
