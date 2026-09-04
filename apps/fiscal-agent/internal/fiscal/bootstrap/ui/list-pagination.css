@@ -100,6 +100,7 @@
   height: 2rem;
   padding: 0.35rem 0.65rem;
   font-size: 0.85rem;
+  border-radius: 10px;
 }
 
 .admin-list-toolbar__count {
@@ -121,25 +122,26 @@
   width: auto;
 }
 
-button.btn-icon-refresh {
+/* ONLY toolbar control level (peer of search height 2rem). Icon = --icon. */
+button.btn-toolbar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
+  box-sizing: border-box;
   height: 2rem;
-  min-width: 2rem;
-  padding: 0 !important;
-  border-radius: 8px !important;
+  min-height: 2rem;
+  padding: 0 0.75rem !important;
+  border-radius: 10px !important;
   background: #fff !important;
-  color: var(--muted, #5c6b64) !important;
+  color: var(--ink, #14201b) !important;
   border: 1px solid var(--line, #ddd4c4) !important;
   box-shadow: none !important;
-  font-size: 1.05rem;
-  line-height: 1;
+  font-size: 0.85rem !important;
   font-weight: 600;
+  line-height: 1;
 }
 
-button.btn-icon-refresh:hover {
+button.btn-toolbar:hover {
   color: var(--ink, #14201b) !important;
   border-color: var(--mode, #0b3d2e) !important;
   background: #f7f3ea !important;
@@ -148,9 +150,22 @@ button.btn-icon-refresh:hover {
   box-shadow: none !important;
 }
 
-button.btn-filter-toggle.active {
+button.btn-toolbar--icon {
+  width: 2rem;
+  min-width: 2rem;
+  padding: 0 !important;
+  color: var(--muted, #5c6b64) !important;
+  font-size: 1.05rem !important;
+}
+
+button.btn-toolbar--icon:hover {
+  color: var(--ink, #14201b) !important;
+}
+
+button.btn-toolbar.btn-filter-toggle.active {
   border-color: var(--mode, #0b3d2e) !important;
   font-weight: 700;
+  background: #f0f7f2 !important;
 }
 
 /* ONLY Filtrar panel (dates); closed = display:none. No footer row. */

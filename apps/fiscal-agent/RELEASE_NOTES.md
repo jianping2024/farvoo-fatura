@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.105
+
+**按钮等级锁定 + 工具条同高 + 新建开票进入口条**
+
+- **唯一写法 · 按钮等级：**仅 `primary`（裸 `button`）/ `secondary` / `ghost` / `btn-toolbar`（+ `btn-toolbar--icon`）/ 尺寸 `btn-sm`；禁止再发明全局按钮族；PIN/日期 pill 等仅控件内特例。
+- **唯一写法 · 工具条控件：**仅 `list-pagination.css` 的 `.btn-toolbar`（高 `2rem`、白底、圆角 10px 与搜索同）；刷新=`btn-toolbar btn-toolbar--icon`；筛选=`btn-toolbar`；收掉 `btn-icon-refresh` 与工具条裸 `secondary`。
+- **唯一写法 · 新建开票：**仅 `#ctaNewOrder` 在 `.hub-entry-strip`、位于 `#ctaPendingBills` 右侧；顶栏只留欢迎语 + 日期 chip。
+
 ## 0.4.104
 
 **发票顶栏卡片语言对齐列表 + Filtrar 收掉空 footer**
