@@ -370,8 +370,15 @@ func TestAdminHTMLInvoiceHubLayout(t *testing.T) {
 	if strings.Contains(section, `statPendingOrders`) || strings.Contains(section, "home-recent") {
 		t.Fatal("invoice hub must not include pending orders or home-recent mini-table")
 	}
+	if !strings.Contains(section, `data-i18n="common.all">全部</span><small>ALL</small>`) {
+		t.Fatal("全部 tab must show ALL under label (same pattern as FT/FS)")
+	}
 	if !strings.Contains(section, `data-i18n="doc.tab.FT">完整发票</span><small>FT</small>`) {
 		t.Fatal("invoice type tabs must show business label first, abbr second")
+	}
+	if !strings.Contains(adminHTML, "align-items: center; gap: 0.1rem;") ||
+		!strings.Contains(adminHTML, ".invoice-type-tabs button {\n      min-width: 5.5rem; padding: 0.4rem 0.7rem; line-height: 1.2; text-align: center;") {
+		t.Fatal("invoice type tab cards must center label + abbr")
 	}
 	if strings.Contains(section, `>FT<small data-i18n="doc.tab.FT"`) {
 		t.Fatal("do not put FT abbr before business label on type tabs")

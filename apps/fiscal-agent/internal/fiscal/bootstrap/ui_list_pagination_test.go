@@ -34,6 +34,12 @@ func TestAdminListToolbarUnique(t *testing.T) {
 	if n := strings.Count(css, ".admin-list-filter-panel {"); n != 1 {
 		t.Fatalf(".admin-list-filter-panel must have exactly one rule, got %d", n)
 	}
+	if n := strings.Count(css, ".admin-list-filter-panel__row {"); n != 1 {
+		t.Fatalf(".admin-list-filter-panel__row must have exactly one rule, got %d", n)
+	}
+	if strings.Contains(css, "admin-list-filter-panel__footer") {
+		t.Fatal("filter panel must not keep empty __footer row")
+	}
 	if n := strings.Count(css, "/* ONLY sticky last-column actions"); n != 1 {
 		t.Fatalf("sticky col-actions must be the ONLY sticky actions block, got %d", n)
 	}
@@ -156,6 +162,36 @@ func TestAdminHTMLInvoiceListPaginationUnique(t *testing.T) {
 	}
 	if strings.Count(adminHTML, `id="invoiceTypeTabs"`) != 1 {
 		t.Fatal("invoiceTypeTabs must exist exactly once")
+	}
+	if strings.Contains(adminHTML, "btnInvoiceFilterApply") || strings.Contains(adminHTML, "apply_filters") {
+		t.Fatal("invoice filter panel must not keep redundant Apply (presets + date-range Apply suffice)")
+	}
+	if strings.Count(adminHTML, `id="btnInvoiceFilterClear"`) != 1 {
+		t.Fatal("invoice filter Clear must exist exactly once (same row as dates)")
+	}
+	if !strings.Contains(adminHTML, `class="admin-list-filter-panel__row"`) {
+		t.Fatal("invoice filter must use __row (dates + Clear), not footer")
+	}
+	if strings.Contains(adminHTML, "admin-list-filter-panel__footer") {
+		t.Fatal("admin HTML must not keep filter __footer")
+	}
+	if n := strings.Count(adminHTML, "/* ONLY admin surface card chrome"); n != 1 {
+		t.Fatalf("surface card chrome must be documented once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, ".home-topbar,\n    .panel {"); n != 1 {
+		t.Fatalf("home-topbar+panel card chrome must be a single shared rule, got %d", n)
+	}
+	if strings.Contains(adminHTML, ".home-topbar {\n      height: 52px; background: rgba") {
+		t.Fatal("home-topbar must not keep sticky glass strip chrome")
+	}
+	if strings.Count(adminHTML, ".home-topbar {\n      display: flex") != 1 {
+		t.Fatal("home-topbar layout rule must appear once (chrome shared with .panel)")
+	}
+	if strings.Count(adminHTML, ".panel {\n      padding: 1.1rem 1.25rem") != 1 {
+		t.Fatal("panel layout padding must appear once (chrome shared with home-topbar)")
+	}
+	if !strings.Contains(adminHTML, ".hub-metric {\n      display: inline-flex; align-items: center; gap: 0.65rem;\n      min-height: 2.75rem; padding: 0.5rem 0.9rem;\n      background: #fff; border: 1px solid var(--line); border-radius: var(--radius);\n      box-shadow: var(--shadow);\n    }") {
+		t.Fatal("hub-metric must use var(--radius) + shadow once (no third hardcoded 10px radius)")
 	}
 	for _, dt := range []string{"FT", "FS", "NC", "ND"} {
 		if !strings.Contains(adminHTML, `data-invoice-type="`+dt+`"`) {

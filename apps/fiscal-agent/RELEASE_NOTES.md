@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.104
+
+**发票顶栏卡片语言对齐列表 + Filtrar 收掉空 footer**
+
+- **唯一写法 · 表面卡片：**仅 `.home-topbar, .panel` 共享 `background/border/radius/shadow`；顶栏非 sticky 玻璃条；水平 padding `1.25rem` 与 panel 内容对齐。
+- **唯一写法 · hub 指标圆角：**`.hub-metric` 仅 `var(--radius)`（禁止第三套 `10px`）。
+- **唯一写法 · Filtrar 操作：**日期控件 +「清除」同一 `__row`；禁止 `__footer`；禁止面板底「应用」/`btnInvoiceFilterApply`/`common.apply_filters`（自由区间只用日期旁「应用」）。
+- **唯一写法 · 票型 Tab 文案：**业务名 + 缩写居中；「全部」下固定 `ALL`（与 FT/FS 同结构）。
+
 ## 0.4.103
 
 **发票顶栏：欢迎语 + 与列表同宽**

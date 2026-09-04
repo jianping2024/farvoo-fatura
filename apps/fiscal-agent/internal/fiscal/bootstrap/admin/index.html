@@ -282,12 +282,16 @@
       padding-bottom: 1rem; border-bottom: 1px solid var(--line);
     }
     .topbar h1 { font-size: 1.4rem; font-weight: 800; margin: 0; letter-spacing: -0.025em; }
+    /* ONLY admin surface card chrome (invoice topbar + panels). */
+    .home-topbar,
+    .panel {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+    }
     .home-topbar {
-      height: 52px; background: rgba(255,255,255,.75); backdrop-filter: blur(8px);
-      border-bottom: 1px solid var(--line);
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0; gap: 1rem; position: sticky; top: 0; z-index: 10;
-      margin-bottom: 0.85rem;
+      gap: 1rem; min-height: 52px; box-sizing: border-box;
+      margin-bottom: 0.85rem; padding: 0.65rem 1.25rem;
     }
     .home-topbar .home-greeting {
       font-size: 0.9rem; font-weight: 600; margin: 0; color: var(--ink);
@@ -299,7 +303,7 @@
       border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.65rem;
     }
     .home-body { padding: 0 0 1.5rem; }
-    /* ONLY invoice-hub entry strip (metric + peer bills CTA; no tall KPI cards / greeting). */
+    /* ONLY invoice-hub entry strip (metric + peer bills CTA; no tall KPI cards). */
     .hub-entry-strip {
       display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.65rem;
       margin-bottom: 0.85rem;
@@ -307,7 +311,7 @@
     .hub-metric {
       display: inline-flex; align-items: center; gap: 0.65rem;
       min-height: 2.75rem; padding: 0.5rem 0.9rem;
-      background: #fff; border: 1px solid var(--line); border-radius: 10px;
+      background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
       box-shadow: var(--shadow);
     }
     .hub-metric .k { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
@@ -351,9 +355,9 @@
       width: 5.5rem; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
     }
     /* invoice actions width: ONLY list-pagination.css .col-actions */
+    /* Panel layout; card chrome ONLY via .home-topbar, .panel rule above. */
     .panel {
-      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-      padding: 1.1rem 1.25rem; box-shadow: var(--shadow); margin-bottom: 1rem;
+      padding: 1.1rem 1.25rem; margin-bottom: 1rem;
     }
     .panel h2 { margin: 0 0 0.75rem; font-size: 1rem; font-weight: 700; }
     .table-scroll { overflow-x: auto; }
@@ -578,8 +582,8 @@
     .credit-tabs button.active { border-color: var(--mode); font-weight: 600; }
     .invoice-type-tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
     .invoice-type-tabs button {
-      min-width: 5.5rem; padding: 0.4rem 0.7rem; line-height: 1.2;
-      display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.1rem;
+      min-width: 5.5rem; padding: 0.4rem 0.7rem; line-height: 1.2; text-align: center;
+      display: inline-flex; flex-direction: column; align-items: center; gap: 0.1rem;
     }
     .invoice-type-tabs button small {
       display: block; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.04em; opacity: 0.65;
@@ -868,7 +872,7 @@
           </div>
           <div class="panel admin-list-panel invoice-list-panel">
             <div class="invoice-type-tabs" id="invoiceTypeTabs" role="tablist">
-              <button type="button" class="secondary active" data-invoice-type="" role="tab"><span data-i18n="common.all">全部</span></button>
+              <button type="button" class="secondary active" data-invoice-type="" role="tab"><span data-i18n="common.all">全部</span><small>ALL</small></button>
               <button type="button" class="secondary" data-invoice-type="FT" role="tab"><span data-i18n="doc.tab.FT">完整发票</span><small>FT</small></button>
               <button type="button" class="secondary" data-invoice-type="FS" role="tab"><span data-i18n="doc.tab.FS">简式发票</span><small>FS</small></button>
               <button type="button" class="secondary" data-invoice-type="NC" role="tab"><span data-i18n="doc.tab.NC">冲销单</span><small>NC</small></button>
@@ -886,10 +890,9 @@
               </div>
             </div>
             <div class="admin-list-filter-panel hidden" id="invoiceFilterPanel">
-              <div id="invoiceDateFilter"></div>
-              <div class="admin-list-filter-panel__footer">
-                <button type="button" class="secondary" id="btnInvoiceFilterClear" data-i18n="common.clear_filters">清除</button>
-                <button type="button" id="btnInvoiceFilterApply" data-i18n="common.apply_filters">应用</button>
+              <div class="admin-list-filter-panel__row">
+                <div id="invoiceDateFilter"></div>
+                <button type="button" class="secondary btn-sm" id="btnInvoiceFilterClear" data-i18n="common.clear_filters">清除</button>
               </div>
             </div>
             <div class="table-scroll">
@@ -3660,16 +3663,6 @@
         if (invoiceDateFilterCtrl) invoiceDateFilterCtrl.setPreset('today');
         setInvoiceFilterPanelOpen(false);
         syncInvoiceFilterToggle();
-      });
-    }
-    const applyBtn = $('#btnInvoiceFilterApply');
-    if (applyBtn && !applyBtn._bound) {
-      applyBtn._bound = true;
-      applyBtn.addEventListener('click', () => {
-        setInvoiceFilterPanelOpen(false);
-        syncInvoiceFilterToggle();
-        resetInvoiceListPage();
-        refreshInvoices().catch(reportError);
       });
     }
     invoiceListPaginationCtrl = FiscalUI.createListPaginationBar('#invoiceListPagination', {
