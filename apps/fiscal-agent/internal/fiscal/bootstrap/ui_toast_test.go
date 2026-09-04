@@ -364,6 +364,20 @@ func TestAdminHTMLInvoiceHubLayout(t *testing.T) {
 	if !strings.Contains(section, `class="hub-bills-cta rest-only"`) {
 		t.Fatal("pending bills CTA must be hub-bills-cta (peer primary), not tall stat card")
 	}
+	billsIdx := strings.Index(section, `id="ctaPendingBills"`)
+	newIdx := strings.Index(section, `id="ctaNewOrder"`)
+	if billsIdx < 0 || newIdx < 0 || newIdx < billsIdx {
+		t.Fatal("ctaNewOrder must sit in hub-entry-strip to the right of ctaPendingBills")
+	}
+	if strings.Contains(section, `home-topbar-right`) && strings.Contains(section[strings.Index(section, `home-topbar-right`):strings.Index(section, `hub-entry-strip`)], `id="ctaNewOrder"`) {
+		t.Fatal("ctaNewOrder must not remain in home-topbar")
+	}
+	if !strings.Contains(adminHTML, "ONLY Admin button levels") {
+		t.Fatal("button level contract must be documented once in admin CSS")
+	}
+	if strings.Count(adminHTML, `id="ctaNewOrder"`) != 1 {
+		t.Fatal("ctaNewOrder must appear exactly once")
+	}
 	if !strings.Contains(section, `id="statTodayInvoices"`) {
 		t.Fatal("invoice hub must include today invoice metric")
 	}

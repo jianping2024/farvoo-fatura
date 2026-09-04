@@ -28,8 +28,14 @@ func TestAdminListToolbarUnique(t *testing.T) {
 	if n := strings.Count(css, ".admin-list-toolbar {"); n != 1 {
 		t.Fatalf(".admin-list-toolbar must have exactly one rule, got %d", n)
 	}
-	if n := strings.Count(css, "button.btn-icon-refresh {"); n != 1 {
-		t.Fatalf("btn-icon-refresh must have exactly one rule, got %d", n)
+	if n := strings.Count(css, "button.btn-toolbar {"); n != 1 {
+		t.Fatalf(".btn-toolbar must have exactly one rule, got %d", n)
+	}
+	if n := strings.Count(css, "button.btn-toolbar--icon {"); n != 1 {
+		t.Fatalf(".btn-toolbar--icon must have exactly one rule, got %d", n)
+	}
+	if strings.Contains(css, "btn-icon-refresh") {
+		t.Fatal("btn-icon-refresh must be removed; use btn-toolbar btn-toolbar--icon")
 	}
 	if n := strings.Count(css, ".admin-list-filter-panel {"); n != 1 {
 		t.Fatalf(".admin-list-filter-panel must have exactly one rule, got %d", n)
@@ -84,8 +90,18 @@ func TestAdminListToolbarUnique(t *testing.T) {
 			t.Fatalf("%s must exist exactly once", id)
 		}
 	}
-	if strings.Count(adminHTML, `class="btn-icon-refresh"`) < 8 {
-		t.Fatal("list refresh controls must use btn-icon-refresh")
+	if strings.Count(adminHTML, `class="btn-toolbar btn-toolbar--icon"`) < 8 {
+		t.Fatal("list refresh controls must use btn-toolbar btn-toolbar--icon")
+	}
+	if strings.Contains(adminHTML, "btn-icon-refresh") {
+		t.Fatal("admin must not keep btn-icon-refresh")
+	}
+	if strings.Count(adminHTML, `id="btnInvoiceFilter" class="btn-toolbar btn-filter-toggle"`) != 1 &&
+		strings.Count(adminHTML, `class="btn-toolbar btn-filter-toggle" id="btnInvoiceFilter"`) != 1 {
+		t.Fatal("invoice filter must be btn-toolbar (not bare secondary)")
+	}
+	if strings.Contains(adminHTML, `class="secondary btn-filter-toggle"`) {
+		t.Fatal("filter must not use secondary CTA padding in toolbar")
 	}
 	if strings.Contains(adminHTML, `id="btnRefreshInvoices" data-i18n="common.refresh">刷新</button>`) {
 		t.Fatal("invoice refresh must be icon-only in list toolbar, not topbar text 刷新")

@@ -493,7 +493,7 @@
       'invoices.search_ph': '票号 / NIF / 桌号',
       'invoices.empty_match': '未找到匹配的{type}',
       'invoices.empty_range': '该时段暂无{type}',
-      'invoices.empty_next': '可换日期或票型；或点右上角「＋ 新建开票」。有待开收银账单时请先处理。',
+      'invoices.empty_next': '可换日期或票型；或点上方「＋ 新建开票」。有待开收银账单时请先处理。',
       'invoices.empty_next_search': '试试换关键词，或清空搜索后按日期筛选。',
       'invoice.detail.title': '发票详情',
       'invoice.detail.doc_status': '单据状态',

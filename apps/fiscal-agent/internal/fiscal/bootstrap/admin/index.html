@@ -37,6 +37,10 @@
     html, body { height: 100%; margin: 0; overflow-x: hidden; }
     body { font-family: var(--font); color: var(--ink); background: var(--paper); }
     button, input, select, textarea { font: inherit; }
+    /* ONLY Admin button levels — do not invent more:
+     * primary (bare button) | secondary | ghost | btn-toolbar (+ btn-toolbar--icon) | size btn-sm.
+     * PIN pad / date presets / date-picker nav stay control-local, not new global levels.
+     * Toolbar chrome: ONLY list-pagination.css .btn-toolbar. */
     button {
       border: 0; border-radius: 8px; padding: 0.55rem 1rem;
       background: linear-gradient(135deg, var(--brand-dark), var(--brand-mid));
@@ -303,7 +307,7 @@
       border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.65rem;
     }
     .home-body { padding: 0 0 1.5rem; }
-    /* ONLY invoice-hub entry strip (metric + peer bills CTA; no tall KPI cards). */
+    /* ONLY invoice-hub entry strip (metric + bills CTA + new issue; no tall KPI cards). */
     .hub-entry-strip {
       display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.65rem;
       margin-bottom: 0.85rem;
@@ -316,12 +320,16 @@
     }
     .hub-metric .k { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
     .hub-metric .v { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
-    button.hub-bills-cta {
-      display: none; align-items: center; gap: 0.65rem;
+    /* Peer hub CTAs: bills (rest) then #ctaNewOrder (primary) — same height. */
+    button.hub-bills-cta,
+    .hub-entry-strip > #ctaNewOrder {
+      align-items: center; gap: 0.65rem;
       min-height: 2.75rem; margin: 0; padding: 0.5rem 1rem;
       font-weight: 700;
     }
+    button.hub-bills-cta { display: none; }
     body.mode-restaurant button.hub-bills-cta.rest-only { display: inline-flex; }
+    .hub-entry-strip > #ctaNewOrder { display: inline-flex; }
     body.mode-retail .hub-entry-strip > .retail-only.hub-metric { display: inline-flex; }
     .hub-bills-count {
       display: inline-flex; align-items: center; justify-content: center;
@@ -782,7 +790,7 @@
               <input id="billsSearch" placeholder="桌号" data-i18n="bills.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
             </div>
             <div class="admin-list-toolbar__actions">
-              <button type="button" class="btn-icon-refresh" id="btnRefreshBills" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
+              <button type="button" class="btn-toolbar btn-toolbar--icon" id="btnRefreshBills" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
             </div>
           </div>
           <div class="table-scroll">
@@ -852,7 +860,6 @@
           <p class="home-greeting" id="homeGreeting"></p>
           <div class="home-topbar-right">
             <span class="date-chip" id="homeDateChip"></span>
-            <button type="button" id="ctaNewOrder" data-goto="order-new" data-i18n="home.cta.new_order">＋ 新建开票</button>
           </div>
         </header>
         <div class="home-body">
@@ -865,6 +872,7 @@
               <span data-i18n="home.stat.bills_cta">处理收银账单</span>
               <span class="hub-bills-count" id="statPendingBills">0</span>
             </button>
+            <button type="button" id="ctaNewOrder" data-goto="order-new" data-i18n="home.cta.new_order">＋ 新建开票</button>
             <div class="hub-metric retail-only">
               <span class="k" data-i18n="home.stat.today_sales">今日营业额</span>
               <strong class="v" id="statTodaySales">€0</strong>
@@ -885,8 +893,8 @@
               </div>
               <p class="admin-list-toolbar__count" id="invoiceListCount" hidden></p>
               <div class="admin-list-toolbar__actions">
-                <button type="button" class="btn-icon-refresh" id="btnRefreshInvoices" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
-                <button type="button" class="secondary btn-filter-toggle" id="btnInvoiceFilter" aria-expanded="false" data-i18n="common.filter">筛选</button>
+                <button type="button" class="btn-toolbar btn-toolbar--icon" id="btnRefreshInvoices" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
+                <button type="button" class="btn-toolbar btn-filter-toggle" id="btnInvoiceFilter" aria-expanded="false" data-i18n="common.filter">筛选</button>
               </div>
             </div>
             <div class="admin-list-filter-panel hidden" id="invoiceFilterPanel">
@@ -928,7 +936,7 @@
               <input id="productsSearch" placeholder="编码 / 名称" data-i18n="products.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
             </div>
             <div class="admin-list-toolbar__actions">
-              <button type="button" class="btn-icon-refresh" id="btnRefreshProducts" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
+              <button type="button" class="btn-toolbar btn-toolbar--icon" id="btnRefreshProducts" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
             </div>
           </div>
           <div class="table-scroll">
@@ -964,7 +972,7 @@
               <input id="customersSearch" placeholder="NIF / 名称" data-i18n="customers.search_ph" data-i18n-attr="placeholder" autocomplete="off" />
             </div>
             <div class="admin-list-toolbar__actions">
-              <button type="button" class="btn-icon-refresh" id="btnRefreshCustomers" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
+              <button type="button" class="btn-toolbar btn-toolbar--icon" id="btnRefreshCustomers" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
             </div>
           </div>
           <div class="table-scroll">
@@ -1098,7 +1106,7 @@
                 <p class="hint" id="fiscalProfileHint" data-i18n="settings.ops.profile_loading">门店业态：加载中…</p>
                 <div class="admin-list-toolbar settings-access-only" id="operatorsToolbar">
                   <div class="admin-list-toolbar__actions">
-                    <button type="button" class="btn-icon-refresh" id="btnOperatorsRefresh" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
+                    <button type="button" class="btn-toolbar btn-toolbar--icon" id="btnOperatorsRefresh" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
                     <button type="button" id="btnOperatorAdd" data-i18n="settings.ops.add">添加开票员</button>
                   </div>
                 </div>
@@ -1127,7 +1135,7 @@
                     <select id="auditOperatorFilter"><option value="">全部</option></select>
                   </div>
                   <div class="admin-list-toolbar__actions">
-                    <button type="button" class="btn-icon-refresh" id="btnAuditRefresh" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
+                    <button type="button" class="btn-toolbar btn-toolbar--icon" id="btnAuditRefresh" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
                   </div>
                 </div>
                 <div class="table-scroll">
@@ -1191,7 +1199,7 @@
                     <input id="terminalsAllowLabel" required placeholder="如：收银台 2" data-i18n="settings.terminals.placeholder" data-i18n-attr="placeholder" autocomplete="off" />
                   </div>
                   <div class="admin-list-toolbar__actions">
-                    <button type="button" class="btn-icon-refresh" id="btnTerminalsRefresh" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
+                    <button type="button" class="btn-toolbar btn-toolbar--icon" id="btnTerminalsRefresh" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
                     <button type="button" id="btnTerminalsAllowNext" data-i18n="settings.terminals.allow">添加开票电脑</button>
                   </div>
                 </div>
@@ -1234,7 +1242,7 @@
                 </div>
                 <div class="admin-list-toolbar">
                   <div class="admin-list-toolbar__actions" style="margin-left:0">
-                    <button type="button" class="btn-icon-refresh" id="btnSaftRefresh" data-i18n="settings.saft.refresh" data-i18n-attr="aria-label title" aria-label="刷新列表" title="刷新列表">↻</button>
+                    <button type="button" class="btn-toolbar btn-toolbar--icon" id="btnSaftRefresh" data-i18n="settings.saft.refresh" data-i18n-attr="aria-label title" aria-label="刷新列表" title="刷新列表">↻</button>
                     <button type="button" id="btnSaftExport" data-i18n="settings.saft.export">导出 SAF-T</button>
                   </div>
                 </div>
