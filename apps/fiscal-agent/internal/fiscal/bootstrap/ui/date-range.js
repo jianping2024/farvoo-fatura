@@ -1,17 +1,12 @@
 /* Fiscal Admin date range — ONLY shared date filter (preset + native type=date from/to).
- * API: FiscalUI.createDateRangeFilter(container, options)
+ * API: FiscalUI.createDateRangeFilter(container, options) -> { getRange, setPreset, relabel }
  *       FiscalUI.dateRangePresetToDates(preset, timezone)
+ * Labels: options.getLabels() is the ONLY live copy path (re-read on paint/relabel).
  */
 (function (global) {
   'use strict';
 
-  var PRESETS = [
-    { id: 'today', label: '今天' },
-    { id: 'yesterday', label: '昨天' },
-    { id: 'last7', label: '近7天' },
-    { id: 'month', label: '本月' },
-    { id: 'custom', label: '自定义' },
-  ];
+  var PRESET_IDS = ['today', 'yesterday', 'last7', 'month', 'custom'];
 
   function ymdInTZ(date, tz) {
     return new Intl.DateTimeFormat('en-CA', {
@@ -80,9 +75,25 @@
     } catch (_) { /* ignore */ }
   }
 
+  function defaultLabels() {
+    return {
+      today: '今天',
+      yesterday: '昨天',
+      last7: '近7天',
+      month: '本月',
+      custom: '自定义',
+      groupAria: '日期筛选',
+      from: '从',
+      to: '至',
+      apply: '应用',
+      errNeedRange: '请选择起止日期',
+      errOrder: '起始日期不能晚于结束日期',
+    };
+  }
+
   /**
    * @param {string|Element} container
-   * @param {{ storageKey?: string, timezone?: string, defaultPreset?: string, onChange?: function }} options
+   * @param {{ storageKey?: string, timezone?: string, defaultPreset?: string, getLabels?: function, labels?: object, onChange?: function }} options
    */
   function createDateRangeFilter(container, options) {
     options = options || {};
@@ -92,22 +103,38 @@
     var storageKey = options.storageKey || 'fiscal_date_range';
     var onChange = typeof options.onChange === 'function' ? options.onChange : function () {};
 
+    function resolveLabels() {
+      var extra = {};
+      if (typeof options.getLabels === 'function') extra = options.getLabels() || {};
+      else extra = options.labels || {};
+      var base = defaultLabels();
+      var out = {};
+      Object.keys(base).forEach(function (k) {
+        out[k] = extra[k] != null && extra[k] !== '' ? extra[k] : base[k];
+      });
+      return out;
+    }
+
     el.classList.add('fiscal-date-range');
     el.innerHTML =
-      '<div class="fiscal-date-presets" role="group" aria-label="日期筛选"></div>' +
-      '<div class="fiscal-date-custom hidden">' +
-      '  <div class="field"><label>从</label><input type="date" class="fiscal-date-from" /></div>' +
-      '  <div class="field"><label>至</label><input type="date" class="fiscal-date-to" /></div>' +
-      '  <button type="button" class="secondary fiscal-date-apply">应用</button>' +
+      '<div class="fiscal-date-presets" role="group" data-role="presets"></div>' +
+      '<div class="fiscal-date-custom hidden" data-role="custom">' +
+      '  <div class="field"><label data-role="from-label"></label><input type="date" class="fiscal-date-from" data-role="from" /></div>' +
+      '  <div class="field"><label data-role="to-label"></label><input type="date" class="fiscal-date-to" data-role="to" /></div>' +
+      '  <button type="button" class="secondary fiscal-date-apply" data-role="apply"></button>' +
       '</div>' +
-      '<p class="fiscal-date-error hidden"></p>';
+      '<p class="fiscal-date-error hidden" data-role="error"></p>';
 
-    var presetRoot = el.querySelector('.fiscal-date-presets');
-    var customPanel = el.querySelector('.fiscal-date-custom');
-    var fromInput = el.querySelector('.fiscal-date-from');
-    var toInput = el.querySelector('.fiscal-date-to');
-    var errEl = el.querySelector('.fiscal-date-error');
+    var presetRoot = el.querySelector('[data-role="presets"]');
+    var customPanel = el.querySelector('[data-role="custom"]');
+    var fromLabel = el.querySelector('[data-role="from-label"]');
+    var toLabel = el.querySelector('[data-role="to-label"]');
+    var fromInput = el.querySelector('[data-role="from"]');
+    var toInput = el.querySelector('[data-role="to"]');
+    var applyBtn = el.querySelector('[data-role="apply"]');
+    var errEl = el.querySelector('[data-role="error"]');
     var state = { preset: options.defaultPreset || 'today', from: '', to: '' };
+    var labels = resolveLabels();
 
     var stored = loadStored(storageKey);
     if (stored && stored.preset) state.preset = stored.preset;
@@ -123,10 +150,15 @@
       state.to = r.to;
     }
 
-    function paintPresets() {
-      presetRoot.innerHTML = PRESETS.map(function (p) {
-        var cls = p.id === state.preset ? ' active' : '';
-        return '<button type="button" data-preset="' + p.id + '"' + cls + '>' + p.label + '</button>';
+    function paint() {
+      labels = resolveLabels();
+      presetRoot.setAttribute('aria-label', labels.groupAria);
+      fromLabel.textContent = labels.from;
+      toLabel.textContent = labels.to;
+      applyBtn.textContent = labels.apply;
+      presetRoot.innerHTML = PRESET_IDS.map(function (id) {
+        var cls = id === state.preset ? ' active' : '';
+        return '<button type="button" data-preset="' + id + '"' + cls + '>' + labels[id] + '</button>';
       }).join('');
       customPanel.classList.toggle('hidden', state.preset !== 'custom');
       if (state.preset === 'custom') {
@@ -141,12 +173,12 @@
       var from = fromInput.value;
       var to = toInput.value;
       if (!from || !to) {
-        errEl.textContent = '请选择起止日期';
+        errEl.textContent = labels.errNeedRange;
         errEl.classList.remove('hidden');
         return false;
       }
       if (from > to) {
-        errEl.textContent = '起始日期不能晚于结束日期';
+        errEl.textContent = labels.errOrder;
         errEl.classList.remove('hidden');
         return false;
       }
@@ -164,7 +196,7 @@
     function setPreset(preset) {
       state.preset = preset;
       syncRangeFromPreset();
-      paintPresets();
+      paint();
       if (preset !== 'custom') emitChange();
     }
 
@@ -179,13 +211,13 @@
       setPreset(btn.getAttribute('data-preset'));
     });
 
-    el.querySelector('.fiscal-date-apply').addEventListener('click', function () {
+    applyBtn.addEventListener('click', function () {
       if (!validateCustom()) return;
       emitChange();
     });
 
     syncRangeFromPreset();
-    paintPresets();
+    paint();
     if (state.preset !== 'custom') {
       saveStored(storageKey, { preset: state.preset, from: state.from, to: state.to });
     }
@@ -193,6 +225,7 @@
     return {
       getRange: getRange,
       setPreset: setPreset,
+      relabel: function () { paint(); },
     };
   }
 

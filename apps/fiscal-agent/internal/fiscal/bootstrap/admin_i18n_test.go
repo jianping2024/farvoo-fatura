@@ -122,11 +122,20 @@ func TestAdminSettingsI18nUniqueWriters(t *testing.T) {
 	if n := strings.Count(html, "function listPagerLabels"); n != 1 {
 		t.Fatalf("listPagerLabels must be the only pager copy, got %d", n)
 	}
+	if n := strings.Count(html, "function listDateRangeLabels"); n != 1 {
+		t.Fatalf("listDateRangeLabels must be the only date-range copy, got %d", n)
+	}
 	if strings.Contains(html, "LIST_PAGE_INFO_ROWS") {
 		t.Fatal("LIST_PAGE_INFO_ROWS must not remain")
 	}
 	if n := strings.Count(html, "getLabels: listPagerLabels"); n != 6 {
 		t.Fatalf("all 6 pagination bars must use listPagerLabels, got %d", n)
+	}
+	if n := strings.Count(html, "getLabels: listDateRangeLabels"); n != 1 {
+		t.Fatalf("invoice date filter must use listDateRangeLabels once, got %d", n)
+	}
+	if n := strings.Count(html, ".relabel()"); n != 1 {
+		t.Fatalf("locale relabel loop must be the only .relabel() call site, got %d", n)
 	}
 	if n := strings.Count(html, "function escHtml"); n != 1 {
 		t.Fatalf("escHtml must be the only HTML escape helper, got %d", n)

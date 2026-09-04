@@ -1456,6 +1456,23 @@
     };
   }
 
+  /** ONLY date-range copy for FiscalUI.createDateRangeFilter. */
+  function listDateRangeLabels() {
+    return {
+      today: FiscalAdminI18n.t('date.today'),
+      yesterday: FiscalAdminI18n.t('date.yesterday'),
+      last7: FiscalAdminI18n.t('date.last7'),
+      month: FiscalAdminI18n.t('date.month'),
+      custom: FiscalAdminI18n.t('date.custom'),
+      groupAria: FiscalAdminI18n.t('date.group_aria'),
+      from: FiscalAdminI18n.t('date.from'),
+      to: FiscalAdminI18n.t('date.to'),
+      apply: FiscalAdminI18n.t('date.apply'),
+      errNeedRange: FiscalAdminI18n.t('date.err_need'),
+      errOrder: FiscalAdminI18n.t('date.err_order')
+    };
+  }
+
   function auditActionText(code, apiLabel) {
     const key = 'audit.action.' + String(code || '');
     const tr = FiscalAdminI18n.t(key);
@@ -1544,7 +1561,8 @@
     }
     if (setupStatusCache) applySettingsStatusUI(setupStatusCache);
     [ordersListPaginationCtrl, billsListPaginationCtrl, productListPaginationCtrl,
-      customerListPaginationCtrl, invoiceListPaginationCtrl, auditLogPaginationCtrl]
+      customerListPaginationCtrl, invoiceListPaginationCtrl, auditLogPaginationCtrl,
+      invoiceDateFilterCtrl]
       .forEach(function (c) { if (c && c.relabel) c.relabel(); });
     if ($('#app-shell') && $('#app-shell').classList.contains('on')) {
       void refreshOperatorsPanel();
@@ -3644,6 +3662,7 @@
       storageKey: 'fiscal_invoice_date_range',
       timezone: INVOICE_TZ,
       defaultPreset: 'today',
+      getLabels: listDateRangeLabels,
       onChange: () => {
         resetInvoiceListPage();
         refreshInvoices().catch(e => toast(errText(e), 'error'));
