@@ -86,6 +86,24 @@ func ApplyCustomerOverride(sale *domain.SaleSnapshot, nif, name string) error {
 	return nil
 }
 
+// ApplyPaymentOverride sets payment method on sale (keeps Amount; empty → CASH).
+// ONLY payment override for draft→issue path.
+func ApplyPaymentOverride(sale *domain.SaleSnapshot, method string) error {
+	if sale == nil {
+		return ingestErr(CodeValidationFailed, "sale required")
+	}
+	pay := domain.NormalizePaymentMethod(method)
+	if !domain.IsKnownPaymentMethod(pay) {
+		return ingestErr(CodeValidationFailed, fmt.Sprintf("unknown payment_method %q", method))
+	}
+	amount := "0.00"
+	if len(sale.Payments) > 0 && strings.TrimSpace(sale.Payments[0].Amount) != "" {
+		amount = strings.TrimSpace(sale.Payments[0].Amount)
+	}
+	sale.Payments = []domain.PaymentInput{{Method: pay, Amount: amount}}
+	return nil
+}
+
 func tableMeta(snap Snapshot) map[string]string {
 	meta := map[string]string{}
 	if t := strings.TrimSpace(snap.TableDisplayName); t != "" {

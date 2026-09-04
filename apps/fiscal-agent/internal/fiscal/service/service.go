@@ -526,6 +526,7 @@ type IssueBillDraftInput struct {
 	StationID          string // required: station_printers key for ORIGINAL print
 	CustomerNIF        string
 	CustomerName       string
+	PaymentMethod      string // empty → CASH via ApplyPaymentOverride
 	AllocationRevision *int64 // person: required OCC; must match draft.allocation_revision
 }
 
@@ -816,6 +817,9 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraf
 		return nil, err
 	}
 	if err := billsync.ApplyCustomerOverride(&sale, in.CustomerNIF, in.CustomerName); err != nil {
+		return nil, err
+	}
+	if err := billsync.ApplyPaymentOverride(&sale, in.PaymentMethod); err != nil {
 		return nil, err
 	}
 

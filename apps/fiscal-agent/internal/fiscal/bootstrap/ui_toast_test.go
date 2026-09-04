@@ -145,6 +145,27 @@ func TestAdminHTMLBillListAndCustomerNifHelpers(t *testing.T) {
 	if strings.Contains(adminHTML, "splitNif').addEventListener('blur'") || strings.Contains(adminHTML, "cNif').addEventListener('blur'") {
 		t.Fatal("do not bind NIF blur ad-hoc; use bindCustomerNifAutofill only")
 	}
+	if !strings.Contains(adminHTML, `id="splitPay"`) {
+		t.Fatal("bill split must expose splitPay (same payment methods as order)")
+	}
+	if n := strings.Count(adminHTML, "function suggestedSaleDocumentType"); n != 1 {
+		t.Fatalf("suggestedSaleDocumentType must be the ONLY soft FT/FS rule, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function syncSaleDocTypeSuggestion"); n != 1 {
+		t.Fatalf("syncSaleDocTypeSuggestion must appear exactly once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function bindSaleDocTypeSuggestion"); n != 1 {
+		t.Fatalf("bindSaleDocTypeSuggestion must be the ONLY soft FT/FS binder, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "bindSaleDocTypeSuggestion($('#docType'"); n != 1 {
+		t.Fatalf("order panel must bind soft FT/FS once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "bindSaleDocTypeSuggestion($('#splitDocType'"); n != 1 {
+		t.Fatalf("split panel must bind soft FT/FS once, got %d", n)
+	}
+	if strings.Contains(adminHTML, "invNif').addEventListener('input'") || strings.Contains(adminHTML, "splitNif').addEventListener('input'") {
+		t.Fatal("do not bind NIF input ad-hoc for doc type; use bindSaleDocTypeSuggestion only")
+	}
 	if strings.Contains(adminHTML, "'<td>—</td>' +\n        '<td>' + fmtTimeShort") {
 		t.Fatal("bill list must not hardcode amount column to em dash")
 	}

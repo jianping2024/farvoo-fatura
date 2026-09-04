@@ -896,6 +896,10 @@
             </div>
             <div class="field"><label data-i18n="buyer.nif">购方 NIF</label><input id="splitNif" placeholder="空 = 散客" data-i18n="buyer.nif_ph_short" data-i18n-attr="placeholder" list="customerNifList" /></div>
             <div class="field"><label data-i18n="buyer.name">购方名称</label><input id="splitName" placeholder="Consumidor Final（票面购方）" data-i18n="buyer.name_ph" data-i18n-attr="placeholder" /></div>
+            <div class="field">
+              <label data-i18n="pay.label">付款方式</label>
+              <select id="splitPay"></select>
+            </div>
             <div class="actions">
               <button type="button" id="btnSplitPersonIssue" data-i18n="split.issue_person">签发此人发票</button>
             </div>
@@ -1531,6 +1535,12 @@
       paySel.innerHTML = paymentMethodOptionsHtml();
       paySel.value = cur;
     }
+    const splitPay = $('#splitPay');
+    if (splitPay) {
+      const cur = splitPay.value || 'CASH';
+      splitPay.innerHTML = paymentMethodOptionsHtml();
+      splitPay.value = cur;
+    }
     const reg = $('#orderRegister');
     if (reg) {
       const cur = reg.value;
@@ -1540,6 +1550,8 @@
         }).join('');
       reg.value = cur;
     }
+    syncSaleDocTypeSuggestion($('#docType'), $('#invNif'), $('#invPay'));
+    syncSaleDocTypeSuggestion($('#splitDocType'), $('#splitNif'), $('#splitPay'));
   }
 
   /** ONLY Admin locale apply: chrome + dynamic panes + lists + mode. */
@@ -2238,6 +2250,36 @@
       return false;
     }
     return true;
+  }
+
+  /** ONLY soft FT/FS suggestion: identified buyer NIF or non-CASH → FT; else DEFAULT_SALE_DOC. */
+  function suggestedSaleDocumentType(nifRaw, paymentRaw) {
+    const pay = String(paymentRaw || '').trim().toUpperCase() || 'CASH';
+    if (pay !== 'CASH') return 'FT';
+    const nif = nifDigits(nifRaw);
+    if (nif.length === 9 && nif !== '999999990' && validatePortugueseNif(nif)) return 'FT';
+    return DEFAULT_SALE_DOC;
+  }
+
+  /** ONLY writer that applies suggestedSaleDocumentType onto a doc-type select. */
+  function syncSaleDocTypeSuggestion(docSel, nifEl, payEl) {
+    if (!docSel || docSel.disabled) return;
+    docSel.value = suggestedSaleDocumentType(
+      nifEl ? nifEl.value : '',
+      payEl ? payEl.value : 'CASH'
+    );
+  }
+
+  /** ONLY binder for soft bidirectional FT/FS suggestion (order + split). */
+  function bindSaleDocTypeSuggestion(docSel, nifEl, payEl) {
+    if (!docSel || !nifEl || !payEl || docSel.dataset.docSuggestBound) return;
+    docSel.dataset.docSuggestBound = '1';
+    const sync = () => syncSaleDocTypeSuggestion(docSel, nifEl, payEl);
+    nifEl.addEventListener('input', sync);
+    nifEl.addEventListener('change', sync);
+    nifEl.addEventListener('blur', sync);
+    payEl.addEventListener('change', sync);
+    sync();
   }
 
   function renderCustomerNifDatalist() {
@@ -3936,6 +3978,8 @@
   function clearSplitBuyerFields() {
     $('#splitNif').value = '';
     $('#splitName').value = '';
+    if ($('#splitPay')) $('#splitPay').value = 'CASH';
+    syncSaleDocTypeSuggestion($('#splitDocType'), $('#splitNif'), $('#splitPay'));
   }
 
   function splitIssuedMap(detail) {
@@ -4182,6 +4226,8 @@
     $('#splitPersonName').disabled = readonly;
     $('#splitNif').disabled = readonly;
     $('#splitName').disabled = readonly;
+    if ($('#splitPay')) $('#splitPay').disabled = readonly;
+    if ($('#splitDocType')) $('#splitDocType').disabled = readonly;
     const issueBtn = $('#btnSplitPersonIssue');
     if (issueBtn) issueBtn.disabled = readonly || !cur;
     const shareBody = $('#splitShareBody');
@@ -4404,7 +4450,8 @@
       mode: mode,
       station_id: sid,
       customer_nif: nif,
-      customer_name: name || (nif ? ('Cliente ' + nif) : '')
+      customer_name: name || (nif ? ('Cliente ' + nif) : ''),
+      payment_method: ($('#splitPay').value.trim() || 'CASH')
     };
     if (scopeId) body.scope_id = scopeId;
     if (mode === 'person') body.allocation_revision = splitState.revision;
@@ -4997,6 +5044,8 @@
 
   bindCustomerNifAutofill($('#invNif'), $('#invName'));
   bindCustomerNifAutofill($('#cNif'), $('#cName'));
+  bindSaleDocTypeSuggestion($('#docType'), $('#invNif'), $('#invPay'));
+  bindSaleDocTypeSuggestion($('#splitDocType'), $('#splitNif'), $('#splitPay'));
 
   $('#btnSplitBack').onclick = () => showView('bills');
 
