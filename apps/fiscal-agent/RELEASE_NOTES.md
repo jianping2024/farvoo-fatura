@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.100
+
+**发票日期筛选：mesa DatePicker 口径（选中可见、无纵向晃动）**
+
+- **唯一写法 · 单日选择：**仅 `FiscalUI.createDatePicker`（`date-picker.js/css`，门户月历；禁止原生 `input[type=date]`）。
+- **唯一写法 · 区间筛选：**仅 `FiscalUI.createDateRangeFilter` 挂两个 DatePicker（起—止常驻同一行）+ 描边 `.fiscal-date-preset` / `.active`；禁止展开第二行 `display:none` 撑高表格。
+- 选中态压过 Admin 全局主按钮绿渐变；自定义改日切 `custom`，点「应用」才查询。
+
 ## 0.4.99
 
 **FISCAL_SEED demo 开票员带 PIN（修登录「无法加载开票员」）**

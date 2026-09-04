@@ -1,70 +1,79 @@
-/* FiscalUI date range — preset segmented control + native date inputs (shared across Admin). */
+/* FiscalUI date range — one-row presets + always-visible from/to pickers (no vertical expand). */
+
 .fiscal-date-range {
   display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  min-width: min(100%, 520px);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  min-width: 0;
 }
 
 .fiscal-date-presets {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+  align-items: center;
 }
 
-.fiscal-date-presets button {
-  padding: 0.45rem 0.7rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  border-radius: 999px;
-  background: #fff;
-  color: var(--fiscal-date-ink, #14201b);
-  border: 1px solid var(--fiscal-date-line, #ddd4c4);
+/* Override Admin global primary button — presets are outline chips (mesa list filter pattern). */
+.fiscal-date-presets button.fiscal-date-preset {
+  padding: 0.35rem 0.7rem !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  color: var(--fiscal-date-ink, #14201b) !important;
+  border: 1px solid var(--fiscal-date-line, #ddd4c4) !important;
+  box-shadow: none !important;
+  transform: none !important;
+  filter: none !important;
 }
 
-.fiscal-date-presets button:hover {
-  filter: none;
-  background: #f7f3ea;
+.fiscal-date-presets button.fiscal-date-preset:hover {
+  background: #f7f3ea !important;
+  border-color: var(--fiscal-date-accent, #0b3d2e) !important;
+  color: var(--fiscal-date-ink, #14201b) !important;
+  transform: none !important;
+  filter: none !important;
+  box-shadow: none !important;
 }
 
-.fiscal-date-presets button.active {
-  background: var(--fiscal-date-accent, #0b3d2e);
-  color: #fff;
-  border-color: var(--fiscal-date-accent, #0b3d2e);
+.fiscal-date-presets button.fiscal-date-preset.active {
+  background: rgba(11, 61, 46, 0.1) !important;
+  color: var(--fiscal-date-accent, #0b3d2e) !important;
+  border-color: var(--fiscal-date-accent, #0b3d2e) !important;
+  font-weight: 700 !important;
 }
 
 .fiscal-date-custom {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.65rem;
+  align-items: center;
+  gap: 0.45rem 0.55rem;
 }
 
-.fiscal-date-custom.hidden {
-  display: none;
-}
-
-.fiscal-date-custom .field {
-  margin: 0;
-  min-width: 9rem;
-}
-
-.fiscal-date-custom label {
-  margin-bottom: 0.25rem;
-}
-
-.fiscal-date-custom input[type="date"] {
-  padding: 0.5rem 0.6rem;
+.fiscal-date-sep {
+  color: var(--muted, #5c6b64);
+  font-weight: 600;
   font-size: 0.85rem;
 }
 
-.fiscal-date-custom .fiscal-date-apply {
-  padding: 0.5rem 0.85rem;
-  font-size: 0.82rem;
+.fiscal-date-apply {
+  padding: 0.4rem 0.75rem !important;
+  font-size: 0.82rem !important;
+}
+
+.fiscal-date-apply.hidden {
+  display: none !important;
 }
 
 .fiscal-date-error {
+  flex: 1 0 100%;
   font-size: 0.78rem;
   color: #b42318;
   margin: 0;
+}
+
+.fiscal-date-error.hidden {
+  display: none;
 }

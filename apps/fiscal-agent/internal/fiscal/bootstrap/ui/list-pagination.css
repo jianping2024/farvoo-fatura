@@ -89,7 +89,7 @@
   position: relative;
 }
 
-/* Invoice hub: one toolbar — presets left, search right; no mid-gap stretch. */
+/* Invoice hub: one toolbar — presets+pickers left, search right; no mid-gap stretch. */
 .invoice-list-panel .admin-list-filter-row .fiscal-date-range {
   min-width: 0;
   flex: 1 1 auto;

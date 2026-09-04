@@ -1,7 +1,8 @@
-/* Fiscal Admin date range — ONLY shared date filter (preset + native type=date from/to).
+/* Fiscal Admin date range — presets + always-on from/to DatePickers (no expand layout shift).
  * API: FiscalUI.createDateRangeFilter(container, options) -> { getRange, setPreset, relabel }
  *       FiscalUI.dateRangePresetToDates(preset, timezone)
  * Labels: options.getLabels() is the ONLY live copy path (re-read on paint/relabel).
+ * Pickers: ONLY FiscalUI.createDatePicker (mesa DatePicker analogue).
  */
 (function (global) {
   'use strict';
@@ -72,7 +73,9 @@
   function saveStored(storageKey, state) {
     try {
       localStorage.setItem(storageKey, JSON.stringify(state));
-    } catch (_) { /* ignore */ }
+    } catch (_) {
+      /* ignore */
+    }
   }
 
   function defaultLabels() {
@@ -91,14 +94,13 @@
     };
   }
 
-  /**
-   * @param {string|Element} container
-   * @param {{ storageKey?: string, timezone?: string, defaultPreset?: string, getLabels?: function, labels?: object, onChange?: function }} options
-   */
   function createDateRangeFilter(container, options) {
     options = options || {};
     var el = resolveContainer(container);
     if (!el) throw new Error('FiscalUI.createDateRangeFilter: container not found');
+    if (!global.FiscalUI || typeof global.FiscalUI.createDatePicker !== 'function') {
+      throw new Error('FiscalUI.createDateRangeFilter requires FiscalUI.createDatePicker');
+    }
     var tz = options.timezone || 'Europe/Lisbon';
     var storageKey = options.storageKey || 'fiscal_date_range';
     var onChange = typeof options.onChange === 'function' ? options.onChange : function () {};
@@ -118,23 +120,23 @@
     el.classList.add('fiscal-date-range');
     el.innerHTML =
       '<div class="fiscal-date-presets" role="group" data-role="presets"></div>' +
-      '<div class="fiscal-date-custom hidden" data-role="custom">' +
-      '  <div class="field"><label data-role="from-label"></label><input type="date" class="fiscal-date-from" data-role="from" /></div>' +
-      '  <div class="field"><label data-role="to-label"></label><input type="date" class="fiscal-date-to" data-role="to" /></div>' +
+      '<div class="fiscal-date-custom" data-role="custom">' +
+      '  <div class="fiscal-date-picker-mount" data-role="from-mount"></div>' +
+      '  <span class="fiscal-date-sep" aria-hidden="true">—</span>' +
+      '  <div class="fiscal-date-picker-mount" data-role="to-mount"></div>' +
       '  <button type="button" class="secondary fiscal-date-apply" data-role="apply"></button>' +
       '</div>' +
       '<p class="fiscal-date-error hidden" data-role="error"></p>';
 
     var presetRoot = el.querySelector('[data-role="presets"]');
     var customPanel = el.querySelector('[data-role="custom"]');
-    var fromLabel = el.querySelector('[data-role="from-label"]');
-    var toLabel = el.querySelector('[data-role="to-label"]');
-    var fromInput = el.querySelector('[data-role="from"]');
-    var toInput = el.querySelector('[data-role="to"]');
+    var fromMount = el.querySelector('[data-role="from-mount"]');
+    var toMount = el.querySelector('[data-role="to-mount"]');
     var applyBtn = el.querySelector('[data-role="apply"]');
     var errEl = el.querySelector('[data-role="error"]');
     var state = { preset: options.defaultPreset || 'today', from: '', to: '' };
     var labels = resolveLabels();
+    var syncingPickers = false;
 
     var stored = loadStored(storageKey);
     if (stored && stored.preset) state.preset = stored.preset;
@@ -150,28 +152,85 @@
       state.to = r.to;
     }
 
-    function paint() {
+    function getLocale() {
+      if (typeof options.getLocale === 'function') return options.getLocale();
+      return 'zh';
+    }
+
+    var fromPicker = global.FiscalUI.createDatePicker(fromMount, {
+      getLocale: getLocale,
+      getPlaceholder: function () {
+        return resolveLabels().from;
+      },
+      onChange: function (ymd) {
+        if (syncingPickers) return;
+        state.preset = 'custom';
+        state.from = ymd;
+        paintPresets();
+        syncCustomEnabled();
+      },
+    });
+    var toPicker = global.FiscalUI.createDatePicker(toMount, {
+      getLocale: getLocale,
+      getPlaceholder: function () {
+        return resolveLabels().to;
+      },
+      onChange: function (ymd) {
+        if (syncingPickers) return;
+        state.preset = 'custom';
+        state.to = ymd;
+        paintPresets();
+        syncCustomEnabled();
+      },
+    });
+
+    function syncPickersFromState() {
+      syncingPickers = true;
+      fromPicker.setValue(state.from);
+      toPicker.setValue(state.to);
+      syncingPickers = false;
+    }
+
+    function syncCustomEnabled() {
+      var isCustom = state.preset === 'custom';
+      customPanel.classList.toggle('is-custom', isCustom);
+      applyBtn.disabled = !isCustom;
+      applyBtn.classList.toggle('hidden', !isCustom);
+    }
+
+    function paintPresets() {
       labels = resolveLabels();
       presetRoot.setAttribute('aria-label', labels.groupAria);
-      fromLabel.textContent = labels.from;
-      toLabel.textContent = labels.to;
       applyBtn.textContent = labels.apply;
       presetRoot.innerHTML = PRESET_IDS.map(function (id) {
         var cls = id === state.preset ? ' active' : '';
-        return '<button type="button" data-preset="' + id + '"' + cls + '>' + labels[id] + '</button>';
+        return (
+          '<button type="button" class="fiscal-date-preset' +
+          cls +
+          '" data-preset="' +
+          id +
+          '">' +
+          labels[id] +
+          '</button>'
+        );
       }).join('');
-      customPanel.classList.toggle('hidden', state.preset !== 'custom');
-      if (state.preset === 'custom') {
-        fromInput.value = state.from || '';
-        toInput.value = state.to || '';
-      }
+    }
+
+    function paint() {
+      paintPresets();
+      syncRangeFromPreset();
+      syncPickersFromState();
+      syncCustomEnabled();
       errEl.classList.add('hidden');
       errEl.textContent = '';
+      fromPicker.relabel();
+      toPicker.relabel();
     }
 
     function validateCustom() {
-      var from = fromInput.value;
-      var to = toInput.value;
+      var from = fromPicker.getValue();
+      var to = toPicker.getValue();
+      labels = resolveLabels();
       if (!from || !to) {
         errEl.textContent = labels.errNeedRange;
         errEl.classList.remove('hidden');
@@ -195,7 +254,13 @@
 
     function setPreset(preset) {
       state.preset = preset;
-      syncRangeFromPreset();
+      if (preset !== 'custom') {
+        syncRangeFromPreset();
+      } else if (!state.from || !state.to) {
+        var fallback = dateRangePresetToDates('today', tz);
+        if (!state.from) state.from = fallback.from;
+        if (!state.to) state.to = fallback.to;
+      }
       paint();
       if (preset !== 'custom') emitChange();
     }
@@ -225,7 +290,9 @@
     return {
       getRange: getRange,
       setPreset: setPreset,
-      relabel: function () { paint(); },
+      relabel: function () {
+        paint();
+      },
     };
   }
 

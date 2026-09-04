@@ -5,6 +5,30 @@ import (
 	"testing"
 )
 
+func TestFiscalUIDatePickerAssets(t *testing.T) {
+	js := string(fiscalUIDatePickerJS)
+	if !strings.Contains(js, "FiscalUI.createDatePicker") {
+		t.Fatal("date-picker.js must export FiscalUI.createDatePicker")
+	}
+	if n := strings.Count(js, "function createDatePicker"); n != 1 {
+		t.Fatalf("createDatePicker must be defined once, got %d", n)
+	}
+	if strings.Contains(js, "type=\"date\"") || strings.Contains(js, "type='date'") {
+		t.Fatal("date-picker must not use native input type=date")
+	}
+	if !strings.Contains(string(fiscalUIDatePickerCSS), ".fiscal-date-picker__popup") {
+		t.Fatal("date-picker.css must style portal popup")
+	}
+	if !strings.Contains(adminHTML, `/fiscal-ui/date-picker.js`) || !strings.Contains(adminHTML, `/fiscal-ui/date-picker.css`) {
+		t.Fatal("admin must load fiscal-ui date-picker assets before date-range")
+	}
+	pickerIdx := strings.Index(adminHTML, `/fiscal-ui/date-picker.js`)
+	rangeIdx := strings.Index(adminHTML, `/fiscal-ui/date-range.js`)
+	if pickerIdx < 0 || rangeIdx < 0 || pickerIdx > rangeIdx {
+		t.Fatal("date-picker.js must load before date-range.js")
+	}
+}
+
 func TestFiscalUIDateRangeAssets(t *testing.T) {
 	js := string(fiscalUIDateRangeJS)
 	if !strings.Contains(js, "FiscalUI.createDateRangeFilter") {
@@ -22,11 +46,33 @@ func TestFiscalUIDateRangeAssets(t *testing.T) {
 	if n := strings.Count(js, "relabel:"); n != 1 {
 		t.Fatalf("date-range relabel must exist once, got %d", n)
 	}
-	if n := strings.Count(js, "function paint"); n != 1 {
+	if n := strings.Count(js, "function paint()"); n != 1 {
 		t.Fatalf("date-range paint must be the ONLY label/preset render path, got %d", n)
+	}
+	if n := strings.Count(js, "function paintPresets()"); n != 1 {
+		t.Fatalf("paintPresets must appear once, got %d", n)
 	}
 	if strings.Contains(js, "label: '今天'") || strings.Contains(js, "label: \"今天\"") {
 		t.Fatal("preset labels must not be hardcoded on PRESET ids; use getLabels only")
+	}
+	if strings.Contains(js, "type=\"date\"") || strings.Contains(js, "type='date'") {
+		t.Fatal("date-range must not use native input type=date; use createDatePicker only")
+	}
+	if !strings.Contains(js, "FiscalUI.createDatePicker") {
+		t.Fatal("date-range must mount from/to via FiscalUI.createDatePicker")
+	}
+	if n := strings.Count(js, "FiscalUI.createDatePicker("); n != 2 {
+		t.Fatalf("date-range must create exactly two DatePickers (from/to), got %d", n)
+	}
+	if strings.Contains(string(fiscalUIDateRangeCSS), "fiscal-date-custom.hidden") ||
+		strings.Contains(string(fiscalUIDateRangeCSS), ".fiscal-date-custom.hidden") {
+		t.Fatal("date-range must not hide custom panel with display:none (layout shift)")
+	}
+	if !strings.Contains(string(fiscalUIDateRangeCSS), "button.fiscal-date-preset") {
+		t.Fatal("date-range.css must style outline preset chips (override global primary button)")
+	}
+	if !strings.Contains(string(fiscalUIDateRangeCSS), "button.fiscal-date-preset.active") {
+		t.Fatal("date-range.css must define clear .active preset state")
 	}
 	if !strings.Contains(string(fiscalUIDateRangeCSS), ".fiscal-date-presets") {
 		t.Fatal("date-range.css must style fiscal-date-presets")
@@ -64,6 +110,9 @@ func TestAdminHTMLInvoiceFiltersUnique(t *testing.T) {
 	}
 	if n := strings.Count(adminHTML, "getLabels: listDateRangeLabels"); n != 1 {
 		t.Fatalf("invoice date filter must use listDateRangeLabels once, got %d", n)
+	}
+	if !strings.Contains(adminHTML, "getLocale:") {
+		t.Fatal("invoice date filter must pass getLocale for DatePicker labels")
 	}
 	if !strings.Contains(adminHTML, "invoiceDateFilterCtrl]") {
 		t.Fatal("applyAdminLocale must include invoiceDateFilterCtrl in the shared relabel loop")

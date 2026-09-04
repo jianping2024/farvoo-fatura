@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Farvoo 开票</title>
   <link rel="stylesheet" href="/fiscal-ui/toast.css"/>
+  <link rel="stylesheet" href="/fiscal-ui/date-picker.css"/>
   <link rel="stylesheet" href="/fiscal-ui/date-range.css"/>
   <link rel="stylesheet" href="/fiscal-ui/list-pagination.css"/>
   <style>
@@ -1382,6 +1383,7 @@
   </div>
 
   <script src="/fiscal-ui/toast.js"></script>
+  <script src="/fiscal-ui/date-picker.js"></script>
   <script src="/fiscal-ui/date-range.js"></script>
   <script src="/fiscal-ui/list-pagination.js"></script>
   <script src="/fiscal-ui/printer-station.js"></script>
@@ -3558,6 +3560,10 @@
       timezone: INVOICE_TZ,
       defaultPreset: 'today',
       getLabels: listDateRangeLabels,
+      getLocale: function () {
+        return (typeof FiscalAdminI18n !== 'undefined' && FiscalAdminI18n.getLocale)
+          ? FiscalAdminI18n.getLocale() : 'zh';
+      },
       onChange: () => {
         resetInvoiceListPage();
         refreshInvoices().catch(reportError);
