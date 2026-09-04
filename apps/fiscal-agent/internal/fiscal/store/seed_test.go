@@ -20,7 +20,7 @@ func TestSeedDemoOperatorLoginPIN(t *testing.T) {
 		StoreID: storeID, TaxpayerNIF: "123456789", LegalName: "Demo",
 		Address: "Rua", City: "Lisboa", PostalCode: "1000-001",
 		SeriesCode: "FT2026A", ValidationCode: "ABCD1234", FiscalYear: 2026,
-		OperatorID: "op-demo-cashier", OperatorName: "Demo Cashier",
+		OperatorID: "op-demo-cashier", OperatorName: "Demo Admin",
 		PublicKeyPEM: "pub", WrappedPrivateKey: "wrap",
 		InstallationID: "inst-1", DeviceID: "dev-1", DevicePublicKey: "dpk",
 	})
@@ -34,7 +34,7 @@ func TestSeedDemoOperatorLoginPIN(t *testing.T) {
 	if len(login) != 1 {
 		t.Fatalf("seed must expose 1 loginable operator, got %d", len(login))
 	}
-	if login[0].ID != "op-demo-cashier" || !login[0].HasPIN {
+	if login[0].ID != "op-demo-cashier" || !login[0].HasPIN || login[0].Role != "admin" {
 		t.Fatalf("unexpected login row: %+v", login[0])
 	}
 	if err := db.VerifyOperatorPIN(storeID, "op-demo-cashier", store.SeedDemoOperatorPIN, "127.0.0.1"); err != nil {
@@ -65,7 +65,7 @@ func TestSeedDemoBackfillsPinlessOperator(t *testing.T) {
 		StoreID: storeID, TaxpayerNIF: "123456789", LegalName: "Demo",
 		Address: "Rua", City: "Lisboa", PostalCode: "1000-001",
 		SeriesCode: "FT2026A", ValidationCode: "ABCD1234", FiscalYear: 2026,
-		OperatorID: "op-demo-cashier", OperatorName: "Demo Cashier",
+		OperatorID: "op-demo-cashier", OperatorName: "Demo Admin",
 		PublicKeyPEM: "pub", WrappedPrivateKey: "wrap",
 		InstallationID: "inst-1", DeviceID: "dev-1", DevicePublicKey: "dpk",
 	})
@@ -78,5 +78,8 @@ func TestSeedDemoBackfillsPinlessOperator(t *testing.T) {
 	}
 	if len(login) != 1 {
 		t.Fatalf("re-seed must backfill PIN for login, got %d", len(login))
+	}
+	if login[0].Role != "admin" || login[0].DisplayName != "Demo Admin" {
+		t.Fatalf("re-seed must promote demo op to admin, got %+v", login[0])
 	}
 }

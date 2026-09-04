@@ -97,7 +97,7 @@ func StartCore(opts Options) (*Runtime, error) {
 			SoftwareCertificateNumber: opts.SoftwareCertificateNumber,
 			SeriesCode:                fmt.Sprintf("FT%dDEMO01", year),
 			ValidationCode:            "CSDF7T5H", FiscalYear: year,
-			OperatorID: "op-demo-cashier", OperatorName: "Demo Cashier", SigningKeyVersion: 1,
+			OperatorID: "op-demo-cashier", OperatorName: "Demo Admin", SigningKeyVersion: 1,
 			InstallationID: "inst-demo-001", DeviceID: "device-demo-001", DevicePublicKey: "DEV-DEVICE-PUB",
 		}, opts.SigningKeyPEMPath, pub); err != nil {
 			_ = db.Close()

@@ -2,7 +2,7 @@
 //
 //	cd apps/fiscal-agent && FISCAL_ALLOW_LOCAL_PROVISION=1 go run ./cmd/fiscal-local
 //
-// Env: FISCAL_DB, FISCAL_BIND, FISCAL_STORE_ID, FISCAL_SEED=1 (M0 legacy; demo cashier PIN = store.SeedDemoOperatorPIN), FISCAL_AT_ENV=mock
+// Env: FISCAL_DB, FISCAL_BIND, FISCAL_STORE_ID, FISCAL_SEED=1 (M0 legacy; demo admin PIN = store.SeedDemoOperatorPIN), FISCAL_AT_ENV=mock
 // Optional UAT: FISCAL_STATION_PRINTERS_JSON, FISCAL_STATION_META_JSON
 package main
 

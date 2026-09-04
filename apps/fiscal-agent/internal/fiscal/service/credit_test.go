@@ -34,6 +34,13 @@ func TestIssueCreditNoteOperatorDenied(t *testing.T) {
 	}, keyPath, pub); err != nil {
 		t.Fatal(err)
 	}
+	// SeedDemo is always admin; demote for cashier NC-denied case.
+	if err := db.UpsertOperator("op-demo-cashier", "store-demo-001", "cashier", "Cashier", "mesa-op-demo-cashier"); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.SetOperatorCanIssueNC("store-demo-001", "op-demo-cashier", false); err != nil {
+		t.Fatal(err)
+	}
 	if err := db.UpsertActiveSeries("store-demo-001", "NC", "NC2026DEMO01", "NCVAL1234", 2026); err != nil {
 		t.Fatal(err)
 	}

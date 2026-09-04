@@ -74,6 +74,7 @@
 }
 
 .admin-list-toolbar__search {
+  /* NOT .field — form .field bottom margin skews peer toolbar buttons. */
   flex: 0 1 14rem;
   max-width: 16rem;
   min-width: 10rem;
