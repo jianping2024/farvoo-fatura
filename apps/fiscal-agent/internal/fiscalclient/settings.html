@@ -40,15 +40,14 @@
       showMsg(r || '连接成功', true);
     } catch (e) { showMsg(String(e), false); }
   };
+  // Save closes via Go finishSettings (Terminate). Do not also call closeSettings.
   document.getElementById('save').onclick = async () => {
     showMsg('保存中…', true);
     try {
-      const base = await saveSettings(hostEl.value, portEl.value);
-      showMsg('已保存', true);
-      await closeSettings(base);
+      await saveSettings(hostEl.value, portEl.value);
     } catch (e) { showMsg(String(e), false); }
   };
-  document.getElementById('cancel').onclick = () => closeSettings('');
+  document.getElementById('cancel').onclick = () => { closeSettings(''); };
 </script>
 </body>
 </html>

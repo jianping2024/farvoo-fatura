@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.89
+
+**Client 设置窗：保存/取消真正关窗后再开开票页**
+
+- **唯一写法 · HTML 对话框退出：**仅 `runHTMLWindowOnThread` 内 `closeHTMLDialog`（`Dispatch` → `Terminate`）；`Bind` 工厂注入，禁止用 Go 返回 `true` 假装关窗。
+- **唯一写法 · 设置结果+关窗：**仅 `finishSettings`（写 `result` + `closeDialog`）；`saveSettings` / `closeSettings` 共用；JS 保存不再二次 `closeSettings`。
+- 体感：测试成功 →「保存并打开」关设置窗并进入开票；「取消」关窗退出。
+
 ## 0.4.88
 
 **多台电脑开票：Agent 监听只认 config.json，收掉 LAN 环境变量管道**
