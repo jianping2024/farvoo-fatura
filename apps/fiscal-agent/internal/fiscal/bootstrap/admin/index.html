@@ -1186,7 +1186,6 @@
                     <span data-i18n="settings.lan.toggle">允许店内其它电脑连接本机</span>
                   </label>
                   <p class="hint" data-i18n="settings.lan.toggle_hint">打开后，其它电脑安装「Farvoo 开票」，填入上面的地址即可连接。</p>
-                  <p class="hint hidden" id="lanAccessEnvLocked" data-i18n="settings.lan.env_locked">已由系统环境变量锁定，请在本机取消 FISCAL_ALLOW_LAN / FISCAL_BIND 后使用此开关。</p>
                   <div class="panel-footer" style="border:0;justify-content:flex-start;gap:0.5rem;padding:0.5rem 0 0">
                     <button type="button" id="btnLanAccessSave" data-i18n="settings.lan.save">保存连接设置</button>
                   </div>
@@ -4539,7 +4538,6 @@
     const epRow = $('#lanAccessEndpointRow');
     const ep = $('#lanAccessEndpoint');
     const cb = $('#lanAccessAllow');
-    const locked = $('#lanAccessEnvLocked');
     const saveBtn = $('#btnLanAccessSave');
     if (!statusEl) return;
     try {
@@ -4569,11 +4567,11 @@
         statusEl.textContent = FiscalAdminI18n.t('settings.lan.status_local');
         epRow.classList.add('hidden');
       }
-      if (cb) cb.checked = !!data.allow_lan;
-      const envLocked = !!data.env_locked;
-      if (locked) locked.classList.toggle('hidden', !envLocked);
-      if (cb) cb.disabled = envLocked || !canSetTerminalMax();
-      if (saveBtn) saveBtn.disabled = envLocked || !canSetTerminalMax();
+      if (cb) {
+        cb.checked = !!data.allow_lan;
+        cb.disabled = !canSetTerminalMax();
+      }
+      if (saveBtn) saveBtn.disabled = !canSetTerminalMax();
     } catch (e) {
       statusEl.textContent = FiscalAdminI18n.t('settings.lan.status_local');
       if (epRow) epRow.classList.add('hidden');

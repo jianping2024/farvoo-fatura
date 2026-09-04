@@ -2,6 +2,18 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.4.88
+
+**多台电脑开票：Agent 监听只认 config.json，收掉 LAN 环境变量管道**
+
+- **唯一写法 · 监听地址：**仅 `resolveFiscalListenBind`（磁盘 `fiscal_allow_lan` → `0.0.0.0:17880` / `127.0.0.1:17880`；不读不写 `FISCAL_ALLOW_LAN` / `FISCAL_BIND`）。
+- **唯一写法 · H2 校验：**仅 `validateBindAddr(addr, allowLAN)`（`Options.AllowLAN`；禁止再读进程 env）。
+- **唯一写法 · 本机打开 URL：**仅 `loopbackAdminURL`；**监听重绑：**仅 `startEmbeddedFiscal`（保存后 `agentLanAccessSet`）。
+- **唯一写法 · config 读写 / 快照：**`loadAgentFiscalAllowLANState` / `setAgentFiscalAllowLAN` / `buildAgentLanAccessSnapshot`。
+- 收掉：`captureLanOpsEnvLocksOnce`、LAN `Setenv`、`env_locked` / `ErrLanEnvLocked`、Admin 环境变量锁定文案。
+- `applyFiscalRuntimeFromConfig` 只灌 provision / AT env（不再碰 LAN）。
+- `fiscal-local` CLI 仍可用 `FISCAL_ALLOW_LAN`+`FISCAL_BIND` 做本机 UAT（非店员产品路径）。
+
 ## 0.4.87
 
 **LAN 监听落地：磁盘权威 + 本机壳永不打开 0.0.0.0 + 禁止误锁 env**

@@ -9,8 +9,8 @@ Requirements
 - Windows 10/11 x64
 - Microsoft Edge WebView2 Runtime (installer can install it if missing)
 - Farvoo Fiscal Agent on another PC with LAN enabled in Admin:
-  Settings → Multi-PC invoicing → allow other store PCs to connect → restart Agent
-  (or ops env: FISCAL_ALLOW_LAN=1 and FISCAL_BIND=0.0.0.0:17880)
+  Settings → Multi-PC invoicing → allow other store PCs to connect → Save
+  (do not set FISCAL_ALLOW_LAN / FISCAL_BIND system environment variables)
 
 First run
 ---------

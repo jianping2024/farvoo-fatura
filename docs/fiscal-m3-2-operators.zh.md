@@ -299,7 +299,7 @@ middleware 在 M3.2b 二元 `authOwner` 上拆为三档（命名实现时可调�
 | # | 约束 | 说明 |
 |---|------|------|
 | H1 | 默认拒绝 middleware | 除白名单外 401；setup **写**路径必须在内 |
-| H2 | bind 两档 | 非 loopback **须** `FISCAL_ALLOW_LAN=1`，否则拒绝启动（§3.8） |
+| H2 | bind 两档 | 非 loopback / `0.0.0.0` **须** `Options.AllowLAN`（Agent：磁盘 `fiscal_allow_lan`；禁止再读 `FISCAL_ALLOW_LAN` env）（§3.8） |
 | H3 | bootstrap 事务 | `BEGIN IMMEDIATE` + `COUNT(operators)=0` 再 INSERT **`role=admin`**，防双 admin |
 | H4 | bootstrap 网络 | **仅 loopback** 可调 `bootstrap-owner`；LAN 其它 PC 只能登录已有账号 |
 | H5 | 会话查库 | 受保护请求 **禁止** 仅信 Cookie 内 `role`；须 `GetOperatorSessionState` |
@@ -354,7 +354,7 @@ admin 或 owner 停用 cashier
 | 人员 | `operators` **按人**；张三在 A 或 B 登录均为同一账号 |
 | 客户端 | Agent 本机：托盘 / `FarvooFiscalAgent fiscal`（WebView2 → `127.0.0.1:17880`）；LAN 其它 PC：**FarvooFiscalClient**（设置 Agent IP → WebView2）；浏览器直开 URL 仍可用 |
 | 打印机 | 每 PC 选 **档口 / `station_id`**（已有 `station_printers`） |
-| 开启多端 | Admin **多台电脑开票** ① 打开「允许店内其它电脑连接本机」→ 写 `config.json` `fiscal_allow_lan` → **托盘重启 Agent**（生效 `0.0.0.0:17880`）。运维 env `FISCAL_ALLOW_LAN`/`FISCAL_BIND` 仍可覆盖并锁定 UI |
+| 开启多端 | Admin **多台电脑开票** ① 打开「允许店内其它电脑连接本机」→ 写 `config.json` `fiscal_allow_lan` → 进程内重绑 `0.0.0.0:17880`（本机壳仍开 `127.0.0.1`）。**不要**设系统 `FISCAL_ALLOW_LAN`/`FISCAL_BIND`（Agent 忽略） |
 | 仅本机 | 默认 / 开关关闭 → `127.0.0.1:17880` |
 
 **与 Mesa 区别：** Mesa **不**直连接 API 自动签发；多端 = 店员 **打开开票网页**，不是桌台静默开票。

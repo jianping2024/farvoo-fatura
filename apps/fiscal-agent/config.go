@@ -41,7 +41,7 @@ type config struct {
 	// FiscalATEnv: mock | test | prod. Empty → mock. Env FISCAL_AT_ENV wins when set.
 	FiscalATEnv string `json:"fiscal_at_env,omitempty"`
 	// FiscalAllowLAN: allow Admin listen on LAN (0.0.0.0:17880). nil/false → loopback only.
-	// Env FISCAL_ALLOW_LAN / FISCAL_BIND win when set at process start (CI / ops override).
+	// Product path: Admin → config.json only (no FISCAL_ALLOW_LAN / FISCAL_BIND).
 	FiscalAllowLAN *bool `json:"fiscal_allow_lan,omitempty"`
 }
 

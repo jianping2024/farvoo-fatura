@@ -37,33 +37,9 @@ func fiscalBillSyncPuller(cfg *config) *billsync.Puller {
 	return &billsync.Puller{APIBase: cfg.APIBase, JWT: cfg.AgentJWT, DB: embeddedFiscal.DB}
 }
 
-// lanOpsEnv* — ONLY ops/CI lock markers. Captured once from the process environment
-// before this process writes FISCAL_ALLOW_LAN / FISCAL_BIND. Never treat our own Setenv as lock.
-var (
-	lanOpsEnvCaptured    bool
-	lanOpsLockedAllow    bool
-	lanOpsLockedBind     bool
-)
-
-// resetLanOpsEnvCaptureForTest resets capture state between unit tests. ONLY for tests.
-func resetLanOpsEnvCaptureForTest() {
-	lanOpsEnvCaptured = false
-	lanOpsLockedAllow = false
-	lanOpsLockedBind = false
-}
-
-func captureLanOpsEnvLocksOnce() {
-	if lanOpsEnvCaptured {
-		return
-	}
-	lanOpsLockedAllow = strings.TrimSpace(os.Getenv("FISCAL_ALLOW_LAN")) != ""
-	lanOpsLockedBind = strings.TrimSpace(os.Getenv("FISCAL_BIND")) != ""
-	lanOpsEnvCaptured = true
-}
-
-// applyFiscalRuntimeFromConfig installs process env used by fiscal packages.
-// ONLY agent-side applicator. LAN listen intent: disk config.json unless ops env was
-// present before first apply (CI / Machine env override).
+// applyFiscalRuntimeFromConfig installs process env used by fiscal packages
+// (local provision + AT env only). LAN listen is NOT via env — see resolveFiscalListenBind.
+// ONLY agent-side applicator.
 func applyFiscalRuntimeFromConfig(cfg *config) {
 	if strings.TrimSpace(os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION")) == "" {
 		allow := false
@@ -84,27 +60,6 @@ func applyFiscalRuntimeFromConfig(cfg *config) {
 			}
 		}
 		_ = os.Setenv("FISCAL_AT_ENV", at)
-	}
-
-	captureLanOpsEnvLocksOnce()
-
-	if !lanOpsLockedAllow {
-		allowLAN := false
-		if set, allow := loadAgentFiscalAllowLANState(); set {
-			allowLAN = allow
-		}
-		if allowLAN {
-			_ = os.Setenv("FISCAL_ALLOW_LAN", "1")
-		} else {
-			_ = os.Setenv("FISCAL_ALLOW_LAN", "0")
-		}
-	}
-	if !lanOpsLockedBind {
-		if os.Getenv("FISCAL_ALLOW_LAN") == "1" {
-			_ = os.Setenv("FISCAL_BIND", "0.0.0.0:17880")
-		} else {
-			_ = os.Unsetenv("FISCAL_BIND")
-		}
 	}
 }
 
@@ -135,10 +90,7 @@ func startEmbeddedFiscal(cfg *config) error {
 	defer embeddedFiscalMu.Unlock()
 
 	applyFiscalRuntimeFromConfig(cfg)
-	bind := strings.TrimSpace(os.Getenv("FISCAL_BIND"))
-	if bind == "" {
-		bind = "127.0.0.1:17880"
-	}
+	allowLAN, bind := resolveFiscalListenBind()
 	wantURL := "http://" + bind
 
 	if embeddedFiscal != nil {
@@ -201,6 +153,7 @@ func startEmbeddedFiscal(cfg *config) error {
 		DBPath:            dbPath,
 		DataDir:           dataDir,
 		BindAddr:          bind,
+		AllowLAN:          allowLAN,
 		StoreID:           storeID,
 		StationPrintersFn: stationsFn,
 		StationMetaFn:     stationMetaFnForConfigPath(configPath),
