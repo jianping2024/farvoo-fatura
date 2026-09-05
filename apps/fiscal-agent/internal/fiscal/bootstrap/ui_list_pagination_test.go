@@ -7,6 +7,7 @@ import (
 
 func TestFiscalUIListPaginationAssets(t *testing.T) {
 	js := string(fiscalUIListPaginationJS)
+	css := string(fiscalUIListPaginationCSS)
 	if !strings.Contains(js, "FiscalUI.createListPaginationBar") {
 		t.Fatal("list-pagination.js must export FiscalUI.createListPaginationBar")
 	}
@@ -28,11 +29,39 @@ func TestFiscalUIListPaginationAssets(t *testing.T) {
 	if n := strings.Count(js, "onPageChange(state.totalPages)"); n != 1 {
 		t.Fatalf("last-page jump must be the ONLY onPageChange(state.totalPages), got %d", n)
 	}
-	if !strings.Contains(string(fiscalUIListPaginationCSS), ".fiscal-list-pagination") {
+	if n := strings.Count(js, "var PAGER_ICON_SVG"); n != 1 {
+		t.Fatalf("PAGER_ICON_SVG must be the ONLY pager icon map, got %d", n)
+	}
+	if n := strings.Count(js, "ONLY pager chevron SVGs"); n != 1 {
+		t.Fatalf("pager SVG map must be documented once, got %d", n)
+	}
+	if n := strings.Count(js, `fiscal-list-pagination__icon-btn`); n != 4 {
+		t.Fatalf("nav markup must use __icon-btn exactly 4 times (first/prev/next/last), got %d", n)
+	}
+	if strings.Contains(js, "firstBtn.textContent") || strings.Contains(js, "prevBtn.textContent") ||
+		strings.Contains(js, "nextBtn.textContent") || strings.Contains(js, "lastBtn.textContent") {
+		t.Fatal("pager nav must not set button textContent; labels are aria-label + title only")
+	}
+	if n := strings.Count(js, `firstBtn.setAttribute('aria-label'`); n != 1 {
+		t.Fatalf("first aria-label must be set once in paint, got %d", n)
+	}
+	if n := strings.Count(js, `firstBtn.setAttribute('title'`); n != 1 {
+		t.Fatalf("first title must be set once in paint, got %d", n)
+	}
+	if !strings.Contains(css, ".fiscal-list-pagination") {
 		t.Fatal("list-pagination.css must style fiscal-list-pagination")
 	}
-	if !strings.Contains(string(fiscalUIListPaginationCSS), ".admin-list-panel") {
+	if !strings.Contains(css, ".admin-list-panel") {
 		t.Fatal("list-pagination.css must style admin-list-panel")
+	}
+	if n := strings.Count(css, "ONLY pager nav icon buttons"); n != 1 {
+		t.Fatalf("pager icon-btn CSS must be the ONLY documented rule, got %d", n)
+	}
+	if n := strings.Count(css, "button.fiscal-list-pagination__icon-btn {"); n != 1 {
+		t.Fatalf("pager __icon-btn size rule must appear once, got %d", n)
+	}
+	if strings.Contains(css, ".fiscal-list-pagination__nav button {\n  padding: 0.4rem 0.75rem") {
+		t.Fatal("pager nav must not keep text-button padding rule")
 	}
 }
 

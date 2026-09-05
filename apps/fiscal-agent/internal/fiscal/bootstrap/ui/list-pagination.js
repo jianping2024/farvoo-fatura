@@ -2,12 +2,35 @@
  * API: FiscalUI.createListPaginationBar(container, options) -> { update, setDisabled, relabel }
  * Labels: options.getLabels() is the ONLY live copy path (re-read on paint/relabel).
  * Nav: first / prev / next / last — ONLY here (all 5 Admin lists).
+ * Visible nav controls are icon-only; pageFirst/Prev/Next/Last are aria-label + title only.
  */
 (function (global) {
   'use strict';
 
   var LIST_PAGE_SIZES = [10, 20];
   var LIST_DEFAULT_PAGE_SIZE = 10;
+
+  /* ONLY pager chevron SVGs (restaurant ListPaginationBar paths). */
+  var PAGER_ICON_SVG = {
+    first:
+      '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<path d="M11 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M18 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>',
+    prev:
+      '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>',
+    next:
+      '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>',
+    last:
+      '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<path d="M6 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M13 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>'
+  };
 
   function totalPages(total, pageSize) {
     var size = Math.max(1, pageSize || LIST_DEFAULT_PAGE_SIZE);
@@ -53,10 +76,34 @@
       '</label>' +
       '</div>' +
       '<div class="fiscal-list-pagination__nav" data-role="nav">' +
-      '<button type="button" class="secondary" data-role="first">' + pageFirst + '</button>' +
-      '<button type="button" class="secondary" data-role="prev">' + pagePrev + '</button>' +
-      '<button type="button" class="secondary" data-role="next">' + pageNext + '</button>' +
-      '<button type="button" class="secondary" data-role="last">' + pageLast + '</button>' +
+      '<button type="button" class="secondary fiscal-list-pagination__icon-btn" data-role="first" aria-label="' +
+      pageFirst +
+      '" title="' +
+      pageFirst +
+      '">' +
+      PAGER_ICON_SVG.first +
+      '</button>' +
+      '<button type="button" class="secondary fiscal-list-pagination__icon-btn" data-role="prev" aria-label="' +
+      pagePrev +
+      '" title="' +
+      pagePrev +
+      '">' +
+      PAGER_ICON_SVG.prev +
+      '</button>' +
+      '<button type="button" class="secondary fiscal-list-pagination__icon-btn" data-role="next" aria-label="' +
+      pageNext +
+      '" title="' +
+      pageNext +
+      '">' +
+      PAGER_ICON_SVG.next +
+      '</button>' +
+      '<button type="button" class="secondary fiscal-list-pagination__icon-btn" data-role="last" aria-label="' +
+      pageLast +
+      '" title="' +
+      pageLast +
+      '">' +
+      PAGER_ICON_SVG.last +
+      '</button>' +
       '</div>';
 
     var infoEl = root.querySelector('[data-role="info"]');
@@ -87,10 +134,14 @@
       pageLast = live.pageLast;
       sizeLabelEl.textContent = pageSizeLabel;
       sizeEl.setAttribute('aria-label', pageSizeLabel);
-      firstBtn.textContent = pageFirst;
-      prevBtn.textContent = pagePrev;
-      nextBtn.textContent = pageNext;
-      lastBtn.textContent = pageLast;
+      firstBtn.setAttribute('aria-label', pageFirst);
+      firstBtn.setAttribute('title', pageFirst);
+      prevBtn.setAttribute('aria-label', pagePrev);
+      prevBtn.setAttribute('title', pagePrev);
+      nextBtn.setAttribute('aria-label', pageNext);
+      nextBtn.setAttribute('title', pageNext);
+      lastBtn.setAttribute('aria-label', pageLast);
+      lastBtn.setAttribute('title', pageLast);
       infoEl.textContent = pageInfoTpl
         .replace('{page}', String(state.page))
         .replace('{totalPages}', String(state.totalPages))
