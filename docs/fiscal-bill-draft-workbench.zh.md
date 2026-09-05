@@ -19,10 +19,10 @@
 
 | 界面 / 业务用语 | 内部（代码 / 表 / API） | 旧称（别名） |
 |-----------------|-------------------------|--------------|
-| 收银账单 | `bill_sync_drafts`；路由前缀 `/local/v1/bill-drafts` | 待开票账单 |
+| 账单 | `bill_sync_drafts`；路由前缀 `/local/v1/bill-drafts` | 收银账单；待开票账单 |
 | 进入开票 | 进入签发流（或 M2.6 四步）；载荷仍来自同步或映射 | 转订单 |
-| 手工开票 | 开票前销售聚合（手动为 snapshot）；页标题 | 订单；新建开票 |
-| ＋ 手工开票 / 收银账单 | 发票 hub 入口 CTA（收银与侧栏同名） | 新建开票 / 处理收银账单 |
+| 开票 | 开票前销售聚合（手动为 snapshot）；页标题 | 手工开票；订单；新建开票 |
+| ＋ 开票 / 账单 | 发票 hub 入口 CTA（账单与侧栏同名） | ＋ 手工开票 / 收银账单；新建开票 / 处理收银账单 |
 | 签发发票 | `IssueDocument` → FT | — |
 | 发票 | `invoices` + 打印作业 | — |
 | 重打 | `print_purpose=REPRINT` 新打印作业（**M2.6b**） | — |
@@ -252,7 +252,7 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 - **店员路径（M2.6）：** 正式 Admin，流程见 [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)。餐馆侧栏 **收银账单** → **进入开票** → **签发发票**。  
 - **工程调试：** 本机 `http://127.0.0.1:17880` Admin §7 保留至 M2.6 正式页替代；**不对店员暴露** § 编号与「草稿」字样。  
 - **不做** Farvoo 云端开票页。  
-- **工作台双 CTA（P0）：** 与 [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)「发票 hub 双 CTA」一致：`收银账单` 与 `＋ 手工开票` **同级视觉**；有 open 收银账单时前者 **优先焦点**。禁止灰边弱化收银账单入口。  
+- **工作台双 CTA（P0）：** 与 [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)「发票 hub 双 CTA」一致：`账单` 与 `＋ 开票` **同级视觉**；有 open 账单时前者 **优先焦点**。禁止灰边弱化账单入口。  
 - 列表：桌号、金额、同步时间、整桌/分单、未开/已开人数。  
 - **进入开票 / 分单：** 列表点入 → **专用 main view**（非列表下钻小块、非小弹窗分配器）；交互与壳层以 [`fiscal-bill-split-workbench-ux.zh.md`](fiscal-bill-split-workbench-ux.zh.md) 为准（左剩余池 / 右当前人份额 / 同页开票条；`whole_table` 与已 `split` 同一界面可实时改；本机持久化、不回写云）。  
 - **签发：** 按人在开票条签发；整桌仅在尚未走按人开票路径时保留「整桌签发」（互斥见 §5）。  
@@ -344,6 +344,7 @@ POST /local/v1/bill-drafts/{id}/discard  # 硬删该 sale 全部草稿
 | 2026-08-25 | §7.1：Agent→Admin SSE `bill_drafts_changed` + 侧栏角标（禁浏览器空转轮询主路径） |
 | 2026-08-25 | §0/§9：**方案 A** 用语：收银账单 / 手工开票 / 新建开票 / 处理收银账单（Will 确认） |
 | 2026-09-05 | §0/§9：hub CTA 收口为「收银账单」+「＋ 手工开票」；废止「处理收银账单」「新建开票」主文案 |
+| 2026-09-05 | §0/§9：界面再收短为「账单」+「＋ 开票」 |
 | 2026-08-25 | §9/§12：挂接按菜分单 UX 定稿（main view + 本机分配消账）；细节以该文为准 |
 | 2026-08-25 | 与分单 UX 对齐：同单只同步一次（后续关台）；不做开票前再同步覆盖本机分单的冲突策略 |
 | 2026-08-25 | §6：按人清草稿改为「全部 person 已开 **且** 剩余池空」；挂分单 UX |
