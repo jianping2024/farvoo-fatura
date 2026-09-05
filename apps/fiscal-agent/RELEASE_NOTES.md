@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.5
+
+**列表翻页导航改为图标（对齐 restaurant）**
+
+- **唯一写法 · 翻页导航可见控件：**仅 `list-pagination.js` 的 `PAGER_ICON_SVG` + `__icon-btn`（first/prev/next/last 四键）；禁止按钮 `textContent` 显示「上一页」等文字。
+- **唯一写法 · 翻页文案：**仍仅 `listPagerLabels` → `pager.first|prev|next|last`，只用于 `aria-label` / `title`；禁止散落硬编码。
+- **唯一写法 · 翻页图标样式：**仅 `list-pagination.css` 的 `__icon-btn` 方按钮规则。
+
 ## 0.5.4
 
 **列表翻页：补第一页 / 最后一页；Admin 原生 select 箭头边距对齐**
