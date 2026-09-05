@@ -147,7 +147,7 @@ async function main() {
       ['suggestedSaleDocumentType once', (html.match(/function suggestedSaleDocumentType/g) || []).length === 1],
       ['syncSaleDocTypeSuggestion once', (html.match(/function syncSaleDocTypeSuggestion/g) || []).length === 1],
       ['bindSaleDocTypeSuggestion once', (html.match(/function bindSaleDocTypeSuggestion/g) || []).length === 1],
-      ['DEFAULT_SALE_DOC FT once', (html.match(/const DEFAULT_SALE_DOC = 'FT'/g) || []).length === 1],
+      ['DEFAULT_SALE_DOC FS once', (html.match(/const DEFAULT_SALE_DOC = 'FS'/g) || []).length === 1],
       ['fmtVatPercent once', (html.match(/function fmtVatPercent/g) || []).length === 1],
       ['lineFromGrossPreview once', (html.match(/function lineFromGrossPreview/g) || []).length === 1],
       ['orderMoneyBreakdown once', (html.match(/function orderMoneyBreakdown/g) || []).length === 1],
