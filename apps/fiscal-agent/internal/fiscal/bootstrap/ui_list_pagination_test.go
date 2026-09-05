@@ -6,14 +6,27 @@ import (
 )
 
 func TestFiscalUIListPaginationAssets(t *testing.T) {
-	if !strings.Contains(string(fiscalUIListPaginationJS), "FiscalUI.createListPaginationBar") {
+	js := string(fiscalUIListPaginationJS)
+	if !strings.Contains(js, "FiscalUI.createListPaginationBar") {
 		t.Fatal("list-pagination.js must export FiscalUI.createListPaginationBar")
 	}
-	if n := strings.Count(string(fiscalUIListPaginationJS), "function createListPaginationBar"); n != 1 {
+	if n := strings.Count(js, "function createListPaginationBar"); n != 1 {
 		t.Fatalf("createListPaginationBar must be defined once in list-pagination.js, got %d", n)
 	}
-	if !strings.Contains(string(fiscalUIListPaginationJS), "options.getLabels") {
+	if !strings.Contains(js, "options.getLabels") {
 		t.Fatal("pagination must re-read getLabels on paint (locale switch)")
+	}
+	for _, role := range []string{`data-role="first"`, `data-role="prev"`, `data-role="next"`, `data-role="last"`} {
+		// once in markup template + once in querySelector
+		if n := strings.Count(js, role); n != 2 {
+			t.Fatalf("nav %s must appear twice in list-pagination.js (markup+query), got %d", role, n)
+		}
+	}
+	if n := strings.Count(js, "onPageChange(1)"); n != 1 {
+		t.Fatalf("first-page jump must be the ONLY onPageChange(1), got %d", n)
+	}
+	if n := strings.Count(js, "onPageChange(state.totalPages)"); n != 1 {
+		t.Fatalf("last-page jump must be the ONLY onPageChange(state.totalPages), got %d", n)
 	}
 	if !strings.Contains(string(fiscalUIListPaginationCSS), ".fiscal-list-pagination") {
 		t.Fatal("list-pagination.css must style fiscal-list-pagination")

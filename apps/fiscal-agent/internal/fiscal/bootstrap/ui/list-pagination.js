@@ -1,6 +1,7 @@
 /* Fiscal Admin list pagination — mirrors restaurant-ordering ListPaginationBar.tsx
  * API: FiscalUI.createListPaginationBar(container, options) -> { update, setDisabled, relabel }
  * Labels: options.getLabels() is the ONLY live copy path (re-read on paint/relabel).
+ * Nav: first / prev / next / last — ONLY here (all 5 Admin lists).
  */
 (function (global) {
   'use strict';
@@ -22,15 +23,19 @@
       return {
         pageInfo: extra.pageInfo || '第 {page} / {totalPages} 页 · 共 {total} 条',
         pageSizeLabel: extra.pageSizeLabel || '每页',
+        pageFirst: extra.pageFirst || '第一页',
         pagePrev: extra.pagePrev || '上一页',
-        pageNext: extra.pageNext || '下一页'
+        pageNext: extra.pageNext || '下一页',
+        pageLast: extra.pageLast || '最后一页'
       };
     }
     var labels = resolveLabels();
     var pageInfoTpl = labels.pageInfo;
     var pageSizeLabel = labels.pageSizeLabel;
+    var pageFirst = labels.pageFirst;
     var pagePrev = labels.pagePrev;
     var pageNext = labels.pageNext;
+    var pageLast = labels.pageLast;
     var pageSizes = options.pageSizes || LIST_PAGE_SIZES.slice();
     var onPageChange = typeof options.onPageChange === 'function' ? options.onPageChange : function () {};
     var onPageSizeChange = typeof options.onPageSizeChange === 'function' ? options.onPageSizeChange : function () {};
@@ -48,16 +53,20 @@
       '</label>' +
       '</div>' +
       '<div class="fiscal-list-pagination__nav" data-role="nav">' +
+      '<button type="button" class="secondary" data-role="first">' + pageFirst + '</button>' +
       '<button type="button" class="secondary" data-role="prev">' + pagePrev + '</button>' +
       '<button type="button" class="secondary" data-role="next">' + pageNext + '</button>' +
+      '<button type="button" class="secondary" data-role="last">' + pageLast + '</button>' +
       '</div>';
 
     var infoEl = root.querySelector('[data-role="info"]');
     var sizeLabelEl = root.querySelector('[data-role="size-label"]');
     var sizeEl = root.querySelector('[data-role="size"]');
     var navEl = root.querySelector('[data-role="nav"]');
+    var firstBtn = root.querySelector('[data-role="first"]');
     var prevBtn = root.querySelector('[data-role="prev"]');
     var nextBtn = root.querySelector('[data-role="next"]');
+    var lastBtn = root.querySelector('[data-role="last"]');
 
     sizeLabelEl.textContent = pageSizeLabel;
     sizeEl.innerHTML = pageSizes
@@ -72,24 +81,36 @@
       var live = resolveLabels();
       pageInfoTpl = live.pageInfo;
       pageSizeLabel = live.pageSizeLabel;
+      pageFirst = live.pageFirst;
       pagePrev = live.pagePrev;
       pageNext = live.pageNext;
+      pageLast = live.pageLast;
       sizeLabelEl.textContent = pageSizeLabel;
       sizeEl.setAttribute('aria-label', pageSizeLabel);
+      firstBtn.textContent = pageFirst;
       prevBtn.textContent = pagePrev;
       nextBtn.textContent = pageNext;
+      lastBtn.textContent = pageLast;
       infoEl.textContent = pageInfoTpl
         .replace('{page}', String(state.page))
         .replace('{totalPages}', String(state.totalPages))
         .replace('{total}', String(state.total));
       sizeEl.value = String(state.pageSize);
-      prevBtn.disabled = state.disabled || state.page <= 1;
-      nextBtn.disabled = state.disabled || state.page >= state.totalPages;
+      var atStart = state.disabled || state.page <= 1;
+      var atEnd = state.disabled || state.page >= state.totalPages;
+      firstBtn.disabled = atStart;
+      prevBtn.disabled = atStart;
+      nextBtn.disabled = atEnd;
+      lastBtn.disabled = atEnd;
       navEl.style.display = state.totalPages > 1 ? '' : 'none';
       root.style.display = state.total === 0 ? 'none' : '';
       sizeEl.disabled = !!state.disabled;
     }
 
+    firstBtn.addEventListener('click', function () {
+      if (state.disabled || state.page <= 1) return;
+      onPageChange(1);
+    });
     prevBtn.addEventListener('click', function () {
       if (state.disabled || state.page <= 1) return;
       onPageChange(state.page - 1);
@@ -97,6 +118,10 @@
     nextBtn.addEventListener('click', function () {
       if (state.disabled || state.page >= state.totalPages) return;
       onPageChange(state.page + 1);
+    });
+    lastBtn.addEventListener('click', function () {
+      if (state.disabled || state.page >= state.totalPages) return;
+      onPageChange(state.totalPages);
     });
     sizeEl.addEventListener('change', function () {
       var next = Number(sizeEl.value);

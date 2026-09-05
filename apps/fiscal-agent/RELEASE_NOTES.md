@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.4
+
+**列表翻页：补第一页 / 最后一页**
+
+- **唯一写法 · 翻页导航：**仅 `list-pagination.js` 的 `data-role="first|prev|next|last"`（账单 / 发票 / 商品 / 客户 / 操作记录五处共用）；禁止在各列表再写一套首页/末页。
+- **唯一写法 · 翻页文案：**仅 `listPagerLabels` → `pager.first|prev|next|last`（zh/en/pt）；禁止散落硬编码「第一页」「最后一页」。
+
 ## 0.5.3
 
 **手工开票：本单明细 / 本单摘要显示 IVA**

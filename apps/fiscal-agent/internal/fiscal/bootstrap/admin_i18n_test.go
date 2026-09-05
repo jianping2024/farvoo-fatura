@@ -150,6 +150,11 @@ func TestAdminSettingsI18nUniqueWriters(t *testing.T) {
 	if n := strings.Count(html, "function listPagerLabels"); n != 1 {
 		t.Fatalf("listPagerLabels must be the only pager copy, got %d", n)
 	}
+	for _, key := range []string{"pager.first", "pager.prev", "pager.next", "pager.last"} {
+		if n := strings.Count(html, "FiscalAdminI18n.t('"+key+"')"); n != 1 {
+			t.Fatalf("listPagerLabels must map %s once, got %d", key, n)
+		}
+	}
 	if n := strings.Count(html, "function listDateRangeLabels"); n != 1 {
 		t.Fatalf("listDateRangeLabels must be the only date-range copy, got %d", n)
 	}
