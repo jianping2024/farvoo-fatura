@@ -415,12 +415,24 @@ func TestAdminHTMLInvoiceHubLayout(t *testing.T) {
 	}
 	for _, css := range []string{
 		".invoices-table.list-table { table-layout: fixed; width: 100%; }",
-		".invoices-table.list-table .col-no { width: 10rem; white-space: nowrap; }",
+		".invoices-table.list-table .col-no { width: 10rem; white-space: nowrap; font-weight: 600; }",
 		".invoices-table.list-table .col-pay {",
 	} {
 		if n := strings.Count(adminHTML, css); n != 1 {
 			t.Fatalf("clerk invoice layout CSS %q must appear exactly once, got %d", css, n)
 		}
+	}
+	if n := strings.Count(adminHTML, "ONLY Admin type colors"); n != 1 {
+		t.Fatalf("type color contract must be documented once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "--head:"); n != 1 {
+		t.Fatalf("--head token must be defined once, got %d", n)
+	}
+	if !strings.Contains(adminHTML, "th { color: var(--head);") {
+		t.Fatal("table headers must use --head, not --muted")
+	}
+	if strings.Contains(adminHTML, "th { color: var(--muted);") {
+		t.Fatal("table headers must not use --muted")
 	}
 	if strings.Contains(adminHTML, "function applyHomeRecentColNoWidth") || strings.Contains(adminHTML, "function measureAdminTableTextPx") {
 		t.Fatal("home-recent column measure helpers must be removed")

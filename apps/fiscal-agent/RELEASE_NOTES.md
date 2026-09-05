@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.0
+
+**Admin 字色三档：表正文清晰、表头可读、muted 只留给次要（minor：结束 0.4.x 三位数 patch）**
+
+- **唯一写法 · 字色 token：**仅 `--ink`（正文/单元格）/ `--head`（表头）/ `--muted`（hint、空态第二行、购方副名）；禁止表头再用 `--muted`。
+- **唯一写法 · 发票表强调：**票号/金额 `font-weight:600`；空态主句 `--ink`。
+
 ## 0.4.106
 
 **工具条搜索对齐 + FISCAL_SEED 测试账号改管理员**
