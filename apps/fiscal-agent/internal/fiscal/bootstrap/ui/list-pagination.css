@@ -38,7 +38,10 @@
 .fiscal-list-pagination__size select {
   width: auto;
   min-width: 3.5rem;
-  padding: 0.35rem 0.5rem;
+  /* Keep Admin select padding-right / chevron; only tighten vertical + left */
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  padding-left: 0.5rem;
   font-size: 0.85rem;
 }
 

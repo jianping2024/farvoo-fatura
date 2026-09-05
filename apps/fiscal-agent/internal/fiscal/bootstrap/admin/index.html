@@ -29,6 +29,9 @@
       --mode: var(--rest);
       /* Used for rgba() alpha gradients inside login-only backgrounds. */
       --mode-rgb: 11,61,46;
+      /* ONLY native <select> geometry — chevron rule below; do not redefine elsewhere */
+      --select-pad-x: 0.75rem;
+      --select-chevron-slot: 2rem;
     }
     body.mode-retail {
       --mode: var(--retail);
@@ -62,7 +65,18 @@
     button.ghost:hover { background: var(--paper); color: var(--ink); transform: none; box-shadow: none; }
     input, select, textarea {
       width: 100%; border: 1px solid var(--line); border-radius: 10px;
-      padding: 0.65rem 0.75rem; background: #fff;
+      padding: 0.65rem var(--select-pad-x); background: #fff;
+    }
+    /* ONLY native select disclosure — chevron + right slot; one rule for all Admin selects */
+    select {
+      -webkit-appearance: none;
+      appearance: none;
+      padding-right: var(--select-chevron-slot);
+      background-color: #fff;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1.5 1.75L6 6.25l4.5-4.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right var(--select-pad-x) center;
+      background-size: 0.75rem;
     }
     input[type="checkbox"] {
       width: 1rem; height: 1rem; padding: 0; margin: 0; flex: 0 0 auto;
