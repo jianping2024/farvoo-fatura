@@ -49,6 +49,9 @@ func TestInnoSetupUpgradeStory(t *testing.T) {
 	if strings.Contains(iss, "CloseApplications=yes") || strings.Contains(iss, "CloseApplications=force") {
 		t.Fatal("CloseApplications yes/force must not appear — that asks the user to close apps")
 	}
+	if strings.Contains(iss, "fiscal-devtool") {
+		t.Fatal("fiscal-devtool must not ship in Agent Setup")
+	}
 	if strings.Count(iss, "PrivilegesRequired=") != 1 {
 		t.Fatal("expected exactly one PrivilegesRequired= line")
 	}
