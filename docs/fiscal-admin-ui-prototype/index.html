@@ -234,7 +234,7 @@
     </aside>
 
     <main class="main">
-      <!-- 新建开票：步骤 1–2 加商品 -->
+      <!-- 手工开票：步骤 1–2 加商品 -->
       <section class="view hidden" id="view-order-new">
         <div class="flow-bar" id="flowBarNew">
           <div class="flow-step active" data-step="1"><span class="num">1</span>创建开票</div>
@@ -244,7 +244,7 @@
         </div>
         <div class="topbar">
           <div>
-            <h1>新建开票</h1>
+            <h1>手工开票</h1>
             <p class="hint">先完成本单，再进入开票步骤。</p>
           </div>
           <button type="button" class="secondary" data-nav="invoices">取消</button>
@@ -387,12 +387,12 @@
             <h1>发票</h1>
             <p class="hint" id="invoiceHubSubtitle">餐馆 · 收银账单 → 开票 → 发票列表</p>
           </div>
-          <button type="button" data-goto="order-new" id="ctaNewOrder">＋ 新建开票</button>
+          <button type="button" data-goto="order-new" id="ctaNewOrder">＋ 手工开票</button>
         </div>
         <div class="hub-entry-strip">
           <div class="hub-metric"><span class="k">今日已开发票</span><strong class="v">12</strong></div>
           <button type="button" class="hub-bills-cta rest-only" data-nav="bills" id="ctaPendingBills">
-            <span>处理收银账单</span><span class="hub-bills-count">1</span>
+            <span>收银账单</span><span class="hub-bills-count">1</span>
           </button>
           <div class="hub-metric retail-only"><span class="k">今日营业额</span><strong class="v">€128</strong></div>
         </div>
@@ -485,7 +485,7 @@
       $('#sidebarMode').textContent = mode === 'restaurant' ? '餐馆模式' : '商超模式';
       $('#invoiceHubSubtitle').textContent = mode === 'restaurant'
         ? '餐馆 · 收银账单 → 开票 → 发票列表'
-        : '商超 · 新建开票 → 发票列表';
+        : '商超 · 手工开票 → 发票列表';
     }
 
     function enterApp() {
