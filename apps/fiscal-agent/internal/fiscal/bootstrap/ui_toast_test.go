@@ -163,6 +163,30 @@ func TestAdminHTMLBillListAndCustomerNifHelpers(t *testing.T) {
 	if n := strings.Count(adminHTML, "bindSaleDocTypeSuggestion($('#splitDocType'"); n != 1 {
 		t.Fatalf("split panel must bind soft FT/FS once, got %d", n)
 	}
+	if n := strings.Count(adminHTML, "const DEFAULT_SALE_DOC = 'FT'"); n != 1 {
+		t.Fatalf("DEFAULT_SALE_DOC must be FT exactly once, got %d", n)
+	}
+	if strings.Contains(adminHTML, "const DEFAULT_SALE_DOC = 'FS'") {
+		t.Fatal("DEFAULT_SALE_DOC must not fall back to FS")
+	}
+	if n := strings.Count(adminHTML, "function fmtVatPercent"); n != 1 {
+		t.Fatalf("fmtVatPercent must be the ONLY IVA%% label helper, got %d", n)
+	}
+	if strings.Contains(adminHTML, "p.vat_rate + '%'") || strings.Contains(adminHTML, "ln.vat + '%'") {
+		t.Fatal("do not concatenate vat_rate/'%' ad-hoc; use fmtVatPercent only")
+	}
+	if n := strings.Count(adminHTML, "function lineFromGrossPreview"); n != 1 {
+		t.Fatalf("lineFromGrossPreview must be the ONLY gross→net/tax preview, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function orderMoneyBreakdown"); n != 1 {
+		t.Fatalf("orderMoneyBreakdown must be the ONLY order net/tax/gross preview, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function renderOrderMoneyBox"); n != 1 {
+		t.Fatalf("renderOrderMoneyBox must be the ONLY order money box writer, got %d", n)
+	}
+	if !strings.Contains(adminHTML, `data-i18n="col.vat"`) {
+		t.Fatal("order lines table must expose IVA column (col.vat)")
+	}
 	if strings.Contains(adminHTML, "invNif').addEventListener('input'") || strings.Contains(adminHTML, "splitNif').addEventListener('input'") {
 		t.Fatal("do not bind NIF input ad-hoc for doc type; use bindSaleDocTypeSuggestion only")
 	}

@@ -263,9 +263,9 @@
           <div class="panel">
             <h2>本单明细</h2>
             <table>
-              <thead><tr><th>商品</th><th>数量</th><th>单价</th><th>小计</th><th></th></tr></thead>
+              <thead><tr><th>商品</th><th>数量</th><th>单价</th><th>IVA</th><th>小计</th><th></th></tr></thead>
               <tbody id="orderLines">
-                <tr><td>Buffet livre</td><td>1</td><td>19.95</td><td>19.95</td><td><button type="button" class="ghost">删</button></td></tr>
+                <tr><td>Buffet livre</td><td>1</td><td>19.95</td><td>23%</td><td>19.95</td><td><button type="button" class="ghost">删</button></td></tr>
               </tbody>
             </table>
             <div class="actions">
@@ -274,7 +274,11 @@
           </div>
           <div class="panel">
             <h2>本单合计</h2>
-            <p style="font-family:var(--display);font-size:1.6rem;margin:0.5rem 0">€28.30</p>
+            <dl class="order-money" style="margin:0.5rem 0">
+              <div class="detail-row" style="border:0;padding:0.2rem 0"><dt>净额</dt><dd>€22.99</dd></div>
+              <div class="detail-row" style="border:0;padding:0.2rem 0"><dt>IVA</dt><dd>€5.31</dd></div>
+              <div class="detail-row" style="border:0;padding:0.35rem 0 0.2rem;font-family:var(--display);font-size:1.35rem"><dt>含税合计</dt><dd>€28.30</dd></div>
+            </dl>
             <p class="hint">含 IVA · 未开票</p>
             <div class="actions" style="margin-top:1.5rem">
               <button type="button" id="btnConfirmOrder">确认，去开票</button>
@@ -302,9 +306,11 @@
             <h2>本单摘要</h2>
             <table>
               <tbody>
-                <tr><td>Buffet livre</td><td>1 × 19.95</td><td>19.95</td></tr>
-                <tr><td>Cola Zero</td><td>1 × 2.20</td><td>2.20</td></tr>
-                <tr><td colspan="2"><strong>合计</strong></td><td><strong>€28.30</strong></td></tr>
+                <tr><td>Buffet livre</td><td>1 × 19.95 · 23%</td><td>19.95</td></tr>
+                <tr><td>Cola Zero</td><td>1 × 2.20 · 23%</td><td>2.20</td></tr>
+                <tr><td colspan="2">净额</td><td>€22.99</td></tr>
+                <tr><td colspan="2">IVA</td><td>€5.31</td></tr>
+                <tr><td colspan="2"><strong>含税合计</strong></td><td><strong>€28.30</strong></td></tr>
               </tbody>
             </table>
           </div>
