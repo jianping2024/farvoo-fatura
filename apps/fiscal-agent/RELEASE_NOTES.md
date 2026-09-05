@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.1
+
+**发票 hub CTA 用语收口：收银账单 / ＋ 手工开票**
+
+- **唯一写法 · hub 收银入口：**仅「收银账单」（`#ctaPendingBills` / `home.stat.bills_cta`），与侧栏 `nav.bills` 同名；禁止「处理收银账单」。
+- **唯一写法 · hub 手工入口：**仅「＋ 手工开票」（`#ctaNewOrder` / `home.cta.new_order`）；四步页标题仅「手工开票」（`orders.new`）；禁止「新建开票」「＋ 新建开票」。
+
 ## 0.5.0
 
 **Admin 字色三档：表正文清晰、表头可读、muted 只留给次要（minor：结束 0.4.x 三位数 patch）**

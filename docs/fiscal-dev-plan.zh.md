@@ -253,7 +253,7 @@ M2（主进程 + 开票可用）；账单同步入草稿（已有）。宜在 **
 | 界面用语 | 见 [`fiscal-admin-ui-prototype/README.md`](fiscal-admin-ui-prototype/README.md)「业务用语」与 [`fiscal-bill-draft-workbench.zh.md`](fiscal-bill-draft-workbench.zh.md) §0；**方案 A**：收银账单 / 手工开票；禁止把 `bill_sync_drafts`、LOCAL、M3 等暴露给店员 |
 | 业态 | `restaurant` \| `retail` 登录时选定；餐馆显示「收银账单」；商超不显示 |
 | 手工开票四步 | 手动与「收银账单 → 进入开票」共用同一套进度条与开票页 |
-| 工作台双 CTA | 餐馆：`新建开票` 与 `处理收银账单` **同级**；有 open 收银账单时后者 **优先焦点**（定法见原型 README） |
+| 工作台双 CTA | 餐馆：`收银账单` 与 `＋ 手工开票` **同级**；有 open 收银账单时前者 **优先焦点**（定法见原型 README） |
 | 重打 | 克隆 ORIGINAL `payload_json`，`print_purpose=REPRINT`，新 `local_print_jobs` 行；**禁止**重签 |
 | 签发 | 仍唯一 `service.IssueDocument` → `store.IssueFT`（及既有 `IssueFromBillDraft` / manual 入口） |
 
@@ -267,7 +267,7 @@ M2（主进程 + 开票可用）；账单同步入草稿（已有）。宜在 **
 | D2.6.4 | **手动 FT 回归** | `scripts/fiscal-manual-ft-regression.mjs` 全绿 | **已完成**（0.3.99） |
 | D2.6.5 | **重打 API** | `POST /local/v1/fiscal-documents/{documentId}/reprints` 挂载 + 服务层 + 单测 | **已完成**（0.4.0） |
 | D2.6.6 | **正式 Admin 壳** | 登录（业态+PIN 占位）、侧栏、Toast；去掉调试 § 编号与工程词 | **已完成**（0.4.0） |
-| D2.6.7 | **手工开票四步 UI** | 新建开票 / 加商品 / 确认 / 开票；手动走 D2.6.3；餐馆「收银账单」走 M2.5 issue | **已完成**（0.4.0） |
+| D2.6.7 | **手工开票四步 UI** | 手工开票 / 加商品 / 确认 / 开票；手动走 D2.6.3；餐馆「收银账单」走 M2.5 issue | **已完成**（0.4.0） |
 | D2.6.8 | **发票列表/详情** | 查票、展示 ATCUD/票号、重打按钮（依赖 D2.6.5） | **已完成**（0.4.0） |
 | D2.6.9 | **商品/客户/设置页** | 对齐原型；设置含 M1 身份/系列（自现 Admin 迁入） | **已完成**（0.4.0） |
 | D2.6.10 | **回归** | 扩展现有 fiscal-local / bill-sync / manual-ft；新增 reprint 脚本；无 `t.Skip` | **已完成**（0.4.0） |
@@ -275,7 +275,7 @@ M2（主进程 + 开票可用）；账单同步入草稿（已有）。宜在 **
 ### 验收清单
 
 1. 餐馆：收银账单 → 进入开票 → 签发 FT → 打印队列。  
-2. 商超：新建开票 → 四步 → 手动 FT（无收银账单菜单）。  
+2. 商超：手工开票 → 四步 → 手动 FT（无收银账单菜单）。  
 3. 发票详情可重打；重打票面带「2a Via」或等价标记；原票 Hash 不变。  
 4. 界面全文检索不得出现「草稿」「LOCAL」「M3」等工程词（开发 banner 除外）。  
 5. `go test ./internal/fiscal/...` + 本里程碑 regression 脚本全绿。
