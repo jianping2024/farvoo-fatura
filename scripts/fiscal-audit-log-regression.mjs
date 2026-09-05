@@ -8,6 +8,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   loginOperator, envWithCookie, DEFAULT_PIN, uatJson, ensureAdminSession,
+  fiscalAgentTestEnv,
 } from './fiscal-session-helper.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -26,10 +27,9 @@ function record(name, ok, note) {
 }
 
 function startAgent() {
-  return spawn('go', ['run', './cmd/fiscal-local', '-fiscal-standalone'], {
+  return spawn('go', ['run', './cmd/fiscal-local'], {
     cwd: agent,
-    env: {
-      ...process.env,
+    env: fiscalAgentTestEnv({
       FISCAL_BIND: bind,
       FISCAL_DB: dbPath,
       FISCAL_DATA_DIR: dataDir,
@@ -37,18 +37,19 @@ function startAgent() {
       FISCAL_ALLOW_LOCAL_PROVISION: '1',
       FISCAL_AT_ENV: 'mock',
       FISCAL_SEED: '0',
-    },
+      FISCAL_ALLOW_DEV_KEY: '1',
+    }),
     stdio: 'ignore',
   });
 }
 
 async function waitHealth() {
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 80; i++) {
     try {
       const r = await fetch(`${base}/local/v1/health`);
       if (r.ok) return;
     } catch { /* retry */ }
-    await new Promise((r) => setTimeout(r, 150));
+    await new Promise((r) => setTimeout(r, 200));
   }
   throw new Error('agent health timeout');
 }
@@ -73,11 +74,17 @@ async function seedAuditRows(adminEnv) {
   loginOperator(base, 'owner-audit-1', '234567');
 
   spawnSync('sqlite3', [dbPath, `
-    INSERT INTO audit_log (id, at, operator_id, action, entity_type, entity_id, detail_json)
+    INSERT OR REPLACE INTO audit_log (id, at, operator_id, action, entity_type, entity_id, detail_json)
     VALUES
       ('audit-backup-1', datetime('now'), NULL, 'fiscal_db_backup', 'sqlite', 'p1', '{"path":"/tmp/fiscal-backup.db"}'),
       ('audit-series-1', datetime('now'), NULL, 'series_integrity_failed', 'series', 's1', '{"series_code":"FT2026X"}');
   `]);
+}
+
+function finish() {
+  const failed = results.filter((r) => r.status === 'fail');
+  console.log('\nSummary:', results.length - failed.length, '/', results.length, 'passed');
+  if (failed.length) process.exit(1);
 }
 
 async function main() {
@@ -87,7 +94,7 @@ async function main() {
   if (existsSync(dbPath)) rmSync(dbPath);
   if (existsSync(dataDir)) rmSync(dataDir, { recursive: true });
 
-  const proc = startAgent();
+  let proc = startAgent();
   try {
     await waitHealth();
 
@@ -104,9 +111,35 @@ async function main() {
     record('admin action_label present',
       (adminList.items || []).every((i) => i.action_label && i.action_label.length > 0));
 
+    const defaultPage = uatJson(['req', 'GET', '/local/v1/audit-log?page=1'], adminEnv);
+    record('default page_size is 10', defaultPage.page_size === 10,
+      `page_size=${defaultPage.page_size}`);
+    record('default page returns ≤10 items', (defaultPage.items || []).length <= 10);
+
     const page1 = uatJson(['req', 'GET', '/local/v1/audit-log?page=1&page_size=10'], adminEnv);
     record('pagination page_size=10 capped', (page1.items || []).length <= 10);
     record('pagination total stable', page1.total === adminList.total, `page1=${page1.total} admin=${adminList.total}`);
+
+    spawnSync('sqlite3', [dbPath, `
+      INSERT OR REPLACE INTO audit_log (id, at, operator_id, action, entity_type, entity_id, detail_json)
+      VALUES ('audit-old-1', '2024-01-01T00:00:00Z', NULL, 'LOGIN', 'operator', 'op-old', '{}');
+    `]);
+    const beforePurge = spawnSync('sqlite3', [dbPath, `SELECT COUNT(*) FROM audit_log WHERE id='audit-old-1'`], { encoding: 'utf8' });
+    record('seeded old audit row', String(beforePurge.stdout).trim() === '1');
+
+    proc.kill('SIGTERM');
+    try { spawnSync('pkill', ['-f', 'fiscal-local']); } catch { /* */ }
+    await new Promise((r) => setTimeout(r, 1200));
+    proc = startAgent();
+    await waitHealth();
+
+    const afterPurge = spawnSync('sqlite3', [dbPath, `SELECT COUNT(*) FROM audit_log WHERE id='audit-old-1'`], { encoding: 'utf8' });
+    record('Open purges audit older than 365d', String(afterPurge.stdout).trim() === '0',
+      `left=${String(afterPurge.stdout).trim()}`);
+
+    const { cookie: adminCookie2 } = ensureAdminSession(base, 'Admin Audit', DEFAULT_PIN);
+    const adminEnv2 = envWithCookie(base, adminCookie2);
+    await seedAuditRows(adminEnv2);
 
     const ownerCookie = loginOperator(base, 'owner-audit-1', '234567');
     const ownerEnv = envWithCookie(base, ownerCookie);
@@ -129,18 +162,17 @@ async function main() {
 
     const countCli = spawnSync('sqlite3', [dbPath, `SELECT COUNT(*) FROM audit_log WHERE action IN ('LOGIN','LOGOUT','fiscal_db_backup','series_integrity_failed')`], { encoding: 'utf8' });
     const dbCount = Number(String(countCli.stdout).trim());
+    const adminList2 = uatJson(['req', 'GET', '/local/v1/audit-log?page=1&page_size=50'], adminEnv2);
     record('admin total matches sqlite COUNT',
-      adminList.total >= dbCount && adminList.total >= 3,
-      `api=${adminList.total} db=${dbCount}`);
+      adminList2.total >= dbCount && adminList2.total >= 3,
+      `api=${adminList2.total} db=${dbCount}`);
 
-    const blob = JSON.stringify(adminList);
+    const blob = JSON.stringify(adminList2);
     record('response has no pin plaintext', !/pin["']?\s*:\s*["'][0-9]{6}/i.test(blob));
 
-    const failed = results.filter((r) => r.status === 'fail');
-    console.log('\nSummary:', results.length - failed.length, '/', results.length, 'passed');
-    if (failed.length) process.exit(1);
+    finish();
   } finally {
-    proc.kill('SIGTERM');
+    try { proc.kill('SIGTERM'); } catch { /* */ }
   }
 }
 

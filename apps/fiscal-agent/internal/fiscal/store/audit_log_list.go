@@ -38,6 +38,10 @@ type AuditLogListResult struct {
 	PageSize int
 }
 
+// AuditLogDefaultPageSize is the ONLY default page_size for audit_log list
+// (API omit/invalid + Admin list initial size must match this).
+const AuditLogDefaultPageSize = 10
+
 var allowedAuditPageSizes = map[int]bool{10: true, 20: true, 50: true, 100: true}
 
 func normalizeAuditLogQuery(q AuditLogQuery) (AuditLogQuery, int, int) {
@@ -47,7 +51,7 @@ func normalizeAuditLogQuery(q AuditLogQuery) (AuditLogQuery, int, int) {
 	}
 	pageSize := q.PageSize
 	if !allowedAuditPageSizes[pageSize] {
-		pageSize = 50
+		pageSize = AuditLogDefaultPageSize
 	}
 	return AuditLogQuery{
 		Page:        page,

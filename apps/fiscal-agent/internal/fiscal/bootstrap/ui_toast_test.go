@@ -916,6 +916,12 @@ func TestAdminHTMLAuditLogSinglePath(t *testing.T) {
 	if !strings.Contains(adminHTML, `<label for="auditActionFilter" data-i18n="settings.audit.action_type">操作类型</label>`) {
 		t.Fatal("audit action filter must use admin-list-select-field + settings.audit.action_type")
 	}
+	if !strings.Contains(adminHTML, "let auditLogPageSize = FiscalUI.LIST_DEFAULT_PAGE_SIZE;") {
+		t.Fatal("audit list must use FiscalUI.LIST_DEFAULT_PAGE_SIZE (not a hardcoded size)")
+	}
+	if strings.Contains(adminHTML, "let auditLogPageSize = 50") {
+		t.Fatal("audit list must not hardcode page size 50")
+	}
 }
 
 func TestAdminHTMLOperatorsTableLayout(t *testing.T) {

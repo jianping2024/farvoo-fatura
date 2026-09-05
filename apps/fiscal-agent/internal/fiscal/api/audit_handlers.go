@@ -16,7 +16,8 @@ func parseAuditLogQuery(r *http.Request) service.AuditLogListInput {
 			page = n
 		}
 	}
-	pageSize := 50
+	// 0 → store.ListAuditLog applies AuditLogDefaultPageSize (ONLY default).
+	pageSize := 0
 	if q := r.URL.Query().Get("page_size"); q != "" {
 		if n, err := strconv.Atoi(q); err == nil && n > 0 {
 			pageSize = n
