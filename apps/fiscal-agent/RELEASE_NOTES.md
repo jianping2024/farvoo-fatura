@@ -4,9 +4,9 @@ Each release section starts with `## X.Y.Z`. The release workflow reads the matc
 
 ## 0.5.3
 
-**手工开票本单 IVA 可见 + 默认发票类型 FT**
+**手工开票：本单明细 / 本单摘要显示 IVA**
 
-- **唯一写法 · 销售票默认类型：**仅 `DEFAULT_SALE_DOC = 'FT'`（选项初值 / 软建议回落 / issue fallback）；禁止再默认 `FS`。
+- **唯一写法 · 销售票默认类型：**仅 `DEFAULT_SALE_DOC = 'FS'`（选项初值 / 软建议回落 / issue fallback）；非现金或已识别购方 NIF 仍软建议 `FT`。
 - **唯一写法 · 行 IVA% 展示：**仅 `fmtVatPercent`（本单明细 / 本单摘要 / 商品表 / 选品器）；禁止再拼 `vat_rate + '%'`。
 - **唯一写法 · 含税拆净额/IVA：**仅 `lineFromGrossPreview`（对齐 `compliance.LineFromGross`）；本单合计仅 `orderMoneyBreakdown` + `renderOrderMoneyBox`。
 

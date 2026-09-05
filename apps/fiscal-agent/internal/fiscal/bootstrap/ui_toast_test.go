@@ -163,11 +163,11 @@ func TestAdminHTMLBillListAndCustomerNifHelpers(t *testing.T) {
 	if n := strings.Count(adminHTML, "bindSaleDocTypeSuggestion($('#splitDocType'"); n != 1 {
 		t.Fatalf("split panel must bind soft FT/FS once, got %d", n)
 	}
-	if n := strings.Count(adminHTML, "const DEFAULT_SALE_DOC = 'FT'"); n != 1 {
-		t.Fatalf("DEFAULT_SALE_DOC must be FT exactly once, got %d", n)
+	if n := strings.Count(adminHTML, "const DEFAULT_SALE_DOC = 'FS'"); n != 1 {
+		t.Fatalf("DEFAULT_SALE_DOC must be FS exactly once, got %d", n)
 	}
-	if strings.Contains(adminHTML, "const DEFAULT_SALE_DOC = 'FS'") {
-		t.Fatal("DEFAULT_SALE_DOC must not fall back to FS")
+	if strings.Contains(adminHTML, "const DEFAULT_SALE_DOC = 'FT'") {
+		t.Fatal("DEFAULT_SALE_DOC must not default to FT")
 	}
 	if n := strings.Count(adminHTML, "function fmtVatPercent"); n != 1 {
 		t.Fatalf("fmtVatPercent must be the ONLY IVA%% label helper, got %d", n)
