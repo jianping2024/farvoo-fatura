@@ -237,3 +237,34 @@ func TestAdminHTMLInvoiceListPaginationUnique(t *testing.T) {
 		t.Fatal("invoice list must use setInvoiceListDocType for type tabs")
 	}
 }
+
+func TestAdminNativeSelectChevronUnique(t *testing.T) {
+	if n := strings.Count(adminHTML, "ONLY native select disclosure"); n != 1 {
+		t.Fatalf("native select chevron must be the ONLY Admin rule, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "\n      appearance: none;"); n != 1 {
+		t.Fatalf("appearance: none for select must appear once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "\n      -webkit-appearance: none;"); n != 1 {
+		t.Fatalf("-webkit-appearance: none must appear once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "background-image: url(\"data:image/svg+xml"); n != 1 {
+		t.Fatalf("select chevron SVG must be defined once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "--select-chevron-slot:"); n != 1 {
+		t.Fatalf("--select-chevron-slot must be declared once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "--select-pad-x:"); n != 1 {
+		t.Fatalf("--select-pad-x must be declared once, got %d", n)
+	}
+	css := string(fiscalUIListPaginationCSS)
+	if strings.Contains(css, "appearance:") || strings.Contains(css, "background-image:") {
+		t.Fatal("list-pagination.css must not redefine select chevron chrome")
+	}
+	if strings.Contains(css, "padding: 0.35rem 0.5rem") {
+		t.Fatal("pagination size select must not use padding shorthand that resets chevron slot")
+	}
+	if !strings.Contains(css, "Keep Admin select padding-right / chevron") {
+		t.Fatal("pagination size select must document that chevron padding stays from Admin")
+	}
+}
