@@ -98,7 +98,7 @@
 |------|------|
 | 筛选行 | 日期范围（可选）、**操作类型**下拉（「全部」+ §3.3 映射）、**开票员**下拉（active 名册 +「全部」） |
 | 表格 | 列见 §4.2 |
-| 底部分页 | `FiscalUI.createListPaginationBar`；默认 `page_size=50` |
+| 底部分页 | `FiscalUI.createListPaginationBar`；默认 `page_size` = **`FiscalUI.LIST_DEFAULT_PAGE_SIZE`（10）**，与 `store.AuditLogDefaultPageSize` 同值 |
 
 **用语：** 表头用业务词（时间、开票员、操作、说明）；**禁止** `action`、`entity_type` 原样暴露给店员。
 
@@ -188,7 +188,7 @@
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | page | int | 默认 1 |
-| page_size | int | 默认 50；最大 100 |
+| page_size | int | 默认 **10**（`store.AuditLogDefaultPageSize`）；允许 10/20/50/100；非法/缺省回落默认 |
 | action | string | 精确匹配；owner 若请求不可见 action → **403** |
 | operator_id | string | 精确匹配 |
 | from | string | ISO8601 下限（含） |
@@ -210,7 +210,7 @@
     }
   ],
   "page": 1,
-  "page_size": 50,
+  "page_size": 10,
   "total": 123
 }
 ```
@@ -261,10 +261,17 @@
 | 项 | 说明 |
 |----|------|
 | 开票写 audit | `ISSUE` / `NC` / `ND` / `REPRINT` 在 `IssueDocument` 成功后 `InsertAuditLog` |
-| 保留策略 | 如 LOGIN_FAILED 已有 15min 清理；全表保留 365 天 DELETE job |
 | 导出 CSV | owner 导出可见子集 |
 | `client_ip` 列 | 登录限速配套；需 migration |
 | 侧栏一级「操作记录」 | 仅当设置内点击率过低再评估 |
+
+### 保留策略（P0 定法）
+
+| 项 | 定法 |
+|----|------|
+| 窗口 | **365 天**（`store.AuditLogRetentionDays`；**唯一**年龄口径） |
+| 清理 | `store.PurgeExpiredAuditLogs`（**唯一**按年龄 DELETE）；在 `store.Open` 迁移后调用一次 |
+| 与 LOGIN_FAILED | 15min 窗口清理仍由 `login_security` 负责；**不**并入年龄 purge |
 
 ---
 
@@ -272,4 +279,5 @@
 
 | 日期 | 变更 |
 |------|------|
+| 2026-09-05 | 默认 `page_size=10`（`AuditLogDefaultPageSize` / `LIST_DEFAULT_PAGE_SIZE`）；P0 年龄保留 365 天 + `PurgeExpiredAuditLogs` |
 | 2026-09-02 | 草稿：入口=设置分区「操作记录」；admin/owner 分 action 可见；GET API + 列表 UI |

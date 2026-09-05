@@ -40,6 +40,10 @@ func Open(path string) (*DB, error) {
 		_ = sqlDB.Close()
 		return nil, err
 	}
+	if _, err := d.PurgeExpiredAuditLogs(); err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("store: purge audit_log: %w", err)
+	}
 	return d, nil
 }
 
