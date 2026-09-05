@@ -709,7 +709,7 @@
           <div class="panel">
             <h2 data-i18n="order.lines_title">本单明细</h2>
             <table>
-              <thead><tr><th data-i18n="nav.products">商品</th><th data-i18n="col.qty">数量</th><th data-i18n="col.unit">单价</th><th data-i18n="col.subtotal">小计</th><th></th></tr></thead>
+              <thead><tr><th data-i18n="nav.products">商品</th><th data-i18n="col.qty">数量</th><th data-i18n="col.unit">单价</th><th data-i18n="col.vat">IVA</th><th data-i18n="col.subtotal">小计</th><th></th></tr></thead>
               <tbody id="orderLines"></tbody>
             </table>
             <div class="actions">
@@ -718,7 +718,11 @@
           </div>
           <div class="panel">
             <h2 data-i18n="order.total">本单合计</h2>
-            <p style="font-family:var(--display);font-size:1.6rem;margin:0.5rem 0" id="orderTotal">€0.00</p>
+            <dl class="order-money" id="orderMoneyBox" style="margin:0.5rem 0">
+              <div class="detail-row" style="border:0;padding:0.2rem 0"><dt data-i18n="order.net">净额</dt><dd id="orderNet">€0.00</dd></div>
+              <div class="detail-row" style="border:0;padding:0.2rem 0"><dt data-i18n="order.tax">IVA</dt><dd id="orderTax">€0.00</dd></div>
+              <div class="detail-row" style="border:0;padding:0.35rem 0 0.2rem;font-family:var(--display);font-size:1.35rem"><dt data-i18n="order.gross">含税合计</dt><dd id="orderTotal">€0.00</dd></div>
+            </dl>
             <p class="hint" data-i18n="order.total_hint">含 IVA · 未开票</p>
             <div class="actions" style="margin-top:1.5rem">
               <button type="button" id="btnConfirmOrder" data-i18n="order.confirm_cta">确认，去开票</button>
@@ -1434,7 +1438,7 @@
   const errText = FiscalUI.formatError;
   const reportError = FiscalUI.reportError;
   const INVOICE_TZ = 'Europe/Lisbon';
-  const DEFAULT_SALE_DOC = 'FS';
+  const DEFAULT_SALE_DOC = 'FT';
   const SALE_DOC_TYPES = ['FT', 'FS'];
   const PAYMENT_METHODS = ['CASH', 'CARD', 'MBWAY', 'MULTIBANCO', 'MIXED', 'OTHER'];
   const y = new Date().getFullYear();
@@ -1806,9 +1810,52 @@
     return '€' + (isFinite(v) ? v.toFixed(2) : '0.00');
   }
 
-  function orderTotal(order) {
-    if (!order || !order.lines) return 0;
-    return order.lines.reduce((s, ln) => s + Number(ln.qty || 0) * Number(ln.price || 0), 0);
+  /** ONLY line IVA% label (catalog `vat_rate` percent string, e.g. "13.00"). */
+  function fmtVatPercent(vat) {
+    const s = String(vat == null ? '' : vat).trim();
+    return s ? (s + '%') : '—';
+  }
+
+  /** ONLY preview split of one gross line → net/tax (mirrors compliance.LineFromGross; vat is percent). */
+  function lineFromGrossPreview(qty, unitGross, vatPercent) {
+    const q = Number(qty) || 0;
+    const ug = Number(unitGross) || 0;
+    const ratePct = Number(vatPercent);
+    const rate = ((isFinite(ratePct) ? ratePct : 23) / 100);
+    const gross = Math.round(q * ug * 100) / 100;
+    const net = Math.round((gross / (1 + rate)) * 100) / 100;
+    const tax = Math.round((gross - net) * 100) / 100;
+    return { gross: gross, net: net, tax: tax };
+  }
+
+  /** ONLY order-level net/tax/gross preview from lines (qty×price gross + ln.vat). */
+  function orderMoneyBreakdown(order) {
+    let gross = 0, net = 0, tax = 0;
+    if (order && order.lines) {
+      for (let i = 0; i < order.lines.length; i++) {
+        const ln = order.lines[i];
+        const p = lineFromGrossPreview(ln.qty, ln.price, ln.vat);
+        gross += p.gross;
+        net += p.net;
+        tax += p.tax;
+      }
+    }
+    return {
+      gross: Math.round(gross * 100) / 100,
+      net: Math.round(net * 100) / 100,
+      tax: Math.round(tax * 100) / 100
+    };
+  }
+
+  /** ONLY writer for #orderNet/#orderTax/#orderTotal from orderMoneyBreakdown. */
+  function renderOrderMoneyBox(order) {
+    const b = orderMoneyBreakdown(order);
+    const netEl = $('#orderNet');
+    const taxEl = $('#orderTax');
+    const totEl = $('#orderTotal');
+    if (netEl) netEl.textContent = fmtMoney(b.net);
+    if (taxEl) taxEl.textContent = fmtMoney(b.tax);
+    if (totEl) totEl.textContent = fmtMoney(b.gross);
   }
 
   function fmtTime(iso) {
@@ -3081,29 +3128,35 @@
   function renderOrderLines() {
     const tbody = $('#orderLines');
     if (!currentOrder || !currentOrder.lines.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="hint">' + FiscalAdminI18n.t('order.lines_empty') + '</td></tr>';
-      $('#orderTotal').textContent = fmtMoney(0);
+      tbody.innerHTML = '<tr><td colspan="6" class="hint">' + FiscalAdminI18n.t('order.lines_empty') + '</td></tr>';
+      renderOrderMoneyBox(null);
       return;
     }
-    tbody.innerHTML = currentOrder.lines.map((ln, idx) =>
-      '<tr data-line="' + idx + '">' +
-      '<td>' + (ln.name || ln.product_code || FiscalAdminI18n.t('nav.products')) + '</td>' +
-      '<td><input class="line-input" type="number" min="0.001" step="0.001" value="' + ln.qty + '" data-qty="' + idx + '" /></td>' +
-      '<td>' + Number(ln.price).toFixed(2) + '</td>' +
-      '<td>' + (Number(ln.qty) * Number(ln.price)).toFixed(2) + '</td>' +
-      '<td><button type="button" class="ghost" data-del-line="' + idx + '">' + FiscalAdminI18n.t('common.delete') + '</button></td></tr>'
-    ).join('');
-    $('#orderTotal').textContent = fmtMoney(orderTotal(currentOrder));
+    tbody.innerHTML = currentOrder.lines.map((ln, idx) => {
+      const split = lineFromGrossPreview(ln.qty, ln.price, ln.vat);
+      return '<tr data-line="' + idx + '">' +
+        '<td>' + (ln.name || ln.product_code || FiscalAdminI18n.t('nav.products')) + '</td>' +
+        '<td><input class="line-input" type="number" min="0.001" step="0.001" value="' + ln.qty + '" data-qty="' + idx + '" /></td>' +
+        '<td>' + Number(ln.price).toFixed(2) + '</td>' +
+        '<td>' + fmtVatPercent(ln.vat) + '</td>' +
+        '<td>' + split.gross.toFixed(2) + '</td>' +
+        '<td><button type="button" class="ghost" data-del-line="' + idx + '">' + FiscalAdminI18n.t('common.delete') + '</button></td></tr>';
+    }).join('');
+    renderOrderMoneyBox(currentOrder);
   }
 
   function renderInvoiceSummary(order) {
     const tbody = $('#invSummaryLines');
     if (!order) { tbody.innerHTML = ''; return; }
-    let html = order.lines.map(ln =>
-      '<tr><td>' + (ln.name || ln.product_code) + '</td><td>' + ln.qty + ' × ' + Number(ln.price).toFixed(2) + '</td><td>' +
-      (Number(ln.qty) * Number(ln.price)).toFixed(2) + '</td></tr>'
-    ).join('');
-    html += '<tr><td colspan="2"><strong>' + FiscalAdminI18n.t('common.total') + '</strong></td><td><strong>' + fmtMoney(orderTotal(order)) + '</strong></td></tr>';
+    let html = order.lines.map(ln => {
+      const split = lineFromGrossPreview(ln.qty, ln.price, ln.vat);
+      return '<tr><td>' + (ln.name || ln.product_code) + '</td><td>' + ln.qty + ' × ' + Number(ln.price).toFixed(2) +
+        ' · ' + fmtVatPercent(ln.vat) + '</td><td>' + split.gross.toFixed(2) + '</td></tr>';
+    }).join('');
+    const b = orderMoneyBreakdown(order);
+    html += '<tr><td colspan="2">' + FiscalAdminI18n.t('order.net') + '</td><td>' + fmtMoney(b.net) + '</td></tr>';
+    html += '<tr><td colspan="2">' + FiscalAdminI18n.t('order.tax') + '</td><td>' + fmtMoney(b.tax) + '</td></tr>';
+    html += '<tr><td colspan="2"><strong>' + FiscalAdminI18n.t('order.gross') + '</strong></td><td><strong>' + fmtMoney(b.gross) + '</strong></td></tr>';
     tbody.innerHTML = html;
   }
 
@@ -3237,7 +3290,7 @@
     }
     el.innerHTML = list.map(p =>
       '<button type="button" class="cta-big secondary" style="margin-bottom:0.5rem" data-pick="' + p.product_code + '">' +
-      '<strong>' + p.display_name + '</strong><span>' + p.product_code + ' · ' + p.unit_price_gross + ' · IVA ' + p.vat_rate + '%</span></button>'
+      '<strong>' + p.display_name + '</strong><span>' + p.product_code + ' · ' + p.unit_price_gross + ' · IVA ' + fmtVatPercent(p.vat_rate) + '</span></button>'
     ).join('');
   }
 
@@ -3337,7 +3390,7 @@
         ? '<span class="hint">' + src + '</span>'
         : listRowMenuTriggerHtml('data-row-kind="product" data-product-code="' + escHtml(p.product_code) + '"');
       return '<tr><td>' + p.product_code + '</td><td>' + p.display_name + '</td><td>' + p.unit_price_gross +
-        '</td><td>' + p.vat_rate + '%</td><td class="col-actions">' + actions + '</td></tr>';
+        '</td><td>' + fmtVatPercent(p.vat_rate) + '</td><td class="col-actions">' + actions + '</td></tr>';
     }).join('');
   }
 
