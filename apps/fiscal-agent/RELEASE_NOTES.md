@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.6
+
+**登出清场：列表页码 / 筛选 / 日期不再带到下次登录**
+
+- **唯一写法 · 登出列表清场：**仅 `resetAdminListSessionState`（只由 `forceLogout` 调用）；清空发票 / 商品 / 客户 / 账单 / 操作记录的页码、搜索、tbody、分页条，以及开票员/终端表与 hub 统计。
+- **唯一写法 · 发票日期复位：**仅 `date-range.js` 的 `resetToDefault`（无 `onChange`）；无控件时删 `fiscal_invoice_date_range_v2`，下次默认今天。
+- **票型 Tab：**登出回「全部」；禁止同页重登闪出上一屏第 N 页或旧筛选。
+
 ## 0.5.5
 
 **列表翻页导航改为图标（对齐 restaurant）**
