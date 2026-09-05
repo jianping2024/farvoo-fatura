@@ -4,10 +4,11 @@ Each release section starts with `## X.Y.Z`. The release workflow reads the matc
 
 ## 0.5.4
 
-**列表翻页：补第一页 / 最后一页**
+**列表翻页：补第一页 / 最后一页；Admin 原生 select 箭头边距对齐**
 
 - **唯一写法 · 翻页导航：**仅 `list-pagination.js` 的 `data-role="first|prev|next|last"`（账单 / 发票 / 商品 / 客户 / 操作记录五处共用）；禁止在各列表再写一套首页/末页。
 - **唯一写法 · 翻页文案：**仅 `listPagerLabels` → `pager.first|prev|next|last`（zh/en/pt）；禁止散落硬编码「第一页」「最后一页」。
+- **唯一写法 · 原生 select 箭头：**仅 Admin `select` 一条 disclosure（`appearance: none` + SVG，`--select-pad-x` / `--select-chevron-slot`）；箭头距右边框与文字距左边框同为 `0.75rem`；分页 size 不得用 `padding` 简写冲掉右侧槽。
 
 ## 0.5.3
 
