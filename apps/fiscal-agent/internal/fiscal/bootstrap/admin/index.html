@@ -1702,6 +1702,7 @@
       setupStatusCache = null;
       pin = '';
       $$('#pinDots i').forEach(d => d.classList.remove('on'));
+      resetAdminListSessionState();
       try { sessionStorage.clear(); } catch (_) { /* */ }
       $('#app-shell').classList.remove('on');
       $('#view-login').classList.remove('hidden');
@@ -1948,6 +1949,64 @@
   let billsListState = { page: 1, pageSize: FiscalUI.LIST_DEFAULT_PAGE_SIZE, filter: '' };
   let billsListPaginationCtrl = null;
   let billsListReady = false;
+
+  /** ONLY Admin list/filter session wipe on logout (all list pages). Called only from forceLogout. */
+  function resetAdminListSessionState() {
+    clearTimeout(invoiceSearchDebounce);
+    clearTimeout(productSearchDebounce);
+    clearTimeout(customerSearchDebounce);
+    invoiceSearchDebounce = null;
+    productSearchDebounce = null;
+    customerSearchDebounce = null;
+
+    invoiceListPage = 1;
+    productListPage = 1;
+    customerListPage = 1;
+    auditLogPage = 1;
+    billsListState.page = 1;
+    billsListState.filter = '';
+    invoiceListCache = [];
+    billsListCache = [];
+
+    setInvoiceListDocType('');
+    setInvoiceFilterPanelOpen(false);
+    if (invoiceDateFilterCtrl && typeof invoiceDateFilterCtrl.resetToDefault === 'function') {
+      invoiceDateFilterCtrl.resetToDefault();
+    } else {
+      try { localStorage.removeItem('fiscal_invoice_date_range_v2'); } catch (_) { /* */ }
+    }
+    syncInvoiceFilterToggle();
+
+    ['invoiceSearch', 'productsSearch', 'customersSearch', 'billsSearch'].forEach(function (id) {
+      const el = $('#' + id);
+      if (el) el.value = '';
+    });
+    if ($('#auditActionFilter')) $('#auditActionFilter').value = '';
+    if ($('#auditOperatorFilter')) $('#auditOperatorFilter').value = '';
+
+    [
+      'invoicesTbody', 'productsTbody', 'customersTbody', 'billsTbody',
+      'auditLogTbody', 'operatorsTbody', 'terminalsTbody'
+    ].forEach(function (id) {
+      const el = $('#' + id);
+      if (el) el.innerHTML = '';
+    });
+
+    [
+      [invoiceListPaginationCtrl, invoiceListPageSize],
+      [productListPaginationCtrl, productListPageSize],
+      [customerListPaginationCtrl, customerListPageSize],
+      [billsListPaginationCtrl, billsListState.pageSize],
+      [auditLogPaginationCtrl, auditLogPageSize]
+    ].forEach(function (pair) {
+      const ctrl = pair[0];
+      const size = pair[1] || FiscalUI.LIST_DEFAULT_PAGE_SIZE;
+      if (ctrl && ctrl.update) ctrl.update({ page: 1, pageSize: size, total: 0 });
+    });
+
+    renderHomeStats(0, 0);
+    renderPendingBillsStat(0);
+  }
 
   /** ONLY Hash display truncator (detail drawer preview: 前 8 … 后 4). */
   function truncateHash(h) {

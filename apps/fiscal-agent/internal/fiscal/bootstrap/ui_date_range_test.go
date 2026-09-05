@@ -40,6 +40,15 @@ func TestFiscalUIDateRangeAssets(t *testing.T) {
 	if n := strings.Count(js, "function createDateRangeFilter"); n != 1 {
 		t.Fatalf("createDateRangeFilter must be defined once in date-range.js, got %d", n)
 	}
+	if n := strings.Count(js, "function resetToDefault"); n != 1 {
+		t.Fatalf("resetToDefault must be the ONLY silent date restore, got %d", n)
+	}
+	if !strings.Contains(js, "ONLY silent restore to defaultPreset") {
+		t.Fatal("resetToDefault must be documented as ONLY silent logout restore")
+	}
+	if n := strings.Count(js, "resetToDefault: resetToDefault"); n != 1 {
+		t.Fatalf("resetToDefault must be exported once on the control, got %d", n)
+	}
 	if !strings.Contains(js, "options.getLabels") {
 		t.Fatal("date-range must re-read getLabels on paint (locale switch)")
 	}

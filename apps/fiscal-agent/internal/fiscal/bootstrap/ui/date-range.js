@@ -265,6 +265,15 @@
       emitChange();
     }
 
+    /** ONLY silent restore to defaultPreset + persist (logout). Does not emit onChange. */
+    function resetToDefault() {
+      state.preset = options.defaultPreset || 'today';
+      if (PRESET_IDS.indexOf(state.preset) < 0) state.preset = 'today';
+      syncRangeFromPreset();
+      paint();
+      saveStored(storageKey, { preset: state.preset, from: state.from, to: state.to });
+    }
+
     function getRange() {
       if (state.preset !== 'custom') syncRangeFromPreset();
       return { preset: state.preset, from: state.from, to: state.to, timezone: tz };
@@ -290,6 +299,7 @@
     return {
       getRange: getRange,
       setPreset: setPreset,
+      resetToDefault: resetToDefault,
       relabel: function () {
         paint();
       },

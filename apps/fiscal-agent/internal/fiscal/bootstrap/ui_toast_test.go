@@ -814,6 +814,26 @@ func TestAdminHTMLOperatorManageM32bSinglePath(t *testing.T) {
 	if n := strings.Count(adminHTML, "function forceLogout"); n != 1 {
 		t.Fatalf("forceLogout must appear exactly once, got %d", n)
 	}
+	if n := strings.Count(adminHTML, "function resetAdminListSessionState"); n != 1 {
+		t.Fatalf("resetAdminListSessionState must be the ONLY logout list wipe, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "resetAdminListSessionState();"); n != 1 {
+		t.Fatalf("resetAdminListSessionState must be called only from forceLogout, got %d", n)
+	}
+	if !strings.Contains(adminHTML, "ONLY Admin list/filter session wipe on logout") {
+		t.Fatal("resetAdminListSessionState must be documented as ONLY logout list wipe")
+	}
+	if n := strings.Count(adminHTML, "fiscal_invoice_date_range_v2"); n != 2 {
+		// createDateRangeFilter storageKey + logout removeItem fallback
+		t.Fatalf("fiscal_invoice_date_range_v2 must appear twice (init key + logout fallback), got %d", n)
+	}
+	if !strings.Contains(adminHTML, "invoiceDateFilterCtrl.resetToDefault") {
+		t.Fatal("logout must reset invoice date via date-range resetToDefault")
+	}
+	if strings.Contains(adminHTML, "localStorage.removeItem('fiscal_invoice_date_range_v2')") &&
+		strings.Count(adminHTML, "localStorage.removeItem('fiscal_invoice_date_range_v2')") != 1 {
+		t.Fatal("logout date localStorage fallback must be exactly one removeItem")
+	}
 	if n := strings.Count(adminHTML, "function putOperator"); n != 1 {
 		t.Fatalf("putOperator must appear exactly once, got %d", n)
 	}
