@@ -85,26 +85,29 @@ func TestAdminI18nBundlesAlignedAndUnique(t *testing.T) {
 	if !strings.Contains(src, "el.setAttribute(attr, val)") {
 		t.Fatal("apply() must set data-i18n-attr via setAttribute (aria-label etc.)")
 	}
-	// Hub CTA copy (scheme A 2026-09-05): unique dictionary values; forbid retired labels.
+	// Hub CTA copy: unique dictionary values; forbid retired labels.
 	for _, s := range []string{
-		"处理收银账单", "新建开票",
-		"Handle POS bills", "+ New issue",
-		"Tratar contas POS", "+ Nova emissão",
+		"收银账单", "手工开票", "处理收银账单", "新建开票",
+		"POS bills", "Manual issue", "Handle POS bills", "+ New issue",
+		"Contas POS", "Emissão manual", "Tratar contas POS", "+ Nova emissão",
 	} {
 		if strings.Contains(src, s) {
 			t.Fatalf("i18n must not retain retired hub CTA copy %q", s)
 		}
 	}
 	for _, s := range []string{
-		"'home.cta.new_order': '＋ 手工开票'",
-		"'home.stat.bills_cta': '收银账单'",
-		"'orders.new': '手工开票'",
-		"'home.cta.new_order': '+ Manual issue'",
-		"'home.stat.bills_cta': 'POS bills'",
-		"'orders.new': 'Manual issue'",
-		"'home.cta.new_order': '+ Emissão manual'",
-		"'home.stat.bills_cta': 'Contas POS'",
-		"'orders.new': 'Emissão manual'",
+		"'nav.bills': '账单'",
+		"'home.cta.new_order': '＋ 开票'",
+		"'home.stat.bills_cta': '账单'",
+		"'orders.new': '开票'",
+		"'nav.bills': 'Bills'",
+		"'home.cta.new_order': '+ Issue'",
+		"'home.stat.bills_cta': 'Bills'",
+		"'orders.new': 'Issue'",
+		"'nav.bills': 'Contas'",
+		"'home.cta.new_order': '+ Emitir'",
+		"'home.stat.bills_cta': 'Contas'",
+		"'orders.new': 'Emitir'",
 	} {
 		if n := strings.Count(src, s); n != 1 {
 			t.Fatalf("i18n unique hub CTA %q must appear exactly once, got %d", s, n)

@@ -179,7 +179,10 @@ func TestAdminHTMLSchemeACopyUnique(t *testing.T) {
 		"＋ 新建订单",
 		"处理待开票账单",
 		"处理收银账单",
+		"收银账单",
 		"新建开票",
+		"手工开票",
+		"＋ 手工开票",
 		"新建订单",
 		"有新的待开票账单",
 		"暂无待开票账单",
@@ -193,10 +196,10 @@ func TestAdminHTMLSchemeACopyUnique(t *testing.T) {
 	}
 	requiredOnce := []string{
 		`data-i18n="nav.invoices">发票</span>`,
-		`data-i18n="nav.bills">收银账单</span>`,
-		`data-i18n="home.stat.bills_cta">收银账单</span>`,
-		`data-i18n="home.cta.new_order">＋ 手工开票</button>`,
-		`data-i18n="orders.new">手工开票</h1>`,
+		`data-i18n="nav.bills">账单</span>`,
+		`data-i18n="home.stat.bills_cta">账单</span>`,
+		`data-i18n="home.cta.new_order">＋ 开票</button>`,
+		`data-i18n="orders.new">开票</h1>`,
 		`id="homeGreeting"`,
 		`id="operatorName"`,
 		`FiscalAdminI18n.t('bills.toast.new')`,
@@ -224,8 +227,8 @@ func TestAdminHTMLSchemeACopyUnique(t *testing.T) {
 	if n := strings.Count(adminHTML, "创建开票"); n != 2 {
 		t.Fatalf("创建开票 must appear twice (two flow bars), got %d", n)
 	}
-	if n := strings.Count(adminHTML, "＋ 手工开票"); n != 1 {
-		t.Fatalf("hub CTA ＋ 手工开票 must appear exactly once, got %d", n)
+	if n := strings.Count(adminHTML, "＋ 开票"); n != 1 {
+		t.Fatalf("hub CTA ＋ 开票 must appear exactly once, got %d", n)
 	}
 }
 
