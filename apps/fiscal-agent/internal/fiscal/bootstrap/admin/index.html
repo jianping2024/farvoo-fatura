@@ -1875,15 +1875,7 @@
     if (totEl) totEl.textContent = fmtMoney(b.gross);
   }
 
-  function fmtTime(iso) {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    if (isNaN(d)) return iso;
-    return d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }) + ' ' +
-      d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-  }
-
-  /** ONLY Admin MM-dd HH:mm:ss display (Europe/Lisbon). */
+  /** ONLY Admin MM/dd HH:mm:ss display (Europe/Lisbon). */
   function formatMdHms(iso) {
     if (!iso) return '—';
     try {
@@ -1899,7 +1891,7 @@
         const p = parts.find(function (x) { return x.type === t; });
         return (p && p.value) || '';
       };
-      return get('month') + '-' + get('day') + ' ' + get('hour') + ':' + get('minute') + ':' + get('second');
+      return get('month') + '/' + get('day') + ' ' + get('hour') + ':' + get('minute') + ':' + get('second');
     } catch (_) {
       return String(iso);
     }
@@ -2034,9 +2026,9 @@
     return (inv && inv.invoice_no) ? inv.invoice_no : '—';
   }
 
-  /** ONLY issued-at cell text (invoice list). */
+  /** ONLY issued-at cell text (invoice list + detail). */
   function formatInvoiceWhenCell(inv) {
-    return fmtTime((inv && (inv.system_entry_date || inv.issued_at)) || '');
+    return formatMdHms((inv && (inv.system_entry_date || inv.issued_at)) || '');
   }
 
   /** ONLY source/order label cell text (invoice list). */
@@ -2077,10 +2069,9 @@
 
   /** ONLY invoice detail drawer renderer (technical fields live here, not in list). */
   function renderInvoiceDetailModal(inv) {
-    const when = inv.system_entry_date || inv.issued_at || '';
     $('#invoiceDetailTitle').textContent = inv.invoice_no || FiscalAdminI18n.t('invoice.detail.title');
     let body =
-      invoiceDetailRow(FiscalAdminI18n.t('col.issued_at'), fmtTime(when)) +
+      invoiceDetailRow(FiscalAdminI18n.t('col.issued_at'), formatInvoiceWhenCell(inv)) +
       invoiceDetailRow(FiscalAdminI18n.t('col.doc_no'), inv.invoice_no) +
       invoiceDetailRow(FiscalAdminI18n.t('buyer.nif'), inv.customer_tax_id) +
       invoiceDetailRow(FiscalAdminI18n.t('buyer.name'), inv.customer_name) +

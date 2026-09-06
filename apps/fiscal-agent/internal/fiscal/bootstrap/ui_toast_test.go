@@ -748,6 +748,12 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 	if !strings.Contains(adminHTML, "formatInvoiceWhenCell(inv)") {
 		t.Fatal("invoice list must render issued-at via formatInvoiceWhenCell only")
 	}
+	if !strings.Contains(adminHTML, "invoiceDetailRow(FiscalAdminI18n.t('col.issued_at'), formatInvoiceWhenCell(inv))") {
+		t.Fatal("invoice detail issued-at must use formatInvoiceWhenCell (MM/dd HH:mm:ss)")
+	}
+	if strings.Contains(adminHTML, "function fmtTime(") {
+		t.Fatal("fmtTime removed; issued-at must use formatMdHms via formatInvoiceWhenCell")
+	}
 	if !strings.Contains(adminHTML, "formatInvoicePaymentLabel(inv)") {
 		t.Fatal("invoice list must render payment via formatInvoicePaymentLabel only")
 	}

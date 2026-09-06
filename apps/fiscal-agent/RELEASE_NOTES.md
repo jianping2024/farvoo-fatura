@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.8
+
+**签发时刻：含秒，格式 MM/dd HH:mm:ss**
+
+- **唯一写法 · 带秒时刻：**仅 `formatMdHms` → `MM/dd HH:mm:ss`（`Europe/Lisbon`）；终端最近使用同此。
+- **唯一写法 · 签发时刻单元格：**仅 `formatInvoiceWhenCell`（列表 + 详情）；禁止再走无秒的 `fmtTime`。
+
 ## 0.5.7
 
 **登录进壳：落地页数据就绪后再亮 shell（不再空表晃一下）**
