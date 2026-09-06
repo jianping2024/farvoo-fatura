@@ -3881,8 +3881,14 @@
     return '<tr><td colspan="7" class="hint invoice-empty"><div>' + main + '</div><div>' + next + '</div></td></tr>';
   }
 
-  /** ONLY home CTA focus: pending bills when open drafts exist; else new order. */
+  /** ONLY true when #app-shell is visible (login priming keeps shell off). */
+  function appShellIsOn() {
+    return !!( $('#app-shell') && $('#app-shell').classList.contains('on') );
+  }
+
+  /** ONLY home CTA focus: pending bills when open drafts exist; else new order. No-op until shell is on. */
   function focusHomePrimaryCta(openBillCount) {
+    if (!appShellIsOn()) return;
     const bills = $('#ctaPendingBills');
     const neu = $('#ctaNewOrder');
     if (mode === 'restaurant' && openBillCount > 0 && bills) {
@@ -4583,7 +4589,58 @@
     return visible.id.slice('view-'.length);
   }
 
-  function showView(name) {
+  /**
+   * ONLY view data loader (lists / settings panels). Always returns a Promise.
+   * Called only from showView after chrome/visibility is switched.
+   */
+  async function loadViewData(name) {
+    if (name === 'invoices') {
+      renderHomeDateChip();
+      if (loggedInOperator) {
+        renderHomeGreeting(loggedInOperator.display_name || FiscalAdminI18n.t('home.greet.operator_fallback'));
+      }
+      initInvoiceFilters();
+      const loads = [
+        refreshInvoices().catch(reportError),
+        refreshHomeStats().catch(() => renderHomeStats(0, 0)),
+      ];
+      if (mode === 'restaurant') {
+        loads.push(refreshBills().catch(() => focusHomePrimaryCta(0)));
+      } else {
+        focusHomePrimaryCta(0);
+      }
+      await Promise.all(loads);
+      return;
+    }
+    if (name === 'products') {
+      await refreshProducts().catch(reportError);
+      return;
+    }
+    if (name === 'customers') {
+      await refreshCustomers().catch(reportError);
+      return;
+    }
+    if (name === 'bills') {
+      await refreshBills().catch(reportError);
+      return;
+    }
+    if (name === 'settings') {
+      initSettingsView(setupStatusCache);
+      initAuditLogPanel();
+      await Promise.all([
+        refreshSetupStatus({ autoSync: true }).catch(reportError),
+        refreshOperatorsPanel().catch(() => {}),
+        refreshAuditLog().catch(() => {}),
+        loadPrinterStations().catch(() => {}),
+        refreshEffectivePrintStation().catch(() => {}),
+        refreshTerminalsPanel().catch(() => {}),
+        refreshSAFTExports().catch(() => {}),
+      ]);
+    }
+  }
+
+  /** ONLY view switch: chrome + visibility, then loadViewData. Always returns a Promise. */
+  async function showView(name) {
     const from = currentViewName();
     if ((from === 'order-new' || from === 'order-invoice') &&
         name !== 'order-new' && name !== 'order-invoice') {
@@ -4599,34 +4656,18 @@
     const navName = name === 'bill-split' ? 'bills'
       : (name === 'order-new' || name === 'order-invoice' ? 'invoices' : name);
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.nav === navName));
-    if (name === 'products') refreshProducts().catch(reportError);
-    if (name === 'customers') refreshCustomers().catch(reportError);
-    if (name === 'invoices') {
-      renderHomeDateChip();
-      if (loggedInOperator) {
-        renderHomeGreeting(loggedInOperator.display_name || FiscalAdminI18n.t('home.greet.operator_fallback'));
-      }
-      initInvoiceFilters();
-      refreshInvoices().catch(reportError);
-      refreshHomeStats().catch(() => renderHomeStats(0, 0));
-      if (mode === 'restaurant') refreshBills().catch(() => focusHomePrimaryCta(0));
-      else focusHomePrimaryCta(0);
-    }
-    if (name === 'bills') refreshBills().catch(reportError);
     if (name === 'settings') {
       document.querySelector('.main').classList.add('settings-page');
-      initSettingsView(setupStatusCache);
-      refreshSetupStatus({ autoSync: true }).catch(reportError);
-      refreshOperatorsPanel().catch(() => {});
-      initAuditLogPanel();
-      refreshAuditLog().catch(() => {});
-      loadPrinterStations().catch(() => {});
-      refreshEffectivePrintStation().catch(() => {});
-      refreshTerminalsPanel().catch(() => {});
-      refreshSAFTExports().catch(() => {});
     } else {
       document.querySelector('.main').classList.remove('settings-page');
     }
+    await loadViewData(name);
+  }
+
+  /** ONLY login → app reveal (after landing view data is ready). */
+  function revealAppShell() {
+    $('#view-login').classList.add('hidden');
+    $('#app-shell').classList.add('on');
   }
 
   async function enterApp() {
@@ -4642,14 +4683,10 @@
         : String(displayName).slice(0, 2).toUpperCase();
     }
     applyOperatorAccess();
-    $('#view-login').classList.add('hidden');
-    $('#app-shell').classList.add('on');
     try {
       await j('GET', '/local/v1/printers');
     } catch (e) {
       if (e && (e.error === 'terminal_required' || e.error === 'terminal_revoked')) {
-        $('#app-shell').classList.remove('on');
-        $('#view-login').classList.remove('hidden');
         showTerminalPairPrompt(e.error);
         toast(e.error === 'terminal_revoked'
           ? FiscalAdminI18n.t('settings.terminals.login_revoked')
@@ -4660,7 +4697,9 @@
     await ensureSetupStatus();
     applyMode();
     refreshLocalizedSelects();
-    showView('invoices');
+    // Landing view primes while shell is still display:none; reveal only when loadViewData settles.
+    await showView('invoices');
+    revealAppShell();
     loadPrinterStations().catch(() => {});
     refreshEffectivePrintStation().catch(() => {});
     ensureCustomerCatalog().catch(() => {});
