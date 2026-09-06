@@ -479,11 +479,51 @@ func TestAdminHTMLHomeCtaPeerAndFocus(t *testing.T) {
 	if !strings.Contains(adminHTML, `id="ctaNewOrder"`) || !strings.Contains(adminHTML, `id="ctaPendingBills"`) {
 		t.Fatal("home must expose ctaNewOrder and ctaPendingBills")
 	}
-	if !strings.Contains(adminHTML, "function focusHomePrimaryCta") {
-		t.Fatal("admin must define focusHomePrimaryCta once")
+	if n := strings.Count(adminHTML, "function focusHomePrimaryCta"); n != 1 {
+		t.Fatalf("focusHomePrimaryCta must appear exactly once, got %d", n)
 	}
-	if !strings.Contains(adminHTML, "showView('invoices')") {
-		t.Fatal("login/enterApp must default to invoices view")
+	if n := strings.Count(adminHTML, "function appShellIsOn"); n != 1 {
+		t.Fatalf("appShellIsOn must be the ONLY shell-visible gate, got %d", n)
+	}
+	if !strings.Contains(adminHTML, "if (!appShellIsOn()) return;") {
+		t.Fatal("focusHomePrimaryCta must no-op until app shell is on")
+	}
+	if strings.Contains(adminHTML, "suppressHomeCtaFocus") {
+		t.Fatal("remove suppressHomeCtaFocus; use appShellIsOn in focusHomePrimaryCta")
+	}
+	if n := strings.Count(adminHTML, "function loadViewData"); n != 1 {
+		t.Fatalf("loadViewData must be the ONLY view data loader, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "await loadViewData(name)"); n != 1 {
+		t.Fatalf("showView must await loadViewData exactly once, got %d", n)
+	}
+	for _, view := range []string{"invoices", "products", "customers", "bills", "settings"} {
+		needle := "name === '" + view + "'"
+		if !strings.Contains(adminHTML[strings.Index(adminHTML, "async function loadViewData"):], needle) {
+			t.Fatalf("loadViewData must handle %s", view)
+		}
+	}
+	if n := strings.Count(adminHTML, "function revealAppShell"); n != 1 {
+		t.Fatalf("revealAppShell must be the ONLY login→shell reveal, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "$('#app-shell').classList.add('on')"); n != 1 {
+		t.Fatalf("#app-shell.on must be added only in revealAppShell, got %d", n)
+	}
+	enterIdx := strings.Index(adminHTML, "async function enterApp()")
+	if enterIdx < 0 {
+		t.Fatal("missing enterApp")
+	}
+	enterBody := adminHTML[enterIdx : enterIdx+1600]
+	if !strings.Contains(enterBody, "await showView('invoices')") {
+		t.Fatal("enterApp must await showView('invoices') (landing) before reveal")
+	}
+	if !strings.Contains(enterBody, "revealAppShell()") {
+		t.Fatal("enterApp must reveal via revealAppShell")
+	}
+	awaitView := strings.Index(enterBody, "await showView('invoices')")
+	reveal := strings.Index(enterBody, "revealAppShell()")
+	if awaitView < 0 || reveal < 0 || awaitView > reveal {
+		t.Fatal("enterApp must await landing showView before revealAppShell")
 	}
 	idx := strings.Index(adminHTML, `id="ctaPendingBills"`)
 	if idx < 0 {

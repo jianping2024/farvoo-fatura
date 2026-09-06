@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.7
+
+**登录进壳：落地页数据就绪后再亮 shell（不再空表晃一下）**
+
+- **唯一写法 · 视图数据加载：**仅 `loadViewData`（invoices / products / customers / bills / settings）；`showView` 只切 chrome 后 `await loadViewData`。
+- **唯一写法 · 登录亮壳：**仅 `revealAppShell`（唯一 `$('#app-shell').on`）；`enterApp` 必须先 `await showView('invoices')` 再 reveal。
+- **唯一写法 · CTA focus 门闩：**仅 `appShellIsOn`；shell 未亮时 `focusHomePrimaryCta` 直接 return（去掉临时 suppress 旗标）。
+
 ## 0.5.6
 
 **登出清场：列表页码 / 筛选 / 日期不再带到下次登录**
