@@ -79,7 +79,16 @@ func TestAdminMultiPC_NoAllowNextCopyAndSingleWizard(t *testing.T) {
 		t.Fatal("zh revoke_btn must be 停用")
 	}
 	if n := strings.Count(adminHTML, "function formatMdHms"); n != 1 {
-		t.Fatalf("formatMdHms must be the ONLY MM-dd HH:mm:ss formatter, got %d", n)
+		t.Fatalf("formatMdHms must be the ONLY MM/dd HH:mm:ss formatter, got %d", n)
+	}
+	if !strings.Contains(adminHTML, "get('month') + '/' + get('day')") {
+		t.Fatal("formatMdHms must join month/day with / (MM/dd HH:mm:ss)")
+	}
+	if strings.Contains(adminHTML, "get('month') + '-' + get('day')") {
+		t.Fatal("formatMdHms must not use MM-dd; use MM/dd")
+	}
+	if !strings.Contains(adminHTML, "return formatMdHms((inv && (inv.system_entry_date || inv.issued_at)) || '');") {
+		t.Fatal("formatInvoiceWhenCell must use formatMdHms (MM/dd HH:mm:ss)")
 	}
 	if strings.Count(adminHTML, "formatMdHms(row.last_seen_at") != 1 {
 		t.Fatal("terminals last-seen must use formatMdHms once")
