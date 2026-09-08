@@ -28,13 +28,36 @@ func TestAdminCashDrawerUniqueWriters(t *testing.T) {
 	if strings.Count(html, `GET', '/local/v1/setup/cash-drawer'`) != 1 {
 		t.Fatal("ONLY one GET setup/cash-drawer")
 	}
-	if strings.Contains(html, "tray") && strings.Contains(html, "cash-drawer") {
-		// soft: no tray cash drawer — tray is windows Go; just ensure openCashDrawer is not named for tray
-	}
 	if !strings.Contains(html, `id="mainChrome"`) {
 		t.Fatal("main-chrome host for drawer button required")
 	}
 	if !strings.Contains(html, `id="cashDrawerPin"`) {
 		t.Fatal("settings pin select required")
+	}
+}
+
+func TestAdminCashDrawerDockBottomLeftPrimary(t *testing.T) {
+	html := adminHTML
+	if strings.Count(html, `position: fixed`) < 1 {
+		t.Fatal("drawer dock must use position fixed")
+	}
+	if strings.Count(html, `left: calc(224px + 1.75rem)`) != 1 {
+		t.Fatal("ONLY one desktop left: calc(224px + 1.75rem) for drawer dock")
+	}
+	if strings.Count(html, `.main-chrome { left: 1.75rem; }`) != 1 {
+		t.Fatal("ONLY one narrow-screen .main-chrome left override")
+	}
+	if !strings.Contains(html, `bottom: 1.25rem`) {
+		t.Fatal("drawer dock must sit near viewport bottom")
+	}
+	// Must be primary button level — not secondary ghost.
+	if strings.Contains(html, `class="secondary btn-drawer"`) || strings.Contains(html, `class="btn-drawer secondary"`) {
+		t.Fatal("btnOpenCashDrawer must not use secondary (ghost) level")
+	}
+	if !strings.Contains(html, `class="btn-drawer" id="btnOpenCashDrawer"`) {
+		t.Fatal("btnOpenCashDrawer must use primary button + btn-drawer size only")
+	}
+	if n := strings.Count(html, `id="btnOpenCashDrawer"`); n != 1 {
+		t.Fatalf("ONLY one open-drawer control, got %d", n)
 	}
 }
