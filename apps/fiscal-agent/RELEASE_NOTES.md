@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.10
+
+**开钱箱：content 左下固定 + 主按钮样式**
+
+- **唯一写法 · 开箱壳层：**仅 `#mainChrome` / `.main-chrome`（`position: fixed; left: calc(224px + 1.75rem); bottom: 1.25rem`）；窄屏 `left: 1.75rem`；禁止顶栏右上 / 侧栏脚第二入口。
+- **唯一写法 · 开箱按钮等级：**仅主按钮（`#btnOpenCashDrawer.btn-drawer`，无 `secondary`）；尺寸/阴影仅 `.btn-drawer`；禁止再造第四种 button level。
+
 ## 0.5.9
 
 **钱箱：主区开箱 + 现金签发自动踢 + pin2/pin5**

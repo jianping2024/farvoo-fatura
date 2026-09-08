@@ -263,7 +263,7 @@ func TestAdminHTMLNoPageXScrollUnique(t *testing.T) {
 	if n := strings.Count(adminHTML, "224px minmax(0, 1fr)"); n != 1 {
 		t.Fatalf("shell columns must appear exactly once, got %d", n)
 	}
-	if !strings.Contains(adminHTML, ".main { padding: 1.5rem 1.75rem 2.5rem; max-width: 980px; min-width: 0; }") {
+	if !strings.Contains(adminHTML, ".main { padding: 1.5rem 1.75rem 5rem; max-width: 980px; min-width: 0; }") {
 		t.Fatal("main must shrink with min-width: 0")
 	}
 	if strings.Contains(adminHTML, "100vw") {
