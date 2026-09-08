@@ -296,6 +296,14 @@
     .sidebar .user-name { font-size: 0.8125rem; font-weight: 600; color: #e8f2ec; }
     .sidebar .foot button { color: rgba(200,224,212,.55); padding-left: 0; font-size: 0.78rem; }
     .sidebar .foot button:hover { color: #e8f2ec; background: transparent; filter: none; transform: none; }
+    /* ONLY shell chrome for cash-drawer action (not nav, not per-view topbars). */
+    .main-chrome {
+      display: flex; justify-content: flex-end; align-items: center;
+      gap: 0.5rem; margin: -0.35rem 0 0.65rem; flex-shrink: 0;
+    }
+    .main-chrome .btn-drawer {
+      font-size: 0.8125rem; padding: 0.4rem 0.85rem; border-radius: 8px;
+    }
 
     /* ── Main area ── */
     .main { padding: 1.5rem 1.75rem 2.5rem; max-width: 980px; min-width: 0; }
@@ -691,6 +699,9 @@
     </aside>
 
     <main class="main">
+      <div class="main-chrome" id="mainChrome">
+        <button type="button" class="secondary btn-drawer" id="btnOpenCashDrawer" data-i18n="drawer.open">开钱箱</button>
+      </div>
       <section class="view" id="view-order-new">
         <div class="flow-bar" id="flowBarNew">
           <div class="flow-step active" data-step="1"><span class="num">1</span><span data-i18n="order.flow.create">创建开票</span></div>
@@ -1179,6 +1190,19 @@
                   <a href="http://127.0.0.1:17892/configure" target="_blank" rel="noopener" data-i18n="settings.printers.configure_link">档口打印机映射：打开配置向导</a>
                 </p>
                 <p class="hint" data-i18n="settings.printers.configure_hint">在配置向导里把每个档口绑定到物理打印机；本页「开票电脑」为每台电脑指定默认档口。</p>
+                <h3 class="settings-subhead" data-i18n="settings.drawer.heading">钱箱</h3>
+                <p class="hint" data-i18n="settings.drawer.hint">钱箱插在打印机 DK 口。选 pin2 或 pin5（默认 pin2）；装机时用「测试开箱」确认。</p>
+                <div class="field">
+                  <label data-i18n="settings.drawer.pin">开箱脚位</label>
+                  <select id="cashDrawerPin">
+                    <option value="2" data-i18n="settings.drawer.pin2">pin2（钱箱 1）</option>
+                    <option value="5" data-i18n="settings.drawer.pin5">pin5（钱箱 2）</option>
+                  </select>
+                </div>
+                <div class="panel-footer" style="border:0;justify-content:flex-start;gap:0.5rem;padding:0.5rem 0 0">
+                  <button type="button" id="btnCashDrawerPinSave" data-i18n="settings.drawer.save">保存钱箱设置</button>
+                  <button type="button" class="secondary" id="btnCashDrawerTest" data-i18n="settings.drawer.test">测试开箱</button>
+                </div>
               </div>
             </details>
 
@@ -4624,6 +4648,7 @@
         refreshAuditLog().catch(() => {}),
         loadPrinterStations().catch(() => {}),
         refreshEffectivePrintStation().catch(() => {}),
+        refreshCashDrawerPanel().catch(() => {}),
         refreshTerminalsPanel().catch(() => {}),
         refreshSAFTExports().catch(() => {}),
       ]);
@@ -4778,6 +4803,30 @@
     } else {
       toast(FiscalAdminI18n.t('settings.lan.saved'), 'success');
     }
+  }
+
+  /** ONLY cash-drawer pin panel loader (settings → 设备). */
+  async function refreshCashDrawerPanel() {
+    const sel = $('#cashDrawerPin');
+    if (!sel) return;
+    const data = await j('GET', '/local/v1/setup/cash-drawer');
+    const pin = data && (data.pin === 5 || data.pin === 2) ? data.pin : 2;
+    sel.value = String(pin);
+  }
+
+  /** ONLY cash-drawer pin save (PUT /local/v1/setup/cash-drawer). */
+  async function saveCashDrawerPin() {
+    const sel = $('#cashDrawerPin');
+    const pin = sel && sel.value === '5' ? 5 : 2;
+    await j('PUT', '/local/v1/setup/cash-drawer', { pin });
+    toast(FiscalAdminI18n.t('settings.drawer.saved'), 'success');
+    await refreshCashDrawerPanel();
+  }
+
+  /** ONLY manual drawer kick (POST /local/v1/cash-drawer/open) — topbar + settings test. */
+  async function openCashDrawer() {
+    await j('POST', '/local/v1/cash-drawer/open', {});
+    toast(FiscalAdminI18n.t('drawer.opened'), 'success');
   }
 
   async function saveLocalStation(stationId) {
@@ -5009,6 +5058,20 @@
   });
 
   $('#btnLogout').onclick = () => { void forceLogout(); };
+
+  $('#btnOpenCashDrawer').onclick = () => withBusy($('#btnOpenCashDrawer'), FiscalAdminI18n.t('drawer.opening'), async () => {
+    await openCashDrawer();
+  });
+  if ($('#btnCashDrawerPinSave')) {
+    $('#btnCashDrawerPinSave').onclick = () => withBusy($('#btnCashDrawerPinSave'), FiscalAdminI18n.t('common.saving'), async () => {
+      await saveCashDrawerPin();
+    });
+  }
+  if ($('#btnCashDrawerTest')) {
+    $('#btnCashDrawerTest').onclick = () => withBusy($('#btnCashDrawerTest'), FiscalAdminI18n.t('drawer.opening'), async () => {
+      await openCashDrawer();
+    });
+  }
 
   $('#btnChangePin').onclick = () => openChangePinModal();
   $('#btnChangePinCancel').onclick = () => closeChangePinModal();

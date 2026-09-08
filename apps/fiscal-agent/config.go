@@ -43,6 +43,8 @@ type config struct {
 	// FiscalAllowLAN: allow Admin listen on LAN (0.0.0.0:17880). nil/false → loopback only.
 	// Product path: Admin → config.json only (no FISCAL_ALLOW_LAN / FISCAL_BIND).
 	FiscalAllowLAN *bool `json:"fiscal_allow_lan,omitempty"`
+	// CashDrawerPin: ESC/POS drawer kick pin 2 or 5 (default 2). ONLY Agent config path.
+	CashDrawerPin int `json:"cash_drawer_pin,omitempty"`
 }
 
 // hasRealtimeSession is true when claim returned Supabase Auth credentials for Realtime.
@@ -257,6 +259,11 @@ func mergePairConfig(prev, next *config) {
 	}
 	if strings.TrimSpace(prev.TextEncoding) != "" && strings.TrimSpace(next.TextEncoding) == "" {
 		next.TextEncoding = prev.TextEncoding
+	}
+	if prev.CashDrawerPin == 2 || prev.CashDrawerPin == 5 {
+		if next.CashDrawerPin != 2 && next.CashDrawerPin != 5 {
+			next.CashDrawerPin = prev.CashDrawerPin
+		}
 	}
 }
 

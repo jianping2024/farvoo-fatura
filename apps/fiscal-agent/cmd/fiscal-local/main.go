@@ -43,11 +43,18 @@ func main() {
 		stationMetaFn = func() []api.StationMeta { return stationMeta }
 	}
 
+	// UAT capture: pretend print succeeded so cash-drawer open + auto-kick can be exercised without hardware.
+	printBytes := func(printerRaw string, data []byte) error {
+		log.Printf("fiscal-local print capture %d bytes → %s", len(data), printerRaw)
+		return nil
+	}
+
 	rt, err := bootstrap.Start(bootstrap.Options{
 		DBPath: dbPath, DataDir: dataDir, BindAddr: bind, AllowLAN: allowLAN, StoreID: storeID,
 		SigningKeyPEMPath: key, SoftwareCertificateNumber: cert, Seed: seed,
 		StationPrintersFn: stationPrintersFn,
 		StationMetaFn:     stationMetaFn,
+		PrintBytesFn:      printBytes,
 	})
 	if err != nil {
 		log.Fatal(err)

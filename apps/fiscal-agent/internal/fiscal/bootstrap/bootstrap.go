@@ -11,6 +11,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/api"
 	"farvoo-fiscal-agent/internal/fiscal/at"
 	"farvoo-fiscal-agent/internal/fiscal/locale"
+	fiscalprint "farvoo-fiscal-agent/internal/fiscal/print"
 	"farvoo-fiscal-agent/internal/fiscal/service"
 	"farvoo-fiscal-agent/internal/fiscal/signer"
 	"farvoo-fiscal-agent/internal/fiscal/store"
@@ -37,6 +38,8 @@ type Options struct {
 	UILocaleSet               func(string) error
 	LanAccessGet              func() (api.LanAccessSnapshot, error)
 	LanAccessSet              func(allow bool) (api.LanAccessSnapshot, error)
+	CashDrawerPinGet          func() int
+	CashDrawerPinSet          func(pin int) error
 	AutoSessionSecretFile     bool // ONLY fiscal_embed sets true (Retail session_hmac.key)
 }
 
@@ -125,6 +128,18 @@ func StartCore(opts Options) (*Runtime, error) {
 	}
 	svc.UILocaleFn = uiGet
 
+	pinGet := opts.CashDrawerPinGet
+	pinSet := opts.CashDrawerPinSet
+	if pinGet == nil || pinSet == nil {
+		pinPrefs := &fiscalprint.PinPrefsFile{Path: fiscalprint.PathInDataDir(opts.DataDir)}
+		if pinGet == nil {
+			pinGet = pinPrefs.Get
+		}
+		if pinSet == nil {
+			pinSet = pinPrefs.Set
+		}
+	}
+
 	mem := &worker.MemorySink{}
 	sink := opts.PrintSink
 	if sink == nil {
@@ -134,6 +149,7 @@ func StartCore(opts Options) (*Runtime, error) {
 		DB: db, Sink: sink,
 		StationPrintersFn: opts.StationPrintersFn,
 		PrintBytesFn:      opts.PrintBytesFn,
+		CashDrawerPinFn:   pinGet,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	go w.Loop(ctx, 200*time.Millisecond)
@@ -162,6 +178,9 @@ func StartCore(opts Options) (*Runtime, error) {
 		UILocaleSet:       uiSet,
 		LanAccessGet:      opts.LanAccessGet,
 		LanAccessSet:      opts.LanAccessSet,
+		CashDrawerPinGet:  pinGet,
+		CashDrawerPinSet:  pinSet,
+		PrintBytesFn:      opts.PrintBytesFn,
 		Sessions:          sessions,
 	}); err != nil {
 		cancel()

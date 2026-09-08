@@ -2,6 +2,17 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.9
+
+**钱箱：主区开箱 + 现金签发自动踢 + pin2/pin5**
+
+- **唯一写法 · ESC/POS 开箱字节：**仅 `print.CashDrawerKickBytes` / `AppendCashDrawerKick`（`ESC p`）；禁止第二套 kick。
+- **唯一写法 · 自动踢门闩：**仅 `print.ShouldAppendCashDrawerKick`（ORIGINAL FT/FS + CASH/MIXED）；REPRINT / NC / ND 不开。
+- **唯一写法 · Worker 追加：**仅 `worker.RunOnce` 在 `RenderESCPOS` 后按门闩追加；pin 仅 `CashDrawerPinFn`。
+- **唯一写法 · 手动开箱 API：**仅 `POST /local/v1/cash-drawer/open` → `handleOpenCashDrawer`；Admin 仅 `openCashDrawer`。
+- **唯一写法 · pin 配置：**仅 `GET|PUT /local/v1/setup/cash-drawer`；Agent `config.json` `cash_drawer_pin`（`loadAgentCashDrawerPin` / `setAgentCashDrawerPin`）；fiscal-local 仅 `print.PinPrefsFile`。
+- **UI：**主区 `#mainChrome`「开钱箱」；设置 → 设备 pin2/pin5 + 测试开箱；**不**进托盘。
+
 ## 0.5.8
 
 **签发时刻：含秒，格式 MM/dd HH:mm:ss**
