@@ -148,6 +148,8 @@ func startEmbeddedFiscal(cfg *config) error {
 		}
 		return printToTarget(t, data)
 	}
+	cashPinGet := loadAgentCashDrawerPin
+	cashPinSet := setAgentCashDrawerPin
 
 	opts := bootstrap.Options{
 		DBPath:            dbPath,
@@ -163,6 +165,8 @@ func startEmbeddedFiscal(cfg *config) error {
 		UILocaleSet:           setAgentUILocale,
 		LanAccessGet:          agentLanAccessGet,
 		LanAccessSet:          agentLanAccessSet,
+		CashDrawerPinGet:      cashPinGet,
+		CashDrawerPinSet:      cashPinSet,
 		AutoSessionSecretFile: true, // ONLY Retail embed entry; see docs/fiscal-session-secret.zh.md
 	}
 	if opts.Seed {

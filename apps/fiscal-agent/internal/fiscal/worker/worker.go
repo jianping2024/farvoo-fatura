@@ -24,12 +24,16 @@ type PrintBytesFn func(printerRaw string, data []byte) error
 // StationPrintersFn returns live station_id → printer raw (tcp:… / winspool:…).
 type StationPrintersFn func() map[string]string
 
+// CashDrawerPinFn returns live cash drawer pin (2 or 5); nil → pin2.
+type CashDrawerPinFn func() int
+
 // Worker claims local_print_jobs and renders via print.RenderESCPOS — ONLY print drain path.
 type Worker struct {
 	DB                *store.DB
 	Sink              Sink // optional Memory capture / fiscal-local tests
 	StationPrintersFn StationPrintersFn
 	PrintBytesFn      PrintBytesFn
+	CashDrawerPinFn   CashDrawerPinFn
 }
 
 // RunOnce processes at most one PENDING job.
@@ -48,6 +52,13 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 		return true, err
 	}
 	bytes := fiscalprint.RenderESCPOS(&payload)
+	if fiscalprint.ShouldAppendCashDrawerKick(&payload) {
+		pin := 2
+		if w.CashDrawerPinFn != nil {
+			pin = fiscalprint.NormalizeCashDrawerPin(w.CashDrawerPinFn())
+		}
+		bytes = fiscalprint.AppendCashDrawerKick(bytes, pin)
+	}
 	if err := w.writeBytes(jobID, stationID, bytes); err != nil {
 		_ = w.DB.CompletePrintJob(jobID, false, err.Error())
 		return true, err

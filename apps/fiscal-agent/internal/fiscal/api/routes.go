@@ -29,6 +29,9 @@ type HandlerDeps struct {
 	UILocaleSet       func(string) error       // persist ui_locale; required for PUT
 	LanAccessGet      func() (LanAccessSnapshot, error)
 	LanAccessSet      func(allow bool) (LanAccessSnapshot, error)
+	CashDrawerPinGet  func() int
+	CashDrawerPinSet  func(pin int) error
+	PrintBytesFn      func(printerRaw string, data []byte) error // Agent / fiscal-local physical out
 }
 
 // Mount registers fiscal local routes. Prefix: /local/v1
@@ -96,6 +99,15 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	}))
 	mux.HandleFunc("PUT /local/v1/setup/lan-access", g(func(w http.ResponseWriter, r *http.Request) {
 		handlePutLanAccess(w, r, deps)
+	}))
+	mux.HandleFunc("GET /local/v1/setup/cash-drawer", g(func(w http.ResponseWriter, r *http.Request) {
+		handleGetCashDrawer(w, r, deps)
+	}))
+	mux.HandleFunc("PUT /local/v1/setup/cash-drawer", g(func(w http.ResponseWriter, r *http.Request) {
+		handlePutCashDrawer(w, r, deps)
+	}))
+	mux.HandleFunc("POST /local/v1/cash-drawer/open", g(func(w http.ResponseWriter, r *http.Request) {
+		handleOpenCashDrawer(w, r, deps)
 	}))
 	mux.HandleFunc("PUT /local/v1/setup/taxpayer", g(func(w http.ResponseWriter, r *http.Request) {
 		handleUpsertTaxpayer(w, r, deps)

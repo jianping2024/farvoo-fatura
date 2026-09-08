@@ -59,6 +59,9 @@ func routeAuthFor(r *http.Request) routeAuth {
 	if adminPaths[p] {
 		return authAdmin
 	}
+	if p == "/local/v1/setup/cash-drawer" && r.Method == http.MethodPut {
+		return authManager
+	}
 	managerPaths := map[string]bool{
 		"/local/v1/setup/taxpayer":              true,
 		"/local/v1/setup/operator":              true,
