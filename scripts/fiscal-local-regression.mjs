@@ -122,9 +122,11 @@ async function main() {
   }
 
   const requestId = `reg-${Date.now()}`;
+  const stationId = '2951b0b2-aaaa-bbbb-cccc-ddddeeeeffff';
   const body = JSON.stringify({
     request_id: requestId,
     document_type: 'FT',
+    station_id: stationId,
     snapshot: {
       source_system: 'farvoo',
       source_sale_id: `sale-${requestId}`,

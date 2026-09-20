@@ -840,6 +840,7 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		CustomerNIF        string `json:"customer_nif"`
 		CustomerName       string `json:"customer_name"`
 		PaymentMethod      string `json:"payment_method"`
+		Tendered           string `json:"tendered"`
 		AllocationRevision *int64 `json:"allocation_revision"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
@@ -854,7 +855,7 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 	res, err := deps.Fiscal.IssueFromBillDraft(r.Context(), service.IssueBillDraftInput{
 		DraftID: draftID, DocumentType: body.DocumentType, OperatorID: body.OperatorID, Mode: body.Mode, ScopeID: body.ScopeID,
 		StationID: body.StationID, CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
-		PaymentMethod: body.PaymentMethod, AllocationRevision: body.AllocationRevision,
+		PaymentMethod: body.PaymentMethod, Tendered: body.Tendered, AllocationRevision: body.AllocationRevision,
 	})
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {

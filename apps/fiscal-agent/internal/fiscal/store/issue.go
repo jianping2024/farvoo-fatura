@@ -259,9 +259,7 @@ func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueR
 		payments = []domain.PaymentInput{{Method: "CASH", Amount: grossStr}}
 	}
 	for _, pay := range payments {
-		_, err = tx.Exec(`INSERT INTO invoice_payments (id, invoice_id, method, amount, paid_at, operator_id)
-			VALUES (?, ?, ?, ?, ?, ?)`, uuid.NewString(), docID, pay.Method, pay.Amount, nowRFC, opID)
-		if err != nil {
+		if err = insertInvoicePayment(tx, docID, nowRFC, opID, pay); err != nil {
 			return nil, err
 		}
 	}

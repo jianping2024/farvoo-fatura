@@ -81,9 +81,13 @@ type CustomerInput struct {
 }
 
 // PaymentInput records how the sale was paid.
+// Amount is the settlement amount (SAF-T PaymentAmount). Tendered/ChangeDue are
+// cash-drawer operational fields only (CASH); empty when unused.
 type PaymentInput struct {
-	Method string `json:"method"`
-	Amount string `json:"amount"`
+	Method    string `json:"method"`
+	Amount    string `json:"amount"`
+	Tendered  string `json:"tendered,omitempty"`
+	ChangeDue string `json:"change_due,omitempty"`
 }
 
 // CreditLineRequest is one partial credit line for IssueCreditNote.

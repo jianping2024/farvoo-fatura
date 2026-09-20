@@ -62,8 +62,10 @@ type TotalsBlock struct {
 }
 
 type PaymentBlock struct {
-	Method string `json:"method"`
-	Amount string `json:"amount"`
+	Method    string `json:"method"`
+	Amount    string `json:"amount"`
+	Tendered  string `json:"tendered,omitempty"`
+	ChangeDue string `json:"change_due,omitempty"`
 }
 
 type ComplianceBlock struct {

@@ -23,13 +23,14 @@ type ManualLineInput struct {
 
 // ManualIssueInput is the ONLY API input for manual FT/FS/FR (before snapshot build).
 type ManualIssueInput struct {
-	RequestID          string
-	DocumentType       string
-	CustomerNIF        string
-	CustomerName       string
-	PaymentMethod      string
-	TableDisplayName   string
-	Lines              []ManualLineInput
+	RequestID        string
+	DocumentType     string
+	CustomerNIF      string
+	CustomerName     string
+	PaymentMethod    string
+	Tendered         string // CASH only; empty → no tendered/change
+	TableDisplayName string
+	Lines            []ManualLineInput
 }
 
 // BuildManualSaleSnapshot is the ONLY builder for manual FT → IssueDocument.
@@ -112,6 +113,9 @@ func BuildManualSaleSnapshot(db *store.DB, in ManualIssueInput) (domain.SaleSnap
 		Payments: []domain.PaymentInput{
 			{Method: pay, Amount: total},
 		},
+	}
+	if err := domain.ApplyCashTenderToSale(&sale, in.Tendered); err != nil {
+		return domain.SaleSnapshot{}, fmt.Errorf("catalog: %w", err)
 	}
 	if t := strings.TrimSpace(in.TableDisplayName); t != "" {
 		sale.DisplayMeta = map[string]string{"table_display_name": t}

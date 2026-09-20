@@ -527,6 +527,7 @@ type IssueBillDraftInput struct {
 	CustomerNIF        string
 	CustomerName       string
 	PaymentMethod      string // empty → CASH via ApplyPaymentOverride
+	Tendered           string // CASH only; empty → no tendered/change
 	AllocationRevision *int64 // person: required OCC; must match draft.allocation_revision
 }
 
@@ -821,6 +822,9 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraf
 	}
 	if err := billsync.ApplyPaymentOverride(&sale, in.PaymentMethod); err != nil {
 		return nil, err
+	}
+	if err := domain.ApplyCashTenderToSale(&sale, in.Tendered); err != nil {
+		return nil, coded("validation_failed", err.Error())
 	}
 
 	docType, err := ResolveSaleDocumentType(in.DocumentType)

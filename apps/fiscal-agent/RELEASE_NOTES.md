@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.11
+
+**现金实收 / 找零：UI + 票面两行 + 落库**
+
+- **唯一写法 · 计算：**仅 `domain.ApplyCashTender` / `ApplyCashTenderToSale`（服务端重算 `change_due`；`amount` 仍为结算额）。
+- **唯一写法 · 落库：**仅 `store.insertInvoicePayment`（列 `tendered` / `change_due`；迁移 `010_invoice_payments_tendered.sql`）。
+- **唯一写法 · 票面：**仅 `print.writePaymentBlock`（有 tendered 才印 Valor entregue / Troco）。
+- **唯一写法 · Admin UI：**仅 `bindCashTenderUI` + `syncCashTenderWrap` + `readCashTenderedOrToast`；开票/分单各一 wrap（`#invCashTenderWrap` / `#splitCashTenderWrap`）。
+- API：`tendered` 进 manual issue 与 bill-draft issue；非 CASH 或空 tendered → 不写不印。
+
 ## 0.5.10
 
 **开钱箱：content 左下固定 + 主按钮样式**

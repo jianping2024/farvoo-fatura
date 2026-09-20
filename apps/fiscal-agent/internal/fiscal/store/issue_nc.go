@@ -304,9 +304,9 @@ func (d *DB) IssueNC(ctx context.Context, signer Signer, p IssueNCParams) (*Issu
 		return nil, err
 	}
 
-	_, err = tx.Exec(`INSERT INTO invoice_payments (id, invoice_id, method, amount, paid_at, operator_id)
-		VALUES (?, ?, ?, ?, ?, ?)`, uuid.NewString(), docID, payMethod, grossStr, nowRFC, p.OperatorID)
-	if err != nil {
+	if err = insertInvoicePayment(tx, docID, nowRFC, p.OperatorID, domain.PaymentInput{
+		Method: payMethod, Amount: grossStr,
+	}); err != nil {
 		return nil, err
 	}
 

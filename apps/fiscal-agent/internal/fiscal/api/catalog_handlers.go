@@ -151,6 +151,7 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		CustomerNIF      string                    `json:"customer_nif"`
 		CustomerName     string                    `json:"customer_name"`
 		PaymentMethod    string                    `json:"payment_method"`
+		Tendered         string                    `json:"tendered"`
 		TableDisplayName string                    `json:"table_display_name"`
 		Lines            []catalog.ManualLineInput `json:"lines"`
 	}
@@ -166,7 +167,8 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 	res, err := deps.Fiscal.IssueManualFT(r.Context(), catalog.ManualIssueInput{
 		RequestID: body.RequestID, DocumentType: body.DocumentType,
 		CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
-		PaymentMethod: body.PaymentMethod, TableDisplayName: body.TableDisplayName, Lines: body.Lines,
+		PaymentMethod: body.PaymentMethod, Tendered: body.Tendered,
+		TableDisplayName: body.TableDisplayName, Lines: body.Lines,
 	}, body.OperatorID, body.StationID)
 	if errors.Is(err, store.ErrConflict) {
 		writeErr(w, http.StatusConflict, "idempotency_conflict", err.Error())

@@ -139,7 +139,7 @@ func RenderESCPOS(p *Payload) []byte {
 	b.Write([]byte{0x1D, 0x21, 0x00})
 	bold(false)
 	for _, pay := range p.Payments {
-		w(moneyRow(formatPaymentMethod(L, pay.Method), pay.Amount, receiptWidth))
+		writePaymentBlock(w, L, pay, receiptWidth)
 	}
 
 	// ⑧ IVA summary
@@ -349,6 +349,16 @@ func formatPaymentMethod(L ReceiptLabels, method string) string {
 		return L.PayOther
 	default:
 		return method
+	}
+}
+
+// writePaymentBlock is the ONLY ESC/POS writer for one payment row plus optional
+// Valor entregue / Troco (when Tendered is set).
+func writePaymentBlock(w func(string), L ReceiptLabels, pay PaymentBlock, width int) {
+	w(moneyRow(formatPaymentMethod(L, pay.Method), pay.Amount, width))
+	if t := strings.TrimSpace(pay.Tendered); t != "" {
+		w(moneyRow(L.Tendered, t, width))
+		w(moneyRow(L.ChangeDue, strings.TrimSpace(pay.ChangeDue), width))
 	}
 }
 

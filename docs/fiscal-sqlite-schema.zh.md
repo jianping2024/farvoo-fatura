@@ -515,11 +515,15 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | id | TEXT PK | 是 | |
 | invoice_id | TEXT FK | 是 | |
 | method | TEXT | 是 | |
-| amount | TEXT | 是 | |
+| amount | TEXT | 是 | 结算额（≠ 顾客递出纸币） |
 | paid_at | TEXT | 是 | |
 | operator_id | TEXT | 否 | |
+| tendered | TEXT | 否 | 现金实收；仅 CASH 且收银录入时有值 |
+| change_due | TEXT | 否 | 找零 = tendered − amount；服务端唯一计算 |
 
-MVP 不进 SAF-T `DocumentTotals/Payment`。
+MVP 不进 SAF-T `DocumentTotals/Payment`。`tendered` / `change_due` 为收银作业字段，**不**写入 SAF-T PaymentAmount。
+
+**唯一写法：** `store.insertInvoicePayment`；结算额旁的实收/找零仅 `domain.ApplyCashTender`。
 
 ### 6.14 `invoice_line_references`（NC）
 

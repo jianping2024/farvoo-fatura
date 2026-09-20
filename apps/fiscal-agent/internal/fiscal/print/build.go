@@ -94,7 +94,10 @@ func BuildPayload(in BuildInput) (*Payload, string, error) {
 	}
 	var pays []PaymentBlock
 	for _, p := range in.Payments {
-		pays = append(pays, PaymentBlock{Method: p.Method, Amount: p.Amount})
+		pays = append(pays, PaymentBlock{
+			Method: p.Method, Amount: p.Amount,
+			Tendered: p.Tendered, ChangeDue: p.ChangeDue,
+		})
 	}
 	if len(pays) == 0 {
 		pays = []PaymentBlock{{Method: "CASH", Amount: in.GrossTotal}}

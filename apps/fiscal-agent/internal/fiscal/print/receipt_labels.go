@@ -32,6 +32,8 @@ type ReceiptLabels struct {
 	PayMixed         string
 	PayOther         string
 	PayFallback      string
+	Tendered         string // Valor entregue
+	ChangeDue        string // Troco
 }
 
 // receiptLabels is the ONLY constructor for fiscal ticket chrome labels.
@@ -66,6 +68,8 @@ func receiptLabels(invoiceLocale string) ReceiptLabels {
 			PayMixed:          "Mixed",
 			PayOther:          "Other",
 			PayFallback:       "Payment",
+			Tendered:          "Tendered",
+			ChangeDue:         "Change",
 		}
 	default:
 		return ReceiptLabels{
@@ -96,6 +100,8 @@ func receiptLabels(invoiceLocale string) ReceiptLabels {
 			PayMixed:          "Misto",
 			PayOther:          "Outro",
 			PayFallback:       "Pagamento",
+			Tendered:          "Valor entregue",
+			ChangeDue:         "Troco",
 		}
 	}
 }

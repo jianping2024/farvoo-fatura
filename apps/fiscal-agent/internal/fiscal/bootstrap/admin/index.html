@@ -813,6 +813,11 @@
               <label data-i18n="pay.label">付款方式</label>
               <select id="invPay"></select>
             </div>
+            <div class="field cash-tender-wrap hidden" id="invCashTenderWrap">
+              <label data-i18n="pay.tendered">实收金额</label>
+              <input id="invTendered" inputmode="decimal" autocomplete="off" placeholder="0.00" />
+              <p class="hint"><span data-i18n="pay.change">找零</span>: <strong id="invChange">—</strong></p>
+            </div>
             <div class="field">
               <label data-i18n="settings.printers.title">打印机</label>
               <p class="hint" id="invStationHint" data-i18n="settings.printers.loading">（加载中…）</p>
@@ -896,6 +901,11 @@
             <div class="field">
               <label data-i18n="pay.label">付款方式</label>
               <select id="splitPay"></select>
+            </div>
+            <div class="field cash-tender-wrap hidden" id="splitCashTenderWrap">
+              <label data-i18n="pay.tendered">实收金额</label>
+              <input id="splitTendered" inputmode="decimal" autocomplete="off" placeholder="0.00" />
+              <p class="hint"><span data-i18n="pay.change">找零</span>: <strong id="splitChange">—</strong></p>
             </div>
             <div class="actions">
               <button type="button" id="btnSplitPersonIssue" data-i18n="split.issue_person">签发此人发票</button>
@@ -1505,6 +1515,84 @@
     ).join('');
   }
 
+  /** ONLY due amount for order-issue cash tender UI. */
+  function orderCashTenderDue() {
+    if (!currentOrder) return 0;
+    return orderMoneyBreakdown(currentOrder).gross;
+  }
+
+  /** ONLY draft-level gross preview for whole-table cash tender. */
+  function draftGrossPreview(detail) {
+    const lines = sourceLinesOf(detail || {});
+    let g = 0;
+    lines.forEach(function (ln) {
+      const v = parseFloat(ln.line_gross || ln.LineGross || 0);
+      if (Number.isFinite(v)) g += v;
+    });
+    return Math.round(g * 100) / 100;
+  }
+
+  /** ONLY due amount for split-rail cash tender UI (current person if any, else draft). */
+  function splitCashTenderDue() {
+    const person = currentSplitPerson();
+    if (person) return personGrossPreview(currentBillDetail, person).gross;
+    return draftGrossPreview(currentBillDetail);
+  }
+
+  /** ONLY sync for one cash-tender wrap (show/hide + change hint). */
+  function syncCashTenderWrap(paySel, wrap, tenderInput, changeEl, dueFn) {
+    if (!paySel || !wrap || !tenderInput || !changeEl) return;
+    const cash = String(paySel.value || '').trim().toUpperCase() === 'CASH';
+    wrap.classList.toggle('hidden', !cash);
+    if (!cash) {
+      tenderInput.value = '';
+      changeEl.textContent = '—';
+      return;
+    }
+    const raw = String(tenderInput.value || '').trim().replace(',', '.');
+    const tend = raw === '' ? NaN : Number(raw);
+    const due = typeof dueFn === 'function' ? Number(dueFn()) : 0;
+    if (!Number.isFinite(tend)) {
+      changeEl.textContent = '—';
+      return;
+    }
+    const change = Math.round((tend - due) * 100) / 100;
+    changeEl.textContent = change < 0 ? '—' : fmtMoney(change);
+  }
+
+  /** ONLY binder for cash tender UI (pay change + tendered input). */
+  function bindCashTenderUI(paySel, wrap, tenderInput, changeEl, dueFn) {
+    if (!paySel || paySel.dataset.cashTenderBound === '1') return;
+    paySel.dataset.cashTenderBound = '1';
+    const sync = function () { syncCashTenderWrap(paySel, wrap, tenderInput, changeEl, dueFn); };
+    paySel.addEventListener('change', sync);
+    if (tenderInput) {
+      ['input', 'change'].forEach(function (ev) { tenderInput.addEventListener(ev, sync); });
+    }
+    sync();
+  }
+
+  /**
+   * ONLY reader for tendered on issue.
+   * CASH → require tendered >= due; non-CASH → empty string.
+   */
+  function readCashTenderedOrToast(paySel, tenderInput, dueAmount) {
+    const pay = String((paySel && paySel.value) || 'CASH').trim().toUpperCase() || 'CASH';
+    if (pay !== 'CASH') return { ok: true, tendered: '' };
+    const raw = String((tenderInput && tenderInput.value) || '').trim().replace(',', '.');
+    if (!raw) {
+      toast(FiscalAdminI18n.t('pay.toast.need_tendered'), 'error');
+      return { ok: false };
+    }
+    const tend = Number(raw);
+    const due = Number(dueAmount) || 0;
+    if (!Number.isFinite(tend) || tend + 1e-9 < due) {
+      toast(FiscalAdminI18n.t('pay.toast.tendered_low'), 'error');
+      return { ok: false };
+    }
+    return { ok: true, tendered: tend.toFixed(2) };
+  }
+
   /** ONLY pager copy for FiscalUI.createListPaginationBar. */
   function listPagerLabels() {
     return {
@@ -1613,6 +1701,8 @@
     }
     syncSaleDocTypeSuggestion($('#docType'), $('#invNif'), $('#invPay'));
     syncSaleDocTypeSuggestion($('#splitDocType'), $('#splitNif'), $('#splitPay'));
+    syncCashTenderWrap($('#invPay'), $('#invCashTenderWrap'), $('#invTendered'), $('#invChange'), orderCashTenderDue);
+    syncCashTenderWrap($('#splitPay'), $('#splitCashTenderWrap'), $('#splitTendered'), $('#splitChange'), splitCashTenderDue);
   }
 
   /** ONLY Admin locale apply: chrome + dynamic panes + lists + mode. */
@@ -1911,6 +2001,7 @@
     if (netEl) netEl.textContent = fmtMoney(b.net);
     if (taxEl) taxEl.textContent = fmtMoney(b.tax);
     if (totEl) totEl.textContent = fmtMoney(b.gross);
+    syncCashTenderWrap($('#invPay'), $('#invCashTenderWrap'), $('#invTendered'), $('#invChange'), orderCashTenderDue);
   }
 
   /** ONLY Admin MM/dd HH:mm:ss display (Europe/Lisbon). */
@@ -4118,7 +4209,9 @@
     $('#splitNif').value = '';
     $('#splitName').value = '';
     if ($('#splitPay')) $('#splitPay').value = 'CASH';
+    if ($('#splitTendered')) $('#splitTendered').value = '';
     syncSaleDocTypeSuggestion($('#splitDocType'), $('#splitNif'), $('#splitPay'));
+    syncCashTenderWrap($('#splitPay'), $('#splitCashTenderWrap'), $('#splitTendered'), $('#splitChange'), splitCashTenderDue);
   }
 
   function splitIssuedMap(detail) {
@@ -4366,9 +4459,11 @@
     $('#splitNif').disabled = readonly;
     $('#splitName').disabled = readonly;
     if ($('#splitPay')) $('#splitPay').disabled = readonly;
+    if ($('#splitTendered')) $('#splitTendered').disabled = readonly;
     if ($('#splitDocType')) $('#splitDocType').disabled = readonly;
     const issueBtn = $('#btnSplitPersonIssue');
     if (issueBtn) issueBtn.disabled = readonly || !cur;
+    syncCashTenderWrap($('#splitPay'), $('#splitCashTenderWrap'), $('#splitTendered'), $('#splitChange'), splitCashTenderDue);
     const shareBody = $('#splitShareBody');
     shareBody.innerHTML = '';
     if (cur) {
@@ -4533,6 +4628,8 @@
     if (!assertCustomerNifOrToast(nif)) return;
     const name = $('#invName').value.trim() || 'Consumidor Final';
     const pay = $('#invPay').value.trim() || 'CASH';
+    const tender = readCashTenderedOrToast($('#invPay'), $('#invTendered'), orderCashTenderDue());
+    if (!tender.ok) return;
     const requestId = currentOrder.requestId || ('req-order-' + currentOrder.id + '-' + Date.now());
     const lines = currentOrder.lines.map(ln => {
       if (ln.product_code) {
@@ -4553,6 +4650,7 @@
       customer_nif: nif,
       customer_name: name,
       payment_method: pay,
+      tendered: tender.tendered,
       table_display_name: currentOrder.tableNo || '',
       lines
     };
@@ -4582,13 +4680,21 @@
       name = $('#splitName').value.trim();
     }
     if (!assertCustomerNifOrToast(nif)) return;
+    let due = draftGrossPreview(currentBillDetail);
+    if (mode === 'person') {
+      const person = splitState.people.find(p => p.scope_id === scopeId) || currentSplitPerson();
+      due = personGrossPreview(currentBillDetail, person).gross;
+    }
+    const tender = readCashTenderedOrToast($('#splitPay'), $('#splitTendered'), due);
+    if (!tender.ok) return;
     const body = {
       document_type: ($('#splitDocType').value || DEFAULT_SALE_DOC),
       mode: mode,
       station_id: sid,
       customer_nif: nif,
       customer_name: name || (nif ? ('Cliente ' + nif) : ''),
-      payment_method: ($('#splitPay').value.trim() || 'CASH')
+      payment_method: ($('#splitPay').value.trim() || 'CASH'),
+      tendered: tender.tendered
     };
     if (scopeId) body.scope_id = scopeId;
     if (mode === 'person') body.allocation_revision = splitState.revision;
@@ -5278,6 +5384,8 @@
   bindCustomerNifAutofill($('#cNif'), $('#cName'));
   bindSaleDocTypeSuggestion($('#docType'), $('#invNif'), $('#invPay'));
   bindSaleDocTypeSuggestion($('#splitDocType'), $('#splitNif'), $('#splitPay'));
+  bindCashTenderUI($('#invPay'), $('#invCashTenderWrap'), $('#invTendered'), $('#invChange'), orderCashTenderDue);
+  bindCashTenderUI($('#splitPay'), $('#splitCashTenderWrap'), $('#splitTendered'), $('#splitChange'), splitCashTenderDue);
 
   $('#btnSplitBack').onclick = () => showView('bills');
 
