@@ -20,6 +20,8 @@ func TestCashTenderUniqueWriters(t *testing.T) {
 		{"inv tendered", 1, `id="invTendered"`},
 		{"split tendered", 1, `id="splitTendered"`},
 		{"orderCashTenderDue uses currentOrder", 1, "orderMoneyBreakdown(currentOrder)"},
+		{"default tendered tracks due", 1, "delete tenderInput.dataset.tenderDue"},
+		{"default fill when empty or prior due", 1, "raw === '' || (prevDue != null && raw === prevDue)"},
 	}
 	for _, c := range checks {
 		got := strings.Count(html, c.sub)
