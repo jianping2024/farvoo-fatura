@@ -76,15 +76,17 @@ func (s *FiscalService) IssueDebitNote(ctx context.Context, req domain.DebitNote
 	}
 
 	rec, err := s.db.IssueND(ctx, sig, store.IssueNDParams{
-		StoreID:           req.StoreID,
-		RequestID:         req.RequestID,
-		OriginalInvoiceID: req.OriginalInvoiceID,
-		OperatorID:        req.OperatorID,
-		StationID:         req.StationID,
-		Reason:            reason,
-		DebitFull:         req.DebitFull,
-		Lines:             lines,
-		InvoiceLocale:     s.invoiceLocale(),
+		StoreID:             req.StoreID,
+		RequestID:           req.RequestID,
+		OriginalInvoiceID:   req.OriginalInvoiceID,
+		OperatorID:          req.OperatorID,
+		StationID:           req.StationID,
+		FiscalTerminalID:    req.FiscalTerminalID,
+		FiscalTerminalLabel: req.FiscalTerminalLabel,
+		Reason:              reason,
+		DebitFull:           req.DebitFull,
+		Lines:               lines,
+		InvoiceLocale:       s.invoiceLocale(),
 	})
 	if errors.Is(err, store.ErrConflict) {
 		return nil, coded(ErrCodeIdempotencyConflict, err.Error())
@@ -100,6 +102,9 @@ func (s *FiscalService) IssueDebitNote(ctx context.Context, req domain.DebitNote
 	}
 	if errors.Is(err, store.ErrNDSeriesMissing) {
 		return nil, coded(ErrCodeSeriesMissing, "no ACTIVE ND series with validation_code")
+	}
+	if errors.Is(err, store.ErrCorrectiveCrossDay) {
+		return nil, coded(ErrCodeValidationFailed, "debit note must be same calendar day as original invoice")
 	}
 	if err != nil {
 		if strings.Contains(err.Error(), "no debit lines") {

@@ -11,7 +11,7 @@ import (
 )
 
 // IssueManualFT builds snapshot via catalog.BuildManualSaleSnapshot then IssueDocument — manual FT/FS/FR entry.
-func (s *FiscalService) IssueManualFT(ctx context.Context, in catalog.ManualIssueInput, operatorID, stationID string) (*domain.IssueResult, error) {
+func (s *FiscalService) IssueManualFT(ctx context.Context, in catalog.ManualIssueInput, operatorID, stationID, fiscalTerminalID, fiscalTerminalLabel string) (*domain.IssueResult, error) {
 	if strings.TrimSpace(in.RequestID) == "" {
 		return nil, fmt.Errorf("fiscal: request_id required")
 	}
@@ -27,11 +27,13 @@ func (s *FiscalService) IssueManualFT(ctx context.Context, in catalog.ManualIssu
 		return nil, err
 	}
 	return s.IssueDocument(ctx, domain.IssueRequest{
-		StoreID:    s.storeID,
-		RequestID:  in.RequestID,
-		OperatorID: operatorID,
-		StationID:  stationID,
-		Snapshot:   snap,
+		StoreID:             s.storeID,
+		RequestID:           in.RequestID,
+		OperatorID:          operatorID,
+		StationID:           stationID,
+		FiscalTerminalID:    fiscalTerminalID,
+		FiscalTerminalLabel: fiscalTerminalLabel,
+		Snapshot:            snap,
 	}, docType)
 }
 

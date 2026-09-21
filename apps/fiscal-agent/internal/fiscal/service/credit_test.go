@@ -47,6 +47,7 @@ func TestIssueCreditNoteOperatorDenied(t *testing.T) {
 	rec, err := db.IssueFT(context.Background(), sig, store.IssueParams{
 		StoreID: "store-demo-001", RequestID: "ft-req-perm", DocType: domain.DocumentFT,
 		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
 		Snapshot: domain.SaleSnapshot{
 			SourceSystem: "LOCAL", SourceSaleID: "sale-perm", ScopeType: "session", ScopeID: "s1", FiscalPurpose: "sale",
 			Lines: []domain.SaleLine{{
@@ -63,7 +64,8 @@ func TestIssueCreditNoteOperatorDenied(t *testing.T) {
 
 	svc := service.New(db, sig, nil, dir, "store-demo-001")
 	_, err = svc.IssueCreditNote(context.Background(), domain.CreditNoteRequest{
-		RequestID: "nc-perm-1", OperatorID: "op-demo-cashier", OriginalInvoiceID: rec.DocumentID,
+		RequestID: "nc-perm-1", OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", OriginalInvoiceID: rec.DocumentID,
 		Reason: "Denied", CreditFull: true,
 	})
 	if err == nil {

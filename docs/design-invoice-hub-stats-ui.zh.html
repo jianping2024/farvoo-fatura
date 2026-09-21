@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>设计稿定稿 · 发票 hub 营业额 / 现金 / 非现金</title>
+  <style>
+    :root {
+      --ink: #111827; --head: #374151; --muted: #6b7280;
+      --paper: #f0ece4; --panel: #ffffff;
+      --line: #e5e2db; --mode: #0b3d2e;
+      --shadow: 0 1px 2px rgba(0,0,0,.03), 0 3px 10px rgba(0,0,0,.06); --radius: 12px;
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--font); color: var(--ink); background: #e8e4dc; }
+    .page { max-width: 980px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+    .doc-head { margin-bottom: 1rem; }
+    .doc-head h1 { margin: 0 0 0.35rem; font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; }
+    .doc-head p { margin: 0; color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
+    .badge {
+      display: inline-block; margin-top: 0.55rem; margin-right: 0.35rem;
+      font-size: 0.75rem; font-weight: 700; border-radius: 999px; padding: 0.2rem 0.65rem;
+    }
+    .badge-ok { color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; }
+    .badge-info { color: #1e3a5f; background: #eff6ff; border: 1px solid #bfdbfe; }
+    .state-bar { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 1rem 0 0.75rem; }
+    .state-bar button {
+      border: 1px solid var(--line); background: #fff; color: var(--ink);
+      border-radius: 999px; padding: 0.35rem 0.75rem; font-size: 0.8rem; cursor: pointer; font-weight: 600;
+    }
+    .state-bar button.active { border-color: var(--mode); color: var(--mode); background: rgba(11,61,46,.08); }
+    .frame {
+      background: var(--paper); border: 1px solid var(--line); border-radius: 16px;
+      padding: 1.1rem 1.15rem 1.25rem; box-shadow: var(--shadow);
+    }
+    .frame-label {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
+      margin-bottom: 0.75rem; flex-wrap: wrap;
+    }
+    .frame-label strong { font-size: 0.95rem; }
+    .frame-label span { font-size: 0.8rem; color: var(--muted); }
+    .home-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      min-height: 52px; padding: 0.65rem 1.25rem; margin-bottom: 0.85rem;
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+    }
+    .home-greeting { margin: 0; font-size: 0.9rem; font-weight: 600; }
+    .date-chip {
+      font-size: 0.75rem; color: var(--muted); background: var(--paper);
+      border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.65rem;
+    }
+    .hub-entry-strip {
+      display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.65rem; margin-bottom: 0.35rem;
+    }
+    .hub-metric {
+      display: inline-flex; align-items: center; gap: 0.65rem;
+      min-height: 2.75rem; padding: 0.5rem 0.9rem;
+      background: #fff; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+    }
+    .hub-metric.primary { border-color: rgba(11,61,46,.28); }
+    .hub-metric .k { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+    .hub-metric .v { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .hub-metric .v-meta { font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-left: 0.15rem; }
+    .hub-stat-hint {
+      margin: 0 0 0.85rem; font-size: 0.75rem; color: var(--muted); font-weight: 600;
+    }
+    button.hub-bills-cta, button.hub-new {
+      display: inline-flex; align-items: center; gap: 0.65rem;
+      min-height: 2.75rem; margin: 0; padding: 0.5rem 1rem; font-weight: 700; cursor: default;
+      border-radius: 10px; border: none; font: inherit;
+    }
+    button.hub-bills-cta { background: #fff; color: var(--mode); border: 1px solid var(--line); }
+    button.hub-new { background: var(--mode); color: #fff; }
+    .hub-bills-count {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 1.5rem; height: 1.5rem; padding: 0 0.4rem;
+      border-radius: 999px; background: rgba(11,61,46,.12);
+      font-size: 0.9rem; font-weight: 800; font-variant-numeric: tabular-nums;
+    }
+    .spacer { flex: 1 1 auto; min-width: 0.5rem; }
+    .panel {
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 1.1rem 1.25rem;
+    }
+    .type-tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .type-tabs span {
+      min-width: 5.5rem; padding: 0.4rem 0.7rem; text-align: center; font-size: 0.85rem;
+      border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink);
+    }
+    .type-tabs span.active { border-color: var(--mode); font-weight: 600; }
+    .toolbar {
+      display: flex; align-items: flex-end; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem;
+    }
+    .field label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.25rem; font-weight: 600; }
+    .field input {
+      border: 1px solid var(--line); border-radius: 10px; padding: 0.45rem 0.7rem; min-width: 12rem; background: #fff;
+    }
+    .btn-filter {
+      border: 1px solid var(--line); background: #fff; border-radius: 10px;
+      padding: 0.45rem 0.75rem; font-weight: 600; font-size: 0.85rem;
+    }
+    .btn-filter.active { border-color: var(--mode); color: var(--mode); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; color: var(--head); font-weight: 600; padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--line); }
+    td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--line); }
+    td.money { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .callout {
+      margin-top: 0.85rem; padding: 0.7rem 0.85rem; border-radius: 10px;
+      background: rgba(11,61,46,.06); border: 1px solid rgba(11,61,46,.15);
+      font-size: 0.82rem; color: var(--head); line-height: 1.5;
+    }
+    .spec {
+      margin-top: 1.1rem; background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 1rem 1.15rem; box-shadow: var(--shadow);
+    }
+    .spec h2 { margin: 0 0 0.55rem; font-size: 0.95rem; }
+    .spec table { font-size: 0.82rem; }
+    .spec th { width: 9rem; }
+    .spec td, .spec th { vertical-align: top; }
+    .eq {
+      margin-top: 0.75rem; padding: 0.65rem 0.8rem; background: var(--paper);
+      border-radius: 10px; font-size: 0.82rem; font-variant-numeric: tabular-nums; color: var(--head);
+    }
+    .eq b { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-head">
+      <h1>发票页汇总条 · 设计稿（布局 A 定稿）</h1>
+      <p>放在发票页 hub 横条；不新开侧栏「统计」。下面可切换场景看数字与列表如何各走各的。</p>
+      <span class="badge badge-ok">布局 A · 产品口径已拍板</span>
+      <span class="badge badge-info">未改产品代码 · 仅设计稿</span>
+    </header>
+
+    <div class="state-bar" id="stateBar">
+      <button type="button" class="active" data-state="today">今日（默认）</button>
+      <button type="button" data-state="yesterday">昨天</button>
+      <button type="button" data-state="range">自定义日期</button>
+      <button type="button" data-state="list-nc">列表切到「冲销」· 统计不变</button>
+      <button type="button" data-state="list-search">列表有搜索 · 统计不变</button>
+      <button type="button" data-state="empty">该日无票</button>
+    </div>
+
+    <div class="frame">
+      <div class="frame-label">
+        <strong>预览 · 餐馆模式（零售同三枚，无「账单」）</strong>
+        <span id="sceneLabel">默认今天 · 列表「全部」</span>
+      </div>
+
+      <div class="home-topbar">
+        <p class="home-greeting">下午好，Will</p>
+        <span class="date-chip" id="dateChip">2026-09-21 周一</span>
+      </div>
+
+      <div class="hub-entry-strip">
+        <div class="hub-metric primary">
+          <span class="k" id="sumLabel">今日营业额</span>
+          <strong class="v">
+            <span id="sumVal">€1,145.00</span>
+            <span class="v-meta" id="sumCount"> · 38 张</span>
+          </strong>
+        </div>
+        <div class="hub-metric">
+          <span class="k">现金</span>
+          <strong class="v" id="cashVal">€430.00</strong>
+        </div>
+        <div class="hub-metric">
+          <span class="k">非现金</span>
+          <strong class="v" id="nonVal">€715.00</strong>
+        </div>
+        <span class="spacer"></span>
+        <button type="button" class="hub-bills-cta">账单<span class="hub-bills-count">3</span></button>
+        <button type="button" class="hub-new">＋ 开票</button>
+      </div>
+      <p class="hub-stat-hint" id="statHint">统计按开票日 · 全店（不受票种 / 搜索影响）</p>
+
+      <div class="panel">
+        <div class="type-tabs" id="typeTabs">
+          <span class="active" data-tab="all">全部</span>
+          <span data-tab="FT">完整发票</span>
+          <span data-tab="FS">简式发票</span>
+          <span data-tab="NC">冲销单</span>
+          <span data-tab="ND">借记单</span>
+        </div>
+        <div class="toolbar">
+          <div class="field">
+            <label>搜索</label>
+            <input id="searchBox" readonly placeholder="票号 / NIF / 桌号" />
+          </div>
+          <button type="button" class="btn-filter" id="filterBtn">筛选</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>签发时刻</th><th>票号</th><th>购方</th><th>付款方式</th><th style="text-align:right">金额</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="callout" id="callout"></div>
+      <div class="eq" id="eqLine"></div>
+    </div>
+
+    <section class="spec">
+      <h2>定稿口径（实现须对齐）</h2>
+      <table>
+        <tr><th>放置</th><td>发票页 hub 三枚横条（布局 A）；不新侧栏；餐馆/零售都显示金额三枚；餐馆保留账单 CTA</td></tr>
+        <tr><th>净营业额</th><td>FT + FS + ND − NC（按开票日落入筛选日期）</td></tr>
+        <tr><th>现金 / 非现金</th><td>FT/FS/ND 按主付款进桶；NC 按原票付款从对应桶扣；MIXED → 非现金</td></tr>
+        <tr><th>恒等式</th><td>营业额 = 现金 + 非现金</td></tr>
+        <tr><th>统计筛选</th><td><b>仅日期</b>（今天 / 昨天 / 自定义）。票种 Tab、搜索只影响列表</td></tr>
+        <tr><th>文案</th><td>日期=今天 →「今日营业额」；否则「营业额」。旁注：统计按开票日 · 全店</td></tr>
+        <tr><th>张数</th><td>该日期内所有票张数（可含 NC/ND）；与净额口径不同，已接受</td></tr>
+        <tr><th>跨日 NC/ND</th><td>业务禁止（开单时校验原票开票日须为当日）</td></tr>
+        <tr><th>付款方式</th><td>不可空；无付款行视为数据错误，不得静默当现金进统计</td></tr>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    /* 演示数据：同一「店日」统计固定；仅改日期场景时变统计；改列表场景时统计不动 */
+    const DAY_STATS = {
+      today: {
+        chip: '2026-09-21 周一', label: '今日营业额',
+        hint: '统计按开票日 · 全店（不受票种 / 搜索影响）',
+        sum: '€1,145.00', cash: '€430.00', non: '€715.00', count: 38,
+        eq: '演示：现金 €430 + 非现金 €715 = 营业额 €1,145（已含当日 ND 加算、NC 按原票扣桶）'
+      },
+      yesterday: {
+        chip: '2026-09-21 周一', label: '营业额',
+        hint: '统计按开票日 · 2026-09-20 · 全店',
+        sum: '€2,080.00', cash: '€920.00', non: '€1,160.00', count: 61,
+        eq: '非今天：主标签去掉「今日」。现金 €920 + 非现金 €1,160 = €2,080'
+      },
+      range: {
+        chip: '2026-09-21 周一', label: '营业额',
+        hint: '统计按开票日 · 2026-09-01 – 2026-09-21 · 全店',
+        sum: '€28,450.00', cash: '€11,200.00', non: '€17,250.00', count: 812,
+        eq: '自定义区间：三枚随日期变；列表可另筛，统计仍只跟这个区间'
+      },
+      empty: {
+        chip: '2026-09-21 周一', label: '今日营业额',
+        hint: '统计按开票日 · 全店（不受票种 / 搜索影响）',
+        sum: '€0.00', cash: '€0.00', non: '€0.00', count: 0,
+        eq: '无票：三枚 €0，张数省略或 · 0 张'
+      }
+    };
+
+    const scenes = {
+      today: {
+        scene: '默认今天 · 列表「全部」',
+        stats: 'today', tab: 'all', filter: false, search: '',
+        note: '默认场景。上面是今日全店净营业额；下面列表同日全部票种。',
+        rows: [
+          ['12:40', 'FS …/12', 'Consumidor final', '现金', '€32.00'],
+          ['12:18', 'FT …/8', 'Acme Lda', '卡', '€86.50'],
+          ['11:55', 'FS …/11', '—', 'MB WAY', '€18.00'],
+          ['11:02', 'ND …/1', 'Acme Lda', '卡', '€15.00'],
+          ['10:40', 'NC …/2', 'Beta SA', '现金', '€50.00'],
+        ]
+      },
+      yesterday: {
+        scene: '日期=昨天 · 列表仍「全部」',
+        stats: 'yesterday', tab: 'all', filter: true, search: '',
+        note: '只改日期：三枚数字与标签一起变。筛选按钮 active。',
+        rows: [
+          ['09-20 21:10', 'FS …/40', '—', '现金', '€24.00'],
+          ['09-20 19:02', 'FT …/22', 'Acme Lda', '卡', '€210.00'],
+        ]
+      },
+      range: {
+        scene: '自定义日期 · 列表「全部」',
+        stats: 'range', tab: 'all', filter: true, search: '',
+        note: '自定义区间：营业额文案无「今日」；旁注写出日期范围。',
+        rows: [
+          ['09-15', 'FT …/100', 'Acme Lda', '卡', '€400.00'],
+          ['09-03', 'FS …/12', '—', '现金', '€19.00'],
+        ]
+      },
+      'list-nc': {
+        scene: '今日 · 列表只看冲销 · 上面统计不变',
+        stats: 'today', tab: 'NC', filter: false, search: '',
+        note: '关键演示：列表只剩 NC，上面仍是今日全店净营业额（与「全部」时相同），不是冲销合计。',
+        rows: [
+          ['10:40', 'NC …/2', 'Beta SA', '现金', '€50.00'],
+          ['09:15', 'NC …/1', 'Acme Lda', '卡', '€20.00'],
+        ]
+      },
+      'list-search': {
+        scene: '今日 · 列表搜索桌号 · 上面统计不变',
+        stats: 'today', tab: 'all', filter: false, search: '桌 12',
+        note: '搜索只缩列表；三枚数字与无搜索时完全一致。',
+        rows: [
+          ['12:40', 'FS …/12', 'Consumidor final', '现金', '€32.00'],
+        ]
+      },
+      empty: {
+        scene: '今日无票',
+        stats: 'empty', tab: 'all', filter: false, search: '',
+        note: '空日：不假填；列表空状态与统计 €0 一致。',
+        rows: []
+      }
+    };
+
+    let stateKey = 'today';
+
+    function render() {
+      const sc = scenes[stateKey];
+      const st = DAY_STATS[sc.stats];
+      document.getElementById('sceneLabel').textContent = sc.scene;
+      document.getElementById('dateChip').textContent = st.chip;
+      document.getElementById('sumLabel').textContent = st.label;
+      document.getElementById('sumVal').textContent = st.sum;
+      document.getElementById('sumCount').textContent = st.count ? (' · ' + st.count + ' 张') : '';
+      document.getElementById('cashVal').textContent = st.cash;
+      document.getElementById('nonVal').textContent = st.non;
+      document.getElementById('statHint').textContent = st.hint;
+      document.getElementById('callout').textContent = sc.note;
+      document.getElementById('eqLine').textContent = st.eq;
+      document.getElementById('filterBtn').classList.toggle('active', sc.filter);
+      document.getElementById('searchBox').value = sc.search;
+
+      document.querySelectorAll('#stateBar button').forEach(b => {
+        b.classList.toggle('active', b.dataset.state === stateKey);
+      });
+      document.querySelectorAll('#typeTabs span').forEach(el => {
+        const on = (el.dataset.tab === 'all' && sc.tab === 'all') || el.dataset.tab === sc.tab;
+        el.classList.toggle('active', on);
+      });
+
+      const tb = document.getElementById('tbody');
+      if (!sc.rows.length) {
+        tb.innerHTML = '<tr><td colspan="5" style="color:var(--muted);padding:1rem 0.75rem">该条件下暂无发票</td></tr>';
+      } else {
+        tb.innerHTML = sc.rows.map(r =>
+          '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td><td class="money">'+r[4]+'</td></tr>'
+        ).join('');
+      }
+    }
+
+    document.getElementById('stateBar').addEventListener('click', e => {
+      const b = e.target.closest('[data-state]');
+      if (!b) return;
+      stateKey = b.dataset.state;
+      render();
+    });
+    render();
+  </script>
+</body>
+</html>

@@ -82,3 +82,15 @@ func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetai
 	}
 	return d, nil
 }
+
+
+// InvoiceRevenueSummary is the ONLY service proxy for Admin hub net revenue stats.
+func (s *FiscalService) InvoiceRevenueSummary(q store.InvoiceRevenueSummaryQuery) (*store.InvoiceRevenueSummary, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("fiscal: service not configured")
+	}
+	if q.StoreID == "" {
+		q.StoreID = s.storeID
+	}
+	return s.db.InvoiceRevenueSummary(q)
+}

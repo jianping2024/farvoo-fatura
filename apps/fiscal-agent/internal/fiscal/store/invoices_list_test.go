@@ -42,6 +42,7 @@ func TestListInvoicesIncludesHashCustomerAndSource(t *testing.T) {
 	req := store.IssueParams{
 		StoreID: "store-demo-001", RequestID: "req-list-1", DocType: domain.DocumentFT,
 		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
 		NowUTC:     time.Date(2026, 8, 27, 18, 0, 0, 0, time.UTC),
 		Snapshot: domain.SaleSnapshot{
 			SourceSystem: "farvoo", SourceSaleID: "sale-list-1", ScopeType: "session", ScopeID: "s1", FiscalPurpose: "sale",
@@ -133,7 +134,8 @@ func TestListInvoicesFilterByInvoiceDateAndSearch(t *testing.T) {
 		t.Helper()
 		_, err := db.IssueFT(context.Background(), sig, store.IssueParams{
 			StoreID: "store-demo-001", RequestID: reqID, DocType: domain.DocumentFT,
-			OperatorID: "op-demo-cashier", NowUTC: when,
+			OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", NowUTC: when,
 			Snapshot: domain.SaleSnapshot{
 				SourceSystem: "farvoo", SourceSaleID: "sale-" + reqID, ScopeType: "session", ScopeID: "s1", FiscalPurpose: "sale",
 				DisplayMeta: map[string]string{"table_display_name": table},
@@ -217,6 +219,7 @@ func TestListInvoicesPagination(t *testing.T) {
 		_, err := db.IssueFT(context.Background(), sig, store.IssueParams{
 			StoreID: "store-demo-001", RequestID: reqID, DocType: domain.DocumentFT,
 			OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
 			NowUTC:     time.Date(2026, 8, 27, 10, i, 0, 0, time.UTC),
 			Snapshot: domain.SaleSnapshot{
 				SourceSystem: "farvoo", SourceSaleID: "sale-" + reqID, ScopeType: "session", ScopeID: "s1", FiscalPurpose: "sale",
@@ -297,6 +300,7 @@ func TestListInvoicesFilterByDocumentType(t *testing.T) {
 		_, err := db.IssueFT(context.Background(), sig, store.IssueParams{
 			StoreID: "store-demo-001", RequestID: reqID, DocType: docType,
 			OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
 			NowUTC:     time.Date(2026, 8, 27, 10, 0, 0, 0, time.UTC),
 			Snapshot: domain.SaleSnapshot{
 				SourceSystem: "farvoo", SourceSaleID: "sale-" + reqID, ScopeType: "session", ScopeID: "s1", FiscalPurpose: "sale",

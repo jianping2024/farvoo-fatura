@@ -37,6 +37,7 @@ func TestPrintBytesFn_UsesStationMapping(t *testing.T) {
 
 	_, err = rt.Service.IssueDocument(context.Background(), domain.IssueRequest{
 		StoreID: "store-demo-001", RequestID: "req-print-1", OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
 		StationID: "st-usb",
 		Snapshot: domain.SaleSnapshot{
 			SourceSystem: "farvoo", SourceSaleID: "sale-p", ScopeType: "whole_table", ScopeID: "sale-p",
@@ -78,7 +79,8 @@ func TestIssueFromBillDraft_RequiresStationID(t *testing.T) {
 	}
 	defer rt.Close()
 	_, err = rt.Service.IssueFromBillDraft(context.Background(), service.IssueBillDraftInput{
-		DraftID: "x", OperatorID: "op-demo-cashier", Mode: "whole_table",
+		DraftID: "x", OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Mode: "whole_table",
 	})
 	if err == nil {
 		t.Fatal("expected validation_failed for empty station_id")

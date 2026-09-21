@@ -38,7 +38,8 @@ func TestVerifySeriesIntegrity_BlockAndHeal(t *testing.T) {
 	now := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
 	_, err = db.IssueFT(context.Background(), sig, store.IssueParams{
 		StoreID: "store-demo-001", RequestID: "ft-1", DocType: domain.DocumentFT,
-		OperatorID: "op-demo-cashier", NowUTC: now,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", NowUTC: now,
 		Snapshot: domain.SaleSnapshot{
 			SourceSystem: "LOCAL", SourceSaleID: "s1", ScopeType: "session", ScopeID: "a", FiscalPurpose: "sale",
 			Lines: []domain.SaleLine{{

@@ -466,6 +466,8 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | credited_gross_total | TEXT | 是 | 默认 `"0.00"` |
 | debited_gross_total | TEXT | 是 | 默认 `"0.00"`；ND 累计借记额 |
 | created_at | TEXT | 是 | 签发提交时间 UTC |
+| fiscal_terminal_id | TEXT | 否 | 开票电脑：`fiscal_terminals.id` 或哨兵 `loopback`（本机）；旧票可空 |
+| fiscal_terminal_label | TEXT | 否 | 开票时冻结展示名（备注，空则 IP） |
 
 ### 6.11 `invoice_lines`
 

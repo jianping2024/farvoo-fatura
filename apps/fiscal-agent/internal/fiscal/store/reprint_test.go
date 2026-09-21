@@ -43,7 +43,8 @@ func TestCreateReprintPrintJob(t *testing.T) {
 	req := store.IssueParams{
 		StoreID: "store-demo-001", RequestID: "req-reprint-1", DocType: domain.DocumentFT,
 		OperatorID: "op-demo-cashier",
-		NowUTC:     time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC),
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 		Snapshot: domain.SaleSnapshot{
 			SourceSystem: "farvoo", SourceSaleID: "sale-r1", ScopeType: "session", ScopeID: "s1", FiscalPurpose: "sale",
 			Lines: []domain.SaleLine{{
@@ -127,9 +128,10 @@ func TestCreateReprintPrintJobAfterND(t *testing.T) {
 
 	_, err = db.IssueND(context.Background(), sig, store.IssueNDParams{
 		StoreID: "store-demo-001", RequestID: "nd-reprint-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Partial debit", DebitFull: false,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Partial debit", DebitFull: false,
 		Lines: []store.CreditLineInput{{OriginalLineNumber: 1, LineGross: "5.00"}},
-		NowUTC: time.Date(2026, 8, 23, 10, 0, 0, 0, time.UTC),
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)

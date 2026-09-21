@@ -108,7 +108,7 @@ func TestAdminHTMLInvoiceFiltersUnique(t *testing.T) {
 		"function buildInvoicesQueryPath",
 		"function initInvoiceFilters",
 		"function resetInvoiceListPage",
-		"async function refreshHomeStats",
+		"async function refreshInvoiceHubStats",
 	} {
 		if n := strings.Count(adminHTML, fn); n != 1 {
 			t.Fatalf("%s must appear exactly once, got %d", fn, n)

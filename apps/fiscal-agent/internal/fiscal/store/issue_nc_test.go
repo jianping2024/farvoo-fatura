@@ -32,7 +32,8 @@ func seedDemoWithNC(t *testing.T, db *store.DB, sig *signer.PEMSigner) (ftDocID 
 	now := time.Date(2026, 8, 20, 14, 0, 0, 0, time.UTC)
 	rec, err := db.IssueFT(context.Background(), sig, store.IssueParams{
 		StoreID: "store-demo-001", RequestID: "ft-req-1", DocType: domain.DocumentFT,
-		OperatorID: "op-demo-cashier", NowUTC: now,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", NowUTC: now,
 		Snapshot: domain.SaleSnapshot{
 			SourceSystem: "LOCAL", SourceSaleID: "sale-1", ScopeType: "session", ScopeID: "s1", FiscalPurpose: "sale",
 			Lines: []domain.SaleLine{{
@@ -64,8 +65,9 @@ func TestIssueNCFullCredit(t *testing.T) {
 
 	nc, err := db.IssueNC(context.Background(), sig, store.IssueNCParams{
 		StoreID: "store-demo-001", RequestID: "nc-req-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Devolucao total", CreditFull: true,
-		NowUTC: time.Date(2026, 8, 21, 10, 0, 0, 0, time.UTC),
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Devolucao total", CreditFull: true,
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -114,7 +116,9 @@ func TestIssueNCIdempotency(t *testing.T) {
 	ftID := seedDemoWithNC(t, db, sig)
 	p := store.IssueNCParams{
 		StoreID: "store-demo-001", RequestID: "nc-idem-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Test", CreditFull: true,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Test", CreditFull: true,
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	}
 	nc1, err := db.IssueNC(context.Background(), sig, p)
 	if err != nil {
@@ -152,15 +156,19 @@ func TestIssueNCCreditedFullRejected(t *testing.T) {
 	ftID := seedDemoWithNC(t, db, sig)
 	_, err = db.IssueNC(context.Background(), sig, store.IssueNCParams{
 		StoreID: "store-demo-001", RequestID: "nc-full-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Full", CreditFull: true,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Full", CreditFull: true,
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, err = db.IssueNC(context.Background(), sig, store.IssueNCParams{
 		StoreID: "store-demo-001", RequestID: "nc-full-2", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Again partial", CreditFull: false,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Again partial", CreditFull: false,
 		Lines: []store.CreditLineInput{{OriginalLineNumber: 1, LineGross: "1.00"}},
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != store.ErrCreditNotAllowed {
 		t.Fatalf("want credit_not_allowed, got %v", err)
@@ -182,8 +190,10 @@ func TestIssueNCPartialCredit(t *testing.T) {
 
 	nc, err := db.IssueNC(context.Background(), sig, store.IssueNCParams{
 		StoreID: "store-demo-001", RequestID: "nc-partial-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Partial", CreditFull: false,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Partial", CreditFull: false,
 		Lines: []store.CreditLineInput{{OriginalLineNumber: 1, LineGross: "5.00"}},
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -213,8 +223,10 @@ func TestIssueNCAmountExceeded(t *testing.T) {
 	ftID := seedDemoWithNC(t, db, sig)
 	_, err = db.IssueNC(context.Background(), sig, store.IssueNCParams{
 		StoreID: "store-demo-001", RequestID: "nc-over-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Too much", CreditFull: false,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Too much", CreditFull: false,
 		Lines: []store.CreditLineInput{{OriginalLineNumber: 1, LineGross: "20.00"}},
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != store.ErrCreditAmountExceeded {
 		t.Fatalf("want exceeded, got %v", err)
@@ -268,8 +280,10 @@ func TestIssueNCAllowedDocTypes(t *testing.T) {
 
 			nc, err := db.IssueNC(context.Background(), sig, store.IssueNCParams{
 				StoreID: "store-demo-001", RequestID: "nc-" + docType, OriginalInvoiceID: id,
-				OperatorID: "op-demo-cashier", Reason: "Type test", CreditFull: true,
-			})
+				OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Type test", CreditFull: true,
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
+	})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -294,7 +308,9 @@ func TestIssueNCPrintPayload(t *testing.T) {
 	ftID := seedDemoWithNC(t, db, sig)
 	nc, err := db.IssueNC(context.Background(), sig, store.IssueNCParams{
 		StoreID: "store-demo-001", RequestID: "nc-print-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Print test", CreditFull: true,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Print test", CreditFull: true,
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)

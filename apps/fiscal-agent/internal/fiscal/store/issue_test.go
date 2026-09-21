@@ -43,6 +43,7 @@ func TestIssueFTEndToEnd(t *testing.T) {
 	req := store.IssueParams{
 		StoreID: "store-demo-001", RequestID: "req-1", DocType: domain.DocumentFT,
 		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
 		NowUTC:     time.Date(2026, 8, 20, 14, 0, 0, 0, time.UTC),
 		Snapshot: domain.SaleSnapshot{
 			SourceSystem: "farvoo", SourceSaleID: "sale-1", ScopeType: "session", ScopeID: "s1", FiscalPurpose: "sale",

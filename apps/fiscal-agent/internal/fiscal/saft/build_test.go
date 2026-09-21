@@ -33,8 +33,9 @@ func TestBuildContainsFTAndNC(t *testing.T) {
 
 	nc, err := db.IssueNC(context.Background(), sig, store.IssueNCParams{
 		StoreID: "store-demo-001", RequestID: "nc-saft-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Devolucao SAFT", CreditFull: true,
-		NowUTC: time.Date(2026, 8, 21, 10, 0, 0, 0, time.UTC),
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Devolucao SAFT", CreditFull: true,
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -159,7 +160,8 @@ func seedSAFTDemo(t *testing.T, db *store.DB, sig *signer.PEMSigner) string {
 	}
 	rec, err := db.IssueFT(context.Background(), sig, store.IssueParams{
 		StoreID: "store-demo-001", RequestID: "ft-saft-1", DocType: domain.DocumentFT,
-		OperatorID: "op-demo-cashier", NowUTC: time.Date(2026, 8, 20, 14, 0, 0, 0, time.UTC),
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", NowUTC: time.Date(2026, 8, 20, 14, 0, 0, 0, time.UTC),
 		Snapshot: domain.SaleSnapshot{
 			SourceSystem: "LOCAL", SourceSaleID: "sale-saft-1", ScopeType: "session", ScopeID: "s1", FiscalPurpose: "sale",
 			Lines: []domain.SaleLine{{
