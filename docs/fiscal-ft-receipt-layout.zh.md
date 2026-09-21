@@ -21,7 +21,7 @@
 
 | # | 定法 | 依据 |
 |---|------|------|
-| 1 | 票号：`receiptLabels` 前缀 + `invoice_no`（pt=`Fatura No.: ` / en=`Invoice No.: `）；**整行加粗**（`ESC E`）；日期/联次普通 | VOZ / 店内样票：票号行粗；语言见 [`fiscal-ui-locale.zh.md`](fiscal-ui-locale.zh.md) |
+| 1 | 票号：唯一 `documentNoPrefix(locale, document_type)` + `invoice_no`；**整行加粗**（`ESC E`）；日期/联次普通。前缀：FT=`Fatura No.:` / `Invoice No.:`；FS=`Fatura simplificada:` / `Simplified invoice:`；FR=`Fatura-recibo:` / `Invoice-receipt:`；NC=`Nota de credito:` / `Credit note:`；ND=`Nota de debito:` / `Debit note:`（FS/FR/NC/ND **不加**额外 No.） | 市面样票分类习惯；语言见 [`fiscal-ui-locale.zh.md`](fiscal-ui-locale.zh.md) |
 | 2 | 认证句：`{QRHashChars}-` + `Processado por… n. {证号}/AT`（票面无 `º`）；**禁止** `Hash:` 行；**超宽故意两行**（优先在 `programa ` 后折） | VOZ `/IJ6 -- Processado…`；Pingo `XLM/-Processado…` |
 | 3 | 顺序：认证 → ATCUD → QR → 进纸切；QR 下无业务字 | 样票 QR 垫底；切前进纸见 §2.11 |
 | 4 | ATCUD + QR **居中**；QR module **6** | VOZ 居中大 QR |
@@ -44,7 +44,7 @@
 
 ```text
 ① 抬头（居中）：店名 1×2 加粗 → ESC J 7 点 → 地址/NIF（1×1）
-② **Fatura No.（加粗）** / 日期 / 联次（左）→ 可选 **MESA:**
+② **票号行（加粗；前缀按 document_type）** / 日期 / 联次（左）→ 可选 **MESA:**
 ③ 客户（左）
 ④ 明细表：虚线 → 列头 → 虚线 → 单行明细（上下虚线与列头紧贴、不插空行）
 ⑤ Liquido / IVA（普通）→ **TOTAL（加粗倍高）** → 付款〔→ 可选 Valor entregue / Troco〕 → Resumo IVA
@@ -66,7 +66,7 @@
 | 明细行 | 仅 `formatItemLine` |
 | 认证票面拼装 | 仅 `formatCertificationFace` + 折行 `formatCertificationFaceLines` |
 | 桌号行 | 仅 `formatMesaLine` |
-| 票号标签行 | 仅 `formatFaturaNoLine` |
+| 票号标签行 | 仅 `formatFaturaNoLine` → `documentNoPrefix` |
 | 拉丁编码 | 仅 `escposenc.Windows1252` |
 | 店名后间距 | 仅 `escFeedDots` → **`ESC J`** + `receiptTopGapDots`（禁止 `ESC d`） |
 | 流前缀（撕口→内容） | 仅 `receiptStreamBegin`（禁止正常票面 `ESC @`） |
@@ -76,8 +76,8 @@
 
 ## 5. 验收
 
-1. 输出含票号前缀（`Fatura No.:` 或 `Invoice No.:`，跟 `payload.locale`）；无独立 `Hash:`  
-2. **`Fatura No.` 行前后有 `ESC E` 开/关加粗**；日期与联次行无加粗  
+1. 输出含按类型的票号前缀（`documentNoPrefix`，跟 `payload.locale` + `document_type`）；无独立 `Hash:`  
+2. **票号行前后有 `ESC E` 开/关加粗**；日期与联次行无加粗   
 3. 认证在 ATCUD/QR 之前；含四字 + `Processado`  
 4. QR 后至 cut 无业务 ASCII 行；切前软件进纸合计 **56 点**（30+26）  
 5. `rg 'func RenderESCPOS'`=1；`Hash:` 拼接在 Render 中不存在  
@@ -92,7 +92,7 @@
 | 定法 | 代码 |
 |------|------|
 | 店名加粗倍高、TOTAL 加粗倍高 | 已落地 |
-| **Fatura No. 整行加粗** | **已落地**（`RenderESCPOS`：`ESC E` 包 `formatFaturaNoLine`） |
+| **票号行整行加粗** | **已落地**（`RenderESCPOS`：`ESC E` 包 `formatFaturaNoLine`）；前缀唯一 `documentNoPrefix` |
 | **MESA + 认证超宽两行** | **已落地**（`formatMesaLine` / `formatCertificationFaceLines`） |
 | **纵向留白减半** | **已落地**（`receiptTopGapDots` / `cutFeedDots`；`TestRenderESCPOS_LayoutP0`） |
 | **撕口→店名软前缀** | **已落地**（`receiptStreamBegin` 无 `ESC @`；`TestRenderESCPOS_SoftStreamBeginNoEscAt`） |

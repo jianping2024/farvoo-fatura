@@ -830,7 +830,7 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraf
 		return nil, coded("validation_failed", err.Error())
 	}
 
-	docType, err := ResolveSaleDocumentType(in.DocumentType)
+	docType, err := ResolveBillSyncDocumentType(in.DocumentType)
 	if err != nil {
 		return nil, err
 	}

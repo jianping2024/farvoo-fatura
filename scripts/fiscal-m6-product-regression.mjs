@@ -8,6 +8,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_PIN, ensureAdminSession, envWithCookie, fiscalAgentTestEnv, loginOperator, runUat,
+  setFiscalProfileViaDb,
 } from './fiscal-session-helper.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -61,12 +62,13 @@ async function setupFiscal() {
   runUat(['req', 'PUT', '/local/v1/setup/at-credentials', '--body', JSON.stringify({
     username: '517535009/37', password: 'demo-secret',
   })], env);
-  for (const [docType, suffix] of [['FT', 'PFT'], ['FS', 'PFS'], ['NC', 'PNC'], ['ND', 'PND']]) {
+  for (const [docType, suffix] of [['FT', 'PFT'], ['FS', 'PFS'], ['FR', 'PFR'], ['NC', 'PNC'], ['ND', 'PND']]) {
     runUat(['req', 'POST', '/local/v1/setup/series/register', '--body', JSON.stringify({
       series_code: `${docType}${year}M6${suffix}`, document_type: docType, fiscal_year: year,
     })], env);
   }
   runUat(['req', 'POST', '/local/v1/setup/activate', '--body', JSON.stringify({ product_private_key_pem: pem })], env);
+  setFiscalProfileViaDb(dbPath, 'retail', 3);
   runUat(['req', 'PUT', '/local/v1/setup/operator', '--body', JSON.stringify({
     id: 'op-demo-cashier', role: 'cashier', display_name: 'Demo', can_issue_nc: true, pin: DEFAULT_PIN,
   })], env);
@@ -103,6 +105,8 @@ async function main() {
   const childEnv = fiscalAgentTestEnv({
     FISCAL_DB: dbPath, FISCAL_DATA_DIR: dataDir, FISCAL_BIND: bind,
     FISCAL_STORE_ID: 'store-demo-001', FISCAL_AT_ENV: 'mock', FISCAL_ALLOW_LOCAL_PROVISION: '1',
+    FISCAL_STATION_PRINTERS_JSON: JSON.stringify({ 'st-uat': 'memory:st-uat' }),
+    FISCAL_STATION_META_JSON: JSON.stringify([{ id: 'st-uat', label: 'UAT' }]),
   });
   const child = spawn('go', ['run', './cmd/fiscal-local'], { cwd: agent, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
   let boot = '';
@@ -129,14 +133,15 @@ async function main() {
 
   try {
     const stFtOnly = await uatJson('req', 'GET', '/local/v1/setup/status');
-    record('ready-to-issue-needs-fs', stFtOnly.ready_to_issue === true, `ft=${stFtOnly.series_ok} fs=${stFtOnly.fs_series_ok}`);
+    record('ready-to-issue-needs-fs', stFtOnly.ready_to_issue === true,
+      `ready=${stFtOnly.ready_to_issue} ft=${stFtOnly.series_ok} fs=${stFtOnly.fs_series_ok} profile=${stFtOnly.fiscal_profile_ok}`);
   } catch (e) {
     record('ready-to-issue-needs-fs', false, String(e));
   }
 
   try {
     const def = await uatJson('req', 'POST', '/local/v1/fiscal-documents/manual', '--body', JSON.stringify({
-      request_id: `m6p-default-fs-${Date.now()}`, operator_id: 'op-demo-cashier',
+      request_id: `m6p-default-fs-${Date.now()}`, operator_id: 'op-demo-cashier', station_id: 'st-uat',
       customer_nif: '999999990', customer_name: 'Consumidor Final', payment_method: 'CASH',
       lines: [{ product_code: 'DEMO1', quantity: '1' }],
     }));
@@ -146,19 +151,49 @@ async function main() {
   }
 
   try {
-    const bad = await uatJson('req', 'POST', '/local/v1/fiscal-documents/manual', '--body', JSON.stringify({
-      request_id: `m6p-bad-fr-${Date.now()}`, operator_id: 'op-demo-cashier', document_type: 'FR',
+    const fr = await uatJson('req', 'POST', '/local/v1/fiscal-documents/manual', '--body', JSON.stringify({
+      request_id: `m6p-fr-${Date.now()}`, operator_id: 'op-demo-cashier', document_type: 'FR', station_id: 'st-uat',
       customer_nif: '999999990', lines: [{ product_code: 'DEMO1', quantity: '1' }],
     }));
-    record('manual-rejects-fr', false, bad.document_type);
+    record('manual-issues-fr', fr.document_type === 'FR', fr.invoice_no || fr.document_type);
+    await uatCmd('wait-json', 'GET', `/local/v1/print-jobs/${fr.print_job_id}`,
+      '--path', 'job_status', '--equals', 'PRINTED', '--timeout-ms', '8000');
+    const payload = (await run('sqlite3', [dbPath,
+      `SELECT payload_json FROM local_print_jobs WHERE id='${fr.print_job_id}';`])).trim();
+    record('fr-print-job', payload.includes('"document_type":"FR"') && fr.print_job_id,
+      payload.includes('"document_type":"FR"') ? 'PRINTED + FR payload' : payload.slice(0, 80));
+    const ncFr = await uatJson('req', 'POST', `/local/v1/fiscal-documents/${fr.document_id}/credit-notes`, '--body', JSON.stringify({
+      request_id: `m6p-nc-fr-${Date.now()}`, operator_id: 'op-demo-cashier', station_id: 'st-uat', reason: 'Devolucao FR', credit_full: true,
+    }));
+    const frAfterNc = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${fr.document_id}`);
+    record('nc-on-fr', ncFr.document_type === 'NC' && frAfterNc.document_status === 'CREDITED_FULL',
+      `orig=${frAfterNc.document_status}`);
   } catch (e) {
-    record('manual-rejects-fr', String(e).includes('document_type') || String(e).includes('400'), String(e).slice(0, 80));
+    record('manual-issues-fr', false, String(e).slice(0, 120));
+    record('fr-print-job', false, String(e).slice(0, 80));
+    record('nc-on-fr', false, String(e).slice(0, 80));
+  }
+
+  try {
+    const frNd = await uatJson('req', 'POST', '/local/v1/fiscal-documents/manual', '--body', JSON.stringify({
+      request_id: `m6p-fr-nd-${Date.now()}`, operator_id: 'op-demo-cashier', document_type: 'FR', station_id: 'st-uat',
+      customer_nif: '999999990', lines: [{ product_code: 'DEMO1', quantity: '1' }],
+    }));
+    const ndFr = await uatJson('req', 'POST', `/local/v1/fiscal-documents/${frNd.document_id}/debit-notes`, '--body', JSON.stringify({
+      request_id: `m6p-nd-fr-${Date.now()}`, operator_id: 'op-demo-cashier', station_id: 'st-uat', reason: 'Ajuste FR',
+      debit_full: false, lines: [{ original_line_number: 1, line_gross: '1.00' }],
+    }));
+    const frAfterNd = await uatJson('req', 'GET', `/local/v1/fiscal-documents/${frNd.document_id}`);
+    record('nd-on-fr', ndFr.document_type === 'ND' && frAfterNd.document_status === 'DEBITED_PARTIAL',
+      `debited=${frAfterNd.debited_gross_total}`);
+  } catch (e) {
+    record('nd-on-fr', false, String(e).slice(0, 80));
   }
 
   for (const pay of ['CASH', 'CARD', 'MBWAY', 'MULTIBANCO', 'MIXED', 'OTHER']) {
     try {
       const r = await uatJson('req', 'POST', '/local/v1/fiscal-documents/manual', '--body', JSON.stringify({
-        request_id: `m6p-pay-${pay}-${Date.now()}`, operator_id: 'op-demo-cashier', document_type: 'FS',
+        request_id: `m6p-pay-${pay}-${Date.now()}`, operator_id: 'op-demo-cashier', station_id: 'st-uat', document_type: 'FS',
         payment_method: pay, customer_nif: '999999990',
         lines: [{ product_code: 'DEMO1', quantity: '1' }],
       }));
@@ -170,7 +205,7 @@ async function main() {
 
   try {
     const badPay = await uatJson('req', 'POST', '/local/v1/fiscal-documents/manual', '--body', JSON.stringify({
-      request_id: `m6p-bad-pay-${Date.now()}`, operator_id: 'op-demo-cashier',
+      request_id: `m6p-bad-pay-${Date.now()}`, operator_id: 'op-demo-cashier', station_id: 'st-uat',
       payment_method: 'BITCOIN', customer_nif: '999999990',
       lines: [{ product_code: 'DEMO1', quantity: '1' }],
     }));
