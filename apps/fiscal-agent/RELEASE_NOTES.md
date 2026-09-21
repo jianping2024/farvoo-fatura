@@ -2,6 +2,12 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.12
+
+**发票类型筛选：去掉英文/代码副标**
+
+- 发票列表类型 tab（全部 / 完整发票 / 简式发票 / 冲销单 / 借记单）不再显示 `ALL` / `FT` / `FS` / `NC` / `ND` 副标，仅保留 i18n 主文案。
+
 ## 0.5.11
 
 **现金实收 / 找零：UI + 票面两行 + 落库**
