@@ -476,6 +476,7 @@ func (s *FiscalService) IssueDocument(ctx context.Context, req domain.IssueReque
 	rec, err := s.db.IssueFT(ctx, sig, store.IssueParams{
 		StoreID: req.StoreID, RequestID: req.RequestID, DocType: docType,
 		Snapshot: req.Snapshot, OperatorID: req.OperatorID, StationID: req.StationID,
+		FiscalTerminalID: req.FiscalTerminalID, FiscalTerminalLabel: req.FiscalTerminalLabel,
 		InvoiceLocale: s.invoiceLocale(),
 	})
 	if err != nil {
@@ -518,17 +519,19 @@ func (s *FiscalService) ListBillDrafts(limit int) ([]store.BillSyncDraft, error)
 
 // IssueBillDraftInput is the ONLY input shape for IssueFromBillDraft.
 type IssueBillDraftInput struct {
-	DraftID            string
-	DocumentType       string // empty → domain.DefaultSaleDocumentType (FS)
-	OperatorID         string
-	Mode               string // whole_table | person; empty → whole_table
-	ScopeID            string
-	StationID          string // required: station_printers key for ORIGINAL print
-	CustomerNIF        string
-	CustomerName       string
-	PaymentMethod      string // empty → CASH via ApplyPaymentOverride
-	Tendered           string // CASH only; empty → no tendered/change
-	AllocationRevision *int64 // person: required OCC; must match draft.allocation_revision
+	DraftID             string
+	DocumentType        string // empty → domain.DefaultSaleDocumentType (FS)
+	OperatorID          string
+	Mode                string // whole_table | person; empty → whole_table
+	ScopeID             string
+	StationID           string // required: station_printers key for ORIGINAL print
+	FiscalTerminalID    string
+	FiscalTerminalLabel string
+	CustomerNIF         string
+	CustomerName        string
+	PaymentMethod       string // empty → CASH via ApplyPaymentOverride
+	Tendered            string // CASH only; empty → no tendered/change
+	AllocationRevision  *int64 // person: required OCC; must match draft.allocation_revision
 }
 
 // BillDraftDetail is GET /bill-drafts/{id} read model.
@@ -833,7 +836,9 @@ func (s *FiscalService) IssueFromBillDraft(ctx context.Context, in IssueBillDraf
 	}
 
 	res, err := s.IssueDocument(ctx, domain.IssueRequest{
-		StoreID: s.storeID, RequestID: reqID, OperatorID: operatorID, StationID: stationID, Snapshot: sale,
+		StoreID: s.storeID, RequestID: reqID, OperatorID: operatorID, StationID: stationID,
+		FiscalTerminalID: in.FiscalTerminalID, FiscalTerminalLabel: in.FiscalTerminalLabel,
+		Snapshot: sale,
 	}, docType)
 	if err != nil {
 		return nil, err

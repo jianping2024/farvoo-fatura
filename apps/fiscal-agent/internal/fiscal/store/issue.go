@@ -31,14 +31,16 @@ type Signer interface {
 
 // IssueParams is input already validated by service.
 type IssueParams struct {
-	StoreID        string
-	RequestID      string
-	DocType        domain.DocumentType
-	Snapshot       domain.SaleSnapshot
-	OperatorID     string
-	StationID      string // Agent station_printers key for ORIGINAL print job
-	InvoiceLocale  string // en | pt — frozen into print payload (scheme A)
-	NowUTC         time.Time // injectable for tests
+	StoreID              string
+	RequestID            string
+	DocType              domain.DocumentType
+	Snapshot             domain.SaleSnapshot
+	OperatorID           string
+	StationID            string // Agent station_printers key for ORIGINAL print job
+	FiscalTerminalID     string // issuing PC (fiscal_terminals.id or domain.LoopbackFiscalTerminalID)
+	FiscalTerminalLabel  string // frozen display name at issue time
+	InvoiceLocale        string // en | pt — frozen into print payload (scheme A)
+	NowUTC               time.Time // injectable for tests
 }
 
 // IssueRecord is the committed fiscal document + ORIGINAL print job.
@@ -210,15 +212,20 @@ func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueR
 	}
 
 	opID := p.OperatorID
+	termID, termLabel, err := requireFiscalTerminalFreeze(p.FiscalTerminalID, p.FiscalTerminalLabel)
+	if err != nil {
+		return nil, err
+	}
 	_, err = tx.Exec(`INSERT INTO invoices (
 		id, store_id, document_type, series_id, series_code, sequence_number, invoice_no,
 		atcud, hash, hash_control, signing_key_version, previous_hash, qr_content,
 		invoice_date, system_entry_date, document_status, print_status,
 		gross_total, net_total, tax_payable, customer_id, source_id,
 		software_certificate_number, source_system, source_sale_id, scope_type, scope_id,
-		fiscal_purpose, external_bill_id, display_meta_json, credited_gross_total, created_at
+		fiscal_purpose, external_bill_id, display_meta_json, credited_gross_total, created_at,
+		fiscal_terminal_id, fiscal_terminal_label
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SIGNED', 'PENDING',
-		?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '0.00', ?)`,
+		?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '0.00', ?, ?, ?)`,
 		docID, p.StoreID, string(p.DocType), seriesID, seriesCode, seq, invoiceNo,
 		atcud, hashB64, hashControl, keyVersion, lastHash, qr,
 		invoiceDate, systemEntry,
@@ -226,7 +233,7 @@ func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueR
 		cert, nullStr(p.Snapshot.SourceSystem), nullStr(p.Snapshot.SourceSaleID),
 		nullStr(p.Snapshot.ScopeType), nullStr(p.Snapshot.ScopeID),
 		nullStr(p.Snapshot.FiscalPurpose), nullStr(p.Snapshot.ExternalBillID),
-		displayMetaJSON(p.Snapshot.DisplayMeta), nowRFC)
+		displayMetaJSON(p.Snapshot.DisplayMeta), nowRFC, termID, termLabel)
 	if err != nil {
 		return nil, fmt.Errorf("store: insert invoice: %w", err)
 	}

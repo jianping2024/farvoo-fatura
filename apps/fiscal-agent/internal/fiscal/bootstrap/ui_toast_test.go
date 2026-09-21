@@ -277,10 +277,10 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 		"function renderHomeGreeting",
 		"function invoiceRowActionsHtml",
 		"function listRowMenuTriggerHtml",
-		"function renderHomeStats",
+		"function renderInvoiceHubStats",
 		"function renderPendingBillsStat",
 		"function invoiceListEmptyCellHtml",
-		"function refreshHomeStats",
+		"function refreshInvoiceHubStats",
 		"function focusHomePrimaryCta",
 		"function cancelManualOrderFlow",
 		"function formatInvoiceNoCell",
@@ -297,9 +297,9 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 		`id="homeGreeting"`,
 		`id="ctaNewOrder"`,
 		`id="ctaPendingBills"`,
-		`id="statTodayInvoices"`,
+		`id="statGrossNet"`,
 		`id="statPendingBills"`,
-		`id="statTodaySales"`,
+		`id="statCashSum"`,
 		`id="btnOrderNewCancel"`,
 		`id="btnOrderInvoiceCancel"`,
 	} {
@@ -408,7 +408,7 @@ func TestAdminHTMLInvoiceHubLayout(t *testing.T) {
 	if strings.Count(adminHTML, `id="ctaNewOrder"`) != 1 {
 		t.Fatal("ctaNewOrder must appear exactly once")
 	}
-	if !strings.Contains(section, `id="statTodayInvoices"`) {
+	if !strings.Contains(section, `id="statGrossNet"`) {
 		t.Fatal("invoice hub must include today invoice metric")
 	}
 	if strings.Contains(section, `statPendingOrders`) || strings.Contains(section, "home-recent") {
@@ -776,7 +776,7 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 		idx := strings.Index(adminHTML, "async function refreshInvoices")
 		endFn := strings.Index(adminHTML[idx:], "async function refreshBills")
 		if endFn < 0 {
-			endFn = strings.Index(adminHTML[idx:], "function renderHomeStats")
+			endFn = strings.Index(adminHTML[idx:], "function renderInvoiceHubStats")
 		}
 		if endFn > 0 && strings.Contains(adminHTML[idx:idx+endFn], "inv.print_status") {
 			t.Fatal("invoice list must not render print_status column")

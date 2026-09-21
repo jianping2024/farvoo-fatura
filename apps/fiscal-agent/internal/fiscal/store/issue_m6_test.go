@@ -42,7 +42,8 @@ func issueDemoFT(t *testing.T, db *store.DB, sig *signer.PEMSigner, docType doma
 	now := time.Date(2026, 8, 20, 14, 0, 0, 0, time.UTC)
 	rec, err := db.IssueFT(context.Background(), sig, store.IssueParams{
 		StoreID: "store-demo-001", RequestID: requestID, DocType: docType,
-		OperatorID: "op-demo-cashier", NowUTC: now,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", NowUTC: now,
 		Snapshot: domain.SaleSnapshot{
 			SourceSystem: "LOCAL", SourceSaleID: requestID, ScopeType: "session", ScopeID: "s1", FiscalPurpose: "sale",
 			Lines: []domain.SaleLine{{
@@ -100,8 +101,9 @@ func TestIssueNDFullDebitOnFS(t *testing.T) {
 
 	nd, err := db.IssueND(context.Background(), sig, store.IssueNDParams{
 		StoreID: "store-demo-001", RequestID: "nd-req-1", OriginalInvoiceID: fsID,
-		OperatorID: "op-demo-cashier", Reason: "Ajuste positivo", DebitFull: true,
-		NowUTC: time.Date(2026, 8, 21, 10, 0, 0, 0, time.UTC),
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Ajuste positivo", DebitFull: true,
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -136,8 +138,9 @@ func TestIssueNDFullDebitOnFT(t *testing.T) {
 
 	nd, err := db.IssueND(context.Background(), sig, store.IssueNDParams{
 		StoreID: "store-demo-001", RequestID: "nd-ft-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Ajuste FT", DebitFull: true,
-		NowUTC: time.Date(2026, 8, 21, 11, 0, 0, 0, time.UTC),
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Ajuste FT", DebitFull: true,
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -170,9 +173,10 @@ func TestIssueNDPartialDebit(t *testing.T) {
 
 	nd, err := db.IssueND(context.Background(), sig, store.IssueNDParams{
 		StoreID: "store-demo-001", RequestID: "nd-partial-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Partial debit", DebitFull: false,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Partial debit", DebitFull: false,
 		Lines: []store.CreditLineInput{{OriginalLineNumber: 1, LineGross: "5.00"}},
-		NowUTC: time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC),
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -205,8 +209,10 @@ func TestIssueNDAllowsAboveOriginalGross(t *testing.T) {
 	ftID := issueDemoFT(t, db, sig, domain.DocumentFT, "ft-nd-over")
 	nd, err := db.IssueND(context.Background(), sig, store.IssueNDParams{
 		StoreID: "store-demo-001", RequestID: "nd-over-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Correction above original", DebitFull: false,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Correction above original", DebitFull: false,
 		Lines: []store.CreditLineInput{{OriginalLineNumber: 1, LineGross: "20.00"}},
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -239,8 +245,10 @@ func TestIssueNDRejectsNonPositiveAmount(t *testing.T) {
 	ftID := issueDemoFT(t, db, sig, domain.DocumentFT, "ft-nd-zero")
 	_, err = db.IssueND(context.Background(), sig, store.IssueNDParams{
 		StoreID: "store-demo-001", RequestID: "nd-zero-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Zero", DebitFull: false,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Zero", DebitFull: false,
 		Lines: []store.CreditLineInput{{OriginalLineNumber: 1, LineGross: "0.00"}},
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != store.ErrDebitAmountExceeded {
 		t.Fatalf("want invalid amount, got %v", err)
@@ -262,15 +270,19 @@ func TestIssueNDAllowsFurtherDebitAfterFull(t *testing.T) {
 	ftID := issueDemoFT(t, db, sig, domain.DocumentFT, "ft-nd-full")
 	_, err = db.IssueND(context.Background(), sig, store.IssueNDParams{
 		StoreID: "store-demo-001", RequestID: "nd-full-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Full", DebitFull: true,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Full", DebitFull: true,
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	nd2, err := db.IssueND(context.Background(), sig, store.IssueNDParams{
 		StoreID: "store-demo-001", RequestID: "nd-full-2", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Again", DebitFull: false,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Again", DebitFull: false,
 		Lines: []store.CreditLineInput{{OriginalLineNumber: 1, LineGross: "1.00"}},
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)

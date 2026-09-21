@@ -48,6 +48,7 @@ func TestIssuePersistsTenderedChange(t *testing.T) {
 	rec, err := db.IssueFT(context.Background(), sig, store.IssueParams{
 		StoreID: "store-demo-001", RequestID: "req-tender-1", DocType: domain.DocumentFS,
 		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
 		NowUTC:     time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC),
 		Snapshot: domain.SaleSnapshot{
 			SourceSystem: "manual", SourceSaleID: "sale-tender-1",

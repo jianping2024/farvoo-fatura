@@ -164,12 +164,17 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		return
 	}
 	body.OperatorID = id
+	termID, termLabel, err := resolveIssueFiscalTerminal(r, deps)
+	if err != nil {
+		writeIssueTerminalErr(w, err)
+		return
+	}
 	res, err := deps.Fiscal.IssueManualFT(r.Context(), catalog.ManualIssueInput{
 		RequestID: body.RequestID, DocumentType: body.DocumentType,
 		CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
 		PaymentMethod: body.PaymentMethod, Tendered: body.Tendered,
 		TableDisplayName: body.TableDisplayName, Lines: body.Lines,
-	}, body.OperatorID, body.StationID)
+	}, body.OperatorID, body.StationID, termID, termLabel)
 	if errors.Is(err, store.ErrConflict) {
 		writeErr(w, http.StatusConflict, "idempotency_conflict", err.Error())
 		return

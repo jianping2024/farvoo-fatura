@@ -206,15 +206,22 @@ func handleCreditNote(w http.ResponseWriter, r *http.Request, deps HandlerDeps) 
 	if body.CreditFull != nil {
 		creditFull = *body.CreditFull
 	}
+	termID, termLabel, err := resolveIssueFiscalTerminal(r, deps)
+	if err != nil {
+		writeIssueTerminalErr(w, err)
+		return
+	}
 	res, err := deps.Fiscal.IssueCreditNote(r.Context(), domain.CreditNoteRequest{
-		StoreID:           deps.StoreID,
-		RequestID:         body.RequestID,
-		OriginalInvoiceID: documentID,
-		OperatorID:        body.OperatorID,
-		StationID:         body.StationID,
-		Reason:            body.Reason,
-		CreditFull:        creditFull,
-		Lines:             body.Lines,
+		StoreID:             deps.StoreID,
+		RequestID:           body.RequestID,
+		OriginalInvoiceID:   documentID,
+		OperatorID:          body.OperatorID,
+		StationID:           body.StationID,
+		FiscalTerminalID:    termID,
+		FiscalTerminalLabel: termLabel,
+		Reason:              body.Reason,
+		CreditFull:          creditFull,
+		Lines:               body.Lines,
 	})
 	if err != nil {
 		var ce *service.CodedError
@@ -265,15 +272,22 @@ func handleDebitNote(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	if body.DebitFull != nil {
 		debitFull = *body.DebitFull
 	}
+	termID, termLabel, err := resolveIssueFiscalTerminal(r, deps)
+	if err != nil {
+		writeIssueTerminalErr(w, err)
+		return
+	}
 	res, err := deps.Fiscal.IssueDebitNote(r.Context(), domain.DebitNoteRequest{
-		StoreID:           deps.StoreID,
-		RequestID:         body.RequestID,
-		OriginalInvoiceID: documentID,
-		OperatorID:        body.OperatorID,
-		StationID:         body.StationID,
-		Reason:            body.Reason,
-		DebitFull:         debitFull,
-		Lines:             body.Lines,
+		StoreID:             deps.StoreID,
+		RequestID:           body.RequestID,
+		OriginalInvoiceID:   documentID,
+		OperatorID:          body.OperatorID,
+		StationID:           body.StationID,
+		FiscalTerminalID:    termID,
+		FiscalTerminalLabel: termLabel,
+		Reason:              body.Reason,
+		DebitFull:           debitFull,
+		Lines:               body.Lines,
 	})
 	if err != nil {
 		var ce *service.CodedError
@@ -294,5 +308,44 @@ func handleDebitNote(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		"print_status":    res.PrintStatus,
 		"issued_at":       res.IssuedAt.UTC().Format(time.RFC3339),
 		"idempotent_hit":  res.IdempotentHit,
+	})
+}
+
+// handleFiscalDocumentRevenueSummary is the ONLY GET handler for hub net revenue stats.
+func handleFiscalDocumentRevenueSummary(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	if deps.Fiscal == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
+		return
+	}
+	from := strings.TrimSpace(r.URL.Query().Get("from"))
+	to := strings.TrimSpace(r.URL.Query().Get("to"))
+	if from != "" && !validDateYMD(from) {
+		writeErr(w, http.StatusBadRequest, "invalid_from", "from must be YYYY-MM-DD")
+		return
+	}
+	if to != "" && !validDateYMD(to) {
+		writeErr(w, http.StatusBadRequest, "invalid_to", "to must be YYYY-MM-DD")
+		return
+	}
+	termID := strings.TrimSpace(r.URL.Query().Get("fiscal_terminal_id"))
+	result, err := deps.Fiscal.InvoiceRevenueSummary(store.InvoiceRevenueSummaryQuery{
+		StoreID:          deps.StoreID,
+		From:             from,
+		To:               to,
+		FiscalTerminalID: termID,
+	})
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "summary_failed", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"invoice_count":      result.InvoiceCount,
+		"gross_net_sum":      result.GrossNetSum,
+		"cash_gross_sum":     result.CashGrossSum,
+		"non_cash_gross_sum": result.NonCashGrossSum,
+		"from":               from,
+		"to":                 to,
+		"fiscal_terminal_id": termID,
+		"terminals":          result.Terminals,
 	})
 }

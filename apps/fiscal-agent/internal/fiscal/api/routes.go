@@ -214,6 +214,9 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("GET /local/v1/fiscal-documents", g(func(w http.ResponseWriter, r *http.Request) {
 		handleListFiscalDocuments(w, r, deps)
 	}))
+	mux.HandleFunc("GET /local/v1/fiscal-documents/revenue-summary", g(func(w http.ResponseWriter, r *http.Request) {
+		handleFiscalDocumentRevenueSummary(w, r, deps)
+	}))
 	mux.HandleFunc("GET /local/v1/fiscal-documents/{documentId}", g(func(w http.ResponseWriter, r *http.Request) {
 		handleGetFiscalDocument(w, r, deps)
 	}))
@@ -693,9 +696,15 @@ func handleIssue(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	if docType == "" {
 		docType = domain.DefaultSaleDocumentType
 	}
+	termID, termLabel, err := resolveIssueFiscalTerminal(r, deps)
+	if err != nil {
+		writeIssueTerminalErr(w, err)
+		return
+	}
 	res, err := deps.Fiscal.IssueDocument(r.Context(), domain.IssueRequest{
 		StoreID: body.StoreID, RequestID: body.RequestID, OperatorID: body.OperatorID,
-		StationID: body.StationID, Snapshot: body.Snapshot,
+		StationID: body.StationID, FiscalTerminalID: termID, FiscalTerminalLabel: termLabel,
+		Snapshot: body.Snapshot,
 	}, docType)
 	if errors.Is(err, store.ErrConflict) {
 		writeErr(w, http.StatusConflict, "idempotency_conflict", err.Error())
@@ -852,9 +861,15 @@ func handleIssueBillDraft(w http.ResponseWriter, r *http.Request, deps HandlerDe
 	if body.Mode == "" {
 		body.Mode = "whole_table"
 	}
+	termID, termLabel, err := resolveIssueFiscalTerminal(r, deps)
+	if err != nil {
+		writeIssueTerminalErr(w, err)
+		return
+	}
 	res, err := deps.Fiscal.IssueFromBillDraft(r.Context(), service.IssueBillDraftInput{
 		DraftID: draftID, DocumentType: body.DocumentType, OperatorID: body.OperatorID, Mode: body.Mode, ScopeID: body.ScopeID,
-		StationID: body.StationID, CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
+		StationID: body.StationID, FiscalTerminalID: termID, FiscalTerminalLabel: termLabel,
+		CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
 		PaymentMethod: body.PaymentMethod, Tendered: body.Tendered, AllocationRevision: body.AllocationRevision,
 	})
 	if err != nil {

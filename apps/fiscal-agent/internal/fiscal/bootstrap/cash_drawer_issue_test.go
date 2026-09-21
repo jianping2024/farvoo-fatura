@@ -50,7 +50,7 @@ func TestCashIssueAppendsDrawerKick_CardDoesNot(t *testing.T) {
 			RequestID: req, DocumentType: "FS", PaymentMethod: pay,
 			CustomerName: "Consumidor Final",
 			Lines:        []catalog.ManualLineInput{{ProductCode: "T1", Quantity: "1"}},
-		}, "op-demo-cashier", "st")
+		}, "op-demo-cashier", "st", domain.LoopbackFiscalTerminalID, "127.0.0.1")
 		if err != nil {
 			t.Fatal(err)
 		}

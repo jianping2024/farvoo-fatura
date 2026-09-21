@@ -79,15 +79,17 @@ func (s *FiscalService) IssueCreditNote(ctx context.Context, req domain.CreditNo
 	}
 
 	rec, err := s.db.IssueNC(ctx, sig, store.IssueNCParams{
-		StoreID:           req.StoreID,
-		RequestID:         req.RequestID,
-		OriginalInvoiceID: req.OriginalInvoiceID,
-		OperatorID:        req.OperatorID,
-		StationID:         req.StationID,
-		Reason:            reason,
-		CreditFull:        req.CreditFull,
-		Lines:             lines,
-		InvoiceLocale:     s.invoiceLocale(),
+		StoreID:             req.StoreID,
+		RequestID:           req.RequestID,
+		OriginalInvoiceID:   req.OriginalInvoiceID,
+		OperatorID:          req.OperatorID,
+		StationID:           req.StationID,
+		FiscalTerminalID:    req.FiscalTerminalID,
+		FiscalTerminalLabel: req.FiscalTerminalLabel,
+		Reason:              reason,
+		CreditFull:          req.CreditFull,
+		Lines:               lines,
+		InvoiceLocale:       s.invoiceLocale(),
 	})
 	if errors.Is(err, store.ErrConflict) {
 		return nil, coded(ErrCodeIdempotencyConflict, err.Error())
@@ -103,6 +105,9 @@ func (s *FiscalService) IssueCreditNote(ctx context.Context, req domain.CreditNo
 	}
 	if errors.Is(err, store.ErrNCSeriesMissing) {
 		return nil, coded(ErrCodeSeriesMissing, "no ACTIVE NC series with validation_code")
+	}
+	if errors.Is(err, store.ErrCorrectiveCrossDay) {
+		return nil, coded(ErrCodeValidationFailed, "credit note must be same calendar day as original invoice")
 	}
 	if err != nil {
 		if strings.Contains(err.Error(), "no credit lines") {

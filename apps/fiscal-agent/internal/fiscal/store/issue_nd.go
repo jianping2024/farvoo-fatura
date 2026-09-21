@@ -31,16 +31,18 @@ var ErrNDSeriesMissing = errors.New("store: ND series missing")
 
 // IssueNDParams is input for IssueND (validated by service.IssueDebitNote).
 type IssueNDParams struct {
-	StoreID           string
-	RequestID         string
-	OriginalInvoiceID string
-	OperatorID        string
-	StationID         string
-	Reason            string
-	DebitFull         bool
-	Lines             []CreditLineInput
-	InvoiceLocale     string
-	NowUTC            time.Time
+	StoreID              string
+	RequestID            string
+	OriginalInvoiceID    string
+	OperatorID           string
+	StationID            string
+	FiscalTerminalID     string
+	FiscalTerminalLabel  string
+	Reason               string
+	DebitFull            bool
+	Lines                []CreditLineInput
+	InvoiceLocale        string
+	NowUTC               time.Time
 }
 
 // IssueND is the ONLY SQLite write path for ND debit notes.
@@ -107,6 +109,9 @@ func (d *DB) IssueND(ctx context.Context, signer Signer, p IssueNDParams) (*Issu
 	localNow := p.NowUTC.In(loc)
 	invoiceDate := localNow.Format("2006-01-02")
 	systemEntry := localNow.Format("2006-01-02T15:04:05")
+	if err := assertCorrectiveSameInvoiceDate(orig.InvoiceDate, invoiceDate); err != nil {
+		return nil, err
+	}
 
 	var seriesID, seriesCode, validationCode, lastHash string
 	var lastNumber int64
@@ -216,22 +221,27 @@ func (d *DB) IssueND(ctx context.Context, signer Signer, p IssueNDParams) (*Issu
 	}
 	fiscalPurpose := "debit"
 
+	termID, termLabel, err := requireFiscalTerminalFreeze(p.FiscalTerminalID, p.FiscalTerminalLabel)
+	if err != nil {
+		return nil, err
+	}
 	_, err = tx.Exec(`INSERT INTO invoices (
 		id, store_id, document_type, series_id, series_code, sequence_number, invoice_no,
 		atcud, hash, hash_control, signing_key_version, previous_hash, qr_content,
 		invoice_date, system_entry_date, document_status, print_status,
 		gross_total, net_total, tax_payable, customer_id, source_id,
 		software_certificate_number, source_system, source_sale_id, scope_type, scope_id,
-		fiscal_purpose, external_bill_id, display_meta_json, debited_gross_total, created_at
+		fiscal_purpose, external_bill_id, display_meta_json, debited_gross_total, created_at,
+		fiscal_terminal_id, fiscal_terminal_label
 	) VALUES (?, ?, 'ND', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SIGNED', 'PENDING',
-		?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, NULL, ?, '0.00', ?)`,
+		?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, NULL, ?, '0.00', ?, ?, ?)`,
 		docID, p.StoreID, seriesID, seriesCode, seq, invoiceNo,
 		atcud, hashB64, hashControl, keyVersion, lastHash, qr,
 		invoiceDate, systemEntry,
 		grossStr, netStr, taxStr, p.OperatorID,
 		cert, nullStr(sourceSystem), nullStr(orig.SourceSaleID),
 		nullStr(orig.ScopeType), nullStr(orig.ScopeID),
-		fiscalPurpose, nullStr(orig.DisplayMetaJSON), nowRFC)
+		fiscalPurpose, nullStr(orig.DisplayMetaJSON), nowRFC, termID, termLabel)
 	if err != nil {
 		return nil, fmt.Errorf("store: insert ND invoice: %w", err)
 	}

@@ -99,35 +99,41 @@ type CreditLineRequest struct {
 
 // CreditNoteRequest wraps NC issuance input.
 type CreditNoteRequest struct {
-	StoreID           string
-	RequestID         string
-	OriginalInvoiceID string
-	OperatorID        string
-	StationID         string
-	Reason            string
-	CreditFull        bool
-	Lines             []CreditLineRequest
+	StoreID             string
+	RequestID           string
+	OriginalInvoiceID   string
+	OperatorID          string
+	StationID           string
+	FiscalTerminalID    string
+	FiscalTerminalLabel string
+	Reason              string
+	CreditFull          bool
+	Lines               []CreditLineRequest
 }
 
 // DebitNoteRequest wraps ND issuance input.
 type DebitNoteRequest struct {
-	StoreID           string
-	RequestID         string
-	OriginalInvoiceID string
-	OperatorID        string
-	StationID         string
-	Reason            string
-	DebitFull         bool
-	Lines             []CreditLineRequest
+	StoreID             string
+	RequestID           string
+	OriginalInvoiceID   string
+	OperatorID          string
+	StationID           string
+	FiscalTerminalID    string
+	FiscalTerminalLabel string
+	Reason              string
+	DebitFull           bool
+	Lines               []CreditLineRequest
 }
 
 // IssueRequest wraps a sale snapshot with idempotency keys.
 type IssueRequest struct {
-	StoreID    string
-	RequestID  string
-	OperatorID string
-	StationID  string // station_printers key for ORIGINAL fiscal print
-	Snapshot   SaleSnapshot
+	StoreID             string
+	RequestID           string
+	OperatorID          string
+	StationID           string // station_printers key for ORIGINAL fiscal print
+	FiscalTerminalID    string
+	FiscalTerminalLabel string
+	Snapshot            SaleSnapshot
 }
 
 // IssueResult is returned after a successful FT issuance.

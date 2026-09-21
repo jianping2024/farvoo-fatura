@@ -26,8 +26,9 @@ func TestCorrectiveOriginalForDocument_NC(t *testing.T) {
 
 	nc, err := db.IssueNC(context.Background(), sig, store.IssueNCParams{
 		StoreID: "store-demo-001", RequestID: "nc-read-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Devolucao total", CreditFull: true,
-		NowUTC: time.Date(2026, 8, 21, 10, 0, 0, 0, time.UTC),
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Devolucao total", CreditFull: true,
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -65,9 +66,10 @@ func TestCorrectiveOriginalForDocument_ND(t *testing.T) {
 
 	nd, err := db.IssueND(context.Background(), sig, store.IssueNDParams{
 		StoreID: "store-demo-001", RequestID: "nd-read-1", OriginalInvoiceID: ftID,
-		OperatorID: "op-demo-cashier", Reason: "Ajuste parcial", DebitFull: false,
+		OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1", Reason: "Ajuste parcial", DebitFull: false,
 		Lines:  []store.CreditLineInput{{OriginalLineNumber: 1, LineGross: "2.00"}},
-		NowUTC: time.Date(2026, 8, 21, 11, 0, 0, 0, time.UTC),
+		NowUTC: time.Date(2026, 8, 20, 16, 0, 0, 0, time.UTC),
 	})
 	if err != nil {
 		t.Fatal(err)

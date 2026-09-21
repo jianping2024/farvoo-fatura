@@ -188,7 +188,7 @@ func TestAdminHTMLInvoiceListPaginationUnique(t *testing.T) {
 		"function renderClientPaginatedTable",
 		"function resetInvoiceListPage",
 		"function setInvoiceFilterPanelOpen",
-		"async function refreshHomeStats",
+		"async function refreshInvoiceHubStats",
 		"async function refreshInvoices",
 		"async function refreshProducts",
 		"async function refreshCustomers",
@@ -218,8 +218,20 @@ func TestAdminHTMLInvoiceListPaginationUnique(t *testing.T) {
 	if !strings.Contains(adminHTML, "params.set('page_size'") {
 		t.Fatal("lists must use page_size query param")
 	}
-	if !strings.Contains(adminHTML, "data.total") || !strings.Contains(adminHTML, "data.gross_total_sum") {
-		t.Fatal("home stats must use API total and gross_total_sum")
+	if !strings.Contains(adminHTML, "/local/v1/fiscal-documents/revenue-summary") ||
+		!strings.Contains(adminHTML, "gross_net_sum") ||
+		!strings.Contains(adminHTML, "cash_gross_sum") {
+		t.Fatal("hub stats must use revenue-summary cash/non-cash")
+	}
+	if strings.Count(adminHTML, "function renderInvoiceHubStats") != 1 ||
+		strings.Count(adminHTML, "async function refreshInvoiceHubStats") != 1 {
+		t.Fatal("hub stats must have exactly one render/refresh pair")
+	}
+	if strings.Count(adminHTML, "resolveIssueFiscalTerminal") != 0 {
+		// resolve is Go-only; Admin must not duplicate freeze logic
+	}
+	if strings.Contains(adminHTML, "id=\"statTodayInvoices\"") || strings.Contains(adminHTML, "id=\"statTodaySales\"") {
+		t.Fatal("legacy today invoice/sales metric ids must be removed")
 	}
 	if strings.Count(adminHTML, `id="invoiceTypeTabs"`) != 1 {
 		t.Fatal("invoiceTypeTabs must exist exactly once")

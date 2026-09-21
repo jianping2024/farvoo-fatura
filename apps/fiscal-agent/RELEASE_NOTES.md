@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.13
+
+**发票 hub：净营业额 / 现金 / 非现金 + 开票电脑冻结**
+
+- **唯一写法 · 净营业额汇总：**仅 `store.InvoiceRevenueSummary` → `GET /local/v1/fiscal-documents/revenue-summary`（日期 + 可选 `fiscal_terminal_id`；**不受**票种/搜索影响）。口径：FT+FS+FR+ND 进桶、NC 按主付款从对应桶扣；MIXED→非现金；净额=现金+非现金。
+- **唯一写法 · 开票电脑冻结：**仅 `api.resolveIssueFiscalTerminal` + `store.requireFiscalTerminalFreeze`；列 `fiscal_terminal_id` / `fiscal_terminal_label`（迁移 `011_invoice_fiscal_terminal.sql`）；本机哨兵 `domain.LoopbackFiscalTerminalID`；展示名仅 `domain.FiscalTerminalDisplayName`（备注空→IP）。
+- **唯一写法 · 跨日 NC/ND 禁止：**仅 `store.assertCorrectiveSameInvoiceDate`（原票 `invoice_date` 须等于冲销/借记当日）。
+- **唯一写法 · 付款落库：**仍仅 `insertInvoicePayment`（空 method→CASH；未知 method / 空 amount 拒写）。
+- **唯一写法 · Admin hub UI：**仅 `renderInvoiceHubStats` / `refreshInvoiceHubStats`；三枚横条 + 开票电脑下拉；列表刷新顺带刷汇总。
+
 ## 0.5.12
 
 **发票类型筛选：去掉英文/代码副标**

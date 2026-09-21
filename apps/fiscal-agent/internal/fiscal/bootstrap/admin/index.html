@@ -359,7 +359,18 @@
       box-shadow: var(--shadow);
     }
     .hub-metric .k { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
-    .hub-metric .v { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+    .hub-metric .v { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .hub-metric .v-meta { font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-left: 0.2rem; }
+    .hub-metric--sum { border-color: rgba(var(--mode-rgb), 0.28); }
+    .hub-metric--terminal { gap: 0.45rem; }
+    .hub-terminal-select {
+      min-width: 7.5rem; max-width: 11rem; margin: 0; padding: 0.25rem 0.5rem;
+      border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font-weight: 600; font-size: 0.85rem;
+    }
+    .hub-strip-spacer { flex: 1 1 0.5rem; min-width: 0.25rem; }
+    .hub-stat-hint {
+      margin: 0 0 0.85rem; font-size: 0.75rem; color: var(--muted); font-weight: 600;
+    }
     /* Peer hub CTAs: bills (rest) then #ctaNewOrder (primary) — same height. */
     button.hub-bills-cta,
     .hub-entry-strip > #ctaNewOrder {
@@ -370,7 +381,6 @@
     button.hub-bills-cta { display: none; }
     body.mode-restaurant button.hub-bills-cta.rest-only { display: inline-flex; }
     .hub-entry-strip > #ctaNewOrder { display: inline-flex; }
-    body.mode-retail .hub-entry-strip > .retail-only.hub-metric { display: inline-flex; }
     .hub-bills-count {
       display: inline-flex; align-items: center; justify-content: center;
       min-width: 1.5rem; height: 1.5rem; padding: 0 0.4rem;
@@ -923,20 +933,32 @@
         </header>
         <div class="home-body">
           <div class="hub-entry-strip">
-            <div class="hub-metric">
-              <span class="k" data-i18n="home.stat.today_invoices">今日已开发票</span>
-              <strong class="v" id="statTodayInvoices">0</strong>
+            <div class="hub-metric hub-metric--sum">
+              <span class="k" id="statSumLabel" data-i18n="home.stat.today_sales">今日营业额</span>
+              <strong class="v"><span id="statGrossNet">€0</span><span class="v-meta" id="statInvoiceCountMeta"></span></strong>
             </div>
+            <div class="hub-metric">
+              <span class="k" data-i18n="home.stat.cash">现金</span>
+              <strong class="v" id="statCashSum">€0</strong>
+            </div>
+            <div class="hub-metric">
+              <span class="k" data-i18n="home.stat.non_cash">非现金</span>
+              <strong class="v" id="statNonCashSum">€0</strong>
+            </div>
+            <div class="hub-metric hub-metric--terminal">
+              <label class="k" for="invoiceTerminalFilter" data-i18n="home.stat.terminal">开票电脑</label>
+              <select id="invoiceTerminalFilter" class="hub-terminal-select" aria-label="开票电脑">
+                <option value="" data-i18n="home.stat.terminal_all">全店</option>
+              </select>
+            </div>
+            <span class="hub-strip-spacer" aria-hidden="true"></span>
             <button type="button" class="hub-bills-cta rest-only" id="ctaPendingBills" data-nav="bills">
               <span data-i18n="home.stat.bills_cta">账单</span>
               <span class="hub-bills-count" id="statPendingBills">0</span>
             </button>
             <button type="button" id="ctaNewOrder" data-goto="order-new" data-i18n="home.cta.new_order">＋ 开票</button>
-            <div class="hub-metric retail-only">
-              <span class="k" data-i18n="home.stat.today_sales">今日营业额</span>
-              <strong class="v" id="statTodaySales">€0</strong>
-            </div>
           </div>
+          <p class="hub-stat-hint" id="hubStatHint" data-i18n="home.stat.hint">统计按开票日 · 全店（不受票种 / 搜索影响）</p>
           <div class="panel admin-list-panel invoice-list-panel">
             <div class="invoice-type-tabs" id="invoiceTypeTabs" role="tablist">
               <button type="button" class="secondary active" data-invoice-type="" role="tab"><span data-i18n="common.all">全部</span></button>
@@ -1729,7 +1751,7 @@
       void refreshSAFTExports().catch(function () {});
       void loadPrinterStations().catch(function () {});
       void refreshEffectivePrintStation().catch(function () {});
-      void refreshHomeStats().catch(function () {});
+      void refreshInvoiceHubStats().catch(function () {});
       if (billsListReady) void refreshBills().catch(function () {});
       if (invoiceFiltersReady) void refreshInvoices().catch(function () {});
       if (productFiltersReady) void refreshProducts().catch(function () {});
@@ -2125,7 +2147,7 @@
       if (ctrl && ctrl.update) ctrl.update({ page: 1, pageSize: size, total: 0 });
     });
 
-    renderHomeStats(0, 0);
+    renderInvoiceHubStats({ invoice_count: 0, gross_net_sum: '0', cash_gross_sum: '0', non_cash_gross_sum: '0', terminals: [] });
     renderPendingBillsStat(0);
   }
 
@@ -3068,10 +3090,93 @@
     return listRowMenuTriggerHtml('data-row-kind="invoice" data-doc-id="' + documentId + '"');
   }
 
-  /** ONLY writer for hub today metrics (#statTodayInvoices / #statTodaySales). */
-  function renderHomeStats(totalInvoices, grossTotalSum) {
-    $('#statTodayInvoices').textContent = String(totalInvoices || 0);
-    $('#statTodaySales').textContent = fmtMoney(grossTotalSum || 0);
+  /** ONLY writer for hub revenue metrics (#statGrossNet / cash / non-cash + label/count). */
+  function renderInvoiceHubStats(data) {
+    const d = data || {};
+    const net = d.gross_net_sum || '0';
+    const cash = d.cash_gross_sum || '0';
+    const non = d.non_cash_gross_sum || '0';
+    const count = Number(d.invoice_count) || 0;
+    const sumEl = $('#statGrossNet');
+    const cashEl = $('#statCashSum');
+    const nonEl = $('#statNonCashSum');
+    const metaEl = $('#statInvoiceCountMeta');
+    const labelEl = $('#statSumLabel');
+    if (sumEl) sumEl.textContent = fmtMoney(net);
+    if (cashEl) cashEl.textContent = fmtMoney(cash);
+    if (nonEl) nonEl.textContent = fmtMoney(non);
+    if (metaEl) {
+      metaEl.textContent = count > 0
+        ? (' · ' + FiscalAdminI18n.fmt('home.stat.count_suffix', { n: count }))
+        : '';
+    }
+    if (labelEl) {
+      const key = invoiceHubSumLabelKey();
+      labelEl.setAttribute('data-i18n', key);
+      labelEl.textContent = FiscalAdminI18n.t(key);
+    }
+    syncInvoiceTerminalFilterOptions(d.terminals || []);
+    syncHubStatHint();
+  }
+
+  /** ONLY hub sum label key: today+sales wording vs neutral 营业额. */
+  function invoiceHubSumLabelKey() {
+    const today = invoiceHubDateIsToday();
+    return today ? 'home.stat.today_sales' : 'home.stat.sales';
+  }
+
+  function invoiceHubDateIsToday() {
+    if (!invoiceDateFilterCtrl || !invoiceDateFilterCtrl.getRange) return true;
+    const range = invoiceDateFilterCtrl.getRange();
+    return !!(range && range.preset === 'today');
+  }
+
+  function syncHubStatHint() {
+    const el = $('#hubStatHint');
+    if (!el) return;
+    el.setAttribute('data-i18n', 'home.stat.hint');
+    el.textContent = FiscalAdminI18n.t('home.stat.hint');
+  }
+
+  /** ONLY hub terminal <select> option sync (keeps current value when possible). */
+  function syncInvoiceTerminalFilterOptions(terminals) {
+    const sel = $('#invoiceTerminalFilter');
+    if (!sel) return;
+    const prev = sel.value || '';
+    const allLabel = FiscalAdminI18n.t('home.stat.terminal_all');
+    let html = '<option value="">' + allLabel + '</option>';
+    (terminals || []).forEach(function (t) {
+      if (!t || !t.id) return;
+      html += '<option value="' + String(t.id).replace(/"/g, '') + '">' +
+        String(t.label || t.id).replace(/</g, '') + '</option>';
+    });
+    sel.innerHTML = html;
+    if (prev && Array.prototype.some.call(sel.options, function (o) { return o.value === prev; })) {
+      sel.value = prev;
+    } else {
+      sel.value = '';
+    }
+  }
+
+  function selectedInvoiceTerminalId() {
+    const sel = $('#invoiceTerminalFilter');
+    return sel ? String(sel.value || '').trim() : '';
+  }
+
+  /** ONLY hub revenue refresh (date + terminal; ignores list doc-type / search). */
+  async function refreshInvoiceHubStats() {
+    if (!invoiceDateFilterCtrl) initInvoiceFilters();
+    const range = invoiceDateFilterCtrl && invoiceDateFilterCtrl.getRange
+      ? invoiceDateFilterCtrl.getRange()
+      : FiscalUI.dateRangePresetToDates('today', INVOICE_TZ);
+    const params = new URLSearchParams();
+    if (range && range.from) params.set('from', range.from);
+    if (range && range.to) params.set('to', range.to);
+    const tid = selectedInvoiceTerminalId();
+    if (tid) params.set('fiscal_terminal_id', tid);
+    const data = await j('GET', '/local/v1/fiscal-documents/revenue-summary?' + params.toString());
+    renderInvoiceHubStats(data);
+    return data;
   }
 
   /** ONLY writer for #statPendingBills + hub bills CTA has-open. */
@@ -3940,14 +4045,14 @@
       },
     });
     syncInvoiceFilterToggle();
+    const termSel = $('#invoiceTerminalFilter');
+    if (termSel && !termSel._boundHub) {
+      termSel._boundHub = true;
+      termSel.addEventListener('change', () => {
+        refreshInvoiceHubStats().catch(reportError);
+      });
+    }
     invoiceFiltersReady = true;
-  }
-
-  /** ONLY invoice hub today stats (not invoice-page list filters). */
-  async function refreshHomeStats() {
-    const today = FiscalUI.dateRangePresetToDates('today', INVOICE_TZ);
-    const data = await j('GET', buildInvoicesQueryPath(today, '', 1, FiscalUI.LIST_DEFAULT_PAGE_SIZE));
-    renderHomeStats(data.total || 0, data.gross_total_sum || 0);
   }
 
   async function refreshInvoices() {
@@ -3956,6 +4061,10 @@
     if (!invoiceDateFilterCtrl) {
       initInvoiceFilters();
     }
+    void refreshInvoiceHubStats().catch(function (er) {
+      renderInvoiceHubStats({ invoice_count: 0, gross_net_sum: '0', cash_gross_sum: '0', non_cash_gross_sum: '0', terminals: [] });
+      reportError(er);
+    });
     if (invoiceListPaginationCtrl) {
       invoiceListPaginationCtrl.setDisabled(true);
     }
@@ -4659,7 +4768,7 @@
     const invNo = res.invoice_no || '';
     currentOrder = null;
     await pollPrintJob(res.print_job_id, FiscalAdminI18n.fmt('order.toast.issued', { no: (invNo || 'FT') }));
-    await refreshHomeStats();
+    await refreshInvoiceHubStats();
     await refreshInvoices();
     if (docId) {
       await openInvoiceDetail(docId);
@@ -4709,7 +4818,7 @@
       showView('bills');
       await refreshBills();
     }
-    await refreshHomeStats();
+    await refreshInvoiceHubStats();
   }
 
   /** Discard in-progress manual order and return to invoice hub. */
@@ -4737,7 +4846,6 @@
       initInvoiceFilters();
       const loads = [
         refreshInvoices().catch(reportError),
-        refreshHomeStats().catch(() => renderHomeStats(0, 0)),
       ];
       if (mode === 'restaurant') {
         loads.push(refreshBills().catch(() => focusHomePrimaryCta(0)));
@@ -5502,7 +5610,7 @@
   });
 
   $('#btnRefreshInvoices').onclick = () => withBusy($('#btnRefreshInvoices'), FiscalAdminI18n.t('common.refreshing'), async () => {
-    await refreshHomeStats();
+    await refreshInvoiceHubStats();
     if (mode === 'restaurant') await refreshBills();
     await refreshInvoices();
     toast(FiscalAdminI18n.t('common.refreshed'), 'success');
