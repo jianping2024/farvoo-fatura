@@ -1561,19 +1561,29 @@
     return draftGrossPreview(currentBillDetail);
   }
 
-  /** ONLY sync for one cash-tender wrap (show/hide + change hint). */
+  /** ONLY sync for one cash-tender wrap (show/hide + default tendered = due + change hint). */
   function syncCashTenderWrap(paySel, wrap, tenderInput, changeEl, dueFn) {
     if (!paySel || !wrap || !tenderInput || !changeEl) return;
     const cash = String(paySel.value || '').trim().toUpperCase() === 'CASH';
     wrap.classList.toggle('hidden', !cash);
     if (!cash) {
       tenderInput.value = '';
+      delete tenderInput.dataset.tenderDue;
       changeEl.textContent = '—';
       return;
     }
+    const dueRaw = typeof dueFn === 'function' ? Number(dueFn()) : 0;
+    const due = Number.isFinite(dueRaw) ? Math.round(dueRaw * 100) / 100 : 0;
+    const dueStr = due.toFixed(2);
     const raw = String(tenderInput.value || '').trim().replace(',', '.');
-    const tend = raw === '' ? NaN : Number(raw);
-    const due = typeof dueFn === 'function' ? Number(dueFn()) : 0;
+    const prevDue = tenderInput.dataset.tenderDue;
+    // Default 实收 = 应收; keep tracking due until cashier types a different amount.
+    if (raw === '' || (prevDue != null && raw === prevDue)) {
+      tenderInput.value = dueStr;
+    }
+    tenderInput.dataset.tenderDue = dueStr;
+    const tendRaw = String(tenderInput.value || '').trim().replace(',', '.');
+    const tend = tendRaw === '' ? NaN : Number(tendRaw);
     if (!Number.isFinite(tend)) {
       changeEl.textContent = '—';
       return;

@@ -2,6 +2,12 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.14
+
+**现金实收默认 = 应收**
+
+- **唯一写法 · Admin 现金实收同步：**仅 `syncCashTenderWrap`：选 CASH 时实收默认填应收；未改过（空或仍等于上次应收）则随应收更新；收银员改过则保留；找零仍由此处重算。
+
 ## 0.5.13
 
 **发票 hub：净营业额 / 现金 / 非现金 + 开票电脑冻结**
