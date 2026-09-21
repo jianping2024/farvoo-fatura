@@ -10,6 +10,7 @@ import (
 
 	"farvoo-fiscal-agent/internal/escposenc"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
+	"farvoo-fiscal-agent/internal/fiscal/locale"
 )
 
 // Receipt usable width (Font A cols) — same as kitchen escposWidth (48) so
@@ -92,7 +93,7 @@ func RenderESCPOS(p *Payload) []byte {
 
 	// ② document identity — invoice no. bold only (layout P0 #1); date/via regular
 	bold(true)
-	w(formatFaturaNoLine(L, p.InvoiceNo))
+	w(formatFaturaNoLine(p.Locale, p.DocumentType, p.InvoiceNo))
 	bold(false)
 	if dt := formatIssuedAt(p.IssuedAt); dt != "" {
 		w(dt)
@@ -173,9 +174,44 @@ func RenderESCPOS(p *Payload) []byte {
 	return b.Bytes()
 }
 
-// formatFaturaNoLine is the ONLY ticket label for invoice number (prefix from receiptLabels).
-func formatFaturaNoLine(L ReceiptLabels, invoiceNo string) string {
-	return L.FaturaNoPrefix + strings.TrimSpace(invoiceNo)
+// documentNoPrefix is the ONLY ticket number-line prefix by document_type + locale.
+// FT keeps "… No.:"; FS/FR/NC/ND use type name + ":" (market habit; no extra No.).
+func documentNoPrefix(invoiceLocale, docType string) string {
+	en := locale.NormalizeInvoiceLocale(invoiceLocale) == "en"
+	switch strings.ToUpper(strings.TrimSpace(docType)) {
+	case "FS":
+		if en {
+			return "Simplified invoice: "
+		}
+		return "Fatura simplificada: "
+	case "FR":
+		if en {
+			return "Invoice-receipt: "
+		}
+		return "Fatura-recibo: "
+	case "NC":
+		if en {
+			return "Credit note: "
+		}
+		return "Nota de credito: "
+	case "ND":
+		if en {
+			return "Debit note: "
+		}
+		return "Nota de debito: "
+	default:
+		// FT and unknown → fatura / invoice number label
+		if en {
+			return "Invoice No.: "
+		}
+		return "Fatura No.: "
+	}
+}
+
+// formatFaturaNoLine is the ONLY ticket label for invoice number
+// (prefix ONLY from documentNoPrefix).
+func formatFaturaNoLine(invoiceLocale, docType, invoiceNo string) string {
+	return documentNoPrefix(invoiceLocale, docType) + strings.TrimSpace(invoiceNo)
 }
 
 // formatMesaLine is the ONLY ticket line for restaurant table (prefix from receiptLabels).

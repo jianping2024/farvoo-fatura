@@ -2,46 +2,46 @@ package print
 
 import "farvoo-fiscal-agent/internal/fiscal/locale"
 
-// ReceiptLabels is the ONLY fiscal ticket chrome copy (scheme A: en | pt).
+// ReceiptLabels is the ONLY fiscal ticket chrome copy (scheme A: en | pt),
+// excluding the document-number line prefix (ONLY documentNoPrefix).
 // Certification line stays Portuguese in BuildPayload — not in this struct.
 type ReceiptLabels struct {
-	FaturaNoPrefix   string
-	ClientePrefix    string
-	NIFClientePrefix string
+	ClientePrefix     string
+	NIFClientePrefix  string
 	OriginalDocPrefix string
-	ReasonPrefix     string
-	MesaPrefix       string
-	ViaOriginal      string
-	ViaReprint       string
-	HeaderQty        string
-	HeaderPrice      string
-	HeaderDesc       string
-	Sum              string
-	Net              string
-	VAT              string // column / money label "IVA" (same both langs)
-	Total            string
-	VATSummaryTitle  string
-	ColRate          string
-	ColBase          string
-	ColVAT           string
-	ColTot           string
-	PayCash          string
-	PayCard          string
-	PayMBWay         string
-	PayMultibanco    string
-	PayMixed         string
-	PayOther         string
-	PayFallback      string
-	Tendered         string // Valor entregue
-	ChangeDue        string // Troco
+	ReasonPrefix      string
+	MesaPrefix        string
+	ViaOriginal       string
+	ViaReprint        string
+	HeaderQty         string
+	HeaderPrice       string
+	HeaderDesc        string
+	Sum               string
+	Net               string
+	VAT               string // column / money label "IVA" (same both langs)
+	Total             string
+	VATSummaryTitle   string
+	ColRate           string
+	ColBase           string
+	ColVAT            string
+	ColTot            string
+	PayCash           string
+	PayCard           string
+	PayMBWay          string
+	PayMultibanco     string
+	PayMixed          string
+	PayOther          string
+	PayFallback       string
+	Tendered          string // Valor entregue
+	ChangeDue         string // Troco
 }
 
-// receiptLabels is the ONLY constructor for fiscal ticket chrome labels.
+// receiptLabels is the ONLY constructor for fiscal ticket chrome labels
+// (document number prefix is ONLY documentNoPrefix).
 func receiptLabels(invoiceLocale string) ReceiptLabels {
 	switch locale.NormalizeInvoiceLocale(invoiceLocale) {
 	case "en":
 		return ReceiptLabels{
-			FaturaNoPrefix:    "Invoice No.: ",
 			ClientePrefix:     "Customer: ",
 			NIFClientePrefix:  "Customer NIF: ",
 			OriginalDocPrefix: "Original doc: ",
@@ -73,7 +73,6 @@ func receiptLabels(invoiceLocale string) ReceiptLabels {
 		}
 	default:
 		return ReceiptLabels{
-			FaturaNoPrefix:    "Fatura No.: ",
 			ClientePrefix:     "Cliente: ",
 			NIFClientePrefix:  "NIF Cliente: ",
 			OriginalDocPrefix: "Documento original: ",

@@ -98,7 +98,7 @@ async function setupFiscal() {
   await uatCmd('req', 'PUT', '/local/v1/setup/at-credentials', '--body', JSON.stringify({
     username: '517535009/37', password: 'demo-secret',
   }));
-  for (const [docType, suffix] of [['FT', 'CFT'], ['FS', 'CFS'], ['NC', 'CNC'], ['ND', 'CND']]) {
+  for (const [docType, suffix] of [['FT', 'CFT'], ['FS', 'CFS'], ['FR', 'CFR'], ['NC', 'CNC'], ['ND', 'CND']]) {
     await uatCmd('req', 'POST', '/local/v1/setup/series/register', '--body', JSON.stringify({
       series_code: `${docType}${year}D62${suffix}`, document_type: docType, fiscal_year: year,
     }));
@@ -135,6 +135,7 @@ async function issue(docType, saleId, extra = {}) {
   return uatJson('req', 'POST', '/local/v1/fiscal-documents', '--body', JSON.stringify({
     request_id: `d62-${docType}-${saleId}-${Date.now()}`,
     operator_id: 'op-demo-cashier',
+    station_id: 'st-uat',
     ...(docType ? { document_type: docType } : {}),
     snapshot: saleSnapshot(saleId),
     ...extra,
@@ -156,6 +157,8 @@ async function main() {
     FISCAL_STORE_ID: 'store-demo-001', FISCAL_AT_ENV: 'mock', FISCAL_ALLOW_LOCAL_PROVISION: '1',
     FISCAL_MOCK_VALIDATION_CODE: MOCK_VAL, FISCAL_SEED: '0',
     FISCAL_SESSION_SECRET: 'farvoo-fiscal-uat-session-secret-32b!!',
+    FISCAL_STATION_PRINTERS_JSON: JSON.stringify({ 'st-uat': 'memory:st-uat' }),
+    FISCAL_STATION_META_JSON: JSON.stringify([{ id: 'st-uat', label: 'UAT' }]),
   });
   const child = spawn('go', ['run', './cmd/fiscal-local'], { cwd: agent, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
   let boot = '';
@@ -207,14 +210,14 @@ async function main() {
   }
 
   try {
-    await uatJson('req', 'POST', '/local/v1/fiscal-documents/manual', '--body', JSON.stringify({
+    const fr = await uatJson('req', 'POST', '/local/v1/fiscal-documents/manual', '--body', JSON.stringify({
       request_id: `d62-fr-${Date.now()}`, operator_id: 'op-demo-cashier', document_type: 'FR',
+      station_id: 'st-uat',
       customer_nif: '999999990', lines: [{ product_code: 'DEMO1', quantity: '1' }],
     }));
-    fail('C2.2', 'expected FR reject');
+    (fr.document_type === 'FR' ? pass : fail)('C2.2', `issued FR; Admin dropdown = Chrome DevTools`);
   } catch (e) {
-    const ok = String(e).includes('document_type') || String(e).includes('400');
-    (ok ? pass : fail)('C2.2', 'API rejects FR; Admin dropdown = 手测');
+    fail('C2.2', String(e).slice(0, 120));
   }
 
   let payOk = true;
@@ -346,7 +349,7 @@ async function main() {
       year, month,
     }));
     const xml = await uatCmd('req', 'GET', `/local/v1/saft/exports/${exp.export_id}/download`, '--raw');
-    const types = ['FT', 'FS', 'NC', 'ND'].every((t) => xml.includes(`<InvoiceType>${t}</InvoiceType>`));
+    const types = ['FT', 'FS', 'FR', 'NC', 'ND'].every((t) => xml.includes(`<InvoiceType>${t}</InvoiceType>`));
     (types && exp.validation_status === 'VALID' ? pass : fail)(
       'C5.1',
       `status=${exp.validation_status} count=${exp.invoice_count}`,
@@ -433,10 +436,10 @@ async function main() {
   }
 
   // Manual items — passed in product UAT (2026-09-02); recorded as skip (not auto-fail).
-  skip('C2.2-UI', '手测已通过（2026-09-02）：Admin 手工开票类型下拉仅 FT/FS');
-  skip('C2.6-scan', '手测已通过（2026-09-02）：扫枪读 QR');
-  skip('C5.3-hw', '手测已通过（2026-09-02）：真热敏 ORIGINAL 出纸');
-  skip('C7.2-hw', '手测已通过或跳过（2026-09-02）：真机换机');
+  skip('C2.2-UI', 'Chrome DevTools in land report（FR 下拉）；非本脚本自动项');
+  skip('C2.6-scan', '真机扫枪（环境不可用）');
+  skip('C5.3-hw', '真热敏（环境不可用）');
+  skip('C7.2-hw', '真机换机（环境不可用）');
 
   child.kill('SIGTERM');
 

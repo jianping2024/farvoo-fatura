@@ -484,14 +484,14 @@ M0+M1；有 NC 时 M3 票也进同一文件。
 
 ### 非目标
 
-餐厅结账默认 **FS**（手动可改 FT）；产品 UI 仅 FT+FS；付款方式六种；NC/ND 针对 FT+FS。
+餐厅结账默认 **FS**（手动可改 FT；**FR 仅手工/API**，账单同步不选 FR）；付款方式六种；NC/ND 针对 FT/FS/FR。
 
 ### 交付物
 
 | # | 交付物 | 定义「完成」 |
 |---|--------|----------------|
-| D6.1 | 各类型系列注册与签发（与 FT 同入口，类型可选） | API/UI 可选 `document_type`；各有独立 series |
-| D6.2 | 认证检查清单 `docs/fiscal-certification-checklist.zh.md` | **已完成**：分类 + `fiscal-d62-cert-regression.mjs` |
+| D6.1 | 各类型系列注册与签发（与 FT 同入口，类型可选） | API/UI 可选 `document_type`；各有独立 series；**FR 产品化**（手工下拉 + 可选系列卡） |
+| D6.2 | 认证检查清单 `docs/fiscal-certification-checklist.zh.md` | **已完成**：分类 + `fiscal-d62-cert-regression.mjs`（含可签 FR） |
 | D6.3 | 备份/恢复校验工具或菜单 | **已完成**（0.4.32）：backup + integrity verify/block/heal |
 | D6.4 | 换机流程实现（与对接说明 §12 对齐的最小集） | **已完成**（0.4.32）：prepare-swap → ClearLocalActivation |
 

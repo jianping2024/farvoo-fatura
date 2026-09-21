@@ -12,7 +12,7 @@ func IsCreditableOriginalDocumentType(docType domain.DocumentType) bool {
 	}
 }
 
-// IsAdjustableOriginalDocumentType is product NC/ND scope (FT + FS).
+// IsAdjustableOriginalDocumentType is product NC/ND scope (FT + FS + FR).
 func IsAdjustableOriginalDocumentType(docType domain.DocumentType) bool {
 	return domain.IsAdjustableOriginalDocumentType(docType)
 }

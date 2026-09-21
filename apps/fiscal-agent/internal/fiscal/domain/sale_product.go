@@ -8,10 +8,20 @@ import (
 // DefaultSaleDocumentType is the product default when document_type is omitted.
 const DefaultSaleDocumentType = DocumentFS
 
-// SaleDocumentTypes are issuable sale invoices in restaurant product (FT + FS).
-var SaleDocumentTypes = []DocumentType{DocumentFT, DocumentFS}
+// SaleDocumentTypes are issuable sale invoices in restaurant product (FT + FS + FR).
+var SaleDocumentTypes = []DocumentType{DocumentFT, DocumentFS, DocumentFR}
 
-// IsSaleScopeDocumentType reports FT/FS used for bill-sync scope mutex and product UI.
+// IsSaleDocumentType reports whether dt is an issuable product sale type (manual + Local API).
+func IsSaleDocumentType(dt DocumentType) bool {
+	for _, t := range SaleDocumentTypes {
+		if dt == t {
+			return true
+		}
+	}
+	return false
+}
+
+// IsSaleScopeDocumentType reports FT/FS used for bill-sync scope mutex (not FR).
 func IsSaleScopeDocumentType(dt DocumentType) bool {
 	switch dt {
 	case DocumentFT, DocumentFS:
@@ -21,14 +31,14 @@ func IsSaleScopeDocumentType(dt DocumentType) bool {
 	}
 }
 
-// IsAdjustableOriginalDocumentType reports originals eligible for NC/ND in product (FT + FS).
+// IsAdjustableOriginalDocumentType reports originals eligible for NC/ND in product (FT + FS + FR).
 func IsAdjustableOriginalDocumentType(dt DocumentType) bool {
-	return IsSaleScopeDocumentType(dt)
+	return IsSaleDocumentType(dt)
 }
 
-// AdminInvoiceListDocumentTypes is the tab order on Admin invoice list (FT/FS/NC/ND).
+// AdminInvoiceListDocumentTypes is the tab order on Admin invoice list (FT/FS/FR/NC/ND).
 var AdminInvoiceListDocumentTypes = []DocumentType{
-	DocumentFT, DocumentFS, DocumentNC, DocumentND,
+	DocumentFT, DocumentFS, DocumentFR, DocumentNC, DocumentND,
 }
 
 // ParseInvoiceListDocumentType validates document_type for GET /local/v1/fiscal-documents.
@@ -42,11 +52,24 @@ func ParseInvoiceListDocumentType(s string) (DocumentType, error) {
 			return dt, nil
 		}
 	}
-	return "", fmt.Errorf("document_type must be FT, FS, NC, or ND")
+	return "", fmt.Errorf("document_type must be FT, FS, FR, NC, or ND")
 }
 
 // ParseSaleDocumentType resolves product sale document type; empty → DefaultSaleDocumentType.
 func ParseSaleDocumentType(s string) (DocumentType, error) {
+	dt := DocumentType(strings.ToUpper(strings.TrimSpace(s)))
+	if dt == "" {
+		return DefaultSaleDocumentType, nil
+	}
+	if !IsSaleDocumentType(dt) {
+		return "", fmt.Errorf("document_type must be FT, FS, or FR")
+	}
+	return dt, nil
+}
+
+// ParseBillSyncDocumentType resolves bill-draft issue type; empty → DefaultSaleDocumentType.
+// Product rule: bill sync stays FT/FS only (FR is manual/API sale path).
+func ParseBillSyncDocumentType(s string) (DocumentType, error) {
 	dt := DocumentType(strings.ToUpper(strings.TrimSpace(s)))
 	if dt == "" {
 		return DefaultSaleDocumentType, nil

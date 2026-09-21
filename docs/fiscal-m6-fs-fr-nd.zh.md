@@ -2,7 +2,7 @@
 
 > **状态：定稿**  
 > **权威：是**（M6 D6.1 行为与 API；库列仍以 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/*.sql` 为准）  
-> **对应实现：** M6 D6.1 已落地（`IssueDocument` FT/FS/FR、`store.IssueND`、`service.IssueDebitNote`）；**0.4.34** Admin 部分借记 + ND 原票回链（与 NC 共用 `adjustModal` / `CorrectiveOriginalForDocument`）  
+> **对应实现：** M6 D6.1 已落地（`IssueDocument` FT/FS/FR、`store.IssueND`、`service.IssueDebitNote`）；**0.4.34** Admin 部分借记 + ND 原票回链（与 NC 共用 `adjustModal` / `CorrectiveOriginalForDocument`）；**FR 产品化**：Admin/手工 API 可签 FR（系列可选）；账单同步仍仅 FT/FS；票号行前缀按类型（`documentNoPrefix`）  
 > **计划：** [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) M6  
 > **后续：** D6.2–D6.4 见 [`fiscal-m6-backup-swap.zh.md`](fiscal-m6-backup-swap.zh.md) / 认证清单（0.4.32 已完成）
 
@@ -11,6 +11,9 @@
 | 项 | 定法 |
 |----|------|
 | FS / FR 签发 | 与 FT 同一路径：`service.IssueDocument` → `store.IssueFT`；`document_type` 可选 `FT` / `FS` / `FR`；各自 **ACTIVE** 系列 |
+| 产品白名单 | 手工/Local API：`ParseSaleDocumentType` → **FT / FS / FR**；账单同步：`ParseBillSyncDocumentType` → **仅 FT / FS** |
+| Admin | 手工开票下拉 + 发票列表 Tab 含 FR；设置页 **可选** 注册 FR（`fr_series_ok` **不**进 `ready_to_issue`）；分单下拉无 FR |
+| 票号行前缀 | 唯一 `documentNoPrefix`：FT=`Fatura No.:`；FS/FR/NC/ND=种类名+`:`（无额外 No.） |
 | ND 借记 | 唯一写路径：`service.IssueDebitNote` → `store.IssueND`；API `POST /local/v1/fiscal-documents/{id}/debit-notes` |
 | 可借记原票 | **FT / FS / FR**；状态 `SIGNED` / `DEBITED_PARTIAL` / 历史 `DEBITED_FULL` |
 | 累计借记 | 原票 `debited_gross_total` 累加；任一次 ND 后状态均为 `DEBITED_PARTIAL`（**不以原票 gross 为上限**，可继续借记） |

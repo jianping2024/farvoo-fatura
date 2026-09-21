@@ -964,6 +964,7 @@
               <button type="button" class="secondary active" data-invoice-type="" role="tab"><span data-i18n="common.all">全部</span></button>
               <button type="button" class="secondary" data-invoice-type="FT" role="tab"><span data-i18n="doc.tab.FT">完整发票</span></button>
               <button type="button" class="secondary" data-invoice-type="FS" role="tab"><span data-i18n="doc.tab.FS">简式发票</span></button>
+              <button type="button" class="secondary" data-invoice-type="FR" role="tab"><span data-i18n="doc.tab.FR">发票收据</span></button>
               <button type="button" class="secondary" data-invoice-type="NC" role="tab"><span data-i18n="doc.tab.NC">冲销单</span></button>
               <button type="button" class="secondary" data-invoice-type="ND" role="tab"><span data-i18n="doc.tab.ND">借记单</span></button>
             </div>
@@ -1156,6 +1157,11 @@
                     <div class="series-card-head"><strong>FS</strong><span class="status-pill" id="seriesFsPill">待配置</span></div>
                     <div class="field"><label for="seriesFs" data-i18n="settings.series.number">系列编号</label><input id="seriesFs" /><span class="hint" id="seriesFsHint"></span></div>
                     <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesFs" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="FS">注册 FS</button></div>
+                  </div>
+                  <div class="series-card optional" data-series="fr">
+                    <div class="series-card-head"><strong>FR</strong><span class="status-pill optional" id="seriesFrPill">可选</span></div>
+                    <div class="field"><label for="seriesFr" data-i18n="settings.series.number">系列编号</label><input id="seriesFr" /><span class="hint" id="seriesFrHint"></span></div>
+                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesFr" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="FR">注册 FR</button></div>
                   </div>
                   <div class="series-card optional" data-series="nc">
                     <div class="series-card-head"><strong>NC</strong><span class="status-pill optional" id="seriesNcPill">可选</span></div>
@@ -1523,7 +1529,10 @@
   const reportError = FiscalUI.reportError;
   const INVOICE_TZ = 'Europe/Lisbon';
   const DEFAULT_SALE_DOC = 'FS';
-  const SALE_DOC_TYPES = ['FT', 'FS'];
+  /** Manual / Local API sale types (FT + FS + FR). */
+  const SALE_DOC_TYPES = ['FT', 'FS', 'FR'];
+  /** Bill-sync issue types only (FT + FS); FR is manual path. */
+  const BILL_SYNC_DOC_TYPES = ['FT', 'FS'];
   const PAYMENT_METHODS = ['CASH', 'CARD', 'MBWAY', 'MULTIBANCO', 'MIXED', 'OTHER'];
   const y = new Date().getFullYear();
 
@@ -1690,9 +1699,10 @@
     return r.json();
   }
 
-  function saleDocTypeOptionsHtml(selected) {
+  function saleDocTypeOptionsHtml(selected, types) {
+    const list = types || SALE_DOC_TYPES;
     const sel = selected || DEFAULT_SALE_DOC;
-    return SALE_DOC_TYPES.map((t) => {
+    return list.map((t) => {
       const label = FiscalAdminI18n.t('doc.' + t);
       return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + label + '</option>';
     }).join('');
@@ -1703,12 +1713,13 @@
     const docSel = $('#docType');
     if (docSel) {
       const cur = docSel.value || DEFAULT_SALE_DOC;
-      docSel.innerHTML = saleDocTypeOptionsHtml(cur);
+      docSel.innerHTML = saleDocTypeOptionsHtml(cur, SALE_DOC_TYPES);
     }
     const splitSel = $('#splitDocType');
     if (splitSel) {
-      const cur = splitSel.value || DEFAULT_SALE_DOC;
-      splitSel.innerHTML = saleDocTypeOptionsHtml(cur);
+      let cur = splitSel.value || DEFAULT_SALE_DOC;
+      if (!BILL_SYNC_DOC_TYPES.includes(cur)) cur = DEFAULT_SALE_DOC;
+      splitSel.innerHTML = saleDocTypeOptionsHtml(cur, BILL_SYNC_DOC_TYPES);
     }
     const paySel = $('#invPay');
     if (paySel) {
@@ -2068,8 +2079,8 @@
   let invoiceListPageSize = FiscalUI.LIST_DEFAULT_PAGE_SIZE;
   /** ONLY pagination bar for invoice list (FiscalUI.createListPaginationBar). */
   let invoiceListPaginationCtrl = null;
-  /** ONLY active document-type tab on invoice list ('' = all, or FT / FS / NC / ND). */
-  const INVOICE_LIST_DOC_TYPES = ['', 'FT', 'FS', 'NC', 'ND'];
+  /** ONLY active document-type tab on invoice list ('' = all, or FT / FS / FR / NC / ND). */
+  const INVOICE_LIST_DOC_TYPES = ['', 'FT', 'FS', 'FR', 'NC', 'ND'];
   /** ONLY invoice type label for empty-state copy. */
   function invoiceListDocTypeLabel(t) {
     const code = String(t || '').trim().toUpperCase();
@@ -3031,6 +3042,7 @@
     const rows = [
       { ok: st.series_ok, code: st.series_code, input: '#series', btn: '#btnSeries', hint: '#seriesFtHint', label: 'FT', pill: '#seriesFtPill' },
       { ok: st.fs_series_ok, code: st.fs_series_code, input: '#seriesFs', btn: '#btnSeriesFs', hint: '#seriesFsHint', label: 'FS', pill: '#seriesFsPill' },
+      { ok: st.fr_series_ok, code: st.fr_series_code, input: '#seriesFr', btn: '#btnSeriesFr', hint: '#seriesFrHint', label: 'FR', pill: '#seriesFrPill', optional: true },
       { ok: st.nc_series_ok, code: st.nc_series_code, input: '#seriesNc', btn: '#btnSeriesNc', hint: '#seriesNcHint', label: 'NC', pill: '#seriesNcPill', optional: true },
       { ok: st.nd_series_ok, code: st.nd_series_code, input: '#seriesNd', btn: '#btnSeriesNd', hint: '#seriesNdHint', label: 'ND', pill: '#seriesNdPill', optional: true }
     ];
@@ -5714,6 +5726,7 @@
   $('#seriesNc').value = 'NC' + y + 'DEMO01';
   $('#seriesNd').value = 'ND' + y + 'DEMO01';
   $('#seriesFs').value = 'FS' + y + 'DEMO01';
+  $('#seriesFr').value = 'FR' + y + 'DEMO01';
   $('#saftYear').value = String(y);
   $('#saftMonth').value = String(new Date().getMonth() + 1);
 
@@ -5780,6 +5793,7 @@
 
   $('#btnSeries').onclick = () => registerSeries($('#btnSeries'), '#series', 'FT', 'FT');
   $('#btnSeriesFs').onclick = () => registerSeries($('#btnSeriesFs'), '#seriesFs', 'FS', 'FS');
+  $('#btnSeriesFr').onclick = () => registerSeries($('#btnSeriesFr'), '#seriesFr', 'FR', 'FR');
   $('#btnSeriesNc').onclick = () => registerSeries($('#btnSeriesNc'), '#seriesNc', 'NC', 'NC');
   $('#btnSeriesNd').onclick = () => registerSeries($('#btnSeriesNd'), '#seriesNd', 'ND', 'ND');
 

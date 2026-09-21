@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.15
+
+**FR 产品化 + 票号行按类型前缀**
+
+- **唯一写法 · 销售类型解析：**仅 `domain.ParseSaleDocumentType`（FT/FS/FR）与 `domain.ParseBillSyncDocumentType`（账单仅 FT/FS）。
+- **唯一写法 · 可纠正原票：**仅 `domain.IsAdjustableOriginalDocumentType`（含 FR）；Admin `SALE_DOC_TYPES` 对齐。
+- **唯一写法 · 票号行前缀：**仅 `print.documentNoPrefix` → `formatFaturaNoLine`（FT 保留 No.；FS/FR/NC/ND 种类名+`:`）。
+- Admin：手工下拉/发票 Tab/可选 FR 系列卡；`ready_to_issue` 不依赖 FR；认证 C2.2 可签 FR。
+
 ## 0.5.14
 
 **现金实收默认 = 应收**

@@ -216,7 +216,7 @@ func TestRenderESCPOS_NCOriginalReference(t *testing.T) {
 	for _, want := range []string{
 		"Documento original: FT FT2026DEMO01/1",
 		"Motivo: Devolucao",
-		"Fatura No.: NC NC2026DEMO01/1",
+		"Nota de credito: NC NC2026DEMO01/1",
 	} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("missing %q in:\n%s", want, plain)
@@ -225,18 +225,29 @@ func TestRenderESCPOS_NCOriginalReference(t *testing.T) {
 }
 
 func TestFormatFaturaNoLine(t *testing.T) {
-	L := receiptLabels("pt")
-	if formatFaturaNoLine(L, "FT FT2026DEMO01/1") != "Fatura No.: FT FT2026DEMO01/1" {
-		t.Fatal(formatFaturaNoLine(L, "FT FT2026DEMO01/1"))
+	if formatFaturaNoLine("pt", "FT", "FT FT2026DEMO01/1") != "Fatura No.: FT FT2026DEMO01/1" {
+		t.Fatal(formatFaturaNoLine("pt", "FT", "FT FT2026DEMO01/1"))
 	}
-	Le := receiptLabels("en")
-	if formatFaturaNoLine(Le, "FT FT2026DEMO01/1") != "Invoice No.: FT FT2026DEMO01/1" {
-		t.Fatal(formatFaturaNoLine(Le, "FT FT2026DEMO01/1"))
+	if formatFaturaNoLine("en", "FT", "FT FT2026DEMO01/1") != "Invoice No.: FT FT2026DEMO01/1" {
+		t.Fatal(formatFaturaNoLine("en", "FT", "FT FT2026DEMO01/1"))
+	}
+	if formatFaturaNoLine("pt", "FS", "FS FS2026DEMO01/1") != "Fatura simplificada: FS FS2026DEMO01/1" {
+		t.Fatal(formatFaturaNoLine("pt", "FS", "FS FS2026DEMO01/1"))
+	}
+	if formatFaturaNoLine("pt", "FR", "FR FR2026DEMO01/1") != "Fatura-recibo: FR FR2026DEMO01/1" {
+		t.Fatal(formatFaturaNoLine("pt", "FR", "FR FR2026DEMO01/1"))
+	}
+	if formatFaturaNoLine("pt", "NC", "NC NC2026DEMO01/1") != "Nota de credito: NC NC2026DEMO01/1" {
+		t.Fatal(formatFaturaNoLine("pt", "NC", "NC NC2026DEMO01/1"))
+	}
+	if formatFaturaNoLine("pt", "ND", "ND ND2026DEMO01/1") != "Nota de debito: ND ND2026DEMO01/1" {
+		t.Fatal(formatFaturaNoLine("pt", "ND", "ND ND2026DEMO01/1"))
 	}
 }
 
 func TestRenderESCPOS_FaturaNoBoldOnly(t *testing.T) {
 	p := &Payload{
+		DocumentType: "FT",
 		InvoiceNo: "FT FT2026DEMO01/3",
 		PrintPurpose: "ORIGINAL",
 		IssuedAt:     "2026-08-21T18:26:25",
