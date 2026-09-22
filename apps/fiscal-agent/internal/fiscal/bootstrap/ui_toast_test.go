@@ -175,6 +175,36 @@ func TestAdminHTMLBillListAndCustomerNifHelpers(t *testing.T) {
 	if strings.Contains(adminHTML, "p.vat_rate + '%'") || strings.Contains(adminHTML, "ln.vat + '%'") {
 		t.Fatal("do not concatenate vat_rate/'%' ad-hoc; use fmtVatPercent only")
 	}
+	if n := strings.Count(adminHTML, "const PRODUCT_VAT_RATES"); n != 1 {
+		t.Fatalf("PRODUCT_VAT_RATES must be the ONLY catalog IVA%% list, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "const DEFAULT_PRODUCT_VAT"); n != 1 {
+		t.Fatalf("DEFAULT_PRODUCT_VAT must be the ONLY product IVA default, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function productVatOrDefault"); n != 1 {
+		t.Fatalf("productVatOrDefault must be the ONLY product IVA resolver, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function fillProductVatSelect"); n != 1 {
+		t.Fatalf("fillProductVatSelect must be the ONLY #pVat option writer, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "fillProductVatSelect();"); n != 1 {
+		t.Fatalf("fillProductVatSelect must be called once at boot, got %d", n)
+	}
+	if strings.Contains(adminHTML, `<input id="pVat"`) {
+		t.Fatal("pVat must be <select>, not free-text <input>")
+	}
+	if !strings.Contains(adminHTML, `<select id="pVat"></select>`) {
+		t.Fatal("pVat must be an empty <select> filled only by fillProductVatSelect")
+	}
+	if strings.Contains(adminHTML, "$('#pVat').value = '13.00'") || strings.Contains(adminHTML, `$('#pVat').value = "13.00"`) {
+		t.Fatal("do not hardcode #pVat default; use DEFAULT_PRODUCT_VAT / productVatOrDefault")
+	}
+	if !strings.Contains(adminHTML, "const PRODUCT_VAT_RATES = ['23.00', '13.00', '6.00']") {
+		t.Fatal("PRODUCT_VAT_RATES must be mainland 23/13/6 only")
+	}
+	if !strings.Contains(adminHTML, "const DEFAULT_PRODUCT_VAT = '13.00'") {
+		t.Fatal("DEFAULT_PRODUCT_VAT must be 13.00")
+	}
 	if n := strings.Count(adminHTML, "function lineFromGrossPreview"); n != 1 {
 		t.Fatalf("lineFromGrossPreview must be the ONLY gross→net/tax preview, got %d", n)
 	}

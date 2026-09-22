@@ -1503,7 +1503,7 @@
           <div class="field"><label data-i18n="product.field.fiscal_name">税票名称</label><input id="pSaft" placeholder="Cha sortido" /></div>
           <div class="field"><label data-i18n="product.field.price">售价（含税）</label><input id="pPrice" placeholder="4.50" /></div>
         </div>
-        <div class="field"><label>IVA %</label><input id="pVat" placeholder="13.00" value="13.00" /></div>
+        <div class="field"><label>IVA %</label><select id="pVat"></select></div>
       </div>
       <div class="actions">
         <button type="button" id="btnSaveProduct" data-i18n="common.save">保存</button>
@@ -1534,7 +1534,27 @@
   /** Bill-sync issue types only (FT + FS); FR is manual path. */
   const BILL_SYNC_DOC_TYPES = ['FT', 'FS'];
   const PAYMENT_METHODS = ['CASH', 'CARD', 'MBWAY', 'MULTIBANCO', 'MIXED', 'OTHER'];
+  /** ONLY mainland PT catalog IVA% rates (percent strings → NOR/INT/RED). */
+  const PRODUCT_VAT_RATES = ['23.00', '13.00', '6.00'];
+  /** ONLY default when creating a product / unknown rate. */
+  const DEFAULT_PRODUCT_VAT = '13.00';
   const y = new Date().getFullYear();
+
+  /** ONLY resolve catalog vat_rate to an allowed PRODUCT_VAT_RATES value. */
+  function productVatOrDefault(raw) {
+    const s = String(raw == null ? '' : raw).trim();
+    return PRODUCT_VAT_RATES.indexOf(s) >= 0 ? s : DEFAULT_PRODUCT_VAT;
+  }
+
+  /** ONLY populate #pVat <select> options (call once at boot). */
+  function fillProductVatSelect() {
+    const sel = $('#pVat');
+    if (!sel) return;
+    sel.innerHTML = PRODUCT_VAT_RATES.map(function (r) {
+      return '<option value="' + r + '">' + r + '%</option>';
+    }).join('');
+    sel.value = DEFAULT_PRODUCT_VAT;
+  }
 
   function isAdjustableOriginal(docType) {
     return SALE_DOC_TYPES.includes(String(docType || '').trim());
@@ -3559,7 +3579,7 @@
     $('#pName').value = '';
     $('#pSaft').value = '';
     $('#pPrice').value = '';
-    $('#pVat').value = '13.00';
+    $('#pVat').value = DEFAULT_PRODUCT_VAT;
   }
 
   function fillProductFields(p) {
@@ -3567,7 +3587,7 @@
     $('#pName').value = p.display_name || '';
     $('#pSaft').value = p.saft_name || '';
     $('#pPrice').value = p.unit_price_gross || '';
-    $('#pVat').value = p.vat_rate || '13.00';
+    $('#pVat').value = productVatOrDefault(p.vat_rate);
   }
 
   function readProductFields() {
@@ -5516,6 +5536,7 @@
   bindSaleDocTypeSuggestion($('#splitDocType'), $('#splitNif'), $('#splitPay'));
   bindCashTenderUI($('#invPay'), $('#invCashTenderWrap'), $('#invTendered'), $('#invChange'), orderCashTenderDue);
   bindCashTenderUI($('#splitPay'), $('#splitCashTenderWrap'), $('#splitTendered'), $('#splitChange'), splitCashTenderDue);
+  fillProductVatSelect();
 
   $('#btnSplitBack').onclick = () => showView('bills');
 

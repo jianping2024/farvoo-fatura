@@ -2,6 +2,12 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.16
+
+**商品 IVA：大陆三档下拉**
+
+- **唯一写法 · 商品税率选项：**仅 `PRODUCT_VAT_RATES`（`23.00` / `13.00` / `6.00`）+ `DEFAULT_PRODUCT_VAT`（`13.00`）+ `productVatOrDefault` + `fillProductVatSelect`；`#pVat` 为空 `<select>`，禁止自由输入。
+
 ## 0.5.15
 
 **FR 产品化 + 票号行按类型前缀**
