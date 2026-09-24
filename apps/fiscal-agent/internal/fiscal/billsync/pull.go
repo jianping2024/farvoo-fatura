@@ -18,6 +18,9 @@ type Puller struct {
 	JWT     string
 	DB      *store.DB
 	Client  *http.Client
+	// ProcessJob, when set, is the ONLY ingest(+optional auto_issue) path (service.ProcessBillSyncJob).
+	// When nil, falls back to IngestCloudJob(p.DB) without auto_issue.
+	ProcessJob func(ctx context.Context, job CloudJob) (invoiceNo string, err error)
 }
 
 func (p *Puller) client() *http.Client {
@@ -27,9 +30,9 @@ func (p *Puller) client() *http.Client {
 	return http.DefaultClient
 }
 
-// PullAndIngest is the ONLY compensation/doorbell entry: GET pending → IngestCloudJob → ack.
+// PullAndIngest is the ONLY compensation/doorbell entry: GET pending → ingest(+auto_issue) → ack.
 func (p *Puller) PullAndIngest(ctx context.Context) (processed int, err error) {
-	if p == nil || p.DB == nil {
+	if p == nil || (p.DB == nil && p.ProcessJob == nil) {
 		return 0, fmt.Errorf("billsync: puller not configured")
 	}
 	jobs, err := p.fetchPending(ctx)
@@ -71,24 +74,33 @@ func (p *Puller) fetchPending(ctx context.Context) ([]CloudJob, error) {
 }
 
 func (p *Puller) ingestAndAck(ctx context.Context, job CloudJob) error {
-	_, err := IngestCloudJob(p.DB, job)
+	var invoiceNo string
+	var err error
+	if p.ProcessJob != nil {
+		invoiceNo, err = p.ProcessJob(ctx, job)
+	} else {
+		_, err = IngestCloudJob(p.DB, job)
+	}
 	if err != nil {
 		code, msg := "persist_failed", err.Error()
 		if ie := AsIngestError(err); ie != nil {
 			code, msg = ie.Code, ie.Message
 		}
-		return p.ack(ctx, job.ID, "failed", code, msg)
+		return p.ack(ctx, job.ID, "failed", code, msg, "")
 	}
-	return p.ack(ctx, job.ID, "succeeded", "", "")
+	return p.ack(ctx, job.ID, "succeeded", "", "", invoiceNo)
 }
 
-func (p *Puller) ack(ctx context.Context, jobID, status, errCode, errMsg string) error {
+func (p *Puller) ack(ctx context.Context, jobID, status, errCode, errMsg, invoiceNo string) error {
 	body := map[string]any{"status": status}
 	if errCode != "" {
 		body["error_code"] = errCode
 	}
 	if errMsg != "" {
 		body["error_message"] = errMsg
+	}
+	if invoiceNo != "" {
+		body["invoice_no"] = invoiceNo
 	}
 	raw, _ := json.Marshal(body)
 	url := strings.TrimRight(p.APIBase, "/") + "/api/print-agent/bill-syncs/" + jobID + "/ack"

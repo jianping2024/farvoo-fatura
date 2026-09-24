@@ -582,6 +582,9 @@ func seedFiscal(t *testing.T, dir string) (*store.DB, *service.FiscalService) {
 	}, keyPath, pub); err != nil {
 		t.Fatal(err)
 	}
+	if err := db.SetLocalDefaultStation("store-demo-001", "st-uat"); err != nil {
+		t.Fatal(err)
+	}
 	return db, service.New(db, sig, nil, dir, "store-demo-001")
 }
 

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -295,7 +296,13 @@ func handleDevBillSyncPull(w http.ResponseWriter, r *http.Request, deps HandlerD
 		writeErr(w, http.StatusBadRequest, "farvoo_env_missing", "FARVOO_API and FARVOO_JWT required")
 		return
 	}
-	n, err := (&billsync.Puller{APIBase: apiBase, JWT: jwt, DB: deps.Fiscal.DB()}).PullAndIngest(r.Context())
+	svc := deps.Fiscal
+	n, err := (&billsync.Puller{
+		APIBase: apiBase, JWT: jwt, DB: svc.DB(),
+		ProcessJob: func(ctx context.Context, job billsync.CloudJob) (string, error) {
+			return svc.ProcessBillSyncJob(ctx, job)
+		},
+	}).PullAndIngest(r.Context())
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, "bill_sync_pull_failed", err.Error())
 		return
