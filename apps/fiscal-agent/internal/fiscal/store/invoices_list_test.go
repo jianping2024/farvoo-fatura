@@ -80,8 +80,8 @@ func TestListInvoicesIncludesHashCustomerAndSource(t *testing.T) {
 	if it.CustomerTaxID != "502757191" || it.CustomerName != "Acme Lda" {
 		t.Fatalf("customer snapshot: tax=%q name=%q", it.CustomerTaxID, it.CustomerName)
 	}
-	if it.OrderLabel != "桌 12 · Ana" {
-		t.Fatalf("order_label: got %q", it.OrderLabel)
+	if it.TableDisplayName != "12" || it.SplitName != "Ana" {
+		t.Fatalf("order source: table=%q split=%q", it.TableDisplayName, it.SplitName)
 	}
 	if it.PaymentMethod != "CASH" {
 		t.Fatalf("payment_method: got %q want CASH", it.PaymentMethod)
@@ -171,7 +171,7 @@ func TestListInvoicesFilterByInvoiceDateAndSearch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if byTable.Total != 1 || len(byTable.Items) != 1 || byTable.Items[0].OrderLabel != "桌 A-01" {
+	if byTable.Total != 1 || len(byTable.Items) != 1 || byTable.Items[0].TableDisplayName != "A-01" {
 		t.Fatalf("search: got %+v", byTable)
 	}
 

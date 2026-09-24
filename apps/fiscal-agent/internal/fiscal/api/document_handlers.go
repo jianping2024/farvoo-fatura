@@ -100,21 +100,22 @@ func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps Handle
 		return
 	}
 	out := map[string]any{
-		"document_id":     detail.DocumentID,
-		"invoice_no":      detail.InvoiceNo,
-		"atcud":           detail.ATCUD,
-		"document_type":   detail.DocumentType,
-		"document_status": detail.DocumentStatus,
-		"print_status":    detail.PrintStatus,
-		"print_job_id":    detail.PrintJobID,
-		"gross_total":     detail.GrossTotal,
-		"net_total":       detail.NetTotal,
-		"tax_payable":     detail.TaxPayable,
-		"source_sale_id":  detail.SourceSaleID,
-		"order_label":     detail.OrderLabel,
-		"payment_method":  detail.PaymentMethod,
-		"issued_at":       detail.IssuedAt.UTC().Format(time.RFC3339),
-		"hash":            detail.Hash,
+		"document_id":        detail.DocumentID,
+		"invoice_no":         detail.InvoiceNo,
+		"atcud":              detail.ATCUD,
+		"document_type":      detail.DocumentType,
+		"document_status":    detail.DocumentStatus,
+		"print_status":       detail.PrintStatus,
+		"print_job_id":       detail.PrintJobID,
+		"gross_total":        detail.GrossTotal,
+		"net_total":          detail.NetTotal,
+		"tax_payable":        detail.TaxPayable,
+		"source_sale_id":     detail.SourceSaleID,
+		"table_display_name": detail.TableDisplayName,
+		"split_name":         detail.SplitName,
+		"payment_method":     detail.PaymentMethod,
+		"issued_at":          detail.IssuedAt.UTC().Format(time.RFC3339),
+		"hash":               detail.Hash,
 	}
 	if store.IsCreditableOriginalDocumentType(detail.DocumentType) {
 		if detail.CreditedGrossTotal != "" {

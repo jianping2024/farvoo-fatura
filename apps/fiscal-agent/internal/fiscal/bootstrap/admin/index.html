@@ -748,9 +748,6 @@
             <label data-i18n="order.register">收银台（可选）</label>
             <select id="orderRegister">
               <option value="">—</option>
-              <option value="1">收银台 1</option>
-              <option value="2">收银台 2</option>
-              <option value="3">收银台 3</option>
             </select>
           </div>
         </div>
@@ -870,7 +867,7 @@
       <section class="view hidden rest-only" id="view-bill-split">
         <div class="topbar">
           <div>
-            <h1 id="splitTitle">分单开票 · 桌 —</h1>
+            <h1 id="splitTitle"></h1>
           </div>
           <div class="actions">
             <button type="button" class="secondary" id="btnSplitBack" data-i18n="common.back_list">返回列表</button>
@@ -947,7 +944,7 @@
             </div>
             <div class="hub-metric hub-metric--terminal">
               <label class="k" for="invoiceTerminalFilter" data-i18n="home.stat.terminal">开票电脑</label>
-              <select id="invoiceTerminalFilter" class="hub-terminal-select" aria-label="开票电脑">
+              <select id="invoiceTerminalFilter" class="hub-terminal-select" data-i18n="home.stat.terminal" data-i18n-attr="aria-label" aria-label="开票电脑">
                 <option value="" data-i18n="home.stat.terminal_all">全店</option>
               </select>
             </div>
@@ -1149,27 +1146,27 @@
               <div class="settings-panel-body">
                 <div class="series-grid">
                   <div class="series-card" data-series="ft">
-                    <div class="series-card-head"><strong>FT</strong><span class="status-pill" id="seriesFtPill">待配置</span></div>
+                    <div class="series-card-head"><strong>FT</strong><span class="status-pill" id="seriesFtPill" data-i18n="common.pending">待配置</span></div>
                     <div class="field"><label for="series" data-i18n="settings.series.number">系列编号</label><input id="series" /><span class="hint" id="seriesFtHint"></span></div>
                     <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeries" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="FT">注册 FT</button></div>
                   </div>
                   <div class="series-card" data-series="fs">
-                    <div class="series-card-head"><strong>FS</strong><span class="status-pill" id="seriesFsPill">待配置</span></div>
+                    <div class="series-card-head"><strong>FS</strong><span class="status-pill" id="seriesFsPill" data-i18n="common.pending">待配置</span></div>
                     <div class="field"><label for="seriesFs" data-i18n="settings.series.number">系列编号</label><input id="seriesFs" /><span class="hint" id="seriesFsHint"></span></div>
                     <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesFs" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="FS">注册 FS</button></div>
                   </div>
                   <div class="series-card optional" data-series="fr">
-                    <div class="series-card-head"><strong>FR</strong><span class="status-pill optional" id="seriesFrPill">可选</span></div>
+                    <div class="series-card-head"><strong>FR</strong><span class="status-pill optional" id="seriesFrPill" data-i18n="common.optional">可选</span></div>
                     <div class="field"><label for="seriesFr" data-i18n="settings.series.number">系列编号</label><input id="seriesFr" /><span class="hint" id="seriesFrHint"></span></div>
                     <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesFr" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="FR">注册 FR</button></div>
                   </div>
                   <div class="series-card optional" data-series="nc">
-                    <div class="series-card-head"><strong>NC</strong><span class="status-pill optional" id="seriesNcPill">可选</span></div>
+                    <div class="series-card-head"><strong>NC</strong><span class="status-pill optional" id="seriesNcPill" data-i18n="common.optional">可选</span></div>
                     <div class="field"><label for="seriesNc" data-i18n="settings.series.number">系列编号</label><input id="seriesNc" /><span class="hint" id="seriesNcHint"></span></div>
                     <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesNc" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="NC">注册 NC</button></div>
                   </div>
                   <div class="series-card optional" data-series="nd">
-                    <div class="series-card-head"><strong>ND</strong><span class="status-pill optional" id="seriesNdPill">可选</span></div>
+                    <div class="series-card-head"><strong>ND</strong><span class="status-pill optional" id="seriesNdPill" data-i18n="common.optional">可选</span></div>
                     <div class="field"><label for="seriesNd" data-i18n="settings.series.number">系列编号</label><input id="seriesNd" /><span class="hint" id="seriesNdHint"></span></div>
                     <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesNd" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="ND">注册 ND</button></div>
                   </div>
@@ -1178,7 +1175,7 @@
                 <div class="panel-footer" style="border:0;justify-content:flex-start">
                   <button type="button" id="btnActCloud" data-i18n="settings.series.sync">从运营同步</button>
                 </div>
-                <div id="actCloudStatus" class="sync-status" role="status">尚未同步 · 点上方按钮从运营领取</div>
+                <div id="actCloudStatus" class="sync-status" role="status" data-i18n="settings.series.sync_hint">尚未同步 · 点上方按钮从运营领取</div>
                 <div id="localPemBlock" class="hidden" style="margin-top:1rem">
                   <p class="hint" data-i18n="settings.series.pem_hint">开发/UAT：允许粘贴产品 RSA 私钥 PEM。</p>
                   <div class="field"><textarea id="pem" rows="4" placeholder="-----BEGIN … PRIVATE KEY-----"></textarea><span class="field-error" id="pemError"></span></div>
@@ -1215,11 +1212,11 @@
                 <div class="admin-list-toolbar">
                   <div class="field admin-list-select-field">
                     <label for="auditActionFilter" data-i18n="settings.audit.action_type">操作类型</label>
-                    <select id="auditActionFilter"><option value="">全部</option></select>
+                    <select id="auditActionFilter"><option value="" data-i18n="common.all">全部</option></select>
                   </div>
                   <div class="field admin-list-select-field">
                     <label for="auditOperatorFilter" data-i18n="settings.audit.operator">开票员</label>
-                    <select id="auditOperatorFilter"><option value="">全部</option></select>
+                    <select id="auditOperatorFilter"><option value="" data-i18n="common.all">全部</option></select>
                   </div>
                   <div class="admin-list-toolbar__actions">
                     <button type="button" class="btn-toolbar btn-toolbar--icon" id="btnAuditRefresh" data-i18n="common.refresh" data-i18n-attr="aria-label title" aria-label="刷新" title="刷新">↻</button>
@@ -2223,10 +2220,39 @@
     return formatMdHms((inv && (inv.system_entry_date || inv.issued_at)) || '');
   }
 
-  /** ONLY source/order label cell text (invoice list). */
+  /** ONLY source/order label cell text (invoice list + detail). */
   function formatInvoiceOrderCell(inv) {
-    const label = inv && inv.order_label;
-    return label ? String(label) : '—';
+    if (!inv) return '—';
+    const table = String(inv.table_display_name || '').trim();
+    const person = String(inv.split_name || '').trim();
+    if (table) {
+      if (person) return FiscalAdminI18n.fmt('orders.source.table_person', { n: table, name: person });
+      return FiscalAdminI18n.fmt('orders.source.table', { n: table });
+    }
+    const sid = String(inv.source_sale_id || '').trim();
+    if (sid) {
+      const suffix = sid.length > 8 ? sid.slice(-8) : sid;
+      return FiscalAdminI18n.fmt('orders.source.sale', { id: suffix });
+    }
+    return '—';
+  }
+
+  /** ONLY invoice document_status label (detail drawer). */
+  function formatInvoiceDocStatus(code) {
+    const c = String(code || '').trim();
+    if (!c) return '—';
+    const key = 'invoice.doc_status.' + c;
+    const tr = FiscalAdminI18n.t(key);
+    return (tr && tr !== key) ? tr : c;
+  }
+
+  /** ONLY invoice print_status label (detail drawer). */
+  function formatInvoicePrintStatus(code) {
+    const c = String(code || '').trim();
+    if (!c) return '—';
+    const key = 'invoice.print_status.' + c;
+    const tr = FiscalAdminI18n.t(key);
+    return (tr && tr !== key) ? tr : c;
   }
 
   /** ONLY payment-method label (invoice list + detail); maps pay.* codes. */
@@ -2267,13 +2293,13 @@
       invoiceDetailRow(FiscalAdminI18n.t('col.doc_no'), inv.invoice_no) +
       invoiceDetailRow(FiscalAdminI18n.t('buyer.nif'), inv.customer_tax_id) +
       invoiceDetailRow(FiscalAdminI18n.t('buyer.name'), inv.customer_name) +
-      invoiceDetailRow(FiscalAdminI18n.t('col.source'), inv.order_label) +
+      invoiceDetailRow(FiscalAdminI18n.t('col.source'), formatInvoiceOrderCell(inv)) +
       invoiceDetailRow(FiscalAdminI18n.t('pay.label'), formatInvoicePaymentLabel(inv)) +
       invoiceDetailRow(FiscalAdminI18n.t('col.amount'), fmtMoney(inv.gross_total)) +
       invoiceDetailRow('ATCUD', inv.atcud) +
       invoiceDetailRow(FiscalAdminI18n.t('col.type'), inv.document_type) +
-      invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.doc_status'), inv.document_status) +
-      invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.print_status'), inv.print_status);
+      invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.doc_status'), formatInvoiceDocStatus(inv.document_status)) +
+      invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.print_status'), formatInvoicePrintStatus(inv.print_status));
     if (inv.document_type === 'NC' || inv.document_type === 'ND') {
       body += invoiceDetailOriginalRow(inv);
       if (inv.credit_reason) {
@@ -3006,6 +3032,8 @@
       setActCloudStatus('wait', FiscalAdminI18n.t('settings.series.need_pair'));
     } else if (st && !st.taxpayer_ok) {
       setActCloudStatus('wait', FiscalAdminI18n.t('settings.series.need_tax'));
+    } else if (st) {
+      setActCloudStatus('wait', FiscalAdminI18n.t('settings.series.sync_hint'));
     }
     const cloudBtn = $('#btnActCloud');
     if (cloudBtn && st) cloudBtn.disabled = !st.taxpayer_ok || !st.cloud_paired_ok || st.activated_ok;

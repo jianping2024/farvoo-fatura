@@ -82,8 +82,11 @@ func TestAdminI18nBundlesAlignedAndUnique(t *testing.T) {
 	if !strings.Contains(src, "data-i18n-attr") {
 		// apply() must honor data-i18n-attr without wiping children
 	}
-	if !strings.Contains(src, "el.setAttribute(attr, val)") {
-		t.Fatal("apply() must set data-i18n-attr via setAttribute (aria-label etc.)")
+	if !strings.Contains(src, "attr.trim().split") {
+		t.Fatal("apply() must split data-i18n-attr on whitespace (aria-label title)")
+	}
+	if !strings.Contains(src, "document.title = t(") {
+		t.Fatal("apply() must set document.title from brand.name")
 	}
 	// Hub CTA copy: unique dictionary values; forbid retired labels.
 	for _, s := range []string{
@@ -203,5 +206,55 @@ func TestAdminSettingsI18nUniqueWriters(t *testing.T) {
 	// Settings leftover toasts must reuse store keys (no synonym success strings).
 	if strings.Contains(html, "'门店信息保存成功'") || strings.Contains(html, "'凭证保存成功'") {
 		t.Fatal("settings store toasts must use settings.store.saved / at_saved")
+	}
+}
+
+func TestAdminI18nResidualGapsClosed(t *testing.T) {
+	html := adminHTML
+	i18n := string(fiscalUIAdminI18nJS)
+	// Multi-attr refresh buttons must keep space-separated data-i18n-attr (apply splits).
+	if n := strings.Count(html, `data-i18n-attr="aria-label title"`); n != 8 {
+		t.Fatalf("expected 8 aria-label title refresh buttons, got %d", n)
+	}
+	if strings.Contains(html, `收银台 1</option>`) || strings.Contains(html, `收银台 2</option>`) || strings.Contains(html, `收银台 3</option>`) {
+		t.Fatal("orderRegister must not hardcode 收银台 options; refreshLocalizedSelects owns labels")
+	}
+	if strings.Contains(html, `分单开票 · 桌`) {
+		t.Fatal("splitTitle must not hardcode Chinese shell")
+	}
+	if !strings.Contains(html, `id="invoiceTerminalFilter"`) || !strings.Contains(html, `data-i18n="home.stat.terminal" data-i18n-attr="aria-label"`) {
+		t.Fatal("invoiceTerminalFilter must wire aria-label via home.stat.terminal")
+	}
+	if !strings.Contains(html, `id="actCloudStatus"`) || !strings.Contains(html, `data-i18n="settings.series.sync_hint"`) {
+		t.Fatal("actCloudStatus must default via settings.series.sync_hint")
+	}
+	if !strings.Contains(html, `settings.series.sync_hint`) {
+		t.Fatal("applySettingsStatusUI must cover sync_hint branch")
+	}
+	if n := strings.Count(html, `FiscalAdminI18n.t('settings.series.sync_hint')`); n < 1 {
+		t.Fatal("sync_hint must be set from applySettingsStatusUI")
+	}
+	for _, key := range []string{
+		"orders.source.table", "orders.source.table_person", "orders.source.sale",
+		"invoice.doc_status.SIGNED", "invoice.print_status.PRINTED",
+	} {
+		if !strings.Contains(i18n, "'"+key+"'") {
+			t.Fatalf("dictionary missing %s", key)
+		}
+	}
+	if n := strings.Count(html, "function formatInvoiceOrderCell"); n != 1 {
+		t.Fatalf("formatInvoiceOrderCell once, got %d", n)
+	}
+	if n := strings.Count(html, "function formatInvoiceDocStatus"); n != 1 {
+		t.Fatalf("formatInvoiceDocStatus once, got %d", n)
+	}
+	if n := strings.Count(html, "function formatInvoicePrintStatus"); n != 1 {
+		t.Fatalf("formatInvoicePrintStatus once, got %d", n)
+	}
+	if strings.Contains(html, "inv.order_label") || strings.Contains(html, ".order_label") {
+		t.Fatal("Admin must not read order_label; use table_display_name/split_name via formatInvoiceOrderCell")
+	}
+	if strings.Contains(html, `invoiceDetailRow(FiscalAdminI18n.t('col.source'), inv.`) {
+		t.Fatal("detail source must use formatInvoiceOrderCell, not raw inv fields")
 	}
 }
