@@ -78,6 +78,12 @@ func TestWebViewSoleConstructionPath(t *testing.T) {
 	if strings.Count(fs, "func focusHWND(") != 1 {
 		t.Fatal("focusHWND must be defined exactly once in focus_hwnd_windows.go")
 	}
+	if strings.Count(fs, "func maximizeShellHWND(") != 1 {
+		t.Fatal("maximizeShellHWND must be defined exactly once in focus_hwnd_windows.go")
+	}
+	if !strings.Contains(fs, "swMaximize") {
+		t.Fatal("maximizeShellHWND must use swMaximize (SW_SHOWMAXIMIZED)")
+	}
 	if !strings.Contains(fs, "scRestore") || !strings.Contains(fs, "IsIconic") {
 		t.Fatal("focusHWND must restore minimized via IsIconic + SC_RESTORE")
 	}
@@ -85,7 +91,28 @@ func TestWebViewSoleConstructionPath(t *testing.T) {
 		t.Fatal("focusHWND must resolve top-level HWND (GetAncestor/gaRoot)")
 	}
 
-	// No second focusHWND / ShowWindow restore stacks outside focus_hwnd_windows.go
+	// Shell open state: maximizeShellHWND exactly once from runWindowOnThread; nowhere else.
+	if strings.Count(s, "maximizeShellHWND(") != 1 {
+		t.Fatalf("open_windows.go must call maximizeShellHWND exactly once (shell open), got %d", strings.Count(s, "maximizeShellHWND("))
+	}
+	runIdx := strings.Index(s, "func runWindowOnThread")
+	htmlIdx := strings.Index(s, "func runHTMLWindowOnThread")
+	if runIdx < 0 || htmlIdx < 0 || htmlIdx <= runIdx {
+		t.Fatal("expected runWindowOnThread before runHTMLWindowOnThread")
+	}
+	shellBody := s[runIdx:htmlIdx]
+	if !strings.Contains(shellBody, "maximizeShellHWND(") {
+		t.Fatal("runWindowOnThread must call maximizeShellHWND (default maximized open)")
+	}
+	htmlBody := s[htmlIdx:]
+	if strings.Contains(htmlBody, "maximizeShellHWND(") {
+		t.Fatal("runHTMLWindowOnThread must NOT maximize (settings stay small)")
+	}
+	if strings.Contains(s, "swMaximize") {
+		t.Fatal("open_windows.go must not redefine swMaximize — only call maximizeShellHWND")
+	}
+
+	// No second focusHWND / maximizeShellHWND / ShowWindow restore stacks outside focus_hwnd_windows.go
 	for _, name := range []string{"open_windows.go", "focus_title_windows.go", "fiscal_shell_windows.go", "agent_entry_windows.go"} {
 		p := filepath.Join(agent, "internal", "fiscalwebview", name)
 		if name == "fiscal_shell_windows.go" || name == "agent_entry_windows.go" {
@@ -98,6 +125,9 @@ func TestWebViewSoleConstructionPath(t *testing.T) {
 		body := string(b)
 		if strings.Contains(body, "func focusHWND(") {
 			t.Fatalf("%s must not redefine focusHWND", name)
+		}
+		if strings.Contains(body, "func maximizeShellHWND(") {
+			t.Fatalf("%s must not redefine maximizeShellHWND", name)
 		}
 	}
 	if _, err := os.Stat(filepath.Join(agent, "internal", "fiscalwebview", "hwnd_windows.go")); err == nil {
