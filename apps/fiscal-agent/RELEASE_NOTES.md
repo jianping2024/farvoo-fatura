@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.20
+
+**安装器 EULA（同意条款才能继续）**
+
+- **唯一写法 · 条款正文：**仅 `installer/LICENSE.txt`（Agent + Client 共用同一份）。
+- **唯一写法 · 挂接：**两个 `.iss` 各一行 `LicenseFile=LICENSE.txt`；禁止第二份 EULA / `wizard-before` 塞同意条款。
+- 钉死：`TestInnoLicenseFileSolePath`。
+
 ## 0.5.19
 
 **开票壳默认最大化（修上半截被裁）**

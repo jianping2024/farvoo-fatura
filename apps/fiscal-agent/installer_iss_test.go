@@ -115,6 +115,67 @@ func TestAgentInstallerFiscalShortcut(t *testing.T) {
 	}
 }
 
+// TestInnoLicenseFileSolePath: one LICENSE.txt; both Setups point at it; no second EULA copy.
+func TestInnoLicenseFileSolePath(t *testing.T) {
+	const want = "LicenseFile=LICENSE.txt"
+	agentRaw, err := os.ReadFile(filepath.Join("installer", "farvoo-fiscal-agent.iss"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientRaw, err := os.ReadFile(filepath.Join("installer", "farvoo-fiscal-client.iss"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	agent, client := string(agentRaw), string(clientRaw)
+	if strings.Count(agent, "LicenseFile=") != 1 || !strings.Contains(agent, want) {
+		t.Fatalf("agent iss must have exactly one %q", want)
+	}
+	if strings.Count(client, "LicenseFile=") != 1 || !strings.Contains(client, want) {
+		t.Fatalf("client iss must have exactly one %q", want)
+	}
+	licPath := filepath.Join("installer", "LICENSE.txt")
+	lic, err := os.ReadFile(licPath)
+	if err != nil {
+		t.Fatalf("sole EULA missing at %s: %v", licPath, err)
+	}
+	body := string(lic)
+	if !strings.Contains(body, "End User License Agreement") {
+		t.Fatal("LICENSE.txt must be the Farvoo EULA")
+	}
+	if !strings.Contains(body, "Farvoo Fiscal Agent and Farvoo Fiscal Client") {
+		t.Fatal("LICENSE.txt must cover Agent and Client in one text")
+	}
+	// No parallel EULA filenames beside the sole LICENSE.txt.
+	entries, err := os.ReadDir("installer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		lower := strings.ToLower(name)
+		if name == "LICENSE.txt" {
+			continue
+		}
+		if strings.Contains(lower, "license") || strings.Contains(lower, "eula") || strings.HasPrefix(lower, "licence") {
+			t.Fatalf("extra license/EULA file %q — sole path is installer/LICENSE.txt", name)
+		}
+	}
+	// wizard-before is ops notes only; must not duplicate a second accept-EULA track.
+	before, err := os.ReadFile(filepath.Join("installer", "wizard-before.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bs := strings.ToLower(string(before))
+	for _, bad := range []string{"i accept", "end user license", "eula", "limitation of liability"} {
+		if strings.Contains(bs, bad) {
+			t.Fatalf("wizard-before.txt must not carry EULA text %q — LicenseFile only", bad)
+		}
+	}
+}
+
 func TestAgentMutexNameStable(t *testing.T) {
 	if agentMutexName != fiscalipc.AgentMutexName {
 		t.Fatalf("agentMutexName must match fiscalipc.AgentMutexName")

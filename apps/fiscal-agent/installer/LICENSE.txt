@@ -1,0 +1,69 @@
+Farvoo Fiscal Software — End User License Agreement
+=====================================================
+
+Software covered: Farvoo Fiscal Agent and Farvoo Fiscal Client (the "Software"),
+published by Farvoo.
+
+1. License
+Farvoo grants you a non-exclusive, non-transferable license to install and use
+the Software on Windows PCs at your business premises for issuing Portuguese
+fiscal documents, local printing, and related store operations, solely in
+connection with a Farvoo-authorized deployment.
+
+2. What the Software does
+The Software runs locally. Invoice/fiscal records, operator PINs, and related
+data are stored on the PC (or the Agent host on your LAN). It may connect to
+Farvoo cloud services for pairing, print jobs, signing-key provisioning, and
+bill sync when configured. It does not replace your obligations under
+Portuguese tax law or Autoridade Tributaria (AT) rules.
+
+3. Your responsibilities
+You must: (a) use the Software only for lawful business purposes; (b) keep
+PINs, backups, and the Agent host secure; (c) verify document series,
+ATCUD/QR, SAF-T exports, and printed output before relying on them;
+(d) maintain required backups and follow Farvoo's swap/reinstall procedures
+when changing PCs; (e) ensure Windows, printer drivers, and WebView2 Runtime
+are correctly installed.
+
+4. Restrictions
+You may not: reverse engineer except where mandatory law allows; circumvent
+activation, signing, or audit controls; redistribute the installer or binaries
+except as Farvoo permits; use the Software on unlicensed or revoked
+installations.
+
+5. Third-party components
+The Software may install or require Microsoft Edge WebView2 Runtime and use
+Windows printing APIs. Those components remain under their own licenses/terms.
+
+6. No warranty
+THE SOFTWARE IS PROVIDED "AS IS". TO THE MAXIMUM EXTENT PERMITTED BY LAW,
+FARVOO DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. Farvoo does not warrant
+uninterrupted operation, that every fiscal document will be accepted by AT, or
+that local data cannot be lost.
+
+7. Limitation of liability
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, FARVOO IS NOT LIABLE FOR INDIRECT,
+INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES, OR LOSS OF DATA, PROFITS, OR
+BUSINESS, ARISING FROM USE OF THE SOFTWARE. Farvoo's aggregate liability for
+any claim relating to the Software shall not exceed the fees you paid to Farvoo
+for the Software in the twelve (12) months before the claim (or zero if none).
+
+8. Data
+Fiscal documents and operator data on the PC are under your control as the
+merchant. Farvoo processes operational telemetry/pairing data only as needed to
+provide the service and as described in Farvoo's applicable privacy notice (if
+published). You remain responsible for lawful processing of customer NIF and
+invoice data.
+
+9. Termination
+This license ends if you breach it, uninstall the Software, or Farvoo/AT-related
+activation is revoked. Sections 6-8 survive termination.
+
+10. Acceptance
+By selecting "I accept the agreement" (or equivalent) and continuing the
+installer, or by installing/using the Software, you agree to these terms. If
+you do not agree, do not install or use the Software.
+
+Contact: Farvoo — via your Farvoo account / support channel used for this
+deployment.

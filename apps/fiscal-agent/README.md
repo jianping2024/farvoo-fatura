@@ -155,7 +155,7 @@ Assets (stable names for Dashboard download links):
 
 | File | Use |
 |------|-----|
-| `FarvooFiscalAgent-Setup-amd64.exe` | Inno installer, x64; optional **desktop shortcut** and **sign-in startup** (both unchecked by default) |
+| `FarvooFiscalAgent-Setup-amd64.exe` | Inno installer, x64; **EULA accept** (`installer/LICENSE.txt`); optional **desktop shortcut** and **sign-in startup** (both unchecked by default) |
 | `FarvooFiscalAgent-windows-amd64.zip` | Portable zip |
 | `SHA256SUMS` | Hashes |
 
