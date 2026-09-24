@@ -431,6 +431,20 @@
       'home.greet.fmt': '{greet}，{name}',
       'orders.new': '开票',
       'orders.source.manual': '手动创建',
+      'orders.source.table': '桌 {n}',
+      'orders.source.table_person': '桌 {n} · {name}',
+      'orders.source.sale': 'sale {id}',
+      'invoice.doc_status.SIGNED': '已签发',
+      'invoice.doc_status.CREDITED_PARTIAL': '部分冲销',
+      'invoice.doc_status.CREDITED_FULL': '已全额冲销',
+      'invoice.doc_status.DEBITED_PARTIAL': '部分借记',
+      'invoice.doc_status.DEBITED_FULL': '已全额借记',
+      'invoice.print_status.NOT_PRINTED': '未打印',
+      'invoice.print_status.PENDING': '待打印',
+      'invoice.print_status.PROCESSING': '打印中',
+      'invoice.print_status.PRINTED': '已打印',
+      'invoice.print_status.PRINT_FAILED': '打印失败',
+      'invoice.print_status.REPRINTED': '已重打',
       'order.flow.create': '创建开票',
       'order.flow.add': '添加商品',
       'order.flow.confirm': '确认',
@@ -1025,6 +1039,20 @@
       'home.greet.fmt': '{greet}, {name}',
       'orders.new': 'Issue',
       'orders.source.manual': 'Manual',
+      'orders.source.table': 'Table {n}',
+      'orders.source.table_person': 'Table {n} · {name}',
+      'orders.source.sale': 'sale {id}',
+      'invoice.doc_status.SIGNED': 'Signed',
+      'invoice.doc_status.CREDITED_PARTIAL': 'Partially credited',
+      'invoice.doc_status.CREDITED_FULL': 'Fully credited',
+      'invoice.doc_status.DEBITED_PARTIAL': 'Partially debited',
+      'invoice.doc_status.DEBITED_FULL': 'Fully debited',
+      'invoice.print_status.NOT_PRINTED': 'Not printed',
+      'invoice.print_status.PENDING': 'Pending',
+      'invoice.print_status.PROCESSING': 'Printing',
+      'invoice.print_status.PRINTED': 'Printed',
+      'invoice.print_status.PRINT_FAILED': 'Print failed',
+      'invoice.print_status.REPRINTED': 'Reprinted',
       'order.flow.create': 'Create',
       'order.flow.add': 'Add items',
       'order.flow.confirm': 'Confirm',
@@ -1619,6 +1647,20 @@
       'home.greet.fmt': '{greet}, {name}',
       'orders.new': 'Emitir',
       'orders.source.manual': 'Manual',
+      'orders.source.table': 'Mesa {n}',
+      'orders.source.table_person': 'Mesa {n} · {name}',
+      'orders.source.sale': 'sale {id}',
+      'invoice.doc_status.SIGNED': 'Assinado',
+      'invoice.doc_status.CREDITED_PARTIAL': 'Creditado parcial',
+      'invoice.doc_status.CREDITED_FULL': 'Creditado total',
+      'invoice.doc_status.DEBITED_PARTIAL': 'Debitado parcial',
+      'invoice.doc_status.DEBITED_FULL': 'Debitado total',
+      'invoice.print_status.NOT_PRINTED': 'Não impresso',
+      'invoice.print_status.PENDING': 'Pendente',
+      'invoice.print_status.PROCESSING': 'A imprimir',
+      'invoice.print_status.PRINTED': 'Impresso',
+      'invoice.print_status.PRINT_FAILED': 'Falha de impressão',
+      'invoice.print_status.REPRINTED': 'Reimpresso',
       'order.flow.create': 'Criar',
       'order.flow.add': 'Adicionar',
       'order.flow.confirm': 'Confirmar',
@@ -1822,8 +1864,11 @@
       const val = type ? fmt(key, { type: type }) : t(key);
       const attr = el.getAttribute('data-i18n-attr');
       if (attr) {
-        if (attr === 'placeholder' && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) el.placeholder = val;
-        else el.setAttribute(attr, val);
+        attr.trim().split(/\s+/).forEach(function (a) {
+          if (!a) return;
+          if (a === 'placeholder' && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) el.placeholder = val;
+          else el.setAttribute(a, val);
+        });
         return;
       }
       if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
@@ -1838,6 +1883,7 @@
       el.innerHTML = t(key);
     });
     document.documentElement.lang = current === 'zh' ? 'zh-Hans' : current;
+    document.title = t('brand.name');
   }
 
   function setLocale(loc) {

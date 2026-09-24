@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.17
+
+**Admin i18n 残留一次收齐（多 attr / 来源列 / 系列状态）**
+
+- **唯一写法 · `data-i18n-attr`：**仅 `FiscalAdminI18n.apply` 按空白拆多属性（`aria-label title`）；并设 `document.title = t('brand.name')`。
+- **唯一写法 · 发票来源文案：**Go 只吐 `table_display_name` / `split_name`（`orderSourceFromMeta`）；屏幕仅 `formatInvoiceOrderCell` → `orders.source.table*` / `sale`；删 `order_label` 中文拼接。
+- **唯一写法 · 单据/打印状态：**仅 `formatInvoiceDocStatus` / `formatInvoicePrintStatus`（详情抽屉）。
+- **唯一写法 · 未激活云状态：**`applySettingsStatusUI` 补 `settings.series.sync_hint` 分支；静态壳挂同一 key。
+
 ## 0.5.16
 
 **商品 IVA：大陆三档下拉**

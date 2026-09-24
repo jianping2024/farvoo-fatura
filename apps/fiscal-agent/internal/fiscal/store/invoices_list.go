@@ -11,22 +11,23 @@ import (
 // InvoiceListItem is a row for GET /local/v1/fiscal-documents.
 // List columns (Admin): clerk fields; technical fields in detail drawer only.
 type InvoiceListItem struct {
-	DocumentID      string `json:"document_id"`
-	InvoiceNo       string `json:"invoice_no"`
-	ATCUD           string `json:"atcud"`
-	DocumentType    string `json:"document_type"`
-	DocumentStatus  string `json:"document_status"`
-	PrintStatus     string `json:"print_status"`
-	GrossTotal      string `json:"gross_total"`
-	SystemEntryDate string `json:"system_entry_date"`
-	IssuedAt        string `json:"issued_at"` // same as system_entry_date for home "today" filter
-	Hash            string `json:"hash"`
-	PreviousHash    string `json:"previous_hash"`
-	CustomerTaxID   string `json:"customer_tax_id,omitempty"`
-	CustomerName    string `json:"customer_name,omitempty"`
-	SourceSaleID    string `json:"source_sale_id,omitempty"`
-	OrderLabel      string `json:"order_label,omitempty"`
-	PaymentMethod   string `json:"payment_method,omitempty"` // first invoice_payments.method
+	DocumentID       string `json:"document_id"`
+	InvoiceNo        string `json:"invoice_no"`
+	ATCUD            string `json:"atcud"`
+	DocumentType     string `json:"document_type"`
+	DocumentStatus   string `json:"document_status"`
+	PrintStatus      string `json:"print_status"`
+	GrossTotal       string `json:"gross_total"`
+	SystemEntryDate  string `json:"system_entry_date"`
+	IssuedAt         string `json:"issued_at"` // same as system_entry_date for home "today" filter
+	Hash             string `json:"hash"`
+	PreviousHash     string `json:"previous_hash"`
+	CustomerTaxID    string `json:"customer_tax_id,omitempty"`
+	CustomerName     string `json:"customer_name,omitempty"`
+	SourceSaleID     string `json:"source_sale_id,omitempty"`
+	TableDisplayName string `json:"table_display_name,omitempty"`
+	SplitName        string `json:"split_name,omitempty"`
+	PaymentMethod    string `json:"payment_method,omitempty"` // first invoice_payments.method
 }
 
 // InvoiceListQuery filters GET /local/v1/fiscal-documents (invoice_date + search + pagination).
@@ -52,20 +53,21 @@ type InvoiceListResult struct {
 // InvoiceDetail extends IssueRecord with totals for GET /local/v1/fiscal-documents/{id}.
 type InvoiceDetail struct {
 	IssueRecord
-	GrossTotal               string                `json:"gross_total"`
-	NetTotal                 string                `json:"net_total"`
-	TaxPayable               string                `json:"tax_payable"`
-	SourceSaleID             string                `json:"source_sale_id,omitempty"`
-	OrderLabel               string                `json:"order_label,omitempty"`
-	PaymentMethod            string                `json:"payment_method,omitempty"` // first invoice_payments.method
-	CreditedGrossTotal       string                `json:"credited_gross_total,omitempty"`
-	RemainingGrossTotal      string                `json:"remaining_gross_total,omitempty"`
-	Lines                    []CreditLineRemaining `json:"lines,omitempty"`
-	DebitedGrossTotal        string                `json:"debited_gross_total,omitempty"`
-	DebitLines               []CreditLineRemaining `json:"debit_lines,omitempty"`
-	OriginalInvoiceID        string                `json:"original_invoice_id,omitempty"`
-	OriginalInvoiceNo        string                `json:"original_invoice_no,omitempty"`
-	CreditReason             string                `json:"credit_reason,omitempty"` // NC/ND reason
+	GrossTotal          string                `json:"gross_total"`
+	NetTotal            string                `json:"net_total"`
+	TaxPayable          string                `json:"tax_payable"`
+	SourceSaleID        string                `json:"source_sale_id,omitempty"`
+	TableDisplayName    string                `json:"table_display_name,omitempty"`
+	SplitName           string                `json:"split_name,omitempty"`
+	PaymentMethod       string                `json:"payment_method,omitempty"` // first invoice_payments.method
+	CreditedGrossTotal  string                `json:"credited_gross_total,omitempty"`
+	RemainingGrossTotal string                `json:"remaining_gross_total,omitempty"`
+	Lines               []CreditLineRemaining `json:"lines,omitempty"`
+	DebitedGrossTotal   string                `json:"debited_gross_total,omitempty"`
+	DebitLines          []CreditLineRemaining `json:"debit_lines,omitempty"`
+	OriginalInvoiceID   string                `json:"original_invoice_id,omitempty"`
+	OriginalInvoiceNo   string                `json:"original_invoice_no,omitempty"`
+	CreditReason        string                `json:"credit_reason,omitempty"` // NC/ND reason
 }
 
 var allowedInvoicePageSizes = map[int]bool{10: true, 20: true}
@@ -171,7 +173,7 @@ func (d *DB) ListInvoices(q InvoiceListQuery) (*InvoiceListResult, error) {
 			return nil, err
 		}
 		it.IssuedAt = it.SystemEntryDate
-		it.OrderLabel = orderLabelFromMeta(it.SourceSaleID, displayMeta)
+		it.TableDisplayName, it.SplitName = orderSourceFromMeta(displayMeta)
 		items = append(items, it)
 	}
 	if err := rows.Err(); err != nil {
@@ -224,39 +226,29 @@ func (d *DB) GetInvoiceDetail(invoiceID string) (*InvoiceDetail, error) {
 	if err != nil {
 		return nil, err
 	}
+	table, split := orderSourceFromMeta(displayMeta)
 	return &InvoiceDetail{
-		IssueRecord:   *rec,
-		GrossTotal:    gross,
-		NetTotal:      net,
-		TaxPayable:    tax,
-		SourceSaleID:  sourceID,
-		OrderLabel:    orderLabelFromMeta(sourceID, displayMeta),
-		PaymentMethod: pay,
+		IssueRecord:      *rec,
+		GrossTotal:       gross,
+		NetTotal:         net,
+		TaxPayable:       tax,
+		SourceSaleID:     sourceID,
+		TableDisplayName: table,
+		SplitName:        split,
+		PaymentMethod:    pay,
 	}, nil
 }
 
-func orderLabelFromMeta(sourceSaleID, displayMetaJSON string) string {
+// orderSourceFromMeta is the ONLY parser for list/detail table + split fields (Admin formats labels).
+func orderSourceFromMeta(displayMetaJSON string) (table, split string) {
 	var meta struct {
 		TableDisplayName string `json:"table_display_name"`
 		SplitName        string `json:"split_name"`
 	}
 	if displayMetaJSON != "" && json.Unmarshal([]byte(displayMetaJSON), &meta) == nil {
-		if meta.TableDisplayName != "" {
-			label := "桌 " + meta.TableDisplayName
-			if meta.SplitName != "" {
-				label += " · " + meta.SplitName
-			}
-			return label
-		}
+		return meta.TableDisplayName, meta.SplitName
 	}
-	if sourceSaleID != "" {
-		suffix := sourceSaleID
-		if len(suffix) > 8 {
-			suffix = suffix[len(suffix)-8:]
-		}
-		return "sale " + suffix
-	}
-	return ""
+	return "", ""
 }
 
 func escapeLike(s string) string {

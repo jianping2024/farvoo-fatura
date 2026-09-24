@@ -374,7 +374,10 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 		t.Fatal("issued-at cells must call formatInvoiceWhenCell only in invoice list")
 	}
 	if strings.Count(adminHTML, "+ formatInvoiceOrderCell(inv)") != 1 {
-		t.Fatal("order/source cells must call formatInvoiceOrderCell only in invoice list")
+		t.Fatal("order/source list cell must call formatInvoiceOrderCell once")
+	}
+	if strings.Count(adminHTML, "formatInvoiceOrderCell(inv)") != 3 {
+		t.Fatal("formatInvoiceOrderCell(inv) must appear only in def, invoice list, and detail")
 	}
 	if strings.Count(adminHTML, "+ formatInvoicePaymentLabel(inv)") != 1 {
 		t.Fatal("payment cells must call formatInvoicePaymentLabel only in invoice list")
@@ -382,8 +385,14 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	if strings.Count(adminHTML, "formatInvoicePaymentLabel(inv)") != 3 {
 		t.Fatal("formatInvoicePaymentLabel(inv) must appear only in def, invoice list, and detail")
 	}
-	if strings.Contains(adminHTML, "inv.order_label || '—'") {
-		t.Fatal("do not inline order_label fallback; use formatInvoiceOrderCell")
+	if strings.Contains(adminHTML, "inv.order_label") {
+		t.Fatal("do not read order_label; use formatInvoiceOrderCell")
+	}
+	if !strings.Contains(adminHTML, "formatInvoiceDocStatus(inv.document_status)") {
+		t.Fatal("detail doc status must use formatInvoiceDocStatus")
+	}
+	if !strings.Contains(adminHTML, "formatInvoicePrintStatus(inv.print_status)") {
+		t.Fatal("detail print status must use formatInvoicePrintStatus")
 	}
 	if strings.Contains(adminHTML, "inv.invoice_no || inv.document_type") {
 		t.Fatal("do not fall back invoice_no to document_type in list cells")
