@@ -42,6 +42,16 @@ type Snapshot struct {
 	Splits           []SplitPart `json:"splits"`
 	// SourceLines is frozen at ingest (Agent); allocation shares reference LineKey.
 	SourceLines []Line `json:"source_lines,omitempty"`
+
+	// Auto-issue fields (Farvoo「打印发票」via bill_sync_jobs). Ignored when AutoIssue is false.
+	AutoIssue      bool   `json:"auto_issue,omitempty"`
+	CustomerNIF    string `json:"customer_nif,omitempty"`
+	CustomerName   string `json:"customer_name,omitempty"`
+	PaymentMethod  string `json:"payment_method,omitempty"`
+	DocumentType   string `json:"document_type,omitempty"` // FT|FS — Farvoo passes explicitly; Agent must not derive
+	IssueMode      string `json:"issue_mode,omitempty"`    // whole_table|person; empty → from scope_type
+	IssueScopeID   string `json:"issue_scope_id,omitempty"`
+	ScopeID        string `json:"scope_id,omitempty"` // person alias when issue_scope_id empty
 }
 
 // Line is a sale line (qty/line_gross not stored in product master).

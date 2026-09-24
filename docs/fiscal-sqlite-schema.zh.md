@@ -657,7 +657,7 @@ MVP 不进 SAF-T `DocumentTotals/Payment`。`tendered` / `change_due` 为收银�
 
 ### 6.21 `bill_sync_drafts`（账单同步草稿）
 
-Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `IngestCloudJob` → `UpsertBillDraftOpen` 写入。不同时开票。
+Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `service.IngestBillSyncJob`（草稿：`IngestCloudJob` → `UpsertBillDraftOpen`）写入。载荷 `auto_issue=true` 时同路径再调 `IssueFromBillDraft` 并在 ack 带回 `invoice_no`；否则不同时开票（Admin 手动签发仍可用）。
 
 | 列 | 类型 | 必填 | 说明 |
 |----|------|------|------|

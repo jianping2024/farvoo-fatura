@@ -34,7 +34,17 @@ func fiscalBillSyncPuller(cfg *config) *billsync.Puller {
 	if strings.TrimSpace(cfg.APIBase) == "" || strings.TrimSpace(cfg.AgentJWT) == "" {
 		return nil
 	}
-	return &billsync.Puller{APIBase: cfg.APIBase, JWT: cfg.AgentJWT, DB: embeddedFiscal.DB}
+	svc := embeddedFiscal.Service
+	return &billsync.Puller{
+		APIBase: cfg.APIBase, JWT: cfg.AgentJWT, DB: embeddedFiscal.DB,
+		ProcessJob: func(ctx context.Context, job billsync.CloudJob) (string, error) {
+			if svc == nil {
+				_, err := billsync.IngestCloudJob(embeddedFiscal.DB, job)
+				return "", err
+			}
+			return svc.ProcessBillSyncJob(ctx, job)
+		},
+	}
 }
 
 // applyFiscalRuntimeFromConfig installs process env used by fiscal packages
