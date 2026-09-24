@@ -112,6 +112,7 @@
 | Client 设置 UI | **原生 Win32 对话框**（`syscall`/轻量 UI）；不另起 HTTP 服务 |
 | UI 线程 | **P0 定法：** WebView2 消息循环 **ONLY** `fiscalwebview.startUIThread`（`LockOSThread` 专用 goroutine）；Agent `RequestOpen` / Client `RunWindow` / Client 设置 `RunHTMLWindow` 均排队到此线程；**禁止**在线程池 `go RunWindow` |
 | 窗口单例 | **同进程：** `rememberShellHWND` 在 `Run()` 全程有效 → `takeExistingShellHWND` → **唯一** `focusHWND`（最小化还原）。**开壳前：** **唯一** `waitFiscalHTTPReady`。**跨进程：** IPC / Client `FocusExistingByTitle`。重复启动 Agent → 静默退出 |
+| 窗口启动态 | **P0 定法 · 唯一写法：** 开票壳创建后 **仅** `maximizeShellHWND`（`SW_SHOWMAXIMIZED`，保留任务栏；**不是** F11 真全屏）。`Width`/`Height`/`Center` 只作 CreateWindow 还原矩形，禁止再留「居中固定窗」作为可见启动态。设置小窗（`RunHTMLWindow`）**禁止**走 maximize |
 | 失败回退 | WebView2 初始化失败 → 记录 `agent.log` / Client 日志 → 提示安装 [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) |
 
 **Client 安装器：** 检测 WebView2；缺失时可选运行 Evergreen Bootstrapper（Inno `[Run]` 或文档指引，实现时二选一，**P0 至少文档 + 明确错误提示**）。

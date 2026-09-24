@@ -96,6 +96,8 @@ func runWindowOnThread(opts Options) error {
 		windowMu.Unlock()
 	}()
 
+	// Width/Height/Center are CreateWindow bootstrap only (restore rect if user un-maximizes).
+	// Startup visible state is ALWAYS maximizeShellHWND — never leave a fixed centered window.
 	wv := newWebView(webview2.WindowOptions{
 		Title:  WindowTitle,
 		Width:  1280,
@@ -109,6 +111,9 @@ func runWindowOnThread(opts Options) error {
 	// HWND must stay registered for the whole Run() lifetime (minimize → reopen).
 	rememberShellHWND(wv)
 	defer clearShellHWND()
+	if ptr := wv.Window(); ptr != nil {
+		maximizeShellHWND(uintptr(ptr))
+	}
 	wv.Navigate(opts.URL)
 	wv.Run()
 	return nil

@@ -9,14 +9,26 @@ import (
 )
 
 const (
-	swRestore   = 9
-	swShow      = 5
-	gaRoot      = 2
+	swMaximize   = 3 // SW_SHOWMAXIMIZED — sole shell open state (not F11 fullscreen)
+	swRestore    = 9
+	swShow       = 5
+	gaRoot       = 2
 	wmSysCommand = 0x0112
-	scRestore   = 0xF120
-	flashwAll   = 0x00000003
-	flashwTimer = 0x00000004
+	scRestore    = 0xF120
+	flashwAll    = 0x00000003
+	flashwTimer  = 0x00000004
 )
+
+// maximizeShellHWND is the ONLY path that maximizes the fiscal shell after create.
+// Call once from runWindowOnThread; HTML dialogs must not use this.
+func maximizeShellHWND(hwnd uintptr) {
+	hwnd = rootHWND(hwnd)
+	if hwnd == 0 || !isWindow(hwnd) {
+		return
+	}
+	showWindow := windows.NewLazyDLL("user32.dll").NewProc("ShowWindow")
+	_, _, _ = showWindow.Call(hwnd, swMaximize)
+}
 
 // focusHWND is the sole restore/activate helper for an existing shell HWND.
 // Safe from any thread: PostMessage(SC_RESTORE) is handled by the WebView Run() pump.

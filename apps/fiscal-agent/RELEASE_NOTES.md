@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.19
+
+**开票壳默认最大化（修上半截被裁）**
+
+- **唯一写法 · 壳启动态：**仅 `maximizeShellHWND`（`SW_SHOWMAXIMIZED`）在 `runWindowOnThread` 创建后调用一次；禁止居中固定窗作为可见启动态。
+- CreateWindow 的 `1280×860` + `Center` 仅作还原矩形；设置小窗不 maximize。
+- 钉死：`sole_path_test`（定义/调用各一份；HTML 路径禁 maximize）。设计 [`fiscal-client-webview.zh.md`](../../docs/fiscal-client-webview.zh.md) §7。
+
 ## 0.5.18
 
 **RG 收款收据（Recibo）**
