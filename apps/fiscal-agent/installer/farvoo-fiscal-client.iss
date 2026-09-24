@@ -31,6 +31,8 @@ OutputBaseFilename=FarvooFiscalClient-Setup-amd64
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+; Sole EULA text: installer/LICENSE.txt (Agent + Client share; require accept to continue).
+LicenseFile=LICENSE.txt
 SetupIconFile=..\assets\app_icon.ico
 UninstallDisplayIcon={app}\{#MyAppExe}
 
