@@ -89,6 +89,12 @@ func TestSoleEmbedStoreIDWritings(t *testing.T) {
 	if !strings.Contains(fn, "bootstrap_required") {
 		t.Fatal("loadLoginOperators must gate bootstrap on bootstrap_required")
 	}
+	if !strings.Contains(fn, "loadLoginSetupPublic()") {
+		t.Fatal("loadLoginOperators must use loadLoginSetupPublic only (not setupStatusCache)")
+	}
+	if strings.Contains(fn, "setupStatusCache") {
+		t.Fatal("loadLoginOperators must not touch setupStatusCache (Public vs Full split)")
+	}
 	if strings.Contains(fn, "setLoginBootstrapMode(true)") && !strings.Contains(fn, "st.bootstrap_required") {
 		t.Fatal("bootstrap UI true path must check st.bootstrap_required")
 	}
