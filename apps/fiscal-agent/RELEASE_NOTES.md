@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.22
+
+**付款方式：挂账排在「其他」之上**
+
+- **唯一写法 · 付款码顺序：**仅 `domain.knownPaymentMethods`（`ACCOUNT` 紧挨 `OTHER` 之上）；Admin `PAYMENT_METHODS` 同序。
+- 钉死：`TestKnownPaymentMethodsStable` / `TestAdminPaymentMethodKeysMatchDomain`。
+
 ## 0.5.21
 
 **Admin setup 缓存：登录摘要与会话完整状态分家**
