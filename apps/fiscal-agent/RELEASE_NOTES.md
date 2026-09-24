@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.21
+
+**Admin setup 缓存：登录摘要与会话完整状态分家**
+
+- **唯一写法 · 登录匿名 status：**仅 `loadLoginSetupPublic` → `loginSetupPublicCache`（`bootstrap_required`）；禁止写入 `setupStatusCache`。
+- **唯一写法 · 会话 SetupStatus 缓存：**仅 `refreshSetupStatus` / `applySetupStatusFromResponse` 写入；`ensureSetupStatus` 只信 `isFullSetupStatus`（有 `taxpayer_ok`）。
+- 修复：登录页 Public 污染缓存 → 进 App 后 NC/ND/RG 详情按钮不出现，逛设置才「忽然」出现。
+- 钉死：`TestAdminSetupStatusCacheSplit`；`loadLoginOperators` 禁触 `setupStatusCache`。
+
 ## 0.5.20
 
 **安装器 EULA（同意条款才能继续）**

@@ -22,6 +22,51 @@ func TestAdminHTMLSeriesRegisterSinglePath(t *testing.T) {
 	}
 }
 
+// TestAdminSetupStatusCacheSplit nails P1-S Public vs session Full: login must not
+// poison setupStatusCache; ensureSetupStatus trusts isFullSetupStatus only.
+func TestAdminSetupStatusCacheSplit(t *testing.T) {
+	if n := strings.Count(adminHTML, "async function loadLoginSetupPublic"); n != 1 {
+		t.Fatalf("loadLoginSetupPublic must appear exactly once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function isFullSetupStatus"); n != 1 {
+		t.Fatalf("isFullSetupStatus must appear exactly once, got %d", n)
+	}
+	if !strings.Contains(adminHTML, "if (isFullSetupStatus(setupStatusCache)) return setupStatusCache") {
+		t.Fatal("ensureSetupStatus must trust only isFullSetupStatus(setupStatusCache)")
+	}
+	if !strings.Contains(adminHTML, "if (!isFullSetupStatus(st))") {
+		t.Fatal("refreshSetupStatus must reject anonymous Public before caching")
+	}
+	// Non-null writers of setupStatusCache: only applySetupStatusFromResponse + refreshSetupStatus.
+	assigns := 0
+	for _, line := range strings.Split(adminHTML, "\n") {
+		trim := strings.TrimSpace(line)
+		if !strings.HasPrefix(trim, "setupStatusCache =") {
+			continue
+		}
+		if trim == "setupStatusCache = null;" || trim == "let setupStatusCache = null;" {
+			continue
+		}
+		if trim != "setupStatusCache = st;" {
+			t.Fatalf("unexpected setupStatusCache assign: %s", trim)
+		}
+		assigns++
+	}
+	if assigns != 2 {
+		t.Fatalf("want exactly 2 setupStatusCache = st writers (apply + refresh), got %d", assigns)
+	}
+	loginFn := adminHTML[strings.Index(adminHTML, "async function loadLoginOperators("):]
+	if i := strings.Index(loginFn[1:], "\n  async function "); i > 0 {
+		loginFn = loginFn[:i+1]
+	}
+	if strings.Contains(loginFn, "setupStatusCache") {
+		t.Fatal("loadLoginOperators must not reference setupStatusCache")
+	}
+	if !strings.Contains(loginFn, "loadLoginSetupPublic()") {
+		t.Fatal("loadLoginOperators must call loadLoginSetupPublic")
+	}
+}
+
 func TestAdminHTMLUsesSharedToastOnly(t *testing.T) {
 	if !strings.Contains(adminHTML, `/fiscal-ui/toast.js`) {
 		t.Fatal("admin must load /fiscal-ui/toast.js")
@@ -739,6 +784,8 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 		"function openAdjustModal",
 		"function invoiceCanCredit",
 		"function invoiceCanDebit",
+		"function isFullSetupStatus",
+		"async function loadLoginSetupPublic",
 		"async function ensureSetupStatus",
 		"async function refreshInvoices",
 		"async function reprintInvoice",

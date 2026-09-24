@@ -1855,7 +1855,10 @@
   /** last known open bill-draft count for toast-on-increase. */
   let lastOpenBillCount = 0;
   let billEventsSource = null;
+  /** Session SetupStatus only — NEVER anonymous SetupStatusPublic (P1-S). */
   let setupStatusCache = null;
+  /** ONLY login-page anonymous /setup/status (bootstrap_required). */
+  let loginSetupPublicCache = null;
   let adjustTargetDetail = null;
   let adjustKind = null; // 'credit' | 'debit' — ONLY modal kind for NC/ND
   let adjustMode = 'partial';
@@ -1929,6 +1932,7 @@
       applyOperatorAccess();
       stopBillDraftEvents();
       setupStatusCache = null;
+      loginSetupPublicCache = null;
       pin = '';
       $$('#pinDots i').forEach(d => d.classList.remove('on'));
       resetAdminListSessionState();
@@ -2500,16 +2504,27 @@
     return true;
   }
 
+  /** True only for session SetupStatus (has taxpayer_ok); Public shape must not gate NC/ND/RG. */
+  function isFullSetupStatus(st) {
+    return !!(st && typeof st === 'object' && typeof st.taxpayer_ok === 'boolean');
+  }
+
+  /** ONLY loader for loginSetupPublicCache (anonymous GET /setup/status). */
+  async function loadLoginSetupPublic() {
+    if (loginSetupPublicCache && typeof loginSetupPublicCache.bootstrap_required === 'boolean') {
+      return loginSetupPublicCache;
+    }
+    const st = await j('GET', '/local/v1/setup/status');
+    loginSetupPublicCache = st;
+    return st;
+  }
+
   async function loadLoginOperators() {
     const sel = $('#loginOperator');
     sel.innerHTML = '';
     try {
       // Sole bootstrap UI gate: setup/status.bootstrap_required (never empty-ops alone).
-      let st = setupStatusCache;
-      if (!st || typeof st.bootstrap_required !== 'boolean') {
-        st = await j('GET', '/local/v1/setup/status');
-        setupStatusCache = st;
-      }
+      const st = await loadLoginSetupPublic();
       const data = await j('GET', '/local/v1/setup/operators');
       const ops = (data.operators || []).filter(o => o.has_pin);
       if (st.bootstrap_required) {
@@ -3105,7 +3120,7 @@
 
   /** Apply SetupStatus embedded in mutation responses (avoids redundant GET /setup/status). */
   function applySetupStatusFromResponse(st) {
-    if (st && typeof st === 'object' && st.taxpayer_ok !== undefined) {
+    if (isFullSetupStatus(st)) {
       setupStatusCache = st;
       applySettingsStatusUI(st);
     }
@@ -3134,8 +3149,13 @@
     }
   }
 
+  /** ONLY network writer for setupStatusCache (session GET /setup/status). */
   async function refreshSetupStatus(opts) {
     const st = await j('GET', '/local/v1/setup/status');
+    if (!isFullSetupStatus(st)) {
+      // Anonymous Public must never poison session cache (login uses loadLoginSetupPublic).
+      throw { error: 'setup_status_incomplete', message: FiscalAdminI18n.t('session.relogin') };
+    }
     setupStatusCache = st;
     applySettingsStatusUI(st);
     if (st.ready_to_issue) setSettingsViewMode('full', st);
@@ -3183,9 +3203,9 @@
     });
   }
 
-  /** ONLY loader for setupStatusCache (enterApp + invoice detail + settings). */
+  /** ONLY loader for setupStatusCache (enterApp + invoice detail); trusts full status only. */
   async function ensureSetupStatus() {
-    if (setupStatusCache) return setupStatusCache;
+    if (isFullSetupStatus(setupStatusCache)) return setupStatusCache;
     return refreshSetupStatus();
   }
 
