@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -47,16 +48,54 @@ func handlePutCashDrawer(w http.ResponseWriter, r *http.Request, deps HandlerDep
 	writeJSON(w, http.StatusOK, CashDrawerSnapshot{Pin: pin})
 }
 
-// handleOpenCashDrawer is the ONLY POST handler for manual drawer kick (session).
-func handleOpenCashDrawer(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+// KickCashDrawerAtStation is the ONLY path that sends ESC/POS kick bytes to a mapped station.
+func KickCashDrawerAtStation(deps HandlerDeps, stationID string) (pin int, err error) {
 	if deps.PrintBytesFn == nil {
-		writeErr(w, http.StatusServiceUnavailable, "print_not_configured", "printer output not configured")
-		return
+		return 0, fmt.Errorf("print_not_configured")
 	}
 	if deps.CashDrawerPinGet == nil {
-		writeErr(w, http.StatusServiceUnavailable, "not_configured", "cash drawer pin not configured")
-		return
+		return 0, fmt.Errorf("not_configured")
 	}
+	sid := strings.TrimSpace(stationID)
+	if sid == "" {
+		return 0, fmt.Errorf("station_required")
+	}
+	raw := ""
+	if deps.StationPrintersFn != nil {
+		if m := deps.StationPrintersFn(); m != nil {
+			raw = strings.TrimSpace(m[sid])
+		}
+	}
+	if raw == "" {
+		return 0, fmt.Errorf("station_unmapped")
+	}
+	pin = fiscalprint.NormalizeCashDrawerPin(deps.CashDrawerPinGet())
+	if err := deps.PrintBytesFn(raw, fiscalprint.CashDrawerKickBytes(pin)); err != nil {
+		return pin, fmt.Errorf("drawer_open_failed: %w", err)
+	}
+	return pin, nil
+}
+
+// KickCashDrawerOnLocalDefault is the ONLY background hang-queue kick (Farvoo CASH collect).
+// Uses taxpayer local_default_station_id — same as loopback Admin open without a browser session.
+func KickCashDrawerOnLocalDefault(deps HandlerDeps) (stationID string, pin int, err error) {
+	if deps.Fiscal == nil {
+		return "", 0, fmt.Errorf("fiscal service not configured")
+	}
+	sid, err := deps.Fiscal.GetLocalDefaultStation(deps.StoreID)
+	if err != nil {
+		return "", 0, err
+	}
+	sid = strings.TrimSpace(sid)
+	if sid == "" {
+		return "", 0, fmt.Errorf("station_required")
+	}
+	pin, err = KickCashDrawerAtStation(deps, sid)
+	return sid, pin, err
+}
+
+// handleOpenCashDrawer is the ONLY POST handler for manual drawer kick (session).
+func handleOpenCashDrawer(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 	sid, err := ResolveEffectivePrintStation(r, deps)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "station_failed", err.Error())
@@ -67,20 +106,21 @@ func handleOpenCashDrawer(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		writeErr(w, http.StatusBadRequest, "station_required", "set a default print station first")
 		return
 	}
-	raw := ""
-	if deps.StationPrintersFn != nil {
-		if m := deps.StationPrintersFn(); m != nil {
-			raw = strings.TrimSpace(m[sid])
+	pin, err := KickCashDrawerAtStation(deps, sid)
+	if err != nil {
+		msg := err.Error()
+		switch {
+		case strings.Contains(msg, "print_not_configured"):
+			writeErr(w, http.StatusServiceUnavailable, "print_not_configured", "printer output not configured")
+		case strings.Contains(msg, "not_configured"):
+			writeErr(w, http.StatusServiceUnavailable, "not_configured", "cash drawer pin not configured")
+		case strings.Contains(msg, "station_unmapped"):
+			writeErr(w, http.StatusBadRequest, "station_unmapped", "station not mapped to a printer")
+		case strings.Contains(msg, "drawer_open_failed"):
+			writeErr(w, http.StatusBadGateway, "drawer_open_failed", msg)
+		default:
+			writeErr(w, http.StatusBadGateway, "drawer_open_failed", msg)
 		}
-	}
-	if raw == "" {
-		writeErr(w, http.StatusBadRequest, "station_unmapped", "station not mapped to a printer")
-		return
-	}
-	pin := fiscalprint.NormalizeCashDrawerPin(deps.CashDrawerPinGet())
-	data := fiscalprint.CashDrawerKickBytes(pin)
-	if err := deps.PrintBytesFn(raw, data); err != nil {
-		writeErr(w, http.StatusBadGateway, "drawer_open_failed", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{

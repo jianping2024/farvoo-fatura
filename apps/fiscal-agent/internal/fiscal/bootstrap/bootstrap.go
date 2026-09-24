@@ -53,7 +53,9 @@ type Runtime struct {
 	Mux     *http.ServeMux
 	DataDir string
 	StoreID string
-	cancel  context.CancelFunc
+	// OpenCashDrawer kicks the local-default station (Farvoo hang-queue / no HTTP session).
+	OpenCashDrawer func() error
+	cancel         context.CancelFunc
 }
 
 // StartCore opens DB, optional seed, starts print worker — no Listen.
@@ -169,7 +171,7 @@ func StartCore(opts Options) (*Runtime, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("bootstrap: session manager: %w", err)
 	}
-	if err := MountRoutes(mux, api.HandlerDeps{
+	handlerDeps := api.HandlerDeps{
 		Fiscal: svc, StoreID: opts.StoreID, DataDir: opts.DataDir,
 		StationPrintersFn: opts.StationPrintersFn,
 		StationMetaFn:     opts.StationMetaFn,
@@ -182,7 +184,8 @@ func StartCore(opts Options) (*Runtime, error) {
 		CashDrawerPinSet:  pinSet,
 		PrintBytesFn:      opts.PrintBytesFn,
 		Sessions:          sessions,
-	}); err != nil {
+	}
+	if err := MountRoutes(mux, handlerDeps); err != nil {
 		cancel()
 		_ = db.Close()
 		return nil, err
@@ -191,6 +194,10 @@ func StartCore(opts Options) (*Runtime, error) {
 	return &Runtime{
 		DB: db, Service: svc, Worker: w, Sink: mem, Mux: mux,
 		DataDir: opts.DataDir, StoreID: opts.StoreID, cancel: cancel,
+		OpenCashDrawer: func() error {
+			_, _, err := api.KickCashDrawerOnLocalDefault(handlerDeps)
+			return err
+		},
 	}, nil
 }
 

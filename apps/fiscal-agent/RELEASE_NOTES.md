@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.23
+
+**Farvoo CASH 收款：挂账式开钱箱（cloud hang-queue）**
+
+- **唯一写法 · 踢箱：**仅 `KickCashDrawerOnLocalDefault` → `KickCashDrawerAtStation` → `CashDrawerKickBytes`（本机默认站）；禁止浏览器直连 Local 开箱，禁止第二路 ESC p。
+- **唯一写法 · 拉取：**仅 `pullCashDrawersOnce` → `cashdrawer.Puller.PullAndKick`（GET pending-cash-drawer-opens → kick → ack）；Realtime `cash_drawer_jobs` 与 print/bill_sync 同 join，Polling 同环兜底。
+- 钉死：`TestBillSyncRealtimeSubscribeIncludesCashDrawer`（join + doorbell + poll 均会 `pullCashDrawersOnce`）。
+
 ## 0.5.22
 
 **付款方式：挂账排在「其他」之上**
