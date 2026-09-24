@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// requireFiscalTerminalFreeze is the ONLY gate that every IssueFT/NC/ND insert must pass
+// requireFiscalTerminalFreeze is the ONLY gate that every IssueFT/NC/ND/RG insert must pass
 // before writing fiscal_terminal_id / fiscal_terminal_label.
 func requireFiscalTerminalFreeze(id, label string) (string, string, error) {
 	id = strings.TrimSpace(id)

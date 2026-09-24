@@ -199,6 +199,11 @@ func documentNoPrefix(invoiceLocale, docType string) string {
 			return "Debit note: "
 		}
 		return "Nota de debito: "
+	case "RG":
+		if en {
+			return "Receipt: "
+		}
+		return "Recibo: "
 	default:
 		// FT and unknown → fatura / invoice number label
 		if en {
@@ -383,6 +388,8 @@ func formatPaymentMethod(L ReceiptLabels, method string) string {
 		return L.PayMixed
 	case domain.PaymentOther:
 		return L.PayOther
+	case domain.PaymentAccount:
+		return L.PayAccount
 	default:
 		return method
 	}

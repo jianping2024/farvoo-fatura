@@ -229,6 +229,9 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/debit-notes", g(func(w http.ResponseWriter, r *http.Request) {
 		handleDebitNote(w, r, deps)
 	}))
+	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/receipts", g(func(w http.ResponseWriter, r *http.Request) {
+		handleReceipt(w, r, deps)
+	}))
 	mux.HandleFunc("POST /local/v1/saft/exports", g(func(w http.ResponseWriter, r *http.Request) {
 		handleExportSAFT(w, r, deps)
 	}))
@@ -938,6 +941,7 @@ func writeCoded(w http.ResponseWriter, err error) {
 		case service.ErrCodeSignerNotReady, service.ErrCodeOpsActivatePending, service.ErrCodeFiscalProfileMissing, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing,
 			service.ErrCodeSeriesAlreadyActive,
 			service.ErrCodeCreditNotAllowed, service.ErrCodeCreditAmountExceeded, service.ErrCodeIdempotencyConflict,
+			service.ErrCodeReceiptNotAllowed, service.ErrCodeReceiptAmountExceeded,
 			service.ErrCodeNoInvoices, service.ErrCodeReprintNotAllowed:
 			status = http.StatusConflict
 		case "scope_mutex", "allocation_conflict", "draft_not_open", "already_invoiced":

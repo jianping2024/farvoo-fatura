@@ -964,6 +964,7 @@
               <button type="button" class="secondary" data-invoice-type="FR" role="tab"><span data-i18n="doc.tab.FR">发票收据</span></button>
               <button type="button" class="secondary" data-invoice-type="NC" role="tab"><span data-i18n="doc.tab.NC">冲销单</span></button>
               <button type="button" class="secondary" data-invoice-type="ND" role="tab"><span data-i18n="doc.tab.ND">借记单</span></button>
+              <button type="button" class="secondary" data-invoice-type="RG" role="tab"><span data-i18n="doc.tab.RG">收据</span></button>
             </div>
             <div class="admin-list-toolbar">
               <div class="admin-list-toolbar__search">
@@ -1169,6 +1170,11 @@
                     <div class="series-card-head"><strong>ND</strong><span class="status-pill optional" id="seriesNdPill" data-i18n="common.optional">可选</span></div>
                     <div class="field"><label for="seriesNd" data-i18n="settings.series.number">系列编号</label><input id="seriesNd" /><span class="hint" id="seriesNdHint"></span></div>
                     <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesNd" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="ND">注册 ND</button></div>
+                  </div>
+                  <div class="series-card optional" data-series="rg">
+                    <div class="series-card-head"><strong>RG</strong><span class="status-pill optional" id="seriesRgPill" data-i18n="common.optional">可选</span></div>
+                    <div class="field"><label for="seriesRg" data-i18n="settings.series.number">系列编号</label><input id="seriesRg" /><span class="hint" id="seriesRgHint"></span></div>
+                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesRg" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="RG">注册 RG</button></div>
                   </div>
                 </div>
                 <h3 style="margin:1rem 0 0.5rem;font-size:0.95rem" data-i18n="settings.series.activate">激活开票</h3>
@@ -1386,6 +1392,7 @@
       <div class="actions">
         <button type="button" class="secondary hidden" id="btnInvoiceDetailCredit" data-i18n="action.credit">冲销</button>
         <button type="button" class="secondary hidden" id="btnInvoiceDetailDebit" data-i18n="action.debit">借记</button>
+        <button type="button" class="secondary hidden" id="btnInvoiceDetailReceipt" data-i18n="action.receipt">登记收款</button>
         <button type="button" class="secondary" id="btnInvoiceDetailReprint" data-i18n="action.reprint">重打</button>
       </div>
     </div>
@@ -1423,6 +1430,32 @@
       <div class="actions">
         <button type="button" id="btnAdjustSubmit" data-i18n="adjust.confirm_issue">确认签发</button>
         <button type="button" class="secondary" id="btnAdjustConfirmBack" data-i18n="adjust.back">返回</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="receiptModal" class="modal-backdrop hidden">
+    <div class="modal" style="max-width:480px">
+      <h2 data-i18n="receipt.title">登记收款</h2>
+      <p class="hint" id="receiptRemainHint">—</p>
+      <div class="field">
+        <label class="check-row"><input type="checkbox" id="receiptFull" checked /> <span data-i18n="receipt.full">收剩余全部</span></label>
+      </div>
+      <div class="field" id="receiptAmountWrap">
+        <label for="receiptAmount" data-i18n="receipt.amount">本次收款</label>
+        <input id="receiptAmount" inputmode="decimal" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="receiptPay" data-i18n="pay.label">付款方式</label>
+        <select id="receiptPay"></select>
+      </div>
+      <div class="field">
+        <label for="receiptReason" data-i18n="receipt.reason">备注</label>
+        <input id="receiptReason" maxlength="200" />
+      </div>
+      <div class="actions">
+        <button type="button" id="btnReceiptSubmit" data-i18n="receipt.submit">签发收据</button>
+        <button type="button" class="secondary" id="btnReceiptCancel" data-i18n="common.cancel">取消</button>
       </div>
     </div>
   </div>
@@ -1530,7 +1563,9 @@
   const SALE_DOC_TYPES = ['FT', 'FS', 'FR'];
   /** Bill-sync issue types only (FT + FS); FR is manual path. */
   const BILL_SYNC_DOC_TYPES = ['FT', 'FS'];
-  const PAYMENT_METHODS = ['CASH', 'CARD', 'MBWAY', 'MULTIBANCO', 'MIXED', 'OTHER'];
+  const PAYMENT_METHODS = ['CASH', 'CARD', 'MBWAY', 'MULTIBANCO', 'MIXED', 'OTHER', 'ACCOUNT'];
+  /** Settling methods for RG receipt (no ACCOUNT). */
+  const RECEIPT_PAYMENT_METHODS = ['CASH', 'CARD', 'MBWAY', 'MULTIBANCO', 'MIXED', 'OTHER'];
   /** ONLY mainland PT catalog IVA% rates (percent strings → NOR/INT/RED). */
   const PRODUCT_VAT_RATES = ['23.00', '13.00', '6.00'];
   /** ONLY default when creating a product / unknown rate. */
@@ -1559,6 +1594,12 @@
 
   function paymentMethodOptionsHtml() {
     return PAYMENT_METHODS.map((v) =>
+      '<option value="' + v + '">' + FiscalAdminI18n.t('pay.' + v) + '</option>'
+    ).join('');
+  }
+
+  function receiptPaymentOptionsHtml() {
+    return RECEIPT_PAYMENT_METHODS.map((v) =>
       '<option value="' + v + '">' + FiscalAdminI18n.t('pay.' + v) + '</option>'
     ).join('');
   }
@@ -2097,7 +2138,7 @@
   /** ONLY pagination bar for invoice list (FiscalUI.createListPaginationBar). */
   let invoiceListPaginationCtrl = null;
   /** ONLY active document-type tab on invoice list ('' = all, or FT / FS / FR / NC / ND). */
-  const INVOICE_LIST_DOC_TYPES = ['', 'FT', 'FS', 'FR', 'NC', 'ND'];
+  const INVOICE_LIST_DOC_TYPES = ['', 'FT', 'FS', 'FR', 'NC', 'ND', 'RG'];
   /** ONLY invoice type label for empty-state copy. */
   function invoiceListDocTypeLabel(t) {
     const code = String(t || '').trim().toUpperCase();
@@ -2300,9 +2341,9 @@
       invoiceDetailRow(FiscalAdminI18n.t('col.type'), inv.document_type) +
       invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.doc_status'), formatInvoiceDocStatus(inv.document_status)) +
       invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.print_status'), formatInvoicePrintStatus(inv.print_status));
-    if (inv.document_type === 'NC' || inv.document_type === 'ND') {
+    if (inv.document_type === 'NC' || inv.document_type === 'ND' || inv.document_type === 'RG') {
       body += invoiceDetailOriginalRow(inv);
-      if (inv.credit_reason) {
+      if (inv.credit_reason && inv.document_type !== 'RG') {
         body += invoiceDetailRow(inv.document_type === 'ND' ? FiscalAdminI18n.t('invoice.detail.nd_reason') : FiscalAdminI18n.t('invoice.detail.nc_reason'), inv.credit_reason);
       }
     }
@@ -2312,6 +2353,11 @@
     }
     if (isAdjustableOriginal(inv.document_type) && inv.debited_gross_total != null && inv.debited_gross_total !== '') {
       body += invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.debited'), fmtMoney(inv.debited_gross_total));
+    }
+    if (inv.document_type === 'FT' && inv.remaining_receivable_total != null && inv.remaining_receivable_total !== '') {
+      body += invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.settled_issue'), fmtMoney(inv.settled_at_issue_total)) +
+        invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.received'), fmtMoney(inv.received_gross_total)) +
+        invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.receivable'), fmtMoney(inv.remaining_receivable_total));
     }
     body += invoiceDetailHashRow(FiscalAdminI18n.t('invoice.detail.prev_hash'), inv.previous_hash, 'previous_hash') +
       invoiceDetailHashRow('Hash', inv.hash, 'hash');
@@ -2339,6 +2385,16 @@
       delete debitBtn._debitDocId;
       delete debitBtn._debitDetail;
     }
+    const receiptBtn = $('#btnInvoiceDetailReceipt');
+    const canReceipt = invoiceCanReceipt(inv);
+    receiptBtn.classList.toggle('hidden', !canReceipt);
+    if (canReceipt) {
+      receiptBtn._receiptDocId = inv.document_id;
+      receiptBtn._receiptDetail = inv;
+    } else {
+      delete receiptBtn._receiptDocId;
+      delete receiptBtn._receiptDetail;
+    }
   }
 
   /** ONLY credit-button gate (matches setup ready_to_credit). */
@@ -2353,6 +2409,14 @@
     return isAdjustableOriginal(inv.document_type) &&
       ['SIGNED', 'DEBITED_PARTIAL', 'DEBITED_FULL'].includes(inv.document_status) &&
       !!(setupStatusCache && setupStatusCache.ready_to_debit);
+  }
+
+  /** ONLY receipt-button gate (FT + remaining receivable + ready_to_receipt). */
+  function invoiceCanReceipt(inv) {
+    if (String(inv.document_type || '') !== 'FT') return false;
+    if (!(setupStatusCache && setupStatusCache.ready_to_receipt)) return false;
+    const rem = parseFloat(inv.remaining_receivable_total);
+    return Number.isFinite(rem) && rem > 0;
   }
 
   async function openInvoiceDetail(documentId) {
@@ -3092,7 +3156,8 @@
       { ok: st.fs_series_ok, code: st.fs_series_code, input: '#seriesFs', btn: '#btnSeriesFs', hint: '#seriesFsHint', label: 'FS', pill: '#seriesFsPill' },
       { ok: st.fr_series_ok, code: st.fr_series_code, input: '#seriesFr', btn: '#btnSeriesFr', hint: '#seriesFrHint', label: 'FR', pill: '#seriesFrPill', optional: true },
       { ok: st.nc_series_ok, code: st.nc_series_code, input: '#seriesNc', btn: '#btnSeriesNc', hint: '#seriesNcHint', label: 'NC', pill: '#seriesNcPill', optional: true },
-      { ok: st.nd_series_ok, code: st.nd_series_code, input: '#seriesNd', btn: '#btnSeriesNd', hint: '#seriesNdHint', label: 'ND', pill: '#seriesNdPill', optional: true }
+      { ok: st.nd_series_ok, code: st.nd_series_code, input: '#seriesNd', btn: '#btnSeriesNd', hint: '#seriesNdHint', label: 'ND', pill: '#seriesNdPill', optional: true },
+      { ok: st.rg_series_ok, code: st.rg_series_code, input: '#seriesRg', btn: '#btnSeriesRg', hint: '#seriesRgHint', label: 'RG', pill: '#seriesRgPill', optional: true }
     ];
     rows.forEach(r => {
       const inp = $(r.input);
@@ -3860,6 +3925,58 @@
       renderInvoiceDetailModal(Object.assign({}, invoiceListCache.find(i => i.document_id === documentId) || {}, detail));
     } catch (_) { /* ignore */ }
     return res;
+  }
+
+  /** ONLY RG receipt path for FT detail drawer. */
+  async function receiptInvoice(documentId, opts) {
+    const sid = requireStation();
+    const body = {
+      request_id: 'rg-' + Date.now(),
+      station_id: sid,
+      receive_full: !!opts.receive_full,
+      payment_method: opts.payment_method || 'CASH',
+      reason: opts.reason || ''
+    };
+    if (!body.receive_full) body.amount = opts.amount;
+    const res = await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId) + '/receipts', body);
+    if (res.idempotent_hit) {
+      toast(FiscalAdminI18n.t('receipt.toast.dup'), 'info');
+    } else if (res.print_job_id) {
+      await pollPrintJob(res.print_job_id, FiscalAdminI18n.t('receipt.toast.submitted'));
+    }
+    await refreshInvoices();
+    try {
+      const detail = await j('GET', '/local/v1/fiscal-documents/' + encodeURIComponent(documentId));
+      renderInvoiceDetailModal(Object.assign({}, invoiceListCache.find(i => i.document_id === documentId) || {}, detail));
+    } catch (_) { /* ignore */ }
+    return res;
+  }
+
+  let receiptTargetDetail = null;
+
+  function syncReceiptAmountWrap() {
+    const full = $('#receiptFull') && $('#receiptFull').checked;
+    const wrap = $('#receiptAmountWrap');
+    if (wrap) wrap.classList.toggle('hidden', !!full);
+  }
+
+  function openReceiptModal(detail) {
+    receiptTargetDetail = detail;
+    const rem = detail.remaining_receivable_total || '0.00';
+    $('#receiptRemainHint').textContent = FiscalAdminI18n.fmt('receipt.remain_hint', { amount: fmtMoney(rem) });
+    $('#receiptFull').checked = true;
+    $('#receiptAmount').value = rem;
+    $('#receiptReason').value = '';
+    const pay = $('#receiptPay');
+    pay.innerHTML = receiptPaymentOptionsHtml();
+    pay.value = 'CASH';
+    syncReceiptAmountWrap();
+    $('#receiptModal').classList.remove('hidden');
+  }
+
+  function closeReceiptModal() {
+    $('#receiptModal').classList.add('hidden');
+    receiptTargetDetail = null;
   }
 
   function setAdjustTab(mode) {
@@ -5492,6 +5609,35 @@
     if (!btn._debitDocId || !detail) return;
     openAdjustModal('debit', detail);
   };
+  $('#btnInvoiceDetailReceipt').onclick = () => {
+    const btn = $('#btnInvoiceDetailReceipt');
+    const detail = btn._receiptDetail;
+    if (!btn._receiptDocId || !detail) return;
+    openReceiptModal(detail);
+  };
+
+  $('#receiptFull').onchange = () => syncReceiptAmountWrap();
+  $('#btnReceiptCancel').onclick = () => closeReceiptModal();
+  $('#receiptModal').addEventListener('click', e => {
+    if (e.target.id === 'receiptModal') closeReceiptModal();
+  });
+  $('#btnReceiptSubmit').onclick = () => withBusy($('#btnReceiptSubmit'), FiscalAdminI18n.t('common.submitting'), async () => {
+    if (!receiptTargetDetail) return;
+    const receiveFull = !!$('#receiptFull').checked;
+    const amount = ($('#receiptAmount').value || '').trim();
+    if (!receiveFull && !amount) {
+      toast(FiscalAdminI18n.t('receipt.toast.need_amount'), 'error');
+      return;
+    }
+    await receiptInvoice(receiptTargetDetail.document_id, {
+      receive_full: receiveFull,
+      amount: amount,
+      payment_method: ($('#receiptPay').value || 'CASH'),
+      reason: ($('#receiptReason').value || '').trim()
+    });
+    toast(FiscalAdminI18n.t('receipt.toast.ok'), 'success');
+    closeReceiptModal();
+  });
 
   $('#adjustTabFull').onclick = () => setAdjustTab('full');
   $('#adjustTabPartial').onclick = () => setAdjustTab('partial');
@@ -5776,6 +5922,7 @@
   $('#seriesNd').value = 'ND' + y + 'DEMO01';
   $('#seriesFs').value = 'FS' + y + 'DEMO01';
   $('#seriesFr').value = 'FR' + y + 'DEMO01';
+  $('#seriesRg').value = 'RG' + y + 'DEMO01';
   $('#saftYear').value = String(y);
   $('#saftMonth').value = String(new Date().getMonth() + 1);
 
@@ -5845,6 +5992,7 @@
   $('#btnSeriesFr').onclick = () => registerSeries($('#btnSeriesFr'), '#seriesFr', 'FR', 'FR');
   $('#btnSeriesNc').onclick = () => registerSeries($('#btnSeriesNc'), '#seriesNc', 'NC', 'NC');
   $('#btnSeriesNd').onclick = () => registerSeries($('#btnSeriesNd'), '#seriesNd', 'ND', 'ND');
+  $('#btnSeriesRg').onclick = () => registerSeries($('#btnSeriesRg'), '#seriesRg', 'RG', 'RG');
 
   /** ONLY Admin path to POST /local/v1/setup/series/register. */
   async function registerSeries(btn, inputId, docType, label) {

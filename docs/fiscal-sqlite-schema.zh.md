@@ -209,7 +209,7 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 
 | 字段 | 取值 |
 |------|------|
-| `document_type` | `FT` `FS` `FR` `NC` `ND` |
+| `document_type` | `FT` `FS` `FR` `NC` `ND` `RG` |
 | `series.status` | `PENDING` `ACTIVE` `FAILED` `TERMINATED` |
 | `document_status` | `SIGNED` `CREDITED_PARTIAL` `CREDITED_FULL` `DEBITED_PARTIAL` `DEBITED_FULL` |
 | `print_status`（单据） | `NOT_PRINTED` `PENDING` `PROCESSING` `PRINTED` `PRINT_FAILED` `REPRINTED` |
@@ -465,6 +465,7 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | display_meta_json | TEXT | 否 | 桌号展示名等，不进 SAF-T |
 | credited_gross_total | TEXT | 是 | 默认 `"0.00"` |
 | debited_gross_total | TEXT | 是 | 默认 `"0.00"`；ND 累计借记额 |
+| received_gross_total | TEXT | 是 | 默认 `"0.00"`；原 FT 经 RG 累计已收（见 [`fiscal-rg.zh.md`](fiscal-rg.zh.md)） |
 | created_at | TEXT | 是 | 签发提交时间 UTC |
 | fiscal_terminal_id | TEXT | 否 | 开票电脑：`fiscal_terminals.id` 或哨兵 `loopback`（本机）；旧票可空 |
 | fiscal_terminal_label | TEXT | 否 | 开票时冻结展示名（备注，空则 IP） |
@@ -538,6 +539,18 @@ MVP 不进 SAF-T `DocumentTotals/Payment`。`tendered` / `change_due` 为收银�
 | original_line_id | TEXT | 是 | |
 | original_line_number | INTEGER | 是 | |
 | reason | TEXT | 是 | References.Reason |
+
+### 6.14b `invoice_receipt_references`（RG）
+
+| 列 | 类型 | 必填 | 说明 |
+|----|------|------|------|
+| id | TEXT PK | 是 | |
+| receipt_invoice_id | TEXT UQ FK | 是 | → invoices（RG） |
+| original_invoice_id | TEXT FK | 是 | → invoices（FT） |
+| original_invoice_no | TEXT | 是 | 完整 InvoiceNo |
+| amount | TEXT | 是 | 本张 RG 收款额 |
+
+**唯一写法：** `store.IssueRG` 事务内 INSERT；读者 `store.ReceiptOriginalForDocument`。
 
 ### 6.15 `idempotency_keys`
 

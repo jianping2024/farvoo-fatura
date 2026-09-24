@@ -2,6 +2,17 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.18
+
+**RG 收款收据（Recibo）**
+
+- **唯一写法 · RG 签发：**仅 `service.IssueReceipt` → `store.IssueRG`（`POST .../receipts`）；原票仅 FT；未收余额仅 `ReceiptRemainingForInvoice`。
+- **唯一写法 · RG→FT 引用：**仅 `invoice_receipt_references` + `ReceiptOriginalForDocument`（不复用 line_references）。
+- **唯一写法 · SAF-T Payments：**仅 `LoadSAFTPaymentsForPeriod` + `saft.writePayments`（`PaymentType=RG`）；RG **不**进 SalesInvoices。
+- **唯一写法 · 挂账付款：**`domain.PaymentAccount` 不计开票时已结；Admin 付款可选 ACCOUNT。
+- Admin：FT 详情「登记收款」；发票 Tab / 可选 RG 系列；票号前缀 `Recibo:`。
+- 回归：`scripts/fiscal-rg-regression.mjs`；设计 [`fiscal-rg.zh.md`](../../docs/fiscal-rg.zh.md)。
+
 ## 0.5.17
 
 **Admin i18n 残留一次收齐（多 attr / 来源列 / 系列状态）**

@@ -41,7 +41,7 @@ func (d *DB) InvoiceRevenueSummary(q InvoiceRevenueSummaryQuery) (*InvoiceRevenu
 	to := strings.TrimSpace(q.To)
 	termID := strings.TrimSpace(q.FiscalTerminalID)
 
-	where := `FROM invoices i WHERE i.store_id = ?`
+	where := `FROM invoices i WHERE i.store_id = ? AND i.document_type != 'RG'`
 	args := []any{storeID}
 	if from != "" {
 		where += ` AND i.invoice_date >= ?`

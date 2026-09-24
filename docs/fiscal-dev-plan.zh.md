@@ -18,6 +18,8 @@
 | restaurant-ordering `docs/technical/farvoo-fiscal-bill-sync-api.zh.md` | **餐馆 Farvoo ↔ Agent 账单同步**（M4 产品权威） |
 | restaurant-ordering `docs/technical/farvoo-fiscal-agent-integration.zh.md` | 总览（只读；**餐馆开票路径以 bill-sync-api 为准**，见 M4 §P0） |
 | [`print-agent-lessons.zh.md`](print-agent-lessons.zh.md) | 打印/安装器踩坑 |
+| [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) | 九种单据开票场景与测试方案（已有 FT/FS/FR/NC/ND + 规划 RG/PF/GR/GT） |
+| [`fiscal-rg.zh.md`](fiscal-rg.zh.md) | **RG 收款收据**行为与唯一写路径（已落地） |
 
 冲突时：DDL / schema 定列；需求定业务规则；**谁先做哪一刀以本文为准**。
 

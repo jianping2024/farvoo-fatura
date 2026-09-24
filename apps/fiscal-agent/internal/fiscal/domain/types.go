@@ -11,6 +11,7 @@ const (
 	DocumentFR DocumentType = "FR"
 	DocumentNC DocumentType = "NC"
 	DocumentND DocumentType = "ND"
+	DocumentRG DocumentType = "RG"
 )
 
 // DocumentStatus is the lifecycle of a signed fiscal document (no DRAFT in DB).
@@ -123,6 +124,21 @@ type DebitNoteRequest struct {
 	Reason              string
 	DebitFull           bool
 	Lines               []CreditLineRequest
+}
+
+// ReceiptRequest wraps RG (recibo) issuance against an FT.
+type ReceiptRequest struct {
+	StoreID             string
+	RequestID           string
+	OriginalInvoiceID   string
+	OperatorID          string
+	StationID           string
+	FiscalTerminalID    string
+	FiscalTerminalLabel string
+	Amount              string // required unless ReceiveFull
+	ReceiveFull         bool
+	PaymentMethod       string
+	Reason              string
 }
 
 // IssueRequest wraps a sale snapshot with idempotency keys.

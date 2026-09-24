@@ -137,6 +137,11 @@ func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps Handle
 		out["original_invoice_no"] = detail.OriginalInvoiceNo
 		out["credit_reason"] = detail.CreditReason
 	}
+	if detail.RemainingReceivableTotal != "" {
+		out["received_gross_total"] = detail.ReceivedGrossTotal
+		out["settled_at_issue_total"] = detail.SettledAtIssueTotal
+		out["remaining_receivable_total"] = detail.RemainingReceivableTotal
+	}
 	writeJSON(w, http.StatusOK, out)
 }
 
@@ -289,6 +294,74 @@ func handleDebitNote(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		Reason:              body.Reason,
 		DebitFull:           debitFull,
 		Lines:               body.Lines,
+	})
+	if err != nil {
+		var ce *service.CodedError
+		if errors.As(err, &ce) && ce.Code == service.ErrCodeNotFound {
+			writeErr(w, http.StatusNotFound, "not_found", ce.Msg)
+			return
+		}
+		writeCoded(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"document_id":     res.DocumentID,
+		"invoice_no":      res.InvoiceNo,
+		"atcud":           res.ATCUD,
+		"document_type":   res.DocumentType,
+		"document_status": res.DocumentStatus,
+		"print_job_id":    res.PrintJobID,
+		"print_status":    res.PrintStatus,
+		"issued_at":       res.IssuedAt.UTC().Format(time.RFC3339),
+		"idempotent_hit":  res.IdempotentHit,
+	})
+}
+
+func handleReceipt(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	if deps.Fiscal == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
+		return
+	}
+	documentID := r.PathValue("documentId")
+	var body struct {
+		RequestID     string `json:"request_id"`
+		OperatorID    string `json:"operator_id"`
+		StationID     string `json:"station_id"`
+		Amount        string `json:"amount"`
+		ReceiveFull   *bool  `json:"receive_full"`
+		PaymentMethod string `json:"payment_method"`
+		Reason        string `json:"reason"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
+		return
+	}
+	id, ok := RequireOperatorID(w, r)
+	if !ok {
+		return
+	}
+	body.OperatorID = id
+	receiveFull := false
+	if body.ReceiveFull != nil {
+		receiveFull = *body.ReceiveFull
+	}
+	termID, termLabel, err := resolveIssueFiscalTerminal(r, deps)
+	if err != nil {
+		writeIssueTerminalErr(w, err)
+		return
+	}
+	res, err := deps.Fiscal.IssueReceipt(r.Context(), domain.ReceiptRequest{
+		StoreID:             deps.StoreID,
+		RequestID:           body.RequestID,
+		OriginalInvoiceID:   documentID,
+		OperatorID:          body.OperatorID,
+		StationID:           body.StationID,
+		FiscalTerminalID:    termID,
+		FiscalTerminalLabel: termLabel,
+		Amount:              body.Amount,
+		ReceiveFull:         receiveFull,
+		PaymentMethod:       body.PaymentMethod,
+		Reason:              body.Reason,
 	})
 	if err != nil {
 		var ce *service.CodedError

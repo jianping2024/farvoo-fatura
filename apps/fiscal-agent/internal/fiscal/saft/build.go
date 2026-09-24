@@ -23,6 +23,7 @@ type BuildInput struct {
 	StartDate string
 	EndDate   string
 	Invoices  []store.SAFTInvoice
+	Payments  []store.SAFTPayment // RG receipts → Payments table
 }
 
 // BuildResult is SAF-T XML output and validation outcome.
@@ -87,17 +88,24 @@ func Build(in BuildInput) (*BuildResult, error) {
 			totalGross = totalGross.Add(g)
 		}
 	}
+	for _, pay := range in.Payments {
+		cid := customerKey(pay.Customer)
+		customers[cid] = pay.Customer
+	}
 	writeMasterFiles(&b, customers, products, taxes, checkText)
 	b.WriteString(`</MasterFiles>`)
 
-	b.WriteString(`<SourceDocuments><SalesInvoices>`)
+	b.WriteString(`<SourceDocuments>`)
+	b.WriteString(`<SalesInvoices>`)
 	fmt.Fprintf(&b, `<NumberOfEntries>%d</NumberOfEntries>`, len(in.Invoices))
 	fmt.Fprintf(&b, `<TotalDebit>%s</TotalDebit>`, compliance.Money2(totalDebit))
 	fmt.Fprintf(&b, `<TotalCredit>%s</TotalCredit>`, compliance.Money2(totalCredit))
 	for _, inv := range in.Invoices {
 		writeInvoice(&b, inv, checkText)
 	}
-	b.WriteString(`</SalesInvoices></SourceDocuments>`)
+	b.WriteString(`</SalesInvoices>`)
+	writePayments(&b, in.Payments, checkText)
+	b.WriteString(`</SourceDocuments>`)
 	b.WriteString(`</AuditFile>`)
 
 	xmlUTF8 := b.String()
@@ -281,6 +289,61 @@ func writeLine(b *strings.Builder, inv store.SAFTInvoice, ln store.SAFTLine, che
 		b.WriteString(`</References>`)
 	}
 	b.WriteString(`</Line>`)
+}
+
+func writePayments(b *strings.Builder, payments []store.SAFTPayment, check func(string, string)) {
+	if len(payments) == 0 {
+		return
+	}
+	totalCredit := decimal.Zero
+	for _, p := range payments {
+		g, _ := compliance.ParseDecimal(p.GrossTotal)
+		totalCredit = totalCredit.Add(g)
+	}
+	b.WriteString(`<Payments>`)
+	fmt.Fprintf(b, `<NumberOfEntries>%d</NumberOfEntries>`, len(payments))
+	writeElem(b, "TotalDebit", "0.00")
+	writeElem(b, "TotalCredit", compliance.Money2(totalCredit))
+	for _, p := range payments {
+		writePayment(b, p, check)
+	}
+	b.WriteString(`</Payments>`)
+}
+
+func writePayment(b *strings.Builder, p store.SAFTPayment, check func(string, string)) {
+	check("payment_ref", p.PaymentRefNo)
+	b.WriteString(`<Payment>`)
+	writeElem(b, "PaymentRefNo", p.PaymentRefNo)
+	writeElem(b, "ATCUD", p.ATCUD)
+	b.WriteString(`<DocumentStatus>`)
+	writeElem(b, "PaymentStatus", "N")
+	writeElem(b, "PaymentStatusDate", p.SystemEntryDate)
+	writeElem(b, "SourceID", p.SourceID)
+	b.WriteString(`</DocumentStatus>`)
+	writeElem(b, "PaymentType", "RG")
+	b.WriteString(`<PaymentMethod>`)
+	writeElem(b, "PaymentMechanism", PaymentMechanism(p.PaymentMethod))
+	writeElem(b, "PaymentAmount", p.GrossTotal)
+	writeElem(b, "PaymentDate", p.TransactionDate)
+	b.WriteString(`</PaymentMethod>`)
+	writeElem(b, "SourceID", p.SourceID)
+	writeElem(b, "SystemEntryDate", p.SystemEntryDate)
+	writeElem(b, "TransactionDate", p.TransactionDate)
+	writeElem(b, "CustomerID", p.Customer.CustomerTaxID)
+	b.WriteString(`<Line>`)
+	fmt.Fprintf(b, `<LineNumber>%d</LineNumber>`, 1)
+	b.WriteString(`<SourceDocumentID>`)
+	writeElem(b, "OriginatingON", p.OriginalInvoiceNo)
+	writeElem(b, "InvoiceDate", p.OriginalInvoiceDate)
+	b.WriteString(`</SourceDocumentID>`)
+	writeElem(b, "CreditAmount", p.GrossTotal)
+	b.WriteString(`</Line>`)
+	b.WriteString(`<DocumentTotals>`)
+	writeElem(b, "TaxPayable", "0.00")
+	writeElem(b, "NetTotal", p.GrossTotal)
+	writeElem(b, "GrossTotal", p.GrossTotal)
+	b.WriteString(`</DocumentTotals>`)
+	b.WriteString(`</Payment>`)
 }
 
 func writeElem(b *strings.Builder, name, value string) {

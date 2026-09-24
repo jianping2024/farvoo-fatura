@@ -9,6 +9,7 @@ const (
 	PaymentMultibanco = "MULTIBANCO"
 	PaymentMixed      = "MIXED"
 	PaymentOther      = "OTHER"
+	PaymentAccount    = "ACCOUNT" // FT credit sale; does NOT settle at issue (RG later)
 )
 
 // knownPaymentMethods is the ONLY ordered schema list for payment_method codes.
@@ -19,6 +20,13 @@ var knownPaymentMethods = []string{
 	PaymentMultibanco,
 	PaymentMixed,
 	PaymentOther,
+	PaymentAccount,
+}
+
+// IsSettlingPaymentMethod reports whether a payment counts toward settled-at-issue.
+// ACCOUNT is hang-account only; real settlement is via later RG (or non-ACCOUNT at issue).
+func IsSettlingPaymentMethod(m string) bool {
+	return NormalizePaymentMethod(m) != PaymentAccount
 }
 
 // KnownPaymentMethods returns schema-allowed payment_method codes (copy).

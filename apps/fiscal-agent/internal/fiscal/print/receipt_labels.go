@@ -31,6 +31,7 @@ type ReceiptLabels struct {
 	PayMultibanco     string
 	PayMixed          string
 	PayOther          string
+	PayAccount        string
 	PayFallback       string
 	Tendered          string // Valor entregue
 	ChangeDue         string // Troco
@@ -67,6 +68,7 @@ func receiptLabels(invoiceLocale string) ReceiptLabels {
 			PayMultibanco:     "Multibanco",
 			PayMixed:          "Mixed",
 			PayOther:          "Other",
+			PayAccount:        "On account",
 			PayFallback:       "Payment",
 			Tendered:          "Tendered",
 			ChangeDue:         "Change",
@@ -98,6 +100,7 @@ func receiptLabels(invoiceLocale string) ReceiptLabels {
 			PayMultibanco:     "Multibanco",
 			PayMixed:          "Misto",
 			PayOther:          "Outro",
+			PayAccount:        "Conta corrente",
 			PayFallback:       "Pagamento",
 			Tendered:          "Valor entregue",
 			ChangeDue:         "Troco",

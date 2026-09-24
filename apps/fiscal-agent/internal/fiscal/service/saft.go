@@ -64,13 +64,17 @@ func (s *FiscalService) ExportSAFT(_ context.Context, in ExportSAFTInput) (*Expo
 	if err != nil {
 		return nil, err
 	}
-	if len(invoices) == 0 {
+	payments, err := s.db.LoadSAFTPaymentsForPeriod(storeID, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+	if len(invoices) == 0 && len(payments) == 0 {
 		return nil, coded(ErrCodeNoInvoices, "no invoices in period")
 	}
 
 	built, err := saft.Build(saft.BuildInput{
 		Taxpayer: taxpayer, Year: in.Year, Month: in.Month,
-		StartDate: startDate, EndDate: endDate, Invoices: invoices,
+		StartDate: startDate, EndDate: endDate, Invoices: invoices, Payments: payments,
 	})
 	if err != nil {
 		return nil, err
@@ -102,7 +106,7 @@ func (s *FiscalService) ExportSAFT(_ context.Context, in ExportSAFTInput) (*Expo
 		PeriodYear: in.Year, PeriodMonth: in.Month,
 		StartDate: startDate, EndDate: endDate,
 		FileName: fileName, FilePath: filePath, FileSHA256: fileSHA,
-		InvoiceCount: len(invoices),
+		InvoiceCount: len(invoices) + len(payments),
 		TotalNet: built.TotalNet, TotalTax: built.TotalTax, TotalGross: built.TotalGross,
 		ValidationStatus: built.ValidationStatus, ValidationErrors: valErrors,
 		CreatedBy: operatorID,
@@ -111,11 +115,11 @@ func (s *FiscalService) ExportSAFT(_ context.Context, in ExportSAFTInput) (*Expo
 		return nil, err
 	}
 	_ = s.db.InsertAuditLog(operatorID, "EXPORT_SAFT", "saft_exports", row.ID,
-		fmt.Sprintf(`{"year":%d,"month":%d,"invoice_count":%d}`, in.Year, in.Month, len(invoices)))
+		fmt.Sprintf(`{"year":%d,"month":%d,"invoice_count":%d}`, in.Year, in.Month, len(invoices)+len(payments)))
 
 	return &ExportSAFTResult{
 		ExportID: row.ID, FileName: fileName, FilePath: filePath, FileSHA256: fileSHA,
-		InvoiceCount: len(invoices), TotalNet: built.TotalNet, TotalTax: built.TotalTax, TotalGross: built.TotalGross,
+		InvoiceCount: len(invoices) + len(payments), TotalNet: built.TotalNet, TotalTax: built.TotalTax, TotalGross: built.TotalGross,
 		ValidationStatus: built.ValidationStatus, ValidationErrors: valErrors,
 	}, nil
 }

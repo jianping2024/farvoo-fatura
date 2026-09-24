@@ -41,7 +41,8 @@ func (s *FiscalService) ListInvoices(q store.InvoiceListQuery) (*store.InvoiceLi
 	return s.db.ListInvoices(q)
 }
 
-// GetInvoiceDetail returns one invoice with credit/debit remaining (FT/FS/FR) or NC/ND original ref.
+// GetInvoiceDetail returns one invoice with credit/debit remaining (FT/FS/FR),
+// receivable (FT), or NC/ND/RG original ref.
 func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetail, error) {
 	d, err := s.db.GetInvoiceDetail(documentID)
 	if errors.Is(err, store.ErrNotFound) {
@@ -69,6 +70,17 @@ func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetai
 			d.DebitedGrossTotal = drem.DebitedGrossTotal
 			d.DebitLines = drem.Lines
 		}
+		if domain.IsReceiptableOriginalDocumentType(d.DocumentType) {
+			rrem, err := s.db.ReceiptRemainingForInvoice(documentID)
+			if err != nil {
+				return d, err
+			}
+			if rrem != nil {
+				d.ReceivedGrossTotal = rrem.ReceivedGrossTotal
+				d.SettledAtIssueTotal = rrem.SettledAtIssueTotal
+				d.RemainingReceivableTotal = rrem.RemainingReceivableTotal
+			}
+		}
 	case d.DocumentType == domain.DocumentNC, d.DocumentType == domain.DocumentND:
 		orig, err := s.db.CorrectiveOriginalForDocument(documentID)
 		if err != nil {
@@ -78,6 +90,15 @@ func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetai
 			d.OriginalInvoiceID = orig.OriginalInvoiceID
 			d.OriginalInvoiceNo = orig.OriginalInvoiceNo
 			d.CreditReason = orig.CreditReason
+		}
+	case d.DocumentType == domain.DocumentRG:
+		orig, err := s.db.ReceiptOriginalForDocument(documentID)
+		if err != nil {
+			return d, err
+		}
+		if orig != nil {
+			d.OriginalInvoiceID = orig.OriginalInvoiceID
+			d.OriginalInvoiceNo = orig.OriginalInvoiceNo
 		}
 	}
 	return d, nil

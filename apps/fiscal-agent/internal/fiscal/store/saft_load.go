@@ -168,6 +168,59 @@ func (d *DB) loadNCReferences(invoiceID string) (map[int]ncLineRef, error) {
 	return out, rows.Err()
 }
 
+// SAFTPayment is one RG receipt for SAF-T Payments table.
+type SAFTPayment struct {
+	ID                  string
+	PaymentRefNo        string
+	ATCUD               string
+	TransactionDate     string
+	SystemEntryDate     string
+	SourceID            string
+	GrossTotal          string
+	PaymentMethod       string
+	Customer            SAFTCustomer
+	OriginalInvoiceNo   string
+	OriginalInvoiceDate string
+}
+
+// LoadSAFTPaymentsForPeriod is the ONLY reader for SAF-T Payments (RG) in a month.
+func (d *DB) LoadSAFTPaymentsForPeriod(storeID, startDate, endDate string) ([]SAFTPayment, error) {
+	rows, err := d.SQL.Query(`SELECT i.id, i.invoice_no, i.atcud, i.invoice_date, i.system_entry_date,
+		i.source_id, i.gross_total,
+		COALESCE((SELECT method FROM invoice_payments WHERE invoice_id = i.id ORDER BY paid_at LIMIT 1), 'CASH'),
+		cs.customer_tax_id, cs.company_name, cs.address_detail, cs.city, cs.postal_code, cs.country,
+		cs.account_id, cs.self_billing_indicator,
+		r.original_invoice_no,
+		oi.invoice_date
+		FROM invoices i
+		JOIN invoice_customer_snapshots cs ON cs.invoice_id = i.id
+		JOIN invoice_receipt_references r ON r.receipt_invoice_id = i.id
+		JOIN invoices oi ON oi.id = r.original_invoice_id
+		WHERE i.store_id = ? AND i.invoice_date >= ? AND i.invoice_date <= ?
+		AND i.document_type = 'RG'
+		ORDER BY i.invoice_date, i.created_at`, storeID, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SAFTPayment
+	for rows.Next() {
+		var p SAFTPayment
+		if err := rows.Scan(
+			&p.ID, &p.PaymentRefNo, &p.ATCUD, &p.TransactionDate, &p.SystemEntryDate,
+			&p.SourceID, &p.GrossTotal, &p.PaymentMethod,
+			&p.Customer.CustomerTaxID, &p.Customer.CompanyName, &p.Customer.AddressDetail,
+			&p.Customer.City, &p.Customer.PostalCode, &p.Customer.Country,
+			&p.Customer.AccountID, &p.Customer.SelfBillingIndicator,
+			&p.OriginalInvoiceNo, &p.OriginalInvoiceDate,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
 // SAFTExportRow is one saft_exports record.
 type SAFTExportRow struct {
 	ID               string `json:"id"`

@@ -4,7 +4,7 @@ import "testing"
 
 func TestKnownPaymentMethodsStable(t *testing.T) {
 	want := []string{
-		PaymentCash, PaymentCard, PaymentMBWay, PaymentMultibanco, PaymentMixed, PaymentOther,
+		PaymentCash, PaymentCard, PaymentMBWay, PaymentMultibanco, PaymentMixed, PaymentOther, PaymentAccount,
 	}
 	got := KnownPaymentMethods()
 	if len(got) != len(want) {
@@ -35,6 +35,15 @@ func TestIsKnownPaymentMethod(t *testing.T) {
 	}
 	if NormalizePaymentMethod("") != PaymentCash {
 		t.Fatal("empty normalizes to CASH")
+	}
+}
+
+func TestIsSettlingPaymentMethod(t *testing.T) {
+	if !IsSettlingPaymentMethod(PaymentCash) {
+		t.Fatal("CASH settles")
+	}
+	if IsSettlingPaymentMethod(PaymentAccount) {
+		t.Fatal("ACCOUNT must not settle at issue")
 	}
 }
 

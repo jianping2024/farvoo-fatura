@@ -332,6 +332,7 @@ type SetupStatus struct {
 	NDSeriesOK            bool   `json:"nd_series_ok"`
 	FSSeriesOK            bool   `json:"fs_series_ok"`
 	FRSeriesOK            bool   `json:"fr_series_ok"`
+	RGSeriesOK            bool   `json:"rg_series_ok"`
 	ActivatedOK           bool   `json:"activated_ok"`
 	OperatorOK            bool   `json:"operator_ok"`
 	SeriesCode            string `json:"series_code,omitempty"`
@@ -344,9 +345,12 @@ type SetupStatus struct {
 	FSValidation          string `json:"fs_validation_code,omitempty"`
 	FRSeriesCode          string `json:"fr_series_code,omitempty"`
 	FRValidation          string `json:"fr_validation_code,omitempty"`
+	RGSeriesCode          string `json:"rg_series_code,omitempty"`
+	RGValidation          string `json:"rg_validation_code,omitempty"`
 	ReadyToIssue          bool   `json:"ready_to_issue"`
 	ReadyToCredit         bool   `json:"ready_to_credit"`
 	ReadyToDebit          bool   `json:"ready_to_debit"`
+	ReadyToReceipt        bool   `json:"ready_to_receipt"`
 	OperatorCanIssueNC    bool   `json:"operator_can_issue_nc"`
 	LocalProvisionAllowed bool   `json:"local_provision_allowed"`
 	FiscalProfileOK       bool   `json:"fiscal_profile_ok"`
@@ -409,6 +413,15 @@ func (d *DB) GetSetupStatus(storeID string) (*SetupStatus, error) {
 		s.FRSeriesCode = frCode.String
 		s.FRValidation = frVal.String
 	}
+	var rgCode, rgVal sql.NullString
+	err = d.SQL.QueryRow(`SELECT series_code, validation_code FROM series
+		WHERE store_id=? AND document_type='RG' AND status='ACTIVE' AND validation_code IS NOT NULL AND validation_code != ''
+		ORDER BY fiscal_year DESC LIMIT 1`, storeID).Scan(&rgCode, &rgVal)
+	if err == nil {
+		s.RGSeriesOK = true
+		s.RGSeriesCode = rgCode.String
+		s.RGValidation = rgVal.String
+	}
 	_ = d.SQL.QueryRow(`SELECT COUNT(1) FROM signing_keys WHERE status='ACTIVE'`).Scan(&n)
 	s.ActivatedOK = n > 0
 	n, err = d.CountActiveOperatorsWithPIN(storeID)
@@ -428,5 +441,6 @@ func (d *DB) GetSetupStatus(storeID string) (*SetupStatus, error) {
 	// ready_to_* includes can_issue_nc so Admin checklist matches detail Credit/Debit buttons.
 	s.ReadyToCredit = s.NCSeriesOK && s.ActivatedOK && s.OperatorOK && s.OperatorCanIssueNC
 	s.ReadyToDebit = s.NDSeriesOK && s.ActivatedOK && s.OperatorOK && s.OperatorCanIssueNC
+	s.ReadyToReceipt = s.RGSeriesOK && s.ActivatedOK && s.OperatorOK
 	return s, nil
 }
