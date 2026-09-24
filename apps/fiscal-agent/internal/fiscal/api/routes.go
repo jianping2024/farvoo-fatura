@@ -302,7 +302,7 @@ func handleDevBillSyncPull(w http.ResponseWriter, r *http.Request, deps HandlerD
 	svc := deps.Fiscal
 	n, err := (&billsync.Puller{
 		APIBase: apiBase, JWT: jwt, DB: svc.DB(),
-		ProcessJob: func(ctx context.Context, job billsync.CloudJob) (string, error) {
+		ProcessJob: func(ctx context.Context, job billsync.CloudJob) (string, string, error) {
 			return svc.ProcessBillSyncJob(ctx, job)
 		},
 	}).PullAndIngest(r.Context())

@@ -10,22 +10,26 @@
 
 ## 1. 一句话
 
-Farvoo 结账「打印发票」复用云端 `bill_sync_jobs` 管道；Agent 拉取后若载荷 `auto_issue=true`，在写入收银账单草稿后**自动** `IssueFromBillDraft` 并出纸；ack 成功可带回 `invoice_no`。浏览器**不**直连 Local `/issue`。
+Farvoo 结账「打印发票」复用云端 `bill_sync_jobs` 管道；Agent 拉取后若载荷 `auto_issue=true`，在写入收银账单草稿后**自动** `IssueFromBillDraft` 并出纸；若已开过票则 Farvoo 挂 `reprint_document_id`，Agent **仅**调已有 `ReprintDocument`（不重签）。ack 成功带回 `invoice_no` + `document_id`（云端副本，供下次重打）。浏览器**不**直连 Local `/issue` 或 `/reprint`。
 
 ---
 
 ## 2. 流程
 
 ```text
-Farvoo 组装载荷（含 auto_issue + 购方/付款/document_type）
+首次：Farvoo 组装载荷（含 auto_issue + 购方/付款/document_type）
   → 云端 bill_sync_jobs pending
   → Agent PullAndIngest → service.IngestBillSyncJob
        → UpsertBillDraftOpen（+ products）
        → auto_issue → IssueFromBillDraft → 出纸
-  → ack succeeded { invoice_no? }
+  → ack succeeded { invoice_no, document_id }
+
+重打：Farvoo 组装载荷（仅 reprint_document_id；同一 bill_sync 管道）
+  → Agent IngestBillSyncJob → ReprintDocument（已有路径）→ 出纸
+  → ack succeeded { invoice_no, document_id }
 ```
 
-无 `auto_issue`（或 `false`）：行为与旧同步关台相同——只落草稿，店员在 Admin 手动签发。
+无 `auto_issue`（或 `false`）且无 `reprint_document_id`：行为与旧同步关台相同——只落草稿，店员在 Admin 手动签发。
 
 ---
 

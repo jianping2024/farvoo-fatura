@@ -37,10 +37,10 @@ func fiscalBillSyncPuller(cfg *config) *billsync.Puller {
 	svc := embeddedFiscal.Service
 	return &billsync.Puller{
 		APIBase: cfg.APIBase, JWT: cfg.AgentJWT, DB: embeddedFiscal.DB,
-		ProcessJob: func(ctx context.Context, job billsync.CloudJob) (string, error) {
+		ProcessJob: func(ctx context.Context, job billsync.CloudJob) (string, string, error) {
 			if svc == nil {
 				_, err := billsync.IngestCloudJob(embeddedFiscal.DB, job)
-				return "", err
+				return "", "", err
 			}
 			return svc.ProcessBillSyncJob(ctx, job)
 		},

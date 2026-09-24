@@ -52,6 +52,8 @@ type Snapshot struct {
 	IssueMode      string `json:"issue_mode,omitempty"`    // whole_table|person; empty → from scope_type
 	IssueScopeID   string `json:"issue_scope_id,omitempty"`
 	ScopeID        string `json:"scope_id,omitempty"` // person alias when issue_scope_id empty
+	// ReprintDocumentID: when set, Agent only calls existing ReprintDocument (no ingest/re-sign).
+	ReprintDocumentID string `json:"reprint_document_id,omitempty"`
 }
 
 // Line is a sale line (qty/line_gross not stored in product master).

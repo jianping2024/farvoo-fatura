@@ -158,9 +158,39 @@ func TestProcessBillSyncJob_ReturnsInvoiceNo(t *testing.T) {
 			{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
 		},
 	})
-	no, err := svc.ProcessBillSyncJob(context.Background(), billsync.CloudJob{ID: "jp", Payload: payload})
-	if err != nil || no == "" {
-		t.Fatalf("invoice_no=%q err=%v", no, err)
+	no, docID, err := svc.ProcessBillSyncJob(context.Background(), billsync.CloudJob{ID: "jp", Payload: payload})
+	if err != nil || no == "" || docID == "" {
+		t.Fatalf("invoice_no=%q document_id=%q err=%v", no, docID, err)
+	}
+}
+
+func TestIngestBillSyncJob_ReprintUsesExistingDocument(t *testing.T) {
+	dir := t.TempDir()
+	_, svc := seedFiscal(t, dir)
+	issuePayload, _ := json.Marshal(billsync.Snapshot{
+		RequestID: "req-rp-issue", SourceSaleID: "sale-rp", ScopeType: "whole_table",
+		GrossTotal: "1.00", AutoIssue: true, DocumentType: "FS", PaymentMethod: "CASH",
+		Lines: []billsync.Line{
+			{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+		},
+	})
+	issued, err := svc.IngestBillSyncJob(context.Background(), billsync.CloudJob{ID: "j-issue", Payload: issuePayload})
+	if err != nil || issued.Issue == nil || issued.Issue.DocumentID == "" {
+		t.Fatalf("issue first: %+v err=%v", issued, err)
+	}
+	reprintPayload, _ := json.Marshal(billsync.Snapshot{
+		RequestID: "req-rp-reprint", SourceSaleID: "sale-rp",
+		ReprintDocumentID: issued.Issue.DocumentID,
+	})
+	out, err := svc.IngestBillSyncJob(context.Background(), billsync.CloudJob{ID: "j-reprint", Payload: reprintPayload})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Issue == nil || out.Issue.DocumentID != issued.Issue.DocumentID {
+		t.Fatalf("reprint must reuse document_id, got %+v want %s", out.Issue, issued.Issue.DocumentID)
+	}
+	if out.Issue.InvoiceNo != issued.Issue.InvoiceNo {
+		t.Fatalf("reprint invoice_no=%q want %q", out.Issue.InvoiceNo, issued.Issue.InvoiceNo)
 	}
 }
 

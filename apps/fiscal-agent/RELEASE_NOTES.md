@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.24
+
+**Farvoo「打印发票」重打：复用现有 ReprintDocument（同 bill_sync 管道）**
+
+- **唯一写法 · 重打：**`IngestBillSyncJob` 见 `reprint_document_id` → 仅调已有 `ReprintDocument`（不重签）；ack 带回 `invoice_no` + `document_id`。
+- **唯一写法 · ProcessJob：**`(invoiceNo, documentID, error)` → pull ack；禁止第二套 hang-queue / 浏览器直连 Local reprint。
+- 钉死：`TestIngestBillSyncJob_ReprintUsesExistingDocument`；`TestProcessBillSyncJob_ReturnsInvoiceNo`（含 document_id）。
+
 ## 0.5.23
 
 **Farvoo CASH 收款：挂账式开钱箱（cloud hang-queue）**

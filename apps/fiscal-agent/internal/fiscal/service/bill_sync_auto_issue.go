@@ -55,7 +55,8 @@ func (s *FiscalService) ResolveAutoIssueContext() (AutoIssueContext, error) {
 	}, nil
 }
 
-// IngestBillSyncJob is the ONLY service entry for PullAndIngest: persist draft, optionally auto-issue.
+// IngestBillSyncJob is the ONLY service entry for PullAndIngest: persist draft, optionally auto-issue, or reprint.
+// When reprint_document_id is set: only ReprintDocument (existing path; no re-sign).
 // When auto_issue=true: uses Farvoo document_type as-is (required FT|FS); empty customer_nif → scatter via ApplyCustomerOverride.
 // Person auto_issue after partial issue reuses open draft (does not re-Upsert / overwrite allocation).
 func (s *FiscalService) IngestBillSyncJob(ctx context.Context, job billsync.CloudJob) (*BillSyncIngestResult, error) {
@@ -65,6 +66,32 @@ func (s *FiscalService) IngestBillSyncJob(ctx context.Context, job billsync.Clou
 	var snap billsync.Snapshot
 	if err := json.Unmarshal(job.Payload, &snap); err != nil {
 		return nil, billsync.NewIngestError(billsync.CodeValidationFailed, "payload json: "+err.Error())
+	}
+
+	if reprintID := strings.TrimSpace(snap.ReprintDocumentID); reprintID != "" {
+		aic, err := s.ResolveAutoIssueContext()
+		if err != nil {
+			return nil, mapAutoIssueErr(err)
+		}
+		if _, err := s.ReprintDocument(ctx, reprintID, aic.OperatorID, aic.StationID); err != nil {
+			return nil, mapAutoIssueErr(err)
+		}
+		rec, err := s.db.GetIssueRecordByID(reprintID)
+		if err != nil {
+			return nil, billsync.NewIngestError(billsync.CodePersistFailed, err.Error())
+		}
+		return &BillSyncIngestResult{
+			Issue: &domain.IssueResult{
+				DocumentID:     rec.DocumentID,
+				InvoiceNo:      rec.InvoiceNo,
+				ATCUD:          rec.ATCUD,
+				DocumentType:   rec.DocumentType,
+				DocumentStatus: rec.DocumentStatus,
+				PrintJobID:     rec.PrintJobID,
+				PrintStatus:    rec.PrintStatus,
+				IssuedAt:       rec.IssuedAt,
+			},
+		}, nil
 	}
 
 	if !snap.AutoIssue {
@@ -124,16 +151,16 @@ func (s *FiscalService) IngestBillSyncJob(ctx context.Context, job billsync.Clou
 	return &BillSyncIngestResult{Draft: draft, Issue: res}, nil
 }
 
-// ProcessBillSyncJob adapts IngestBillSyncJob for billsync.Puller.ProcessJob (ack invoice_no).
-func (s *FiscalService) ProcessBillSyncJob(ctx context.Context, job billsync.CloudJob) (invoiceNo string, err error) {
+// ProcessBillSyncJob adapts IngestBillSyncJob for billsync.Puller.ProcessJob (ack invoice_no + document_id).
+func (s *FiscalService) ProcessBillSyncJob(ctx context.Context, job billsync.CloudJob) (invoiceNo, documentID string, err error) {
 	out, err := s.IngestBillSyncJob(ctx, job)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if out != nil && out.Issue != nil {
-		return out.Issue.InvoiceNo, nil
+		return out.Issue.InvoiceNo, out.Issue.DocumentID, nil
 	}
-	return "", nil
+	return "", "", nil
 }
 
 func (s *FiscalService) resolveDraftForAutoIssue(job billsync.CloudJob, snap billsync.Snapshot, mode, scopeID string) (*store.BillSyncDraft, *domain.IssueResult, error) {

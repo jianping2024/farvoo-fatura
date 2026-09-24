@@ -37,7 +37,7 @@ idempotency → series 占号 → invoice(+lines/snapshot/payments) → ORIGINAL
 
 **NC 冲销唯一路径：** `service.IssueCreditNote` → `store.IssueNC`（API `POST /local/v1/fiscal-documents/{id}/credit-notes`）。原票仅 UPDATE `credited_gross_total`/`document_status`；禁止经 `IssueFT` 开 NC。
 
-**账单同步唯一写路径：** `billsync.PullAndIngest` → `service.ProcessBillSyncJob` / `IngestBillSyncJob`（无 `auto_issue` 时等价 `IngestCloudJob`）→ `UpsertBillDraftOpen` + `UpsertFiscalProductByCode`；`auto_issue=true` 时同路径再调 `IssueFromBillDraft`。Realtime/Polling 只门铃/补偿，禁止第二套 HTTP/WS。
+**账单同步唯一写路径：** `billsync.PullAndIngest` → `service.ProcessBillSyncJob` / `IngestBillSyncJob`（无 `auto_issue` 时等价 `IngestCloudJob`）→ `UpsertBillDraftOpen` + `UpsertFiscalProductByCode`；`auto_issue=true` 时同路径再调 `IssueFromBillDraft`；载荷含 `reprint_document_id` 时仅调已有 `ReprintDocument`（不重签）。Realtime/Polling 只门铃/补偿，禁止第二套 HTTP/WS。
 
 **Admin 账单提示唯一推送：** `UpsertBillDraftOpen` / `DeleteBillDraftsBySale` → `DB.OnBillDraftsChanged` → `uievents.Hub.NotifyBillDraftsChanged` → `GET /local/v1/events`（SSE）。禁止浏览器空转轮询主路径。UAT 门铃入口：`POST /local/v1/dev/bill-sync/pull`（`FISCAL_ALLOW_DEV_KEY=1`）→ 同进程 `PullAndIngest`（禁止另起进程写库冒充推送）。界面用语「账单」见原型 README 方案 A。
 

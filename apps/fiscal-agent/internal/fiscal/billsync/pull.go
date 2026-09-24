@@ -18,9 +18,10 @@ type Puller struct {
 	JWT     string
 	DB      *store.DB
 	Client  *http.Client
-	// ProcessJob, when set, is the ONLY ingest(+optional auto_issue) path (service.ProcessBillSyncJob).
+	// ProcessJob, when set, is the ONLY ingest(+optional auto_issue|reprint) path (service.ProcessBillSyncJob).
 	// When nil, falls back to IngestCloudJob(p.DB) without auto_issue.
-	ProcessJob func(ctx context.Context, job CloudJob) (invoiceNo string, err error)
+	// Returns invoice_no + document_id for Farvoo ack (cloud issue copy / reprint key).
+	ProcessJob func(ctx context.Context, job CloudJob) (invoiceNo, documentID string, err error)
 }
 
 func (p *Puller) client() *http.Client {
@@ -74,10 +75,10 @@ func (p *Puller) fetchPending(ctx context.Context) ([]CloudJob, error) {
 }
 
 func (p *Puller) ingestAndAck(ctx context.Context, job CloudJob) error {
-	var invoiceNo string
+	var invoiceNo, documentID string
 	var err error
 	if p.ProcessJob != nil {
-		invoiceNo, err = p.ProcessJob(ctx, job)
+		invoiceNo, documentID, err = p.ProcessJob(ctx, job)
 	} else {
 		_, err = IngestCloudJob(p.DB, job)
 	}
@@ -86,12 +87,12 @@ func (p *Puller) ingestAndAck(ctx context.Context, job CloudJob) error {
 		if ie := AsIngestError(err); ie != nil {
 			code, msg = ie.Code, ie.Message
 		}
-		return p.ack(ctx, job.ID, "failed", code, msg, "")
+		return p.ack(ctx, job.ID, "failed", code, msg, "", "")
 	}
-	return p.ack(ctx, job.ID, "succeeded", "", "", invoiceNo)
+	return p.ack(ctx, job.ID, "succeeded", "", "", invoiceNo, documentID)
 }
 
-func (p *Puller) ack(ctx context.Context, jobID, status, errCode, errMsg, invoiceNo string) error {
+func (p *Puller) ack(ctx context.Context, jobID, status, errCode, errMsg, invoiceNo, documentID string) error {
 	body := map[string]any{"status": status}
 	if errCode != "" {
 		body["error_code"] = errCode
@@ -101,6 +102,9 @@ func (p *Puller) ack(ctx context.Context, jobID, status, errCode, errMsg, invoic
 	}
 	if invoiceNo != "" {
 		body["invoice_no"] = invoiceNo
+	}
+	if documentID != "" {
+		body["document_id"] = documentID
 	}
 	raw, _ := json.Marshal(body)
 	url := strings.TrimRight(p.APIBase, "/") + "/api/print-agent/bill-syncs/" + jobID + "/ack"
