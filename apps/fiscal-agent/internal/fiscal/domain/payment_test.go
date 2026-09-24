@@ -4,7 +4,7 @@ import "testing"
 
 func TestKnownPaymentMethodsStable(t *testing.T) {
 	want := []string{
-		PaymentCash, PaymentCard, PaymentMBWay, PaymentMultibanco, PaymentMixed, PaymentOther, PaymentAccount,
+		PaymentCash, PaymentCard, PaymentMBWay, PaymentMultibanco, PaymentMixed, PaymentAccount, PaymentOther,
 	}
 	got := KnownPaymentMethods()
 	if len(got) != len(want) {

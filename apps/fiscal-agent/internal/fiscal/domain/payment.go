@@ -13,14 +13,15 @@ const (
 )
 
 // knownPaymentMethods is the ONLY ordered schema list for payment_method codes.
+// ACCOUNT sits immediately above OTHER (hang-account before catch-all).
 var knownPaymentMethods = []string{
 	PaymentCash,
 	PaymentCard,
 	PaymentMBWay,
 	PaymentMultibanco,
 	PaymentMixed,
-	PaymentOther,
 	PaymentAccount,
+	PaymentOther,
 }
 
 // IsSettlingPaymentMethod reports whether a payment counts toward settled-at-issue.
