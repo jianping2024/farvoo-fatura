@@ -57,7 +57,7 @@ func (s *FiscalService) ResolveAutoIssueContext() (AutoIssueContext, error) {
 
 // IngestBillSyncJob is the ONLY service entry for PullAndIngest: persist draft, optionally auto-issue, or reprint.
 // When reprint_document_id is set: only ReprintDocument (existing path; no re-sign).
-// When auto_issue=true: uses Farvoo document_type as-is (required FT|FS); empty customer_nif → scatter via ApplyCustomerOverride.
+// When auto_issue=true: uses Farvoo document_type (required FT|FS); IssueDocument promotes FS→FT when this document gross > 100.00. Empty customer_nif → scatter via ApplyCustomerOverride.
 // Person auto_issue after partial issue reuses open draft (does not re-Upsert / overwrite allocation).
 func (s *FiscalService) IngestBillSyncJob(ctx context.Context, job billsync.CloudJob) (*BillSyncIngestResult, error) {
 	if s == nil || s.db == nil {
@@ -140,6 +140,7 @@ func (s *FiscalService) IngestBillSyncJob(ctx context.Context, job billsync.Clou
 		CustomerNIF:         snap.CustomerNIF,
 		CustomerName:        snap.CustomerName,
 		PaymentMethod:       snap.PaymentMethod,
+		PaymentLines:        snap.PaymentLines,
 	}
 	if mode == "person" {
 		in.AllocationRevision = &rev
