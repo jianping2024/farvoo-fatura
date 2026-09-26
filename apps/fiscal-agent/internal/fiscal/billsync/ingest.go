@@ -48,12 +48,20 @@ type Snapshot struct {
 	CustomerNIF    string `json:"customer_nif,omitempty"`
 	CustomerName   string `json:"customer_name,omitempty"`
 	PaymentMethod  string `json:"payment_method,omitempty"`
-	DocumentType   string `json:"document_type,omitempty"` // FT|FS — Farvoo passes explicitly; Agent must not derive
+	// PaymentLines: sole multi-tender rows; required when PaymentMethod is MIXED.
+	PaymentLines []PaymentLine `json:"payment_lines,omitempty"`
+	DocumentType   string `json:"document_type,omitempty"` // FT|FS — Farvoo passes explicitly; Agent does not derive from payment. IssueDocument promotes FS→FT when this document gross > 100.00.
 	IssueMode      string `json:"issue_mode,omitempty"`    // whole_table|person; empty → from scope_type
 	IssueScopeID   string `json:"issue_scope_id,omitempty"`
 	ScopeID        string `json:"scope_id,omitempty"` // person alias when issue_scope_id empty
 	// ReprintDocumentID: when set, Agent only calls existing ReprintDocument (no ingest/re-sign).
 	ReprintDocumentID string `json:"reprint_document_id,omitempty"`
+}
+
+// PaymentLine is one tender row on bill_sync / print payloads (never MIXED as method).
+type PaymentLine struct {
+	Method string `json:"method"`
+	Amount string `json:"amount"`
 }
 
 // Line is a sale line (qty/line_gross not stored in product master).

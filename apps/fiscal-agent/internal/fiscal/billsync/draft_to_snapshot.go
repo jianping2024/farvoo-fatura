@@ -87,8 +87,9 @@ func ApplyCustomerOverride(sale *domain.SaleSnapshot, nif, name string) error {
 }
 
 // ApplyPaymentOverride sets payment method on sale (keeps Amount; empty → CASH).
+// When lines are provided, expands to multi-row Payments (MIXED requires lines; fail-closed).
 // ONLY payment override for draft→issue path.
-func ApplyPaymentOverride(sale *domain.SaleSnapshot, method string) error {
+func ApplyPaymentOverride(sale *domain.SaleSnapshot, method string, lines []PaymentLine) error {
 	if sale == nil {
 		return ingestErr(CodeValidationFailed, "sale required")
 	}
@@ -100,6 +101,54 @@ func ApplyPaymentOverride(sale *domain.SaleSnapshot, method string) error {
 	if len(sale.Payments) > 0 && strings.TrimSpace(sale.Payments[0].Amount) != "" {
 		amount = strings.TrimSpace(sale.Payments[0].Amount)
 	}
+
+	if pay == domain.PaymentMixed {
+		if len(lines) < 2 {
+			return ingestErr(CodeValidationFailed, "MIXED requires payment_lines")
+		}
+		expanded := make([]domain.PaymentInput, 0, len(lines))
+		var hasCash, hasMB bool
+		for _, ln := range lines {
+			m := domain.NormalizePaymentMethod(ln.Method)
+			if m != domain.PaymentCash && m != domain.PaymentMultibanco {
+				return ingestErr(CodeValidationFailed, "invalid payment_lines method")
+			}
+			amt := strings.TrimSpace(ln.Amount)
+			if amt == "" {
+				return ingestErr(CodeValidationFailed, "invalid payment_lines amount")
+			}
+			if m == domain.PaymentCash {
+				hasCash = true
+			}
+			if m == domain.PaymentMultibanco {
+				hasMB = true
+			}
+			expanded = append(expanded, domain.PaymentInput{Method: m, Amount: amt})
+		}
+		if !hasCash || !hasMB {
+			return ingestErr(CodeValidationFailed, "MIXED requires CASH and MULTIBANCO lines")
+		}
+		sale.Payments = expanded
+		return nil
+	}
+
+	if len(lines) > 0 {
+		expanded := make([]domain.PaymentInput, 0, len(lines))
+		for _, ln := range lines {
+			m := domain.NormalizePaymentMethod(ln.Method)
+			if m != domain.PaymentCash && m != domain.PaymentMultibanco {
+				return ingestErr(CodeValidationFailed, "invalid payment_lines method")
+			}
+			amt := strings.TrimSpace(ln.Amount)
+			if amt == "" {
+				amt = amount
+			}
+			expanded = append(expanded, domain.PaymentInput{Method: m, Amount: amt})
+		}
+		sale.Payments = expanded
+		return nil
+	}
+
 	sale.Payments = []domain.PaymentInput{{Method: pay, Amount: amount}}
 	return nil
 }
