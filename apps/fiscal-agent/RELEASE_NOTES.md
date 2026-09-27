@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.25
+
+**bill_sync：混合付款分行 + FS 超 €100 升 FT**
+
+- **唯一写法 · 付款拆行：**仅 `billsync.ApplyPaymentOverride` 消费顶层 `payment_lines` → 多行 `sale.Payments`；`MIXED` 无 lines / 缺 CASH+MULTIBANCO → fail-closed。禁止票面/落库只写一行 MIXED。
+- **唯一写法 · FS→FT 升票：**仅 `domain.ApplyFSGrossLimit`（门槛 `FSGrossLimitEUR=100.00`）在 `IssueDocument` 查系列前调用；含税总额 >100 的 FS 请求签成 FT。禁止第二套阈值/并联 `fs_amount_threshold` 读路径。
+- 钉死：`TestApplyPaymentOverride_MixedRequiresLines`；`TestApplyFSGrossLimit`；`TestIssueDocument_FSOver100BecomesFT`。
+
 ## 0.5.24
 
 **Farvoo「打印发票」重打：复用现有 ReprintDocument（同 bill_sync 管道）**

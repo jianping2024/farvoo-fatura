@@ -462,6 +462,11 @@ func (s *FiscalService) IssueDocument(ctx context.Context, req domain.IssueReque
 	default:
 		return nil, coded(ErrCodeValidationFailed, "document_type must be FT, FS, or FR")
 	}
+	// Sole FS→FT promotion: tax-inclusive gross > domain.FSGrossLimitEUR.
+	docType, err := domain.ApplyFSGrossLimit(docType, req.Snapshot.Lines)
+	if err != nil {
+		return nil, coded(ErrCodeValidationFailed, err.Error())
+	}
 	ok, err := s.db.HasActiveSeries(req.StoreID, string(docType))
 	if err != nil {
 		return nil, err
