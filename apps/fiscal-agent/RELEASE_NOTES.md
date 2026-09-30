@@ -2,6 +2,17 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.26
+
+**PF（Fatura pró-forma）：形式发票**
+
+- **唯一写法 · 签发：**仅 `service.IssueProforma` → `store.IssuePF`（独立 PF 系列 / Hash / ATCUD）；禁止用 `IssueFT` 冒充 PF。
+- **唯一写法 · 作废：**仅 `service.AnnulProforma` → `store.AnnulPF`（`N`→`A`）；已 `F` 禁止作废。
+- **唯一写法 · 挂真票：**仅 `store.IssueFT` 事务内 `linkProformaInTx` → `invoice_proforma_references`；FT/FS/FR 挂上即 PF=`F`；签后禁补挂/解挂。
+- SAF-T：WorkingDocuments（`WorkType=PF`）；真票行 `OrderReferences`；营收汇总排除 PF。
+- Admin：PF 系列 / Tab / 开真票 / 作废；权威 [`fiscal-pf.zh.md`](../../docs/fiscal-pf.zh.md)。
+- 钉死：`scripts/fiscal-pf-regression.mjs`（PF-01…10 + FR→F / 作废闸门）。
+
 ## 0.5.25
 
 **bill_sync：混合付款分行 + FS 超 €100 升 FT**
