@@ -12,9 +12,11 @@ const (
 	DocumentNC DocumentType = "NC"
 	DocumentND DocumentType = "ND"
 	DocumentRG DocumentType = "RG"
+	DocumentPF DocumentType = "PF"
 )
 
 // DocumentStatus is the lifecycle of a signed fiscal document (no DRAFT in DB).
+// For document_type=PF, invoices.document_status stores SAF-T WorkStatus: N / A / F.
 type DocumentStatus string
 
 const (
@@ -23,6 +25,11 @@ const (
 	DocumentCreditedFull    DocumentStatus = "CREDITED_FULL"
 	DocumentDebitedPartial  DocumentStatus = "DEBITED_PARTIAL"
 	DocumentDebitedFull     DocumentStatus = "DEBITED_FULL"
+
+	// PF WorkStatus (Portaria 302/2016) — only when document_type=PF.
+	WorkStatusNormal   DocumentStatus = "N"
+	WorkStatusAnnulled DocumentStatus = "A"
+	WorkStatusInvoiced DocumentStatus = "F"
 )
 
 // PrintStatus tracks physical output separately from tax status.
@@ -150,6 +157,28 @@ type IssueRequest struct {
 	FiscalTerminalID    string
 	FiscalTerminalLabel string
 	Snapshot            SaleSnapshot
+	ProformaID          string // optional; sale → PF soft link (max 1)
+}
+
+// ProformaRequest wraps PF (pró-forma) issuance.
+type ProformaRequest struct {
+	StoreID             string
+	RequestID           string
+	OperatorID          string
+	StationID           string
+	FiscalTerminalID    string
+	FiscalTerminalLabel string
+	Snapshot            SaleSnapshot
+	ValidUntil          string // optional YYYY-MM-DD
+}
+
+// AnnulProformaRequest wraps PF annulment (N→A only).
+type AnnulProformaRequest struct {
+	StoreID             string
+	RequestID           string
+	DocumentID          string
+	OperatorID          string
+	Reason              string
 }
 
 // IssueResult is returned after a successful FT issuance.

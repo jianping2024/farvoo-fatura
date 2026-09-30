@@ -482,8 +482,14 @@ func (s *FiscalService) IssueDocument(ctx context.Context, req domain.IssueReque
 		StoreID: req.StoreID, RequestID: req.RequestID, DocType: docType,
 		Snapshot: req.Snapshot, OperatorID: req.OperatorID, StationID: req.StationID,
 		FiscalTerminalID: req.FiscalTerminalID, FiscalTerminalLabel: req.FiscalTerminalLabel,
-		InvoiceLocale: s.invoiceLocale(),
+		InvoiceLocale: s.invoiceLocale(), ProformaID: req.ProformaID,
 	})
+	if errors.Is(err, store.ErrNotFound) {
+		return nil, coded(ErrCodeNotFound, "proforma not found")
+	}
+	if errors.Is(err, store.ErrProformaNotAllowed) {
+		return nil, coded(ErrCodeProformaNotAllowed, "proforma cannot be linked")
+	}
 	if err != nil {
 		return nil, err
 	}

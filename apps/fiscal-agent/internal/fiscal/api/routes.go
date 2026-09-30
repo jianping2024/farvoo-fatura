@@ -233,6 +233,9 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/receipts", g(func(w http.ResponseWriter, r *http.Request) {
 		handleReceipt(w, r, deps)
 	}))
+	mux.HandleFunc("POST /local/v1/fiscal-documents/{documentId}/annul", g(func(w http.ResponseWriter, r *http.Request) {
+		handleAnnulProforma(w, r, deps)
+	}))
 	mux.HandleFunc("POST /local/v1/saft/exports", g(func(w http.ResponseWriter, r *http.Request) {
 		handleExportSAFT(w, r, deps)
 	}))

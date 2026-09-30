@@ -154,6 +154,8 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		Tendered         string                    `json:"tendered"`
 		TableDisplayName string                    `json:"table_display_name"`
 		Lines            []catalog.ManualLineInput `json:"lines"`
+		ProformaID       string                    `json:"proforma_id"`
+		ValidUntil       string                    `json:"valid_until"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
@@ -174,6 +176,7 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
 		PaymentMethod: body.PaymentMethod, Tendered: body.Tendered,
 		TableDisplayName: body.TableDisplayName, Lines: body.Lines,
+		ProformaID: body.ProformaID, ValidUntil: body.ValidUntil,
 	}, body.OperatorID, body.StationID, termID, termLabel)
 	if errors.Is(err, store.ErrConflict) {
 		writeErr(w, http.StatusConflict, "idempotency_conflict", err.Error())

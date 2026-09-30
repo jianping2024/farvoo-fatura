@@ -23,7 +23,8 @@ type BuildInput struct {
 	StartDate string
 	EndDate   string
 	Invoices  []store.SAFTInvoice
-	Payments  []store.SAFTPayment // RG receipts → Payments table
+	Payments  []store.SAFTPayment         // RG receipts → Payments table
+	WorkDocs  []store.SAFTWorkingDocument // PF → WorkingDocuments
 }
 
 // BuildResult is SAF-T XML output and validation outcome.
@@ -92,6 +93,14 @@ func Build(in BuildInput) (*BuildResult, error) {
 		cid := customerKey(pay.Customer)
 		customers[cid] = pay.Customer
 	}
+	for _, wd := range in.WorkDocs {
+		cid := customerKey(wd.Customer)
+		customers[cid] = wd.Customer
+		for _, ln := range wd.Lines {
+			products[ln.ProductCode] = ln
+			taxes[taxKeyFromLine(ln)] = struct{}{}
+		}
+	}
 	writeMasterFiles(&b, customers, products, taxes, checkText)
 	b.WriteString(`</MasterFiles>`)
 
@@ -104,6 +113,7 @@ func Build(in BuildInput) (*BuildResult, error) {
 		writeInvoice(&b, inv, checkText)
 	}
 	b.WriteString(`</SalesInvoices>`)
+	writeWorkingDocuments(&b, in.WorkDocs, checkText)
 	writePayments(&b, in.Payments, checkText)
 	b.WriteString(`</SourceDocuments>`)
 	b.WriteString(`</AuditFile>`)
@@ -261,6 +271,16 @@ func writeLine(b *strings.Builder, inv store.SAFTInvoice, ln store.SAFTLine, che
 	check("line_desc", ln.ProductDescription)
 	b.WriteString(`<Line>`)
 	fmt.Fprintf(b, `<LineNumber>%d</LineNumber>`, ln.LineNumber)
+	if ln.LineNumber == 1 {
+		if on := strings.TrimSpace(inv.OrderOriginatingON); on != "" {
+			b.WriteString(`<OrderReferences>`)
+			writeElem(b, "OriginatingON", on)
+			if od := strings.TrimSpace(inv.OrderDate); od != "" {
+				writeElem(b, "OrderDate", od)
+			}
+			b.WriteString(`</OrderReferences>`)
+		}
+	}
 	writeElem(b, "ProductCode", ln.ProductCode)
 	writeElem(b, "ProductDescription", ln.ProductDescription)
 	writeElem(b, "Quantity", ln.Quantity)
@@ -288,6 +308,80 @@ func writeLine(b *strings.Builder, inv store.SAFTInvoice, ln store.SAFTLine, che
 		}
 		b.WriteString(`</References>`)
 	}
+	b.WriteString(`</Line>`)
+}
+
+func writeWorkingDocuments(b *strings.Builder, docs []store.SAFTWorkingDocument, check func(string, string)) {
+	if len(docs) == 0 {
+		return
+	}
+	totalCredit := decimal.Zero
+	for _, d := range docs {
+		if d.WorkStatus == "A" {
+			continue
+		}
+		g, _ := compliance.ParseDecimal(d.GrossTotal)
+		totalCredit = totalCredit.Add(g)
+	}
+	b.WriteString(`<WorkingDocuments>`)
+	fmt.Fprintf(b, `<NumberOfEntries>%d</NumberOfEntries>`, len(docs))
+	writeElem(b, "TotalDebit", "0.00")
+	writeElem(b, "TotalCredit", compliance.Money2(totalCredit))
+	for _, d := range docs {
+		writeWorkDocument(b, d, check)
+	}
+	b.WriteString(`</WorkingDocuments>`)
+}
+
+func writeWorkDocument(b *strings.Builder, d store.SAFTWorkingDocument, check func(string, string)) {
+	check("work_doc", d.DocumentNumber)
+	b.WriteString(`<WorkDocument>`)
+	writeElem(b, "DocumentNumber", d.DocumentNumber)
+	writeElem(b, "ATCUD", d.ATCUD)
+	b.WriteString(`<DocumentStatus>`)
+	writeElem(b, "WorkStatus", d.WorkStatus)
+	writeElem(b, "WorkStatusDate", d.WorkStatusDate)
+	if r := strings.TrimSpace(d.StatusReason); r != "" {
+		writeElem(b, "Reason", r)
+	}
+	writeElem(b, "SourceID", d.SourceID)
+	b.WriteString(`</DocumentStatus>`)
+	writeElem(b, "Hash", d.Hash)
+	fmt.Fprintf(b, `<HashControl>%d</HashControl>`, d.HashControl)
+	writeElem(b, "WorkDate", d.WorkDate)
+	writeElem(b, "WorkType", "PF")
+	writeElem(b, "SourceID", d.SourceID)
+	writeElem(b, "SystemEntryDate", d.SystemEntryDate)
+	writeElem(b, "CustomerID", d.Customer.CustomerTaxID)
+	for _, ln := range d.Lines {
+		writeWorkLine(b, d, ln, check)
+	}
+	b.WriteString(`<DocumentTotals>`)
+	writeElem(b, "TaxPayable", d.TaxPayable)
+	writeElem(b, "NetTotal", d.NetTotal)
+	writeElem(b, "GrossTotal", d.GrossTotal)
+	b.WriteString(`</DocumentTotals>`)
+	b.WriteString(`</WorkDocument>`)
+}
+
+func writeWorkLine(b *strings.Builder, d store.SAFTWorkingDocument, ln store.SAFTLine, check func(string, string)) {
+	check("work_line", ln.ProductDescription)
+	b.WriteString(`<Line>`)
+	fmt.Fprintf(b, `<LineNumber>%d</LineNumber>`, ln.LineNumber)
+	writeElem(b, "ProductCode", ln.ProductCode)
+	writeElem(b, "ProductDescription", ln.ProductDescription)
+	writeElem(b, "Quantity", ln.Quantity)
+	writeElem(b, "UnitOfMeasure", ln.UnitOfMeasure)
+	writeElem(b, "UnitPrice", ln.UnitPriceNet)
+	writeElem(b, "TaxPointDate", d.WorkDate)
+	writeElem(b, "Description", ln.ProductDescription)
+	writeElem(b, "CreditAmount", ln.LineGross)
+	b.WriteString(`<Tax>`)
+	writeElem(b, "TaxType", ln.TaxType)
+	writeElem(b, "TaxCountryRegion", ln.TaxCountryRegion)
+	writeElem(b, "TaxCode", ln.TaxCode)
+	writeElem(b, "TaxPercentage", vatRatePercent(ln.VATRate))
+	b.WriteString(`</Tax>`)
 	b.WriteString(`</Line>`)
 }
 

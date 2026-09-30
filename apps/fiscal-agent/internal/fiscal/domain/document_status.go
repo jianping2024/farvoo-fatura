@@ -11,7 +11,8 @@ var IssuedOriginalDocumentStatuses = []DocumentStatus{
 	DocumentDebitedFull,
 }
 
-// IsReprintableDocumentStatus reports whether an ORIGINAL invoice may enqueue a REPRINT job.
+// IsReprintableDocumentStatus reports whether an ORIGINAL sale/NC/ND/RG may enqueue a REPRINT job.
+// For PF use IsReprintableDocument (doc-type aware).
 func IsReprintableDocumentStatus(s string) bool {
 	st := DocumentStatus(s)
 	for _, allowed := range IssuedOriginalDocumentStatuses {
@@ -20,6 +21,19 @@ func IsReprintableDocumentStatus(s string) bool {
 		}
 	}
 	return false
+}
+
+// IsReprintableDocument is the ONLY reprint status gate (sale statuses or PF N/F).
+func IsReprintableDocument(docType, docStatus string) bool {
+	if DocumentType(docType) == DocumentPF {
+		switch DocumentStatus(docStatus) {
+		case WorkStatusNormal, WorkStatusInvoiced:
+			return true
+		default:
+			return false
+		}
+	}
+	return IsReprintableDocumentStatus(docStatus)
 }
 
 // IssuedOriginalDocumentStatusSQLIn returns SQL IN literals for IssuedOriginalDocumentStatuses (single source).

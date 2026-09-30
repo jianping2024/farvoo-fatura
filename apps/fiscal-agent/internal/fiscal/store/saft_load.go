@@ -52,6 +52,8 @@ type SAFTInvoice struct {
 	SoftwareCertificateNumber string
 	Customer                  SAFTCustomer
 	Lines                     []SAFTLine
+	OrderOriginatingON        string // optional PF DocumentNumber for OrderReferences
+	OrderDate                 string
 }
 
 // LoadSAFTInvoicesForPeriod is the ONLY reader for SAF-T source documents in a month.
@@ -111,6 +113,14 @@ func (d *DB) LoadSAFTInvoicesForPeriod(storeID, startDate, endDate string) ([]SA
 			}
 		}
 		out[i].Lines = lines
+		ref, err := d.ProformaRefForSale(invoiceID)
+		if err != nil {
+			return nil, err
+		}
+		if ref != nil {
+			out[i].OrderOriginatingON = ref.ProformaInvoiceNo
+			out[i].OrderDate = ref.ProformaInvoiceDate
+		}
 	}
 	return out, nil
 }
@@ -183,7 +193,72 @@ type SAFTPayment struct {
 	OriginalInvoiceDate string
 }
 
-// LoadSAFTPaymentsForPeriod is the ONLY reader for SAF-T Payments (RG) in a month.
+// SAFTWorkingDocument is one PF (pró-forma) for SAF-T WorkingDocuments.
+type SAFTWorkingDocument struct {
+	ID              string
+	DocumentNumber  string
+	ATCUD           string
+	WorkDate        string
+	SystemEntryDate string
+	WorkStatus      string
+	WorkStatusDate  string
+	StatusReason    string
+	Hash            string
+	HashControl     int
+	SourceID        string
+	GrossTotal      string
+	NetTotal        string
+	TaxPayable      string
+	Customer        SAFTCustomer
+	Lines           []SAFTLine
+}
+
+// LoadSAFTWorkingDocumentsForPeriod is the ONLY reader for SAF-T WorkingDocuments (PF) in a month.
+func (d *DB) LoadSAFTWorkingDocumentsForPeriod(storeID, startDate, endDate string) ([]SAFTWorkingDocument, error) {
+	rows, err := d.SQL.Query(`SELECT i.id, i.invoice_no, i.atcud, i.invoice_date, i.system_entry_date,
+		i.document_status, COALESCE(NULLIF(i.status_changed_at,''), i.system_entry_date),
+		COALESCE(i.status_reason,''), i.hash, i.hash_control, i.source_id,
+		i.gross_total, i.net_total, i.tax_payable,
+		cs.customer_tax_id, cs.company_name, cs.address_detail, cs.city, cs.postal_code, cs.country,
+		cs.account_id, cs.self_billing_indicator
+		FROM invoices i
+		JOIN invoice_customer_snapshots cs ON cs.invoice_id = i.id
+		WHERE i.store_id = ? AND i.invoice_date >= ? AND i.invoice_date <= ?
+		AND i.document_type = 'PF'
+		ORDER BY i.invoice_date, i.created_at`, storeID, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SAFTWorkingDocument
+	var ids []string
+	for rows.Next() {
+		var w SAFTWorkingDocument
+		if err := rows.Scan(
+			&w.ID, &w.DocumentNumber, &w.ATCUD, &w.WorkDate, &w.SystemEntryDate,
+			&w.WorkStatus, &w.WorkStatusDate, &w.StatusReason, &w.Hash, &w.HashControl, &w.SourceID,
+			&w.GrossTotal, &w.NetTotal, &w.TaxPayable,
+			&w.Customer.CustomerTaxID, &w.Customer.CompanyName, &w.Customer.AddressDetail,
+			&w.Customer.City, &w.Customer.PostalCode, &w.Customer.Country,
+			&w.Customer.AccountID, &w.Customer.SelfBillingIndicator,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, w)
+		ids = append(ids, w.ID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for i, id := range ids {
+		lines, err := d.loadSAFTLines(id)
+		if err != nil {
+			return nil, err
+		}
+		out[i].Lines = lines
+	}
+	return out, nil
+}
 func (d *DB) LoadSAFTPaymentsForPeriod(storeID, startDate, endDate string) ([]SAFTPayment, error) {
 	rows, err := d.SQL.Query(`SELECT i.id, i.invoice_no, i.atcud, i.invoice_date, i.system_entry_date,
 		i.source_id, i.gross_total,
