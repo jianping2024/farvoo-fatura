@@ -1065,8 +1065,9 @@ func TestAdminHTMLConfirmActionSinglePath(t *testing.T) {
 	if n := strings.Count(adminHTML, `id="confirmActionModal"`); n != 1 {
 		t.Fatalf("confirmActionModal must exist exactly once, got %d", n)
 	}
-	if n := strings.Count(adminHTML, "    openConfirmAction({"); n != 7 {
-		t.Fatalf("openConfirmAction must be called from exactly 7 sites, got %d", n)
+	nCalls := strings.Count(adminHTML, "openConfirmAction({") - strings.Count(adminHTML, "function openConfirmAction({")
+	if nCalls != 8 {
+		t.Fatalf("openConfirmAction must be called from exactly 8 sites, got %d", nCalls)
 	}
 }
 

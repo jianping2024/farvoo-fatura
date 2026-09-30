@@ -40,6 +40,7 @@ type IssueParams struct {
 	FiscalTerminalID     string // issuing PC (fiscal_terminals.id or domain.LoopbackFiscalTerminalID)
 	FiscalTerminalLabel  string // frozen display name at issue time
 	InvoiceLocale        string // en | pt — frozen into print payload (scheme A)
+	ProformaID           string // optional; sale → one PF soft link
 	NowUTC               time.Time // injectable for tests
 }
 
@@ -269,6 +270,10 @@ func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueR
 		if err = insertInvoicePayment(tx, docID, nowRFC, opID, pay); err != nil {
 			return nil, err
 		}
+	}
+
+	if err = linkProformaInTx(tx, p.StoreID, docID, p.ProformaID, systemEntry, p.OperatorID); err != nil {
+		return nil, err
 	}
 
 	payloadJSON, err := json.Marshal(printPayload)

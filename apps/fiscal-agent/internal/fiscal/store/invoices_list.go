@@ -71,6 +71,12 @@ type InvoiceDetail struct {
 	ReceivedGrossTotal       string                `json:"received_gross_total,omitempty"`
 	SettledAtIssueTotal      string                `json:"settled_at_issue_total,omitempty"`
 	RemainingReceivableTotal string                `json:"remaining_receivable_total,omitempty"`
+	ProformaID               string                `json:"proforma_id,omitempty"`
+	ProformaInvoiceNo        string                `json:"proforma_invoice_no,omitempty"`
+	ValidUntil               string                `json:"valid_until,omitempty"`
+	StatusReason             string                `json:"status_reason,omitempty"`
+	StatusChangedAt          string                `json:"status_changed_at,omitempty"`
+	LinkedSaleInvoiceNos     []string              `json:"linked_sale_invoice_nos,omitempty"`
 }
 
 var allowedInvoicePageSizes = map[int]bool{10: true, 20: true}

@@ -965,6 +965,7 @@
               <button type="button" class="secondary" data-invoice-type="NC" role="tab"><span data-i18n="doc.tab.NC">冲销单</span></button>
               <button type="button" class="secondary" data-invoice-type="ND" role="tab"><span data-i18n="doc.tab.ND">借记单</span></button>
               <button type="button" class="secondary" data-invoice-type="RG" role="tab"><span data-i18n="doc.tab.RG">收据</span></button>
+              <button type="button" class="secondary" data-invoice-type="PF" role="tab"><span data-i18n="doc.tab.PF">形式发票</span></button>
             </div>
             <div class="admin-list-toolbar">
               <div class="admin-list-toolbar__search">
@@ -1175,6 +1176,11 @@
                     <div class="series-card-head"><strong>RG</strong><span class="status-pill optional" id="seriesRgPill" data-i18n="common.optional">可选</span></div>
                     <div class="field"><label for="seriesRg" data-i18n="settings.series.number">系列编号</label><input id="seriesRg" /><span class="hint" id="seriesRgHint"></span></div>
                     <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesRg" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="RG">注册 RG</button></div>
+                  </div>
+                  <div class="series-card optional" data-series="pf">
+                    <div class="series-card-head"><strong>PF</strong><span class="status-pill optional" id="seriesPfPill" data-i18n="common.optional">可选</span></div>
+                    <div class="field"><label for="seriesPf" data-i18n="settings.series.number">系列编号</label><input id="seriesPf" /><span class="hint" id="seriesPfHint"></span></div>
+                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesPf" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="PF">注册 PF</button></div>
                   </div>
                 </div>
                 <h3 style="margin:1rem 0 0.5rem;font-size:0.95rem" data-i18n="settings.series.activate">激活开票</h3>
@@ -1393,6 +1399,8 @@
         <button type="button" class="secondary hidden" id="btnInvoiceDetailCredit" data-i18n="action.credit">冲销</button>
         <button type="button" class="secondary hidden" id="btnInvoiceDetailDebit" data-i18n="action.debit">借记</button>
         <button type="button" class="secondary hidden" id="btnInvoiceDetailReceipt" data-i18n="action.receipt">登记收款</button>
+        <button type="button" class="secondary hidden" id="btnInvoiceDetailIssueFromPf" data-i18n="action.issue_from_pf">开真票</button>
+        <button type="button" class="secondary hidden" id="btnInvoiceDetailAnnulPf" data-i18n="action.annul_pf">作废</button>
         <button type="button" class="secondary" id="btnInvoiceDetailReprint" data-i18n="action.reprint">重打</button>
       </div>
     </div>
@@ -1561,6 +1569,8 @@
   const DEFAULT_SALE_DOC = 'FS';
   /** Manual / Local API sale types (FT + FS + FR). */
   const SALE_DOC_TYPES = ['FT', 'FS', 'FR'];
+  /** Manual issue dropdown: sales + PF. */
+  const MANUAL_DOC_TYPES = ['FT', 'FS', 'FR', 'PF'];
   /** Bill-sync issue types only (FT + FS); FR is manual path. */
   const BILL_SYNC_DOC_TYPES = ['FT', 'FS'];
   const PAYMENT_METHODS = ['CASH', 'CARD', 'MBWAY', 'MULTIBANCO', 'MIXED', 'ACCOUNT', 'OTHER'];
@@ -1771,7 +1781,7 @@
     const docSel = $('#docType');
     if (docSel) {
       const cur = docSel.value || DEFAULT_SALE_DOC;
-      docSel.innerHTML = saleDocTypeOptionsHtml(cur, SALE_DOC_TYPES);
+      docSel.innerHTML = saleDocTypeOptionsHtml(cur, MANUAL_DOC_TYPES);
     }
     const splitSel = $('#splitDocType');
     if (splitSel) {
@@ -2142,7 +2152,7 @@
   /** ONLY pagination bar for invoice list (FiscalUI.createListPaginationBar). */
   let invoiceListPaginationCtrl = null;
   /** ONLY active document-type tab on invoice list ('' = all, or FT / FS / FR / NC / ND). */
-  const INVOICE_LIST_DOC_TYPES = ['', 'FT', 'FS', 'FR', 'NC', 'ND', 'RG'];
+  const INVOICE_LIST_DOC_TYPES = ['', 'FT', 'FS', 'FR', 'NC', 'ND', 'RG', 'PF'];
   /** ONLY invoice type label for empty-state copy. */
   function invoiceListDocTypeLabel(t) {
     const code = String(t || '').trim().toUpperCase();
@@ -2399,6 +2409,22 @@
       delete receiptBtn._receiptDocId;
       delete receiptBtn._receiptDetail;
     }
+    const issueFromPfBtn = $('#btnInvoiceDetailIssueFromPf');
+    const canIssueFromPf = invoiceCanIssueFromPf(inv);
+    issueFromPfBtn.classList.toggle('hidden', !canIssueFromPf);
+    if (canIssueFromPf) {
+      issueFromPfBtn._pfDetail = inv;
+    } else {
+      delete issueFromPfBtn._pfDetail;
+    }
+    const annulPfBtn = $('#btnInvoiceDetailAnnulPf');
+    const canAnnulPf = invoiceCanAnnulPf(inv);
+    annulPfBtn.classList.toggle('hidden', !canAnnulPf);
+    if (canAnnulPf) {
+      annulPfBtn._pfDocId = inv.document_id;
+    } else {
+      delete annulPfBtn._pfDocId;
+    }
   }
 
   /** ONLY credit-button gate (matches setup ready_to_credit). */
@@ -2421,6 +2447,19 @@
     if (!(setupStatusCache && setupStatusCache.ready_to_receipt)) return false;
     const rem = parseFloat(inv.remaining_receivable_total);
     return Number.isFinite(rem) && rem > 0;
+  }
+
+  /** ONLY PF→sale button gate. */
+  function invoiceCanIssueFromPf(inv) {
+    return String(inv.document_type || '') === 'PF' &&
+      ['N', 'F'].includes(String(inv.document_status || '')) &&
+      !!(setupStatusCache && setupStatusCache.ready_to_issue);
+  }
+
+  /** ONLY PF annul button gate. */
+  function invoiceCanAnnulPf(inv) {
+    return String(inv.document_type || '') === 'PF' &&
+      String(inv.document_status || '') === 'N';
   }
 
   async function openInvoiceDetail(documentId) {
@@ -3177,7 +3216,8 @@
       { ok: st.fr_series_ok, code: st.fr_series_code, input: '#seriesFr', btn: '#btnSeriesFr', hint: '#seriesFrHint', label: 'FR', pill: '#seriesFrPill', optional: true },
       { ok: st.nc_series_ok, code: st.nc_series_code, input: '#seriesNc', btn: '#btnSeriesNc', hint: '#seriesNcHint', label: 'NC', pill: '#seriesNcPill', optional: true },
       { ok: st.nd_series_ok, code: st.nd_series_code, input: '#seriesNd', btn: '#btnSeriesNd', hint: '#seriesNdHint', label: 'ND', pill: '#seriesNdPill', optional: true },
-      { ok: st.rg_series_ok, code: st.rg_series_code, input: '#seriesRg', btn: '#btnSeriesRg', hint: '#seriesRgHint', label: 'RG', pill: '#seriesRgPill', optional: true }
+      { ok: st.rg_series_ok, code: st.rg_series_code, input: '#seriesRg', btn: '#btnSeriesRg', hint: '#seriesRgHint', label: 'RG', pill: '#seriesRgPill', optional: true },
+      { ok: st.pf_series_ok, code: st.pf_series_code, input: '#seriesPf', btn: '#btnSeriesPf', hint: '#seriesPfHint', label: 'PF', pill: '#seriesPfPill', optional: true }
     ];
     rows.forEach(r => {
       const inp = $(r.input);
@@ -4944,8 +4984,13 @@
     if (!assertCustomerNifOrToast(nif)) return;
     const name = $('#invName').value.trim() || 'Consumidor Final';
     const pay = $('#invPay').value.trim() || 'CASH';
-    const tender = readCashTenderedOrToast($('#invPay'), $('#invTendered'), orderCashTenderDue());
-    if (!tender.ok) return;
+    const docType = ($('#docType').value || DEFAULT_SALE_DOC);
+    const isPf = docType === 'PF';
+    let tender = { ok: true, tendered: '' };
+    if (!isPf) {
+      tender = readCashTenderedOrToast($('#invPay'), $('#invTendered'), orderCashTenderDue());
+      if (!tender.ok) return;
+    }
     const requestId = currentOrder.requestId || ('req-order-' + currentOrder.id + '-' + Date.now());
     const lines = currentOrder.lines.map(ln => {
       if (ln.product_code) {
@@ -4962,7 +5007,7 @@
     const body = {
       request_id: requestId,
       station_id: sid,
-      document_type: ($('#docType').value || DEFAULT_SALE_DOC),
+      document_type: docType,
       customer_nif: nif,
       customer_name: name,
       payment_method: pay,
@@ -4970,6 +5015,8 @@
       table_display_name: currentOrder.tableNo || '',
       lines
     };
+    if (currentOrder.proformaId) body.proforma_id = currentOrder.proformaId;
+    if (isPf && currentOrder.validUntil) body.valid_until = currentOrder.validUntil;
     const res = await j('POST', '/local/v1/fiscal-documents/manual', body);
     const docId = res.document_id || '';
     const invNo = res.invoice_no || '';
@@ -5635,6 +5682,48 @@
     if (!btn._receiptDocId || !detail) return;
     openReceiptModal(detail);
   };
+  $('#btnInvoiceDetailIssueFromPf').onclick = async () => {
+    const inv = $('#btnInvoiceDetailIssueFromPf')._pfDetail;
+    if (!inv) return;
+    closeInvoiceDetail();
+    const lines = (inv.lines || []).map((ln, i) => ({
+      name: ln.description || ('Line ' + (i + 1)),
+      saft_name: ln.description || ('Line ' + (i + 1)),
+      price: ln.line_gross || '0.00',
+      vat: '23.00',
+      qty: 1
+    }));
+    currentOrder = {
+      id: 'from-pf-' + inv.document_id,
+      status: 'open',
+      requestId: 'req-from-pf-' + Date.now(),
+      tableNo: '',
+      lines: lines.length ? lines : [{ name: 'Item', saft_name: 'Item', price: inv.gross_total || '0.00', vat: '23.00', qty: 1 }],
+      proformaId: inv.document_id
+    };
+    $('#docType').value = 'FT';
+    showView('order');
+    if (typeof renderOrder === 'function') renderOrder();
+  };
+  $('#btnInvoiceDetailAnnulPf').onclick = () => {
+    const docId = $('#btnInvoiceDetailAnnulPf')._pfDocId;
+    if (!docId) return;
+    openConfirmAction({
+      title: FiscalAdminI18n.t('action.annul_pf'),
+      body: FiscalAdminI18n.t('action.annul_pf_reason'),
+      onConfirm: async () => {
+        await withBusy($('#btnInvoiceDetailAnnulPf'), FiscalAdminI18n.t('common.submitting'), async () => {
+          await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(docId) + '/annul', {
+            request_id: 'annul-pf-' + Date.now(),
+            reason: 'Cancelado'
+          });
+          toast(FiscalAdminI18n.t('action.annul_pf_ok'), 'success');
+          closeInvoiceDetail();
+          await refreshInvoices();
+        });
+      }
+    });
+  };
 
   $('#receiptFull').onchange = () => syncReceiptAmountWrap();
   $('#btnReceiptCancel').onclick = () => closeReceiptModal();
@@ -5943,6 +6032,7 @@
   $('#seriesFs').value = 'FS' + y + 'DEMO01';
   $('#seriesFr').value = 'FR' + y + 'DEMO01';
   $('#seriesRg').value = 'RG' + y + 'DEMO01';
+  $('#seriesPf').value = 'PF' + y + 'DEMO01';
   $('#saftYear').value = String(y);
   $('#saftMonth').value = String(new Date().getMonth() + 1);
 
@@ -6013,6 +6103,7 @@
   $('#btnSeriesNc').onclick = () => registerSeries($('#btnSeriesNc'), '#seriesNc', 'NC', 'NC');
   $('#btnSeriesNd').onclick = () => registerSeries($('#btnSeriesNd'), '#seriesNd', 'ND', 'ND');
   $('#btnSeriesRg').onclick = () => registerSeries($('#btnSeriesRg'), '#seriesRg', 'RG', 'RG');
+  $('#btnSeriesPf').onclick = () => registerSeries($('#btnSeriesPf'), '#seriesPf', 'PF', 'PF');
 
   /** ONLY Admin path to POST /local/v1/setup/series/register. */
   async function registerSeries(btn, inputId, docType, label) {

@@ -18,6 +18,9 @@ func (s *FiscalService) IssueManualFT(ctx context.Context, in catalog.ManualIssu
 	if strings.TrimSpace(operatorID) == "" {
 		return nil, fmt.Errorf("fiscal: operator_id required")
 	}
+	if strings.EqualFold(strings.TrimSpace(in.DocumentType), string(domain.DocumentPF)) {
+		return s.IssueManualProforma(ctx, in, operatorID, stationID, fiscalTerminalID, fiscalTerminalLabel)
+	}
 	snap, err := catalog.BuildManualSaleSnapshot(s.db, in)
 	if err != nil {
 		return nil, err
@@ -34,6 +37,7 @@ func (s *FiscalService) IssueManualFT(ctx context.Context, in catalog.ManualIssu
 		FiscalTerminalID:    fiscalTerminalID,
 		FiscalTerminalLabel: fiscalTerminalLabel,
 		Snapshot:            snap,
+		ProformaID:          strings.TrimSpace(in.ProformaID),
 	}, docType)
 }
 

@@ -209,9 +209,9 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 
 | 字段 | 取值 |
 |------|------|
-| `document_type` | `FT` `FS` `FR` `NC` `ND` `RG` |
+| `document_type` | `FT` `FS` `FR` `NC` `ND` `RG` `PF` |
 | `series.status` | `PENDING` `ACTIVE` `FAILED` `TERMINATED` |
-| `document_status` | `SIGNED` `CREDITED_PARTIAL` `CREDITED_FULL` `DEBITED_PARTIAL` `DEBITED_FULL` |
+| `document_status` | 销售票：`SIGNED` `CREDITED_PARTIAL` `CREDITED_FULL` `DEBITED_PARTIAL` `DEBITED_FULL`；**PF**：`N` `A` `F`（SAF-T WorkStatus） |
 | `print_status`（单据） | `NOT_PRINTED` `PENDING` `PROCESSING` `PRINTED` `PRINT_FAILED` `REPRINTED` |
 | `job_status`（任务） | `PENDING` `PROCESSING` `PRINTED` `FAILED_BEFORE_WRITE` `UNKNOWN_AFTER_WRITE` `FAILED` |
 | `print_purpose` | `ORIGINAL` `REPRINT` |
@@ -466,6 +466,9 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | credited_gross_total | TEXT | 是 | 默认 `"0.00"` |
 | debited_gross_total | TEXT | 是 | 默认 `"0.00"`；ND 累计借记额 |
 | received_gross_total | TEXT | 是 | 默认 `"0.00"`；原 FT 经 RG 累计已收（见 [`fiscal-rg.zh.md`](fiscal-rg.zh.md)） |
+| status_reason | TEXT | 否 | PF 作废等原因；→ SAF-T `Reason` |
+| status_changed_at | TEXT | 否 | PF 最近 WorkStatus 变更；→ `WorkStatusDate` |
+| valid_until | TEXT | 否 | PF 可选有效期 `YYYY-MM-DD` |
 | created_at | TEXT | 是 | 签发提交时间 UTC |
 | fiscal_terminal_id | TEXT | 否 | 开票电脑：`fiscal_terminals.id` 或哨兵 `loopback`（本机）；旧票可空 |
 | fiscal_terminal_label | TEXT | 否 | 开票时冻结展示名（备注，空则 IP） |
@@ -551,6 +554,17 @@ MVP 不进 SAF-T `DocumentTotals/Payment`。`tendered` / `change_due` 为收银�
 | amount | TEXT | 是 | 本张 RG 收款额 |
 
 **唯一写法：** `store.IssueRG` 事务内 INSERT；读者 `store.ReceiptOriginalForDocument`。
+
+### 6.14c `invoice_proforma_references`（PF）
+
+| 列 | 类型 | 必填 | 说明 |
+|----|------|------|------|
+| id | TEXT PK | 是 | |
+| sale_invoice_id | TEXT UQ FK | 是 | → invoices（FT/FS/FR）；一真票至多一 PF |
+| proforma_invoice_id | TEXT FK | 是 | → invoices（PF） |
+| created_at | TEXT | 是 | UTC |
+
+**唯一写法：** `store.IssueFT` 事务内 `linkProformaInTx`；读者 `ProformaRefForSale` / `SalesForProforma`。见 [`fiscal-pf.zh.md`](fiscal-pf.zh.md)。
 
 ### 6.15 `idempotency_keys`
 

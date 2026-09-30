@@ -21,7 +21,7 @@ type ManualLineInput struct {
 	Quantity       string `json:"quantity"`
 }
 
-// ManualIssueInput is the ONLY API input for manual FT/FS/FR (before snapshot build).
+// ManualIssueInput is the ONLY API input for manual FT/FS/FR/PF (before snapshot build).
 type ManualIssueInput struct {
 	RequestID        string
 	DocumentType     string
@@ -31,6 +31,8 @@ type ManualIssueInput struct {
 	Tendered         string // CASH only; empty → no tendered/change
 	TableDisplayName string
 	Lines            []ManualLineInput
+	ProformaID       string // optional; sale → PF link
+	ValidUntil       string // optional; PF only YYYY-MM-DD
 }
 
 // BuildManualSaleSnapshot is the ONLY builder for manual FT → IssueDocument.

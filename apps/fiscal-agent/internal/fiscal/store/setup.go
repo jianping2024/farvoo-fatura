@@ -333,6 +333,7 @@ type SetupStatus struct {
 	FSSeriesOK            bool   `json:"fs_series_ok"`
 	FRSeriesOK            bool   `json:"fr_series_ok"`
 	RGSeriesOK            bool   `json:"rg_series_ok"`
+	PFSeriesOK            bool   `json:"pf_series_ok"`
 	ActivatedOK           bool   `json:"activated_ok"`
 	OperatorOK            bool   `json:"operator_ok"`
 	SeriesCode            string `json:"series_code,omitempty"`
@@ -347,10 +348,13 @@ type SetupStatus struct {
 	FRValidation          string `json:"fr_validation_code,omitempty"`
 	RGSeriesCode          string `json:"rg_series_code,omitempty"`
 	RGValidation          string `json:"rg_validation_code,omitempty"`
+	PFSeriesCode          string `json:"pf_series_code,omitempty"`
+	PFValidation          string `json:"pf_validation_code,omitempty"`
 	ReadyToIssue          bool   `json:"ready_to_issue"`
 	ReadyToCredit         bool   `json:"ready_to_credit"`
 	ReadyToDebit          bool   `json:"ready_to_debit"`
 	ReadyToReceipt        bool   `json:"ready_to_receipt"`
+	ReadyToProforma       bool   `json:"ready_to_proforma"`
 	OperatorCanIssueNC    bool   `json:"operator_can_issue_nc"`
 	LocalProvisionAllowed bool   `json:"local_provision_allowed"`
 	FiscalProfileOK       bool   `json:"fiscal_profile_ok"`
@@ -422,6 +426,15 @@ func (d *DB) GetSetupStatus(storeID string) (*SetupStatus, error) {
 		s.RGSeriesCode = rgCode.String
 		s.RGValidation = rgVal.String
 	}
+	var pfCode, pfVal sql.NullString
+	err = d.SQL.QueryRow(`SELECT series_code, validation_code FROM series
+		WHERE store_id=? AND document_type='PF' AND status='ACTIVE' AND validation_code IS NOT NULL AND validation_code != ''
+		ORDER BY fiscal_year DESC LIMIT 1`, storeID).Scan(&pfCode, &pfVal)
+	if err == nil {
+		s.PFSeriesOK = true
+		s.PFSeriesCode = pfCode.String
+		s.PFValidation = pfVal.String
+	}
 	_ = d.SQL.QueryRow(`SELECT COUNT(1) FROM signing_keys WHERE status='ACTIVE'`).Scan(&n)
 	s.ActivatedOK = n > 0
 	n, err = d.CountActiveOperatorsWithPIN(storeID)
@@ -442,5 +455,6 @@ func (d *DB) GetSetupStatus(storeID string) (*SetupStatus, error) {
 	s.ReadyToCredit = s.NCSeriesOK && s.ActivatedOK && s.OperatorOK && s.OperatorCanIssueNC
 	s.ReadyToDebit = s.NDSeriesOK && s.ActivatedOK && s.OperatorOK && s.OperatorCanIssueNC
 	s.ReadyToReceipt = s.RGSeriesOK && s.ActivatedOK && s.OperatorOK
+	s.ReadyToProforma = s.PFSeriesOK && s.ActivatedOK && s.OperatorOK
 	return s, nil
 }

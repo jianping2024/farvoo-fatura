@@ -95,6 +95,10 @@ func RenderESCPOS(p *Payload) []byte {
 	bold(true)
 	w(formatFaturaNoLine(p.Locale, p.DocumentType, p.InvoiceNo))
 	bold(false)
+	if strings.EqualFold(p.DocumentType, "PF") {
+		w("PRO-FORMA")
+		w("Este documento nao serve de fatura")
+	}
 	if dt := formatIssuedAt(p.IssuedAt); dt != "" {
 		w(dt)
 	}
@@ -204,6 +208,11 @@ func documentNoPrefix(invoiceLocale, docType string) string {
 			return "Receipt: "
 		}
 		return "Recibo: "
+	case "PF":
+		if en {
+			return "Proforma: "
+		}
+		return "Pro-forma: "
 	default:
 		// FT and unknown → fatura / invoice number label
 		if en {

@@ -68,13 +68,17 @@ func (s *FiscalService) ExportSAFT(_ context.Context, in ExportSAFTInput) (*Expo
 	if err != nil {
 		return nil, err
 	}
-	if len(invoices) == 0 && len(payments) == 0 {
+	workDocs, err := s.db.LoadSAFTWorkingDocumentsForPeriod(storeID, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+	if len(invoices) == 0 && len(payments) == 0 && len(workDocs) == 0 {
 		return nil, coded(ErrCodeNoInvoices, "no invoices in period")
 	}
 
 	built, err := saft.Build(saft.BuildInput{
 		Taxpayer: taxpayer, Year: in.Year, Month: in.Month,
-		StartDate: startDate, EndDate: endDate, Invoices: invoices, Payments: payments,
+		StartDate: startDate, EndDate: endDate, Invoices: invoices, Payments: payments, WorkDocs: workDocs,
 	})
 	if err != nil {
 		return nil, err

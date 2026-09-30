@@ -1,10 +1,11 @@
 # 葡萄牙单据类型：开票场景与测试方案
 
-> **状态：草稿**（已有 5 种对齐现网行为；新增 4 种为顺序开发前的场景/验收口径）  
-> **权威：否**（业务规则以本文 + 各里程碑设计文为准；库列以 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/*.sql` 为准）  
+> **状态：草稿**（已有类型对齐现网；未落地类型为顺序开发前的场景/验收口径）  
+> **权威：否**（业务规则以各里程碑设计文为准；本文是场景/测试对照；库列以 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/*.sql` 为准）  
 > **对应实现：**  
-> - 已落地：`FT` / `FS` / `FR` / `NC` / `ND`（见 [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) M0–M6）  
-> - 尚未落地：`RG` / `PF` / `GR` / `GT`（实现前须另开里程碑设计文）  
+> - 已落地：`FT` / `FS` / `FR` / `NC` / `ND` / `RG`（RG 见 [`fiscal-rg.zh.md`](fiscal-rg.zh.md)）  
+> - 行为已定稿、实现未落地：`PF`（见 [`fiscal-pf.zh.md`](fiscal-pf.zh.md)）  
+> - 尚未开设计文：`GR` / `GT`  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 本文把 **9 种**单据的使用场景、关联规则与**可执行测试场景**写在一处，供顺序开发与回归对照。
@@ -23,7 +24,7 @@
 | 4 | NC | Nota de crédito | 贷记/冲销 | **已有** | 4.1 |
 | 5 | ND | Nota de débito | 借记/补收 | **已有** | 4.1 |
 | 6 | RG | Recibo | 收款收据 | **已有**（0.5.18） | 4.4 Payments |
-| 7 | PF | Fatura pró-forma | 形式发票 | **未做** | 4.3 WorkingDocuments |
+| 7 | PF | Fatura pró-forma | 形式发票 | **定稿未做**（[`fiscal-pf.zh.md`](fiscal-pf.zh.md)） | 4.3 WorkingDocuments |
 | 8 | GR | Guia de remessa | 发货/交货单 | **未做** | 4.2 MovementOfGoods |
 | 9 | GT | Guia de transporte | 运输单 | **未做** | 4.2 |
 
@@ -259,23 +260,24 @@ GT ──(通常无)──► （可无销售票）
 
 ---
 
-## 8. PF — Fatura pró-forma（形式发票）【未做 · 建议 M-B】
+## 8. PF — Fatura pró-forma（形式发票）【定稿未做 · 权威 [`fiscal-pf.zh.md`](fiscal-pf.zh.md)】
 
 ### 8.1 使用场景
 
 - 宴会/企业询价：先报价，确认后再开 FT/FS/FR。  
 - **非正式发票**；可不转真票。
 
-### 8.2 P0 规则（拍板）
+### 8.2 P0 规则（摘要；细节以权威文为准）
 
 | 项 | 定法 |
 |----|------|
 | 金额 | 有；与最终真票 **不必**相等 |
-| 转真票 | **可选**；开 FT/FS/FR 时可引用 1 张 PF |
-| 强制 | 无 PF 也可直接开真票 |
-| 系列 | 独立 `PF` |
-| SAF-T | 4.3，`WorkType=PF`；转真票后可标已开票 `F` |
-| 票面 | 必须可见 **Pró-forma / 非发票** 字样 |
+| 转真票 | **可选**；1 PF→多真票；1 真票→最多 1 PF；FT/FS/**FR** 挂上即 PF=`F` |
+| 强制 | 无 PF 也可直接开真票；签后禁补挂/解挂 |
+| 系列 | 独立 `PF`；无 PF 系列不挡 `ready_to_issue` |
+| SAF-T | 4.3，`WorkType=PF`；`WorkStatus` N/A/F |
+| 票面 | 必须可见 **Pró-forma** + 非发票句 |
+| 入口 | 仅手工；不计入销售营收 |
 
 ### 8.3 测试场景
 
@@ -402,7 +404,7 @@ GT ──(通常无)──► （可无销售票）
 | 顺序 | 类型 | 依赖 | 阻塞条件 |
 |------|------|------|----------|
 | 1 | RG | 已有 FT、NC 余额语义 | 无 |
-| 2 | PF | 已有 FT/FS/FR 签发 | 无 |
+| 2 | PF | 已有 FT/FS/FR 签发；权威 [`fiscal-pf.zh.md`](fiscal-pf.zh.md) | 无 |
 | 3 | GR | 已有 FT；可选引用 | GR-04/10 须先拍板 |
 | 4 | GT | AT 运输通信方案 | **无方案则跳过** |
 
@@ -426,3 +428,4 @@ GT ──(通常无)──► （可无销售票）
 | 日期 | 说明 |
 |------|------|
 | 2026-09-24 | 初稿：9 种单据场景 + 测试 ID；新增 RG→PF→GR→GT 顺序与关联定法 |
+| 2026-09-30 | PF 权威改挂 [`fiscal-pf.zh.md`](fiscal-pf.zh.md)；抬头更正 RG 已落地 / PF 定稿未做 |

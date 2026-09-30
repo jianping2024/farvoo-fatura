@@ -142,6 +142,28 @@ func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps Handle
 		out["settled_at_issue_total"] = detail.SettledAtIssueTotal
 		out["remaining_receivable_total"] = detail.RemainingReceivableTotal
 	}
+	if detail.ProformaID != "" {
+		out["proforma_id"] = detail.ProformaID
+		out["proforma_invoice_no"] = detail.ProformaInvoiceNo
+	}
+	if detail.DocumentType == domain.DocumentPF {
+		out["work_status"] = detail.DocumentStatus
+		if detail.ValidUntil != "" {
+			out["valid_until"] = detail.ValidUntil
+		}
+		if detail.StatusReason != "" {
+			out["status_reason"] = detail.StatusReason
+		}
+		if detail.StatusChangedAt != "" {
+			out["status_changed_at"] = detail.StatusChangedAt
+		}
+		if len(detail.LinkedSaleInvoiceNos) > 0 {
+			out["linked_sale_invoice_nos"] = detail.LinkedSaleInvoiceNos
+		}
+		if len(detail.Lines) > 0 {
+			out["lines"] = detail.Lines
+		}
+	}
 	writeJSON(w, http.StatusOK, out)
 }
 
@@ -380,6 +402,53 @@ func handleReceipt(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
 		"document_status": res.DocumentStatus,
 		"print_job_id":    res.PrintJobID,
 		"print_status":    res.PrintStatus,
+		"issued_at":       res.IssuedAt.UTC().Format(time.RFC3339),
+		"idempotent_hit":  res.IdempotentHit,
+	})
+}
+
+func handleAnnulProforma(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	if deps.Fiscal == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
+		return
+	}
+	documentID := r.PathValue("documentId")
+	var body struct {
+		RequestID  string `json:"request_id"`
+		OperatorID string `json:"operator_id"`
+		Reason     string `json:"reason"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
+		return
+	}
+	id, ok := RequireOperatorID(w, r)
+	if !ok {
+		return
+	}
+	body.OperatorID = id
+	res, err := deps.Fiscal.AnnulProforma(r.Context(), domain.AnnulProformaRequest{
+		StoreID:    deps.StoreID,
+		RequestID:  body.RequestID,
+		DocumentID: documentID,
+		OperatorID: body.OperatorID,
+		Reason:     body.Reason,
+	})
+	if err != nil {
+		var ce *service.CodedError
+		if errors.As(err, &ce) && ce.Code == service.ErrCodeNotFound {
+			writeErr(w, http.StatusNotFound, "not_found", ce.Msg)
+			return
+		}
+		writeCoded(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"document_id":     res.DocumentID,
+		"invoice_no":      res.InvoiceNo,
+		"atcud":           res.ATCUD,
+		"document_type":   res.DocumentType,
+		"document_status": res.DocumentStatus,
 		"issued_at":       res.IssuedAt.UTC().Format(time.RFC3339),
 		"idempotent_hit":  res.IdempotentHit,
 	})

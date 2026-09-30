@@ -36,23 +36,23 @@ func (d *DB) CreateReprintPrintJob(invoiceID, operatorID, stationID string) (*Re
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var docStatus string
-	err = tx.QueryRow(`SELECT document_status FROM invoices WHERE id = ?`, invoiceID).Scan(&docStatus)
+	var docStatus, docType string
+	err = tx.QueryRow(`SELECT document_status, document_type FROM invoices WHERE id = ?`, invoiceID).Scan(&docStatus, &docType)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	if !domain.IsReprintableDocumentStatus(docStatus) {
+	if !domain.IsReprintableDocument(docType, docStatus) {
 		return nil, ErrReprintNotAllowed
 	}
 
 	var origPayload string
-	var docType string
+	var jobDocType string
 	err = tx.QueryRow(`SELECT payload_json, document_type FROM local_print_jobs
 		WHERE invoice_id = ? AND print_purpose = 'ORIGINAL' ORDER BY created_at LIMIT 1`, invoiceID).
-		Scan(&origPayload, &docType)
+		Scan(&origPayload, &jobDocType)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrReprintOriginalMissing
 	}
@@ -71,7 +71,7 @@ func (d *DB) CreateReprintPrintJob(invoiceID, operatorID, stationID string) (*Re
 		id, invoice_id, document_type, print_purpose, job_status, logical_role,
 		payload_json, payload_hash, attempts, last_error, created_at, updated_at, printed_at, created_by, station_id
 	) VALUES (?, ?, ?, 'REPRINT', 'PENDING', 'fiscal_receipt_printer', ?, ?, 0, NULL, ?, ?, NULL, ?, ?)`,
-		jobID, invoiceID, docType, string(payloadJSON), payloadHash, now, now, nullStr(operatorID), nullStr(stationID))
+		jobID, invoiceID, jobDocType, string(payloadJSON), payloadHash, now, now, nullStr(operatorID), nullStr(stationID))
 	if err != nil {
 		return nil, fmt.Errorf("store: insert reprint job: %w", err)
 	}
