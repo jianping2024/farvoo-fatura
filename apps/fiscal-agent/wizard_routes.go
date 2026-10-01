@@ -134,6 +134,7 @@ func registerUILocaleRoute(mux *http.ServeMux, configPath string, cfg **config) 
 			writePairJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
 		}
+		applyThermalEncodingFromConfig(c)
 		*cfg = c
 		loc := c.uiLocale()
 		writePairJSON(w, http.StatusOK, map[string]any{
@@ -225,6 +226,9 @@ func registerPrinterWizardRoutes(mux *http.ServeMux, configPath string, cfg **co
 			c.TextEncoding = normalizeTextEncoding(enc)
 		}
 		status, resp := persistStationPrinterSetup(configPath, cfg, c, body)
+		if status >= 200 && status < 300 {
+			applyThermalEncodingFromConfig(c)
+		}
 		writePairJSON(w, status, resp)
 	})
 

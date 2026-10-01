@@ -1,6 +1,11 @@
 package main
 
-import "strings"
+import (
+	"strings"
+
+	"farvoo-fiscal-agent/internal/escposbitmap"
+	"farvoo-fiscal-agent/internal/escposenc"
+)
 
 type escposTextMode int
 
@@ -24,30 +29,20 @@ type bitmapTextImage struct {
 	Pixels []byte
 }
 
-// Han bitmap TrueType size: default when job omits han_bitmap_font_px; clamp matches web.
 const (
-	bitmapTextDefaultFontPx = 24
-	bitmapTextMinFontPx     = 16
-	bitmapTextMaxFontPx     = 40
-	// POS-80 / 80mm printable width: Font A 48 cols × 12 dots = 576 (never 384 = 48×8).
-	bitmapTextMaxWidthPx = 576
+	bitmapTextDefaultFontPx = escposbitmap.DefaultFontPx
+	bitmapTextMinFontPx     = escposbitmap.MinFontPx
+	bitmapTextMaxFontPx     = escposbitmap.MaxFontPx
+	bitmapTextMaxWidthPx    = escposbitmap.MaxWidthPx
 )
 
 func resolveHanBitmapFontPx(n int) int {
-	if n < bitmapTextMinFontPx {
-		if n <= 0 {
-			return bitmapTextDefaultFontPx
-		}
-		return bitmapTextMinFontPx
-	}
-	if n > bitmapTextMaxFontPx {
-		return bitmapTextMaxFontPx
-	}
-	return n
+	return escposbitmap.ClampFontPx(n)
 }
 
-func textModeForConfiguredChinese(needChinese bool) escposTextMode {
-	if !needChinese {
+// textModeForThermal is the ONLY Mesa ticket mode picker (docs/fiscal-thermal-text-encoding.zh.md).
+func textModeForThermal(needFirmwareSafeRaster bool) escposTextMode {
+	if !needFirmwareSafeRaster {
 		return escposTextLatin
 	}
 	cfg, err := loadConfig(defaultConfigPath())
@@ -62,35 +57,34 @@ func textModeForConfiguredChinese(needChinese bool) escposTextMode {
 	return escposTextBitmap
 }
 
-func needsBitmapText(s string) bool {
-	return hasHan(s)
+// Deprecated name — tests / older call sites; forwards to textModeForThermal only.
+func textModeForConfiguredChinese(needChinese bool) escposTextMode {
+	return textModeForThermal(needChinese)
 }
 
-// escposBitmapText renders s as one or more GS v 0 rasters. Over-wide strings are
-// wrapDisplay'd (never truncateDisplay) so every rune is emitted.
+func needsBitmapText(s string) bool {
+	return escposenc.HasNonASCII(s)
+}
+
+func toBitmapStyle(style bitmapTextStyle) escposbitmap.Style {
+	return escposbitmap.Style{
+		Align:     style.Align,
+		Bold:      style.Bold,
+		Underline: style.Underline,
+	}
+}
+
+// escposBitmapText — ONLY Mesa wrapper around escposbitmap.Line (no second rasterizer).
 func escposBitmapText(s string, style bitmapTextStyle, fontPx int) []byte {
 	s = strings.TrimRight(s, "\r\n")
 	if s == "" {
 		return nil
 	}
-	fontPx = resolveHanBitmapFontPx(fontPx)
-	maxCols := bitmapMaxDisplayCols(fontPx)
-	chunks := wrapDisplay(s, maxCols)
-	if len(chunks) == 0 {
-		return nil
-	}
-	var out []byte
-	for _, chunk := range chunks {
-		out = append(out, escposBitmapTextOne(chunk, style, fontPx)...)
-	}
-	return out
+	return escposbitmap.Line(s, toBitmapStyle(style), fontPx)
 }
 
-func escposBitmapTextOne(s string, style bitmapTextStyle, fontPx int) []byte {
-	img := renderBitmapText(s, style, fontPx)
-	if img.Width <= 0 || img.Height <= 0 || len(img.Pixels) != img.Width*img.Height {
-		return encodeWindows1252(s)
-	}
-	// escposBitmapRaster clears ESC a for full-width canvas (alignment baked in pixels).
-	return escposBitmapRaster(img, style.Align)
+// renderBitmapText adapts escposbitmap.RenderImage for Han column / ink tests (not a second encoder).
+func renderBitmapText(s string, style bitmapTextStyle, fontPx int) bitmapTextImage {
+	img := escposbitmap.RenderImage(s, toBitmapStyle(style), fontPx)
+	return bitmapTextImage{Width: img.Width, Height: img.Height, Pixels: img.Pixels}
 }

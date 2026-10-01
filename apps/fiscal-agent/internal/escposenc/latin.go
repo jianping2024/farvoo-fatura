@@ -1,5 +1,8 @@
-// Package escposenc encodes Latin text for ESC/POS printers (Windows-1252 + ESC t 16).
-// ONLY Windows-1252 encoder for Agent kitchen tickets and fiscal FT receipts.
+// Package escposenc: thermal text policy + Latin byte helpers.
+//
+// Thermal glyphs (CJK / PT accents): docs/fiscal-thermal-text-encoding.zh.md
+//   → auto uses escposbitmap.Line; latin escape hatch uses Windows1252 + ESC t 16.
+// SAF-T XML still uses Windows1252 (compliance file encoding — not thermal).
 package escposenc
 
 import (
@@ -16,7 +19,7 @@ func SelectCodeTable(n byte) []byte {
 	return []byte{0x1B, 0x74, n}
 }
 
-// Windows1252 is the ONLY Latin byte encoder for printable receipt text.
+// Windows1252 encodes Latin for text_encoding=latin escape hatch and SAF-T.
 // Unmappable runes are omitted (never replaced with '?').
 func Windows1252(s string) []byte {
 	enc := charmap.Windows1252.NewEncoder()

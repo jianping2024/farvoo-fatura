@@ -11,6 +11,9 @@ import (
 )
 
 func TestRenderESCPOS_LayoutP0(t *testing.T) {
+	SetThermalEncoding("latin") // Font A decode for layout strings; auto accents covered separately
+	t.Cleanup(func() { SetThermalEncoding("auto") })
+
 	p := &Payload{
 		DocumentType: "FT",
 		InvoiceNo:    "FT FT2026DEMO01/3",
@@ -46,17 +49,17 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 		"NIF: PT517535009",
 		"Fatura No.: FT FT2026DEMO01/3",
 		"21/08/2026 18:26",
-		"1a Via - Original",
+		"1ª Via - Original",
 		"MESA: 018",
 		"Cliente: Consumidor Final",
 		"Qtd",
-		"Preco",
+		"Preço",
 		"IVA%-Desc",
 		"2.00x",
 		"23%-",
-		"Liquido",
+		"Líquido",
 		"TOTAL",
-		"Numerario",
+		"Numerário",
 		"Resumo IVA",
 		"0L2I-Processado por programa",
 		"certificado n. 369/AT",
@@ -67,7 +70,7 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 			t.Fatalf("missing %q in:\n%s", s, plain)
 		}
 	}
-	if strings.Contains(plain, "Qtd Preco") {
+	if strings.Contains(plain, "Qtd Preço") || strings.Contains(plain, "Qtd Preco") {
 		t.Fatal("old single-space Qtd Preco header must not remain")
 	}
 	// Symmetric sandwich: rule \n header+Soma \n rule \n — no blank lines either side.
@@ -88,7 +91,7 @@ func TestRenderESCPOS_LayoutP0(t *testing.T) {
 	}
 
 	// order: Via → MESA → Cliente; TOTAL → Resumo → cert → ATCUD
-	via := strings.Index(plain, "1a Via - Original")
+	via := strings.Index(plain, "1ª Via - Original")
 	mesa := strings.Index(plain, "MESA: 018")
 	cliente := strings.Index(plain, "Cliente:")
 	if !(via >= 0 && mesa > via && cliente > mesa) {
@@ -190,6 +193,8 @@ func TestFormatMesaLine(t *testing.T) {
 }
 
 func TestRenderESCPOS_NCOriginalReference(t *testing.T) {
+	SetThermalEncoding("latin")
+	t.Cleanup(func() { SetThermalEncoding("auto") })
 	p := &Payload{
 		DocumentType: "NC",
 		InvoiceNo:    "NC NC2026DEMO01/1",
@@ -216,7 +221,7 @@ func TestRenderESCPOS_NCOriginalReference(t *testing.T) {
 	for _, want := range []string{
 		"Documento original: FT FT2026DEMO01/1",
 		"Motivo: Devolucao",
-		"Nota de credito: NC NC2026DEMO01/1",
+		"Nota de crédito: NC NC2026DEMO01/1",
 	} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("missing %q in:\n%s", want, plain)
@@ -237,10 +242,10 @@ func TestFormatFaturaNoLine(t *testing.T) {
 	if formatFaturaNoLine("pt", "FR", "FR FR2026DEMO01/1") != "Fatura-recibo: FR FR2026DEMO01/1" {
 		t.Fatal(formatFaturaNoLine("pt", "FR", "FR FR2026DEMO01/1"))
 	}
-	if formatFaturaNoLine("pt", "NC", "NC NC2026DEMO01/1") != "Nota de credito: NC NC2026DEMO01/1" {
+	if formatFaturaNoLine("pt", "NC", "NC NC2026DEMO01/1") != "Nota de crédito: NC NC2026DEMO01/1" {
 		t.Fatal(formatFaturaNoLine("pt", "NC", "NC NC2026DEMO01/1"))
 	}
-	if formatFaturaNoLine("pt", "ND", "ND ND2026DEMO01/1") != "Nota de debito: ND ND2026DEMO01/1" {
+	if formatFaturaNoLine("pt", "ND", "ND ND2026DEMO01/1") != "Nota de débito: ND ND2026DEMO01/1" {
 		t.Fatal(formatFaturaNoLine("pt", "ND", "ND ND2026DEMO01/1"))
 	}
 }
@@ -309,10 +314,10 @@ func TestFormatItemLine_SingleRow(t *testing.T) {
 
 func TestFormatItemLinesHeader_SeparatedBands(t *testing.T) {
 	h := formatItemLinesHeader(receiptLabels("pt"))
-	if strings.Contains(h, "Qtd Preco") {
+	if strings.Contains(h, "Qtd Preço") || strings.Contains(h, "Qtd Preco") {
 		t.Fatalf("header still single-spaced: %q", h)
 	}
-	if !strings.HasPrefix(h, "Qtd") || !strings.Contains(h, "Preco") || !strings.Contains(h, "IVA%-Desc") {
+	if !strings.HasPrefix(h, "Qtd") || !strings.Contains(h, "Preço") || !strings.Contains(h, "IVA%-Desc") {
 		t.Fatalf("header: %q", h)
 	}
 	if utf8.RuneCountInString(h) < itemQtyBandW+itemPriceBandW+len("IVA%-Desc") {
@@ -348,7 +353,7 @@ func TestRenderESCPOS_EnglishLocale(t *testing.T) {
 			t.Fatalf("missing EN %q in:\n%s", s, plain)
 		}
 	}
-	for _, s := range []string{"Fatura No.:", "Cliente:", "Liquido", "Resumo IVA", "Numerario", "MESA:"} {
+	for _, s := range []string{"Fatura No.:", "Cliente:", "Líquido", "Liquido", "Resumo IVA", "Numerário", "Numerario", "MESA:"} {
 		if strings.Contains(plain, s) {
 			t.Fatalf("unexpected PT %q in EN ticket:\n%s", s, plain)
 		}
@@ -359,6 +364,37 @@ func TestRenderESCPOS_EnglishLocale(t *testing.T) {
 }
 
 func TestRenderESCPOS_AccentEncoding(t *testing.T) {
+	SetThermalEncoding("auto")
+	t.Cleanup(func() { SetThermalEncoding("auto") })
+	p := &Payload{
+		DocumentType: "FT", InvoiceNo: "FT X/1", PrintPurpose: "ORIGINAL",
+		IssuedAt: "2026-08-21T12:00:00",
+		Merchant: MerchantBlock{LegalName: "Demo", TaxRegistrationNumber: "1"},
+		Lines: []LineBlock{{
+			DisplayName: "Guaraná", Quantity: "1.00", UnitPriceGross: "1.00",
+			VATRate: "0.23", LineGross: "1.00",
+		}},
+		Totals:     TotalsBlock{GrossTotal: "1.00"},
+		Compliance: ComplianceBlock{ATCUD: "A-1", QR: QRBlock{Content: "A:1"}, HashControlChars: "AbC/"},
+	}
+	raw := RenderESCPOS(p)
+	if bytes.Contains(raw, escposenc.Windows1252("Guaraná")) {
+		t.Fatal("auto must not emit Windows-1252 Guaraná")
+	}
+	if bytes.Contains(raw, []byte("Guaraná")) {
+		t.Fatal("UTF-8 Guaraná on wire")
+	}
+	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
+		t.Fatal("auto accents must use GS v 0")
+	}
+	if bytes.Contains(raw, []byte("Hash:")) {
+		t.Fatal("no Hash: line")
+	}
+}
+
+func TestRenderESCPOS_AccentEncodingLatinEscape(t *testing.T) {
+	SetThermalEncoding("latin")
+	t.Cleanup(func() { SetThermalEncoding("auto") })
 	p := &Payload{
 		DocumentType: "FT", InvoiceNo: "FT X/1", PrintPurpose: "ORIGINAL",
 		IssuedAt: "2026-08-21T12:00:00",
@@ -372,13 +408,10 @@ func TestRenderESCPOS_AccentEncoding(t *testing.T) {
 	}
 	raw := RenderESCPOS(p)
 	if !bytes.Contains(raw, escposenc.Windows1252("Guaraná")) {
-		t.Fatal("1252 Guaraná missing")
+		t.Fatal("latin escape must emit 1252 Guaraná")
 	}
 	if bytes.Contains(raw, []byte("Guaraná")) {
 		t.Fatal("UTF-8 Guaraná on wire")
-	}
-	if bytes.Contains(raw, []byte("Hash:")) {
-		t.Fatal("no Hash: line")
 	}
 }
 

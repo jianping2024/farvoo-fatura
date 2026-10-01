@@ -16,8 +16,14 @@ func TestStationTicketNeedsBitmap(t *testing.T) {
 	if !stationTicketNeedsBitmap(jobPayload{Locale: "pt", Lines: []jobLine{{DisplayName: "宫保鸡丁"}}}) {
 		t.Fatal("expected bitmap for Chinese dish on station slip")
 	}
-	if stationTicketNeedsBitmap(jobPayload{Locale: "pt", RestaurantName: "川味", Lines: []jobLine{{DisplayName: "Soup"}}}) {
-		t.Fatal("station slip ignores restaurant_name; ASCII dish stays Latin")
+	if !stationTicketNeedsBitmap(jobPayload{Locale: "pt", RestaurantName: "川味", Lines: []jobLine{{DisplayName: "Soup"}}}) {
+		t.Fatal("pt locale station chrome always needs firmware-safe raster")
+	}
+	if stationTicketNeedsBitmap(jobPayload{Locale: "en", Lines: []jobLine{{DisplayName: "Soup"}}}) {
+		t.Fatal("en + ASCII dish must stay Latin mode")
+	}
+	if !stationTicketNeedsBitmap(jobPayload{Locale: "en", Lines: []jobLine{{DisplayName: "Café"}}}) {
+		t.Fatal("en + accented dish needs raster")
 	}
 	if !stationTicketNeedsBitmap(jobPayload{Locale: "zh", Lines: []jobLine{{DisplayName: "Soup"}}}) {
 		t.Fatal("zh locale station slip needs bitmap")
@@ -28,20 +34,32 @@ func TestReceiptTicketNeedsBitmapPayer(t *testing.T) {
 	if !receiptTicketNeedsBitmap(jobPayload{PayerName: "王小明"}) {
 		t.Fatal("expected bitmap for custom Chinese payer name")
 	}
-	if receiptTicketNeedsBitmap(jobPayload{PayerName: "2", Lines: []jobLine{{DisplayName: "Soup"}}}) {
-		t.Fatal("expected Latin for numeric placeholder payer")
+	if receiptTicketNeedsBitmap(jobPayload{Locale: "en", PayerName: "2", Lines: []jobLine{{DisplayName: "Soup"}}}) {
+		t.Fatal("expected Latin for numeric placeholder payer + ASCII en")
 	}
-	if receiptTicketNeedsBitmap(jobPayload{PayerName: "客人 2", Lines: []jobLine{{DisplayName: "Soup"}}}) {
+	if receiptTicketNeedsBitmap(jobPayload{Locale: "en", PayerName: "客人 2", Lines: []jobLine{{DisplayName: "Soup"}}}) {
 		t.Fatal("split placeholder payer should use Latin after formatting")
+	}
+	if !receiptTicketNeedsBitmap(jobPayload{Locale: "pt", PayerName: "2", Lines: []jobLine{{DisplayName: "Soup"}}}) {
+		t.Fatal("pt receipt chrome always needs raster")
 	}
 }
 
 func TestReceiptTicketNeedsBitmapIgnoresRestaurantName(t *testing.T) {
+	// restaurant_name alone must not flip mode; accented dish / pt chrome does.
 	if receiptTicketNeedsBitmap(jobPayload{
+		Locale:         "en",
+		RestaurantName: "川味餐厅",
+		Lines:          []jobLine{{DisplayName: "Soup"}},
+	}) {
+		t.Fatal("en ASCII dish must ignore Chinese restaurant_name")
+	}
+	if !receiptTicketNeedsBitmap(jobPayload{
+		Locale:         "en",
 		RestaurantName: "川味餐厅",
 		Lines:          []jobLine{{DisplayName: "Chá camomila"}},
 	}) {
-		t.Fatal("Portuguese menu with Chinese restaurant_name in payload must stay Latin")
+		t.Fatal("accented dish must need raster even if restaurant_name is ignored")
 	}
 }
 
@@ -60,6 +78,9 @@ func TestConnectionTestNeedsBitmap(t *testing.T) {
 	}
 	if connectionTestNeedsBitmap(jobPayload{Locale: "en", RestaurantName: "Mesa Lisboa"}) {
 		t.Fatal("en locale + ASCII venue should use Latin on connection test")
+	}
+	if !connectionTestNeedsBitmap(jobPayload{Locale: "pt", RestaurantName: "Mesa Lisboa"}) {
+		t.Fatal("pt connection test needs raster for accented chrome")
 	}
 }
 

@@ -2,7 +2,7 @@
 
 > **状态：定稿**  
 > **权威：是**  
-> **对应实现：** `print.RenderESCPOS`（唯一）；拉丁编码 `escposenc`  
+> **对应实现：** `print.RenderESCPOS`（唯一）；热敏字形见 [`fiscal-thermal-text-encoding.zh.md`](fiscal-thermal-text-encoding.zh.md)  
 > **参考样张：** VOZ / Pingo Doce（版式习惯）；店名等数据仍用本店 payload  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
@@ -21,7 +21,7 @@
 
 | # | 定法 | 依据 |
 |---|------|------|
-| 1 | 票号：唯一 `documentNoPrefix(locale, document_type)` + `invoice_no`；**整行加粗**（`ESC E`）；日期/联次普通。前缀：FT=`Fatura No.:` / `Invoice No.:`；FS=`Fatura simplificada:` / `Simplified invoice:`；FR=`Fatura-recibo:` / `Invoice-receipt:`；NC=`Nota de credito:` / `Credit note:`；ND=`Nota de debito:` / `Debit note:`（FS/FR/NC/ND **不加**额外 No.） | 市面样票分类习惯；语言见 [`fiscal-ui-locale.zh.md`](fiscal-ui-locale.zh.md) |
+| 1 | 票号：唯一 `documentNoPrefix(locale, document_type)` + `invoice_no`；**整行加粗**（`ESC E`）；日期/联次普通。前缀：FT=`Fatura No.:` / `Invoice No.:`；FS=`Fatura simplificada:` / `Simplified invoice:`；FR=`Fatura-recibo:` / `Invoice-receipt:`；NC=`Nota de crédito:` / `Credit note:`；ND=`Nota de débito:` / `Debit note:`（FS/FR/NC/ND **不加**额外 No.） | 市面样票分类习惯；语言见 [`fiscal-ui-locale.zh.md`](fiscal-ui-locale.zh.md) |
 | 2 | 认证句：`{QRHashChars}-` + `Processado por… n. {证号}/AT`（票面无 `º`）；**禁止** `Hash:` 行；**超宽故意两行**（优先在 `programa ` 后折） | VOZ `/IJ6 -- Processado…`；Pingo `XLM/-Processado…` |
 | 3 | 顺序：认证 → ATCUD → QR → 进纸切；QR 下无业务字 | 样票 QR 垫底；切前进纸见 §2.11 |
 | 4 | ATCUD + QR **居中**；QR module **6** | VOZ 居中大 QR |
@@ -29,7 +29,7 @@
 | 6 | **TOTAL 突出**：加粗 + 倍高（`ESC E` + `GS ! 0x01`）；Liquido/IVA/付款普通 | VOZ：`TOTAL: … Euro` 明显大于邻行 |
 | 6a | **现金实收/找零（可选）**：有 `payments[].tendered` 时，付款行后印 **Valor entregue** + **Troco**；无 tendered 则不印。唯一：`writePaymentBlock` | 零售收银习惯；非 CIVA 强制 |
 | 7 | **票面宽 48 列**（与厨打 `escposWidth` 一致）；虚线/金额行铺满 80mm；**禁止**再缩到 32 | VOZ/Pingo 样票铺满；0.3.95 真机 32 列右边空白丑 |
-| 8 | **明细表头**：`formatItemLinesHeader` 唯一；Qtd/Preco 分列宽；**虚线夹住表头**（上虚线→表头→下虚线→明细）；**上下虚线与表头各紧贴一行、中间不插空行**（间距对称） | 零售样票隔离列头；避免 Qtd Preco 贴死、表头贴明细、上下疏密不一 |
+| 8 | **明细表头**：`formatItemLinesHeader` 唯一；Qtd/Preço 分列宽；**虚线夹住表头**（上虚线→表头→下虚线→明细）；**上下虚线与表头各紧贴一行、中间不插空行**（间距对称） | 零售样票隔离列头；避免 Qtd Preço 贴死、表头贴明细、上下疏密不一 |
 | 9 | **店名**仅 `LegalName`：加粗 + 1×2（`GS ! 0x01`），印完恢复 1×1；店名下 **`ESC J 7`**（7 **点**，为 v0.4.40 的 15 点之半；**禁止** `ESC d`）；地址 / NIF / BusinessName 仍 1×1 | 王氏抬头观感；禁止把整段抬头都放大 |
 | 10 | 有桌号时印 **`MESA: {table}`**（唯一 `formatMesaLine`；来自 `display_meta.table_display_name`） | 餐馆样票 |
 | 11 | **纵向留白（软件）**：行高 **30 点**。店名后 **`receiptTopGapDots=7`**（`ESC J`）。QR 后：`writeQR` LF **30** + `GS V 66` **`cutFeedDots=26`**，合计 **56 点**（v0.4.40 合计 85 点之 **⅔**）。禁止 QR 后再印业务字 | 真机省纸；QR 横切时只增 `cutFeedDots` |
@@ -67,7 +67,7 @@
 | 认证票面拼装 | 仅 `formatCertificationFace` + 折行 `formatCertificationFaceLines` |
 | 桌号行 | 仅 `formatMesaLine` |
 | 票号标签行 | 仅 `formatFaturaNoLine` → `documentNoPrefix` |
-| 拉丁编码 | 仅 `escposenc.Windows1252` |
+| 拉丁/热敏字形 | `auto`：非 ASCII 整行仅 `escposbitmap.Line`；ASCII Font A；见 [`fiscal-thermal-text-encoding.zh.md`](fiscal-thermal-text-encoding.zh.md)。`latin` 逃生口才用 `escposenc.Windows1252` |
 | 店名后间距 | 仅 `escFeedDots` → **`ESC J`** + `receiptTopGapDots`（禁止 `ESC d`） |
 | 流前缀（撕口→内容） | 仅 `receiptStreamBegin`（禁止正常票面 `ESC @`） |
 | 切前进纸 | 仅 `GS V 66` + `cutFeedDots`（与 `writeQR` 末尾 LF 合计 56 点） |

@@ -51,13 +51,10 @@ func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
 	for _, want := range []string{
 		"restaurant",
 		"Pedido",
-		"Mesa n.\xba:A-32",
 		"Conv.:4",
 		"Artigos",
 		"Qtd",
 		"(Bebidas/ Drinks2)",
-		"001-",
-		"500ml",
 		"007-Coca Cola Zero",
 		"Hora pedido:",
 		"Impresso por:restaurant",
@@ -66,11 +63,12 @@ func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
 			t.Fatalf("missing %q in ticket output", want)
 		}
 	}
-
-	if bytes.Contains(raw, []byte{0xC1}) || bytes.Contains(raw, []byte{0xE1}) {
-		// Windows-1252 Á/á when present in payload.
-	} else {
-		t.Fatalf("expected Windows-1252 accented bytes in ticket output")
+	// auto + pt: accents (Água / Mesa n.º / …) are GS v 0 — not UTF-8 on the wire.
+	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
+		t.Fatal("pt station ticket must raster non-ASCII via GS v 0")
+	}
+	if bytes.Contains(raw, []byte("Água")) || bytes.Contains(raw, []byte("Observação")) {
+		t.Fatal("must not emit raw UTF-8 accents on wire")
 	}
 
 	idx := bytes.Index(raw, []byte("Artigos"))
@@ -409,16 +407,14 @@ func TestStationTicketItemNoteUsesUnderline(t *testing.T) {
 		}},
 	})
 	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	labelIdx := bytes.Index(raw, []byte("Observ"))
-	if labelIdx < 0 {
-		t.Fatal("missing Observação: prefix")
-	}
-	prefix := raw[max(0, labelIdx-16):labelIdx]
-	if !bytes.Contains(prefix, []byte{0x1B, 0x2D, 0x01}) {
+	if !bytes.Contains(raw, []byte{0x1B, 0x2D, 0x01}) {
 		t.Fatal("expected ESC - 1 underline before item note")
 	}
-	if !bytes.Contains(raw, []byte("Observ")) || !bytes.Contains(raw, []byte(": no onion")) {
-		t.Fatal("expected Observação: prefix before item note")
+	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
+		t.Fatal("Observação note line must raster under pt auto")
+	}
+	if bytes.Contains(raw, []byte("Observação")) {
+		t.Fatal("must not emit raw UTF-8 Observação on wire")
 	}
 }
 
@@ -468,6 +464,7 @@ func TestStationTicketItemNoteWrapsFullText(t *testing.T) {
 		t.Fatal("fixture note too short to exercise wrap")
 	}
 	payload, _ := json.Marshal(jobPayload{
+		Locale:           "pt",
 		TableDisplayName: "068",
 		Lines: []jobLine{{
 			ItemCode:    "903",
@@ -478,15 +475,14 @@ func TestStationTicketItemNoteWrapsFullText(t *testing.T) {
 		}},
 	})
 	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	for _, chunk := range chunks {
-		enc := encodeWindows1252(chunk)
-		if !bytes.Contains(raw, enc) {
-			t.Fatalf("missing wrapped note chunk %q", chunk)
-		}
+	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
+		t.Fatal("pt note with Observação must emit GS v 0")
 	}
-	if bytes.Contains(raw, []byte("…")) {
-		t.Fatal("station note must not use ellipsis truncation")
+	if bytes.Contains(raw, []byte("…")) || bytes.Contains(raw, []byte("Observação")) {
+		t.Fatal("station note must not ellipsis-truncate or emit UTF-8 Observação")
 	}
+	// wrapDisplay fixture still multi-chunk (prefix width); product path rasters each text() line.
+	_ = chunks
 	itemLine := stationSlipItemLine("903-Cafe", "2", escposWidth)
 	qtyStart := stationSlipQtyColStart(escposWidth)
 	qtyCol := []rune(padFieldRight("2", stationSlipQtyColWidth))

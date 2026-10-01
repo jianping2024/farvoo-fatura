@@ -51,6 +51,7 @@ func fiscalBillSyncPuller(cfg *config) *billsync.Puller {
 // (local provision + AT env only). LAN listen is NOT via env — see resolveFiscalListenBind.
 // ONLY agent-side applicator.
 func applyFiscalRuntimeFromConfig(cfg *config) {
+	applyThermalEncodingFromConfig(cfg)
 	if strings.TrimSpace(os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION")) == "" {
 		allow := false
 		if cfg != nil && cfg.FiscalAllowLocalProvision != nil {

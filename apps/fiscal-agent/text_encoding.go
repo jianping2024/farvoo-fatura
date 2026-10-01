@@ -1,14 +1,20 @@
 package main
 
-import "strings"
+import (
+	fiscalprint "farvoo-fiscal-agent/internal/fiscal/print"
+	"farvoo-fiscal-agent/internal/escposenc"
+)
 
 func normalizeTextEncoding(raw string) string {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "utf8", "utf-8":
-		return "utf8"
-	case "latin", "windows1252", "cp1252":
-		return "latin"
-	default:
-		return "auto"
+	return escposenc.NormalizeThermalEncoding(raw)
+}
+
+// applyThermalEncodingFromConfig is the ONLY Agent→FT thermal encoding applicator
+// (also called from applyFiscalRuntimeFromConfig / wizard save).
+func applyThermalEncodingFromConfig(cfg *config) {
+	enc := "auto"
+	if cfg != nil {
+		enc = normalizeTextEncoding(cfg.TextEncoding)
 	}
+	fiscalprint.SetThermalEncoding(enc)
 }

@@ -5,6 +5,8 @@ import "farvoo-fiscal-agent/internal/fiscal/locale"
 // ReceiptLabels is the ONLY fiscal ticket chrome copy (scheme A: en | pt),
 // excluding the document-number line prefix (ONLY documentNoPrefix).
 // Certification line stays Portuguese in BuildPayload — not in this struct.
+// pt-PT accents are intentional; thermal auto rasters non-ASCII
+// (docs/fiscal-thermal-text-encoding.zh.md) — do not ASCII-fold to hide code-page bugs.
 type ReceiptLabels struct {
 	ClientePrefix     string
 	NIFClientePrefix  string
@@ -80,13 +82,13 @@ func receiptLabels(invoiceLocale string) ReceiptLabels {
 			OriginalDocPrefix: "Documento original: ",
 			ReasonPrefix:      "Motivo: ",
 			MesaPrefix:        "MESA: ",
-			ViaOriginal:       "1a Via - Original",
-			ViaReprint:        "2a Via - Reprint",
+			ViaOriginal:       "1ª Via - Original",
+			ViaReprint:        "2ª Via - Reprint",
 			HeaderQty:         "Qtd",
-			HeaderPrice:       "Preco",
+			HeaderPrice:       "Preço",
 			HeaderDesc:        "IVA%-Desc",
 			Sum:               "Soma",
-			Net:               "Liquido",
+			Net:               "Líquido",
 			VAT:               "IVA",
 			Total:             "TOTAL",
 			VATSummaryTitle:   "Resumo IVA",
@@ -94,8 +96,8 @@ func receiptLabels(invoiceLocale string) ReceiptLabels {
 			ColBase:           "Base",
 			ColVAT:            "IVA",
 			ColTot:            "Tot",
-			PayCash:           "Numerario",
-			PayCard:           "Cartao",
+			PayCash:           "Numerário",
+			PayCard:           "Cartão",
 			PayMBWay:          "MB Way",
 			PayMultibanco:     "Multibanco",
 			PayMixed:          "Misto",
