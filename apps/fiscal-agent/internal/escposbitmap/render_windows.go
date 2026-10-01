@@ -1,6 +1,6 @@
 //go:build windows
 
-package main
+package escposbitmap
 
 import (
 	"strings"
@@ -43,33 +43,35 @@ var (
 	procTextOutW           = gdi32.NewProc("TextOutW")
 )
 
-// renderBitmapText draws s on the full POS-80 canvas with alignment baked in (576 dots).
-// Caller must wrap to bitmapMaxDisplayCols; this function does not truncateDisplay.
-func renderBitmapText(s string, style bitmapTextStyle, fontPx int) bitmapTextImage {
-	canvasW := bitmapTextMaxWidthPx
+func renderText(s string, style Style, fontPx int) Image {
+	canvasW := MaxWidthPx
 	s = strings.TrimRight(s, "\r\n")
 	if s == "" {
-		return bitmapTextImage{}
+		return Image{}
 	}
 
 	dc, _, _ := procCreateCompatibleDC.Call(0)
 	if dc == 0 {
-		return bitmapTextImage{}
+		return Image{}
 	}
 	defer procDeleteDC.Call(dc)
 
-	fontPx = resolveHanBitmapFontPx(fontPx)
+	fontPx = ClampFontPx(fontPx)
 	weight := uintptr(400)
 	if style.Bold {
 		weight = 700
 	}
 	face, _ := syscall.UTF16PtrFromString("Microsoft YaHei")
+	underline := uintptr(0)
+	if style.Underline {
+		underline = 1
+	}
 	font, _, _ := procCreateFontW.Call(
-		uintptr(^uint32(fontPx-1)+1), 0, 0, 0, weight, 0, uintptr(boolToUintptr(style.Underline)), 0,
+		uintptr(^uint32(fontPx-1)+1), 0, 0, 0, weight, 0, underline, 0,
 		1, 4, 0, 0, 0, uintptr(unsafe.Pointer(face)),
 	)
 	if font == 0 {
-		return bitmapTextImage{}
+		return Image{}
 	}
 	defer procDeleteObject.Call(font)
 	oldFont, _, _ := procSelectObject.Call(dc, font)
@@ -77,15 +79,15 @@ func renderBitmapText(s string, style bitmapTextStyle, fontPx int) bitmapTextIma
 
 	utf16, _ := syscall.UTF16FromString(s)
 	if len(utf16) <= 1 {
-		return bitmapTextImage{}
+		return Image{}
 	}
 
 	textW := textWidthPx(dc, s) + 2
 	height := textLineHeightPx(dc, s, fontPx)
 	if height <= 0 {
-		height = fontPx + hanBitmapHeightPad
+		height = fontPx + heightPad
 	}
-	leftPx := hanBitmapAlignStartPx(textW, style.Align)
+	leftPx := alignStartPx(textW, style.Align)
 
 	var bits unsafe.Pointer
 	stride := ((canvasW*32 + 31) / 32) * 4
@@ -97,7 +99,7 @@ func renderBitmapText(s string, style bitmapTextStyle, fontPx int) bitmapTextIma
 	bi.Header.BitCount = 32
 	bitmap, _, _ := procCreateDIBSection.Call(dc, uintptr(unsafe.Pointer(&bi)), 0, uintptr(unsafe.Pointer(&bits)), 0, 0)
 	if bitmap == 0 || bits == nil {
-		return bitmapTextImage{}
+		return Image{}
 	}
 	defer procDeleteObject.Call(bitmap)
 	oldBitmap, _, _ := procSelectObject.Call(dc, bitmap)
@@ -111,7 +113,7 @@ func renderBitmapText(s string, style bitmapTextStyle, fontPx int) bitmapTextIma
 	procSetBkColor.Call(dc, 0x00ffffff)
 	procSetTextColor.Call(dc, 0x00000000)
 	procSetBkMode.Call(dc, 2)
-	drawTextOutW(dc, leftPx, hanBitmapPadY, s)
+	drawTextOutW(dc, leftPx, padY, s)
 
 	pixels := make([]byte, canvasW*height)
 	for y := 0; y < height; y++ {
@@ -122,7 +124,7 @@ func renderBitmapText(s string, style bitmapTextStyle, fontPx int) bitmapTextIma
 			}
 		}
 	}
-	return bitmapTextImage{Width: canvasW, Height: height, Pixels: pixels}
+	return Image{Width: canvasW, Height: height, Pixels: pixels}
 }
 
 func textWidthPx(dc uintptr, s string) int {
@@ -136,9 +138,27 @@ func textWidthPx(dc uintptr, s string) int {
 	return int(size.CX)
 }
 
-func boolToUintptr(v bool) uintptr {
-	if v {
-		return 1
+func textLineHeightPx(dc uintptr, s string, fontPx int) int {
+	if s == "" {
+		return 0
 	}
-	return 0
+	utf16, _ := syscall.UTF16FromString(s)
+	if len(utf16) <= 1 {
+		return 0
+	}
+	var size gdiSize
+	procGetTextExtentPoint.Call(dc, uintptr(unsafe.Pointer(&utf16[0])), uintptr(len(utf16)-1), uintptr(unsafe.Pointer(&size)))
+	h := int(size.CY) + heightPad
+	if h < fontPx+heightPad {
+		h = fontPx + heightPad
+	}
+	return h
+}
+
+func drawTextOutW(dc uintptr, x, y int, s string) {
+	utf16, _ := syscall.UTF16FromString(s)
+	if len(utf16) <= 1 {
+		return
+	}
+	procTextOutW.Call(dc, uintptr(x), uintptr(y), uintptr(unsafe.Pointer(&utf16[0])), uintptr(len(utf16)-1))
 }

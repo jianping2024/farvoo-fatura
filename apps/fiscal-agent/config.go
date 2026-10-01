@@ -32,7 +32,7 @@ type config struct {
 	UILocale string `json:"ui_locale,omitempty"`
 	// ValidUntil: RFC3339 from claim; used for tray renewal hints (half-year credential).
 	ValidUntil string `json:"valid_until,omitempty"`
-	// TextEncoding: auto | utf8 | latin — Chinese auto mode renders raster bitmaps; legacy gbk normalizes to auto.
+	// TextEncoding: auto | utf8 | latin — thermal glyphs; see docs/fiscal-thermal-text-encoding.zh.md
 	TextEncoding string `json:"text_encoding,omitempty"`
 	// FiscalAllowLocalProvision: allow Admin activate with pasted product PEM (UAT only).
 	// nil / omitted → default false (Ops cloud provision). Explicit true enables.

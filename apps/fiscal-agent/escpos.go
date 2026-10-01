@@ -309,7 +309,7 @@ func newEscposForStationTicket(p jobPayload) *escposWriter {
 	w := newEscpos()
 	w.printLocale = normalizePrintLocale(p.Locale)
 	w.hanFontPx = resolveHanBitmapFontPx(p.HanBitmapFontPx)
-	w.applyTextMode(textModeForConfiguredChinese(stationTicketNeedsBitmap(p)))
+	w.applyTextMode(textModeForThermal(stationTicketNeedsBitmap(p)))
 	return w
 }
 
@@ -317,7 +317,7 @@ func newEscposForReceiptTicket(p jobPayload) *escposWriter {
 	w := newEscpos()
 	w.printLocale = normalizePrintLocale(p.Locale)
 	w.hanFontPx = resolveHanBitmapFontPx(p.HanBitmapFontPx)
-	w.applyTextMode(textModeForConfiguredChinese(receiptTicketNeedsBitmap(p)))
+	w.applyTextMode(textModeForThermal(receiptTicketNeedsBitmap(p)))
 	return w
 }
 
@@ -325,7 +325,7 @@ func newEscposForConnectionTest(p jobPayload) *escposWriter {
 	w := newEscpos()
 	w.printLocale = normalizePrintLocale(p.Locale)
 	w.hanFontPx = resolveHanBitmapFontPx(p.HanBitmapFontPx)
-	w.applyTextMode(textModeForConfiguredChinese(connectionTestNeedsBitmap(p)))
+	w.applyTextMode(textModeForThermal(connectionTestNeedsBitmap(p)))
 	return w
 }
 
@@ -341,7 +341,7 @@ func (w *escposWriter) applyTextMode(mode escposTextMode) {
 	}
 }
 
-// enableLatin selects WPC1252 (covers Portuguese accents on most 80mm printers).
+// enableLatin selects WPC1252 for text_encoding=latin escape hatch / ASCII Font A lines.
 func (w *escposWriter) enableLatin() {
 	w.prefix = append(w.prefix, escposenc.SelectCodeTable(escposenc.CodeTableWPC1252)...)
 }
@@ -390,6 +390,12 @@ func (w *escposWriter) size(doubleW, doubleH bool) {
 }
 
 func (w *escposWriter) text(s string) {
+	if w.textMode == escposTextUTF8 {
+		w.content.Write([]byte(s))
+		w.lastTextBitmap = false
+		return
+	}
+	// auto/bitmap: non-ASCII whole line → GS v 0 (docs/fiscal-thermal-text-encoding.zh.md).
 	if w.textMode == escposTextBitmap && needsBitmapText(s) {
 		fontPx := hanFontPxForRole(w.hanFontPx, w.hanRole)
 		w.content.Write(escposBitmapText(s, bitmapTextStyle{
@@ -400,11 +406,6 @@ func (w *escposWriter) text(s string) {
 			DoubleH:   w.doubleH,
 		}, fontPx))
 		w.lastTextBitmap = true
-		return
-	}
-	if w.textMode == escposTextUTF8 {
-		w.content.Write([]byte(s))
-		w.lastTextBitmap = false
 		return
 	}
 	w.content.Write(encodeWindows1252(s))

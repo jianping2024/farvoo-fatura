@@ -13,7 +13,7 @@ func TestWritePaymentBlock_TenderedChange(t *testing.T) {
 		Method: "CASH", Amount: "8.00", Tendered: "10.00", ChangeDue: "2.00",
 	}, 48)
 	plain := strings.Join(lines, "\n")
-	for _, want := range []string{"Numerario", "8.00", "Valor entregue", "10.00", "Troco", "2.00"} {
+	for _, want := range []string{"Numerário", "8.00", "Valor entregue", "10.00", "Troco", "2.00"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("missing %q in:\n%s", want, plain)
 		}

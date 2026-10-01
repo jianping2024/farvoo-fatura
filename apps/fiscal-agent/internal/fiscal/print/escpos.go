@@ -40,9 +40,15 @@ const (
 func escFeedDots(n byte) []byte { return []byte{0x1B, 0x4A, n} }
 
 // receiptStreamBegin is the ONLY fiscal receipt stream prefix (tear-to-content).
-// Skips ESC @ to avoid firmware self-test feed (~24–30 dots); sets code page + default line spacing instead.
+// Skips ESC @ to avoid firmware self-test feed (~24–30 dots); sets encoding + default line spacing.
 func receiptStreamBegin() []byte {
-	out := escposenc.SelectCodeTable(escposenc.CodeTableWPC1252)
+	var out []byte
+	switch thermalEncoding {
+	case "utf8":
+		out = append(out, 0x1B, 0x39, 0x01) // ESC 9 1 — UTF-8 printers only
+	default:
+		out = append(out, escposenc.SelectCodeTable(escposenc.CodeTableWPC1252)...)
+	}
 	out = append(out, 0x1B, 0x32) // ESC 2 — default line spacing
 	return out
 }
@@ -50,6 +56,7 @@ func receiptStreamBegin() []byte {
 // RenderESCPOS is the ONLY fiscal receipt ESC/POS renderer (from frozen Payload).
 // Layout authority: docs/fiscal-ft-receipt-layout.zh.md
 // Ticket chrome labels: ONLY receiptLabels(p.Locale) (scheme A).
+// Text encoding: ONLY emitThermalLine (docs/fiscal-thermal-text-encoding.zh.md).
 func RenderESCPOS(p *Payload) []byte {
 	if p == nil {
 		return []byte{0x1B, 0x40, 0x1D, 0x56, 0x42, cutFeedDots}
@@ -66,19 +73,23 @@ func RenderESCPOS(p *Payload) []byte {
 			b.Write([]byte{0x1B, 0x45, 0})
 		}
 	}
+	boldOn := false
+	setBold := func(on bool) {
+		boldOn = on
+		bold(on)
+	}
 	w := func(s string) {
-		b.Write(escposenc.Windows1252(s))
-		b.WriteByte('\n')
+		emitThermalLine(&b, s, thermalLineStyle{Bold: boldOn})
 	}
 	rule := func() { w(strings.Repeat("-", receiptWidth)) }
 
 	// ① merchant — LegalName only: 1×2 bold, then dot gap (address/NIF stay 1×1)
 	align(1)
-	bold(true)
+	setBold(true)
 	b.Write([]byte{0x1D, 0x21, 0x01}) // GS ! — double height only
 	w(p.Merchant.LegalName)
 	b.Write([]byte{0x1D, 0x21, 0x00})
-	bold(false)
+	setBold(false)
 	b.Write(escFeedDots(receiptTopGapDots))
 	if p.Merchant.BusinessName != "" && p.Merchant.BusinessName != p.Merchant.LegalName {
 		w(p.Merchant.BusinessName)
@@ -92,12 +103,12 @@ func RenderESCPOS(p *Payload) []byte {
 	align(0)
 
 	// ② document identity — invoice no. bold only (layout P0 #1); date/via regular
-	bold(true)
+	setBold(true)
 	w(formatFaturaNoLine(p.Locale, p.DocumentType, p.InvoiceNo))
-	bold(false)
+	setBold(false)
 	if strings.EqualFold(p.DocumentType, "PF") {
 		w("PRO-FORMA")
-		w("Este documento nao serve de fatura")
+		w("Este documento não serve de fatura")
 	}
 	if dt := formatIssuedAt(p.IssuedAt); dt != "" {
 		w(dt)
@@ -138,11 +149,11 @@ func RenderESCPOS(p *Payload) []byte {
 	rule()
 	w(moneyRow(L.Net, p.Totals.NetTotal, receiptWidth))
 	w(moneyRow(L.VAT, p.Totals.TaxPayable, receiptWidth))
-	bold(true)
+	setBold(true)
 	b.Write([]byte{0x1D, 0x21, 0x01}) // GS ! — double height only (width stays Font A cols)
 	w(moneyRow(L.Total, p.Totals.GrossTotal, receiptWidth))
 	b.Write([]byte{0x1D, 0x21, 0x00})
-	bold(false)
+	setBold(false)
 	for _, pay := range p.Payments {
 		writePaymentBlock(w, L, pay, receiptWidth)
 	}
@@ -197,12 +208,12 @@ func documentNoPrefix(invoiceLocale, docType string) string {
 		if en {
 			return "Credit note: "
 		}
-		return "Nota de credito: "
+		return "Nota de crédito: "
 	case "ND":
 		if en {
 			return "Debit note: "
 		}
-		return "Nota de debito: "
+		return "Nota de débito: "
 	case "RG":
 		if en {
 			return "Receipt: "

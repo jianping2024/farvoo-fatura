@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.29
+
+**热敏文字编码：非 ASCII 固件无关位图（葡语重音）**
+
+- **定稿** [`docs/fiscal-thermal-text-encoding.zh.md`](../../docs/fiscal-thermal-text-encoding.zh.md)：`auto` 下含非 ASCII 的**整行**仅 `escposbitmap.Line`（GS v 0）；ASCII 仍 Font A；`utf8`/`latin` 为逃生口。
+- **唯一写法：** policy=`escposenc.NormalizeThermalEncoding` / `HasNonASCII` / `LineUsesRaster`；行位图=`escposbitmap.Line`；Mesa=`textModeForThermal`+`escposWriter.text`；FT=`emitThermalLine`+`SetThermalEncoding`。删除重复的 `escpos_bitmap_text_{windows,stub}.go` 行渲染。
+- Mesa 厨打/预结/结账与 FT 同规则；恢复 pt-PT chrome 重音（`Preço`/`Líquido`/`1ª Via`/`Observação`…）；禁止去重音躲码页。
+- 设置页文案：热敏文字编码；`latin` 标明 Epson/排障。SAF-T 仍 Windows-1252（分轨）。
+- 钉死：`TestRenderESCPOS_AccentEncoding`（auto→GS v 0）、latin 逃生口、pt station/receipt 无 UTF-8 重音直出。
+
 ## 0.5.28
 
 **首次配置向导：语言选择放第一步**
