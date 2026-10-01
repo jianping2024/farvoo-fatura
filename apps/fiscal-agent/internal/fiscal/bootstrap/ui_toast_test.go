@@ -1129,3 +1129,52 @@ func TestAdminHTMLOperatorsTableLayout(t *testing.T) {
 		t.Fatal("sticky col-actions must live in list-pagination.css")
 	}
 }
+
+func TestAdminWizardLanguageFirstUnique(t *testing.T) {
+	if n := strings.Count(adminHTML, `id="uiLocaleSelect"`); n != 1 {
+		t.Fatalf("uiLocaleSelect must be the ONLY language control, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "async function saveUILocale"); n != 1 {
+		t.Fatalf("saveUILocale must be the ONLY Admin ui_locale write helper, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "fiscal_settings_wizard_step_v2"); n != 1 {
+		t.Fatalf("wizard step key must be v2 exactly once, got %d", n)
+	}
+	if strings.Contains(adminHTML, `const SETTINGS_WIZARD_STEP_KEY = 'fiscal_settings_wizard_step'`) {
+		t.Fatal("old wizard step key without _v2 must be removed")
+	}
+	if strings.Contains(adminHTML, `#settings-section-overview { display: none`) {
+		t.Fatal("overview must not be force-hidden in wizard; language step reuses it")
+	}
+	if !strings.Contains(adminHTML, `id="settings-section-overview" data-wizard-step="1"`) {
+		t.Fatal("overview must be wizard step 1 (language)")
+	}
+	if !strings.Contains(adminHTML, `data-settings-section="store" data-wizard-step="2"`) {
+		t.Fatal("store must be wizard step 2")
+	}
+	if !strings.Contains(adminHTML, `data-settings-section="series" data-wizard-step="3"`) {
+		t.Fatal("series must be wizard step 3")
+	}
+	if !strings.Contains(adminHTML, `{ step: 1, nav: 'lang' }`) {
+		t.Fatal("SETTINGS_WIZARD_STEPS must start with lang")
+	}
+	if !strings.Contains(adminHTML, `{ step: 2, nav: 'store' }`) || !strings.Contains(adminHTML, `{ step: 3, nav: 'series' }`) {
+		t.Fatal("SETTINGS_WIZARD_STEPS must continue store→series")
+	}
+	if n := strings.Count(adminHTML, "function wizardStepNav"); n != 1 {
+		t.Fatalf("wizardStepNav must be the ONLY step→nav mapper, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function markLangWizardConfirmed"); n != 1 {
+		t.Fatalf("markLangWizardConfirmed must be unique, got %d", n)
+	}
+	if !strings.Contains(adminHTML, `if (nav === 'lang')`) {
+		t.Fatal("wizardNextStep must gate language via nav === 'lang' (not bare step===1 store check)")
+	}
+	if !strings.Contains(adminHTML, `else if (nav === 'store')`) {
+		t.Fatal("wizardNextStep must gate store via nav === 'store'")
+	}
+	i18n := string(fiscalUIAdminI18nJS)
+	if n := strings.Count(i18n, "'settings.nav.lang':"); n != 3 {
+		t.Fatalf("settings.nav.lang must appear once per locale (3), got %d", n)
+	}
+}

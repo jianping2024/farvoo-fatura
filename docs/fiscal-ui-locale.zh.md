@@ -2,7 +2,7 @@
 
 > **状态：定稿**  
 > **权威：是**  
-> **对应实现：** `internal/fiscal/locale`、`print.receiptLabels`、`GET|PUT /local/v1/setup/ui-locale`、Admin 设置概览、托盘镜像
+> **对应实现：** `internal/fiscal/locale`、`print.receiptLabels`、`GET|PUT /local/v1/setup/ui-locale`、Admin 首次向导第 1 步 + 设置概览、托盘镜像
 
 ---
 
@@ -12,7 +12,7 @@
 |---|------|
 | 1 | `ui_locale ∈ {zh, en, pt}` 唯一开关；**不**另开「发票语言」开关 |
 | 2 | 派生（**唯一** `locale.InvoiceLocaleFromUI`）：`zh→pt`，`en→en`，`pt→pt` |
-| 3 | 主入口：Admin **设置 → 概览**；次入口：托盘「界面语言」（同值） |
+| 3 | 主入口：首次配置向导**第 1 步**（未就绪 wizard）；日常：Admin **设置 → 概览**；次入口：托盘「界面语言」（同值） |
 | 4 | 持久化：Agent → `config.json` `ui_locale`（`loadAgentUILocale` / `setAgentUILocale`）；fiscal-local → `DataDir/ui_locale.json`（`locale.PrefsFile`） |
 | 5 | 税票业务标签：**唯一** `print.receiptLabels(invoiceLocale)`；认证句始终葡语 |
 | 6 | 开票时把 `locale` 冻入 print Payload；重打沿用冻结值；空旧票 → pt |

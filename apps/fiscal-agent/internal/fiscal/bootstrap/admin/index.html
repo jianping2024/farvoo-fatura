@@ -585,11 +585,15 @@
     .settings-shell.settings-wizard-active .settings-nav,
     .settings-shell.settings-wizard-active .settings-nav-mobile { display: none; }
     .settings-shell.settings-wizard-active { grid-template-columns: 1fr; }
-    .settings-shell.settings-wizard-active .settings-panel[data-wizard-step] { display: none; }
-    .settings-shell.settings-wizard-active .settings-panel[data-wizard-step].wizard-current { display: block; }
+    .settings-shell.settings-wizard-active .settings-panel[data-wizard-step],
+    .settings-shell.settings-wizard-active .settings-panel-flat[data-wizard-step] { display: none; }
+    .settings-shell.settings-wizard-active .settings-panel[data-wizard-step].wizard-current,
+    .settings-shell.settings-wizard-active .settings-panel-flat[data-wizard-step].wizard-current { display: block; }
     .settings-shell.settings-wizard-active .settings-panel:not([data-wizard-step]),
-    .settings-shell.settings-wizard-active .settings-panel-flat { display: none !important; }
-    .settings-shell.settings-wizard-active #settings-section-overview { display: none; }
+    .settings-shell.settings-wizard-active .settings-panel-flat:not([data-wizard-step]) { display: none !important; }
+    .settings-shell.settings-wizard-active .wizard-full-only { display: none !important; }
+    .ui-locale-field { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+    .settings-shell.settings-wizard-active .ui-locale-field { margin-top: 0; padding-top: 0; border-top: 0; }
     .settings-wizard-actions {
       display: flex; justify-content: space-between; gap: 0.75rem; margin-top: 0.85rem;
     }
@@ -1102,13 +1106,15 @@
             <a href="#settings-section-advanced" data-settings-nav="advanced" data-i18n="settings.nav.advanced">高级</a>
           </div>
           <div class="settings-main">
-            <div class="settings-panel-flat panel" id="settings-section-overview">
-              <h2 data-i18n="settings.nav.overview">概览</h2>
-              <div class="setup-dashboard" id="setupDashboard" role="status"></div>
-              <div class="panel-footer">
-                <button type="button" class="secondary" id="btnRefreshSetup" data-i18n="settings.refresh">刷新状态</button>
+            <div class="settings-panel-flat panel" id="settings-section-overview" data-wizard-step="1">
+              <div class="wizard-full-only">
+                <h2 data-i18n="settings.nav.overview">概览</h2>
+                <div class="setup-dashboard" id="setupDashboard" role="status"></div>
+                <div class="panel-footer">
+                  <button type="button" class="secondary" id="btnRefreshSetup" data-i18n="settings.refresh">刷新状态</button>
+                </div>
               </div>
-              <div class="field" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--line)">
+              <div class="field ui-locale-field">
                 <label for="uiLocaleSelect" data-i18n="lang.title">界面语言</label>
                 <select id="uiLocaleSelect" autocomplete="off">
                   <option value="zh" data-i18n="lang.zh">中文</option>
@@ -1120,7 +1126,7 @@
               </div>
             </div>
 
-            <details class="settings-panel" id="settings-section-store" data-settings-section="store" data-wizard-step="1">
+            <details class="settings-panel" id="settings-section-store" data-settings-section="store" data-wizard-step="2">
               <summary data-i18n="settings.nav.store">门店与税务</summary>
               <div class="settings-panel-body">
                 <h3 style="margin:0.75rem 0 0.5rem;font-size:0.95rem" data-i18n="settings.store.heading">门店</h3>
@@ -1143,7 +1149,7 @@
               </div>
             </details>
 
-            <details class="settings-panel settings-admin-only" id="settings-section-series" data-settings-section="series" data-wizard-step="2">
+            <details class="settings-panel settings-admin-only" id="settings-section-series" data-settings-section="series" data-wizard-step="3">
               <summary data-i18n="settings.nav.series">系列与授权</summary>
               <div class="settings-panel-body">
                 <div class="series-grid">
@@ -2831,14 +2837,30 @@
 
   const SETTINGS_SECTIONS_KEY = 'fiscal_settings_sections';
   const SETTINGS_VIEW_MODE_KEY = 'fiscal_settings_view_mode';
-  const SETTINGS_WIZARD_STEP_KEY = 'fiscal_settings_wizard_step';
+  // v2: step 1=lang (old key fiscal_settings_wizard_step mapped store=1/series=2 — discard on upgrade)
+  const SETTINGS_WIZARD_STEP_KEY = 'fiscal_settings_wizard_step_v2';
+  const SETTINGS_WIZARD_LANG_KEY = 'fiscal_settings_wizard_lang_ok';
   const SETTINGS_WIZARD_STEPS = [
-    { step: 1, nav: 'store' },
-    { step: 2, nav: 'series' }
+    { step: 1, nav: 'lang' },
+    { step: 2, nav: 'store' },
+    { step: 3, nav: 'series' }
   ];
   let settingsViewMode = 'full';
   let settingsWizardStep = 1;
   let settingsNavBound = false;
+
+  function wizardStepNav(step) {
+    const found = SETTINGS_WIZARD_STEPS.find(s => s.step === step);
+    return found ? found.nav : '';
+  }
+
+  function langWizardConfirmed() {
+    try { return localStorage.getItem(SETTINGS_WIZARD_LANG_KEY) === '1'; } catch (_) { return false; }
+  }
+
+  function markLangWizardConfirmed() {
+    try { localStorage.setItem(SETTINGS_WIZARD_LANG_KEY, '1'); } catch (_) { /* */ }
+  }
 
   function loadSettingsSectionState() {
     try {
@@ -3051,10 +3073,11 @@
   }
 
   function inferWizardStep(st) {
-    if (!st) return 1;
-    if (!st.taxpayer_ok || !st.at_credentials_ok) return 1;
-    if (!st.series_ok || !st.fs_series_ok || !st.activated_ok) return 2;
-    return 2;
+    if (!langWizardConfirmed()) return 1;
+    if (!st) return 2;
+    if (!st.taxpayer_ok || !st.at_credentials_ok) return 2;
+    if (!st.series_ok || !st.fs_series_ok || !st.activated_ok) return 3;
+    return 3;
   }
 
   function initSettingsView(st) {
@@ -3075,8 +3098,12 @@
       $('#settingsNavMobile').addEventListener('click', onNav);
     }
     try {
+      try { localStorage.removeItem('fiscal_settings_wizard_step'); } catch (_) { /* */ }
       const savedMode = localStorage.getItem(SETTINGS_VIEW_MODE_KEY);
-      settingsWizardStep = Number(localStorage.getItem(SETTINGS_WIZARD_STEP_KEY) || '0') || inferWizardStep(st);
+      const savedStep = Number(localStorage.getItem(SETTINGS_WIZARD_STEP_KEY) || '0');
+      settingsWizardStep = (savedStep >= 1 && savedStep <= SETTINGS_WIZARD_STEPS.length)
+        ? savedStep
+        : inferWizardStep(st);
       if (st && st.ready_to_issue) settingsViewMode = 'full';
       else if (!canManageProvisioning()) settingsViewMode = 'full';
       else if (!st || !st.ready_to_issue) settingsViewMode = savedMode === 'full' ? 'full' : 'wizard';
@@ -3098,7 +3125,20 @@
 
   async function wizardNextStep() {
     const st = setupStatusCache || await refreshSetupStatus();
-    if (settingsWizardStep === 1) {
+    const nav = wizardStepNav(settingsWizardStep);
+    if (nav === 'lang') {
+      const sel = $('#uiLocaleSelect');
+      if (sel) {
+        try {
+          const data = await saveUILocale(sel.value);
+          applyAdminLocale(data.ui_locale, data.invoice_locale);
+        } catch (er) {
+          reportError(er);
+          return;
+        }
+      }
+      markLangWizardConfirmed();
+    } else if (nav === 'store') {
       if (!st.taxpayer_ok) {
         toast(FiscalAdminI18n.t('settings.wizard.need_store'), 'error');
         return;
