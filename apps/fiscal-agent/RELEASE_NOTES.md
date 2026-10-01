@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.28
+
+**首次配置向导：语言选择放第一步**
+
+- Admin 未就绪向导步骤：`lang` → `store` → `series`；复用唯一 `#uiLocaleSelect`（概览日常入口不变）。
+- 步进键 `fiscal_settings_wizard_step_v2` + `lang_ok`；下一步按 nav 语义；语言 PUT 失败不前进。
+- 定稿 [`fiscal-ui-locale.zh.md`](../../docs/fiscal-ui-locale.zh.md)；钉死 `TestAdminWizardLanguageFirstUnique`。
+
 ## 0.5.27
 
 **Realtime 续期 token 不再冲掉档口打印机映射**
