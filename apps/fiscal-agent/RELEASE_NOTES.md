@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.27
+
+**Realtime 续期 token 不再冲掉档口打印机映射**
+
+- **唯一写法 · token 落盘：**仅 `persistRealtimeSessionTokens`（先读盘 → 只改 access/refresh → 写回；读盘失败不写）。禁止 `saveConfig(r.configPath, r.config)` 用过期内存整文件覆盖。
+- `ensureFreshAccessToken` 成功后 `r.config = merged`，内存与盘上 `station_printers` 一致。
+- 钉死：`TestPersistRealtimeSessionTokensPreservesStationPrinters`；`TestEnsureFreshAccessTokenPreservesDiskMappings`；`TestSoleRealtimeTokenPersistWriting`。
+
 ## 0.5.26
 
 **PF（Fatura pró-forma）：形式发票**
