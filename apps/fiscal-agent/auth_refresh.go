@@ -12,8 +12,37 @@ import (
 	"time"
 )
 
+// persistRealtimeSessionTokens is the ONLY writer that persists refreshed Supabase
+// access/refresh tokens to config.json after Realtime renew.
+// Loads disk first so station_printers and other wizard/Admin fields are never
+// overwritten by a stale in-memory config snapshot. On load failure: do not write.
+func persistRealtimeSessionTokens(path, accessToken, refreshToken string) (*config, error) {
+	path = strings.TrimSpace(path)
+	accessToken = strings.TrimSpace(accessToken)
+	refreshToken = strings.TrimSpace(refreshToken)
+	if path == "" {
+		return nil, fmt.Errorf("config path required")
+	}
+	if accessToken == "" || refreshToken == "" {
+		return nil, fmt.Errorf("access and refresh tokens required")
+	}
+	c, err := loadConfig(path)
+	if err != nil {
+		return nil, err
+	}
+	if c == nil {
+		return nil, fmt.Errorf("config missing")
+	}
+	c.AccessToken = accessToken
+	c.RefreshToken = refreshToken
+	if err := saveConfig(path, c); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
 // refreshSupabaseSession exchanges refresh_token for a new access/refresh pair (GoTrue JSON API).
-// Updates cfg in place; caller persists config when desired.
+// Updates cfg in place; caller persists via persistRealtimeSessionTokens only.
 func refreshSupabaseSession(ctx context.Context, cfg *config) error {
 	if cfg == nil || !cfg.hasRealtimeSession() {
 		return fmt.Errorf("no realtime session")
