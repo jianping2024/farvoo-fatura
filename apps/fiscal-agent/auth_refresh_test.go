@@ -7,10 +7,179 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestPersistRealtimeSessionTokensPreservesStationPrinters(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+	if err := saveConfig(path, &config{
+		APIBase:      "https://example.test",
+		AgentJWT:     "jwt",
+		DeviceID:     "dev-1",
+		RestaurantID: "rest-1",
+		AnonKey:      "anon",
+		AccessToken:  "old-access",
+		RefreshToken: "old-refresh",
+		StationPrinters: map[string]string{
+			"kitchen": "tcp:10.0.0.1:9100",
+			"bar":     "winspool:EPSON",
+		},
+		UILocale: "zh",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	merged, err := persistRealtimeSessionTokens(path, "new-access", "new-refresh")
+	if err != nil {
+		t.Fatalf("persist: %v", err)
+	}
+	if merged.AccessToken != "new-access" || merged.RefreshToken != "new-refresh" {
+		t.Fatalf("merged tokens: access=%q refresh=%q", merged.AccessToken, merged.RefreshToken)
+	}
+	if merged.StationPrinters["kitchen"] != "tcp:10.0.0.1:9100" || merged.StationPrinters["bar"] != "winspool:EPSON" {
+		t.Fatalf("merged lost mappings: %#v", merged.StationPrinters)
+	}
+	if merged.UILocale != "zh" || merged.AgentJWT != "jwt" {
+		t.Fatalf("merged lost other fields: locale=%q jwt=%q", merged.UILocale, merged.AgentJWT)
+	}
+
+	disk, err := loadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disk.AccessToken != "new-access" || disk.RefreshToken != "new-refresh" {
+		t.Fatalf("disk tokens: access=%q refresh=%q", disk.AccessToken, disk.RefreshToken)
+	}
+	if disk.StationPrinters["kitchen"] != "tcp:10.0.0.1:9100" {
+		t.Fatalf("disk lost mappings: %#v", disk.StationPrinters)
+	}
+}
+
+func TestPersistRealtimeSessionTokensLoadFailureDoesNotWrite(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "missing", "config.json") // parent dir missing → load fails
+	_, err := persistRealtimeSessionTokens(path, "a", "b")
+	if err == nil {
+		t.Fatal("expected load error")
+	}
+	if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
+		t.Fatalf("must not create config on load failure, stat=%v", statErr)
+	}
+}
+
+func TestPersistRealtimeSessionTokensRejectsEmpty(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+	_ = saveConfig(path, &config{AccessToken: "a", RefreshToken: "b", AnonKey: "k"})
+	if _, err := persistRealtimeSessionTokens("", "a", "b"); err == nil {
+		t.Fatal("empty path")
+	}
+	if _, err := persistRealtimeSessionTokens(path, "", "b"); err == nil {
+		t.Fatal("empty access")
+	}
+	if _, err := persistRealtimeSessionTokens(path, "a", ""); err == nil {
+		t.Fatal("empty refresh")
+	}
+}
+
+func TestEnsureFreshAccessTokenPreservesDiskMappings(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"access_token":  "rotated-access",
+			"refresh_token": "rotated-refresh",
+		})
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+	if err := saveConfig(path, &config{
+		APIBase:         "https://example.test",
+		AgentJWT:        "jwt",
+		DeviceID:        "dev-1",
+		RestaurantID:    "rest-1",
+		SupabaseURL:     srv.URL,
+		AnonKey:         "anon",
+		AccessToken:     "disk-access",
+		RefreshToken:    "disk-refresh",
+		StationPrinters: map[string]string{"kitchen": "tcp:10.0.0.9:9100"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Stale in-memory snapshot: no station_printers (the wipe bug).
+	mem := &config{
+		APIBase:      "https://example.test",
+		AgentJWT:     "jwt",
+		DeviceID:     "dev-1",
+		RestaurantID: "rest-1",
+		SupabaseURL:  srv.URL,
+		AnonKey:      "anon",
+		AccessToken:  "mem-access",
+		RefreshToken: "disk-refresh",
+	}
+	r := &RealtimeNotifier{config: mem, configPath: path}
+	if err := r.ensureFreshAccessToken(context.Background(), true); err != nil {
+		t.Fatalf("ensureFresh: %v", err)
+	}
+	if r.config == nil || r.config.StationPrinters["kitchen"] != "tcp:10.0.0.9:9100" {
+		t.Fatalf("r.config must adopt disk mappings after persist, got %#v", r.config)
+	}
+	if r.config.AccessToken != "rotated-access" || r.config.RefreshToken != "rotated-refresh" {
+		t.Fatalf("r.config tokens: %#v %#v", r.config.AccessToken, r.config.RefreshToken)
+	}
+	disk, err := loadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disk.StationPrinters["kitchen"] != "tcp:10.0.0.9:9100" {
+		t.Fatalf("disk wiped mappings: %#v", disk.StationPrinters)
+	}
+	if disk.AccessToken != "rotated-access" {
+		t.Fatalf("disk token not updated: %q", disk.AccessToken)
+	}
+}
+
+func TestSoleRealtimeTokenPersistWriting(t *testing.T) {
+	authRaw, err := os.ReadFile("auth_refresh.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth := string(authRaw)
+	rtRaw, err := os.ReadFile("realtime.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rt := string(rtRaw)
+
+	if n := strings.Count(auth, "func persistRealtimeSessionTokens("); n != 1 {
+		t.Fatalf("persistRealtimeSessionTokens want 1 def, got %d", n)
+	}
+	if n := strings.Count(rt, "persistRealtimeSessionTokens("); n != 1 {
+		t.Fatalf("realtime.go must call persistRealtimeSessionTokens exactly once, got %d", n)
+	}
+	if strings.Contains(rt, "saveConfig(r.configPath") {
+		t.Fatal("realtime.go must not saveConfig(r.configPath, …) — use persistRealtimeSessionTokens only")
+	}
+	if strings.Contains(rt, "saveConfig(r.configPath, r.config)") {
+		t.Fatal("banned stale full-config persist still present")
+	}
+	// No alternate token persist helpers.
+	for _, banned := range []string{
+		"func persistAccessToken(",
+		"func saveRealtimeTokens(",
+		"func writeRealtimeSession(",
+	} {
+		if strings.Contains(auth, banned) || strings.Contains(rt, banned) {
+			t.Fatalf("duplicate token persist helper: %s", banned)
+		}
+	}
+}
 
 func TestRefreshSupabaseSessionJSONBody(t *testing.T) {
 	var gotCT string

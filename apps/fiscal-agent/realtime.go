@@ -163,8 +163,12 @@ func (r *RealtimeNotifier) ensureFreshAccessToken(ctx context.Context, force boo
 		return err
 	}
 	if r.configPath != "" {
-		if err := saveConfig(r.configPath, r.config); err != nil {
+		// Unique write: disk-merge tokens only — never saveConfig(stale r.config).
+		merged, err := persistRealtimeSessionTokens(r.configPath, r.config.AccessToken, r.config.RefreshToken)
+		if err != nil {
 			log.Printf("Realtime: failed to persist refreshed tokens: %v", err)
+		} else if merged != nil {
+			r.config = merged
 		}
 	}
 	return nil
