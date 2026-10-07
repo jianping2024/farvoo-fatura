@@ -2,6 +2,7 @@ package escposenc
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -20,7 +21,7 @@ func TestCodePageProbeRowsEncodesEachTable(t *testing.T) {
 		{19, "CP858", []byte{0xC6, ' ', 0xE4, ' ', 0x87}},
 	}
 	for _, c := range cases {
-		row := append(SelectCodeTable(c.n), []byte("n="+itoa(c.n))...)
+		row := append(SelectCodeTable(c.n), fmt.Sprintf("n=%d", c.n)...)
 		i := bytes.Index(raw, row)
 		if i < 0 {
 			t.Fatalf("missing row for ESC t %d", c.n)
@@ -44,13 +45,6 @@ func TestCodePageProbeRowsEncodesEachTable(t *testing.T) {
 			t.Fatalf("row exceeds 48 cols: %q", ln)
 		}
 	}
-}
-
-func itoa(n byte) string {
-	if n < 10 {
-		return string('0' + rune(n))
-	}
-	return string('0'+rune(n/10)) + string('0'+rune(n%10))
 }
 
 func TestHanProbeRowsOrderAndRestore(t *testing.T) {
