@@ -75,11 +75,16 @@ func (c *config) mappedStationIDsSorted() []string {
 // compensation fetch, and polling). Routable jobs and in-window receipt defer
 // are admitted; permanent route errors stay out until the cloud row changes.
 func (c *config) jobEligibleForQueue(job printJob) bool {
+	return c.jobAdmitSkipReason(job) == nil
+}
+
+// jobAdmitSkipReason is nil when the job may enter the local queue now; otherwise why not.
+func (c *config) jobAdmitSkipReason(job printJob) error {
 	_, err := c.printerTargetForJob(job)
-	if err == nil {
-		return true
+	if err == nil || errors.Is(err, errReceiptPrintDeferred) {
+		return nil
 	}
-	return errors.Is(err, errReceiptPrintDeferred)
+	return err
 }
 
 func (c *config) resolveReceiptRouting(job printJob, explicitID string) (string, error) {

@@ -49,12 +49,12 @@ func runNotificationLoop(ctx context.Context, sess *agentSession, status *agentS
 			mode = NotificationModePolling
 			setNotifyMode(status, mode)
 			status.markRealtimePollingFallback()
-			notifier = NewPollingNotifier(cfg, queue, sess.pc)
+			notifier = NewPollingNotifier(cfg, queue, sess.pc, sess.cfgPath)
 		} else {
 			notifier = rt
 		}
 	} else {
-		notifier = NewPollingNotifier(cfg, queue, sess.pc)
+		notifier = NewPollingNotifier(cfg, queue, sess.pc, sess.cfgPath)
 	}
 
 	go func() {
@@ -71,7 +71,7 @@ func runNotificationLoop(ctx context.Context, sess *agentSession, status *agentS
 			mode = NotificationModePolling
 			setNotifyMode(status, mode)
 			status.markRealtimePollingFallback()
-			notifier = NewPollingNotifier(cfg, queue, sess.pc)
+			notifier = NewPollingNotifier(cfg, queue, sess.pc, sess.cfgPath)
 			if err := notifier.Start(ctx); err != nil && err != context.Canceled {
 				log.Printf("Polling also failed: %v", err)
 			}

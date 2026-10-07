@@ -385,7 +385,7 @@ func (r *RealtimeNotifier) handleMessage(msg []byte) {
 			return
 		}
 
-		if !r.config.jobEligibleForQueue(job) {
+		if !admitJob(freshAdmitConfig(r.configPath, r.config), job, "Realtime") {
 			return
 		}
 
@@ -404,7 +404,7 @@ func (r *RealtimeNotifier) compensationFetch(ctx context.Context) error {
 		return err
 	}
 
-	fetched, admitted := admitPendingJobs(r.config, r.queue, jobs, "Realtime")
+	fetched, admitted := admitPendingJobs(freshAdmitConfig(r.configPath, r.config), r.queue, jobs, "Realtime")
 	if admitted > 0 {
 		logCompensationSummary("Realtime", fetched, admitted)
 	}

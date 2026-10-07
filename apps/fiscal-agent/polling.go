@@ -11,14 +11,18 @@ type PollingNotifier struct {
 	config *config
 	queue  *JobQueue
 	pc     *pollController
+	// configPath: admit reads fresh station mappings from disk (see freshAdmitConfig).
+	configPath string
 }
 
 // NewPollingNotifier creates a new polling notifier.
-func NewPollingNotifier(cfg *config, queue *JobQueue, pc *pollController) *PollingNotifier {
+func NewPollingNotifier(cfg *config, queue *JobQueue, pc *pollController, configPath string) *PollingNotifier {
 	return &PollingNotifier{
 		config: cfg,
 		queue:  queue,
 		pc:     pc,
+
+		configPath: configPath,
 	}
 }
 
@@ -89,7 +93,7 @@ func (p *PollingNotifier) fetch(ctx context.Context) error {
 		return err
 	}
 
-	fetched, admitted := admitPendingJobs(p.config, p.queue, jobs, "Polling")
+	fetched, admitted := admitPendingJobs(freshAdmitConfig(p.configPath, p.config), p.queue, jobs, "Polling")
 	if admitted > 0 {
 		logCompensationSummary("Polling", fetched, admitted)
 	}
