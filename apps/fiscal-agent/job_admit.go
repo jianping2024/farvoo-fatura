@@ -2,8 +2,46 @@ package main
 
 import (
 	"log"
+	"sync"
 	"time"
 )
+
+var (
+	admitSkipMu       sync.Mutex
+	admitSkipThrottle pollLogThrottle
+)
+
+// freshAdmitConfig is the ONLY config source for Notifier admit decisions: station
+// mappings saved in Settings (or a re-pair) land on disk, while the notifier's own
+// *config is a startup snapshot. Falls back to the snapshot if the file is unreadable.
+func freshAdmitConfig(path string, fallback *config) *config {
+	if path == "" {
+		return fallback
+	}
+	if c, err := loadConfig(path); err == nil && c != nil {
+		return c
+	}
+	return fallback
+}
+
+// admitJob is the ONLY admit gate + skip log (Realtime event, compensation, polling).
+// A skipped job is logged (throttled per job) so "never printed" is visible.
+func admitJob(cfg *config, job printJob, source string) bool {
+	if cfg == nil {
+		return false
+	}
+	err := cfg.jobAdmitSkipReason(job)
+	if err == nil {
+		return true
+	}
+	admitSkipMu.Lock()
+	ok := admitSkipThrottle.allow("skip:"+job.ID, 60*time.Second)
+	admitSkipMu.Unlock()
+	if ok {
+		log.Printf("%s: skip job %s (type=%s): %v", source, job.ID, job.Type, err)
+	}
+	return false
+}
 
 // jobAgeSeconds returns how long the job has waited since created_at (cloud).
 func jobAgeSeconds(job printJob) (int, bool) {
@@ -36,7 +74,7 @@ func admitPendingJobs(cfg *config, queue *JobQueue, jobs []printJob, source stri
 	}
 	fetched = len(jobs)
 	for _, job := range jobs {
-		if !cfg.jobEligibleForQueue(job) {
+		if !admitJob(cfg, job, source) {
 			continue
 		}
 		if queue.Push(job) {
