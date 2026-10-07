@@ -46,6 +46,9 @@ func TestBuildCodePageProbeHasReferenceBitmapAndAllRows(t *testing.T) {
 	if bytesIndex(raw, escposenc.CodePageProbeRows()) < 0 {
 		t.Fatal("missing probe rows")
 	}
+	if bytesIndex(raw, escposenc.HanProbeRows()) < 0 {
+		t.Fatal("missing Chinese probe rows")
+	}
 	if cutDotsInRaw(raw) == 0 {
 		t.Fatal("probe slip must cut")
 	}

@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.32
+
+**修复：葡语重音菜（Água、Pêssego、Limão…）在厨打单上字变小、数量列错位、字体不一致**
+
+- **根因：** 0.5.29 把所有带重音的行改成图片打印（微软雅黑），丢了倍高、比例字体导致 Qtd 列错位。
+- **改回：** 与 0.3.83～0.5.28 一致——葡语/英文走打印机自带字体（`ESC t 16` + Windows-1252），只有中文等 Windows-1252 装不下的字才转图片。pirata 门店码页自检单实测 WPC1252 / CP860 / CP850 / CP858 全部正确。
+- **唯一写法：** 自动模式下「这一行要不要转图片」仅 `escposenc.NeedsRaster`（Mesa 厨打/预结/结账与发票 FT 共用）。删除重复的 `HasNonASCII`、`LineUsesRaster`、`needsBitmapText`、`textModeForConfiguredChinese`。
+- **码页自检单新增中文段：** 图片参照 + A 直发 GBK / B `FS &` + GBK + `FS .` / C `ESC 9 1` + UTF-8；末尾复位。中文出纸策略不变（仍走图片）。
+- 设置页「热敏文字编码」说明文案同步更新。
+
 ## 0.5.31
 
 **新增：设置页「打印码页自检单」（诊断用，不改出纸策略）**

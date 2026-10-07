@@ -3,6 +3,8 @@ package escposenc
 import (
 	"strings"
 	"unicode"
+
+	"golang.org/x/text/encoding/charmap"
 )
 
 // NormalizeThermalEncoding is the ONLY normalizer for config text_encoding.
@@ -18,20 +20,17 @@ func NormalizeThermalEncoding(raw string) string {
 	}
 }
 
-// HasNonASCII reports whether s contains any rune outside ASCII.
-func HasNonASCII(s string) bool {
+// NeedsRaster is the ONLY per-line raster decision for text_encoding=auto:
+// true when s has a rune Windows-1252 cannot carry (Han, …). pt-PT accents fit
+// WPC1252 and stay printer Font A (same size / columns as ASCII).
+func NeedsRaster(s string) bool {
 	for _, r := range s {
-		if r > unicode.MaxASCII {
+		if r <= unicode.MaxASCII {
+			continue
+		}
+		if _, ok := charmap.Windows1252.EncodeRune(r); !ok {
 			return true
 		}
 	}
 	return false
-}
-
-// LineUsesRaster is the ONLY per-line raster decision for text_encoding=auto.
-func LineUsesRaster(encoding, s string) bool {
-	if NormalizeThermalEncoding(encoding) != "auto" {
-		return false
-	}
-	return HasNonASCII(s)
 }

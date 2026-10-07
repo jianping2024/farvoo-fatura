@@ -1,9 +1,28 @@
 package main
 
 import (
+	"bytes"
 	"strings"
 	"testing"
+
+	"farvoo-fiscal-agent/internal/escposenc"
 )
+
+// assertAccentsInFirmwareFont — pt accents ride WPC1252 Font A: no GS v 0, no UTF-8 on the wire.
+func assertAccentsInFirmwareFont(t *testing.T, raw []byte, words ...string) {
+	t.Helper()
+	if bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
+		t.Fatal("pt accents must not raster (GS v 0)")
+	}
+	for _, w := range words {
+		if !bytes.Contains(raw, escposenc.Windows1252(w)) {
+			t.Fatalf("missing Windows-1252 %q", w)
+		}
+		if bytes.Contains(raw, []byte(w)) {
+			t.Fatalf("raw UTF-8 %q on wire", w)
+		}
+	}
+}
 
 func TestEncodeWindows1252Portuguese(t *testing.T) {
 	raw := encodeWindows1252("ção")
@@ -16,14 +35,14 @@ func TestStationTicketNeedsBitmap(t *testing.T) {
 	if !stationTicketNeedsBitmap(jobPayload{Locale: "pt", Lines: []jobLine{{DisplayName: "宫保鸡丁"}}}) {
 		t.Fatal("expected bitmap for Chinese dish on station slip")
 	}
-	if !stationTicketNeedsBitmap(jobPayload{Locale: "pt", RestaurantName: "川味", Lines: []jobLine{{DisplayName: "Soup"}}}) {
-		t.Fatal("pt locale station chrome always needs firmware-safe raster")
+	if stationTicketNeedsBitmap(jobPayload{Locale: "pt", RestaurantName: "川味", Lines: []jobLine{{DisplayName: "Soup"}}}) {
+		t.Fatal("station slip ignores restaurant_name; pt chrome fits WPC1252")
 	}
 	if stationTicketNeedsBitmap(jobPayload{Locale: "en", Lines: []jobLine{{DisplayName: "Soup"}}}) {
 		t.Fatal("en + ASCII dish must stay Latin mode")
 	}
-	if !stationTicketNeedsBitmap(jobPayload{Locale: "en", Lines: []jobLine{{DisplayName: "Café"}}}) {
-		t.Fatal("en + accented dish needs raster")
+	if stationTicketNeedsBitmap(jobPayload{Locale: "pt", Lines: []jobLine{{DisplayName: "Água 500ml", Note: "Observação"}}}) {
+		t.Fatal("pt accents fit WPC1252 and must stay Font A")
 	}
 	if !stationTicketNeedsBitmap(jobPayload{Locale: "zh", Lines: []jobLine{{DisplayName: "Soup"}}}) {
 		t.Fatal("zh locale station slip needs bitmap")
@@ -40,13 +59,13 @@ func TestReceiptTicketNeedsBitmapPayer(t *testing.T) {
 	if receiptTicketNeedsBitmap(jobPayload{Locale: "en", PayerName: "客人 2", Lines: []jobLine{{DisplayName: "Soup"}}}) {
 		t.Fatal("split placeholder payer should use Latin after formatting")
 	}
-	if !receiptTicketNeedsBitmap(jobPayload{Locale: "pt", PayerName: "2", Lines: []jobLine{{DisplayName: "Soup"}}}) {
-		t.Fatal("pt receipt chrome always needs raster")
+	if receiptTicketNeedsBitmap(jobPayload{Locale: "pt", PayerName: "João", Lines: []jobLine{{DisplayName: "Limão"}}}) {
+		t.Fatal("pt receipt accents fit WPC1252 and must stay Font A")
 	}
 }
 
 func TestReceiptTicketNeedsBitmapIgnoresRestaurantName(t *testing.T) {
-	// restaurant_name alone must not flip mode; accented dish / pt chrome does.
+	// restaurant_name alone must not flip mode; only content beyond WPC1252 does.
 	if receiptTicketNeedsBitmap(jobPayload{
 		Locale:         "en",
 		RestaurantName: "川味餐厅",
@@ -54,12 +73,12 @@ func TestReceiptTicketNeedsBitmapIgnoresRestaurantName(t *testing.T) {
 	}) {
 		t.Fatal("en ASCII dish must ignore Chinese restaurant_name")
 	}
-	if !receiptTicketNeedsBitmap(jobPayload{
-		Locale:         "en",
+	if receiptTicketNeedsBitmap(jobPayload{
+		Locale:         "pt",
 		RestaurantName: "川味餐厅",
 		Lines:          []jobLine{{DisplayName: "Chá camomila"}},
 	}) {
-		t.Fatal("accented dish must need raster even if restaurant_name is ignored")
+		t.Fatal("Portuguese menu with Chinese restaurant_name must stay Latin")
 	}
 }
 
@@ -79,8 +98,8 @@ func TestConnectionTestNeedsBitmap(t *testing.T) {
 	if connectionTestNeedsBitmap(jobPayload{Locale: "en", RestaurantName: "Mesa Lisboa"}) {
 		t.Fatal("en locale + ASCII venue should use Latin on connection test")
 	}
-	if !connectionTestNeedsBitmap(jobPayload{Locale: "pt", RestaurantName: "Mesa Lisboa"}) {
-		t.Fatal("pt connection test needs raster for accented chrome")
+	if connectionTestNeedsBitmap(jobPayload{Locale: "pt", RestaurantName: "Mesa Lisboa"}) {
+		t.Fatal("pt connection test (IMPRESSÃO) fits WPC1252 and must stay Font A")
 	}
 }
 

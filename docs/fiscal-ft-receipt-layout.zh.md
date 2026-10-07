@@ -67,7 +67,7 @@
 | 认证票面拼装 | 仅 `formatCertificationFace` + 折行 `formatCertificationFaceLines` |
 | 桌号行 | 仅 `formatMesaLine` |
 | 票号标签行 | 仅 `formatFaturaNoLine` → `documentNoPrefix` |
-| 拉丁/热敏字形 | `auto`：非 ASCII 整行仅 `escposbitmap.Line`；ASCII Font A；见 [`fiscal-thermal-text-encoding.zh.md`](fiscal-thermal-text-encoding.zh.md)。`latin` 逃生口才用 `escposenc.Windows1252` |
+| 拉丁/热敏字形 | `auto`：`escposenc.NeedsRaster` 为真（中文等 WPC1252 装不下）的整行仅 `escposbitmap.Line`；ASCII 与葡语重音 Font A + `escposenc.Windows1252`；见 [`fiscal-thermal-text-encoding.zh.md`](fiscal-thermal-text-encoding.zh.md) |
 | 店名后间距 | 仅 `escFeedDots` → **`ESC J`** + `receiptTopGapDots`（禁止 `ESC d`） |
 | 流前缀（撕口→内容） | 仅 `receiptStreamBegin`（禁止正常票面 `ESC @`） |
 | 切前进纸 | 仅 `GS V 66` + `cutFeedDots`（与 `writeQR` 末尾 LF 合计 56 点） |

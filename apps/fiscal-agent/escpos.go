@@ -395,8 +395,8 @@ func (w *escposWriter) text(s string) {
 		w.lastTextBitmap = false
 		return
 	}
-	// auto/bitmap: non-ASCII whole line → GS v 0 (docs/fiscal-thermal-text-encoding.zh.md).
-	if w.textMode == escposTextBitmap && needsBitmapText(s) {
+	// auto/bitmap: only lines beyond WPC1252 (Han, …) → GS v 0 (docs/fiscal-thermal-text-encoding.zh.md).
+	if w.textMode == escposTextBitmap && escposenc.NeedsRaster(s) {
 		fontPx := hanFontPxForRole(w.hanFontPx, w.hanRole)
 		w.content.Write(escposBitmapText(s, bitmapTextStyle{
 			Align:     w.alignMode,
@@ -1116,7 +1116,7 @@ func buildConnectionTest(p jobPayload, lab ticketLabels) []byte {
 	return w.finish(true)
 }
 
-// buildCodePageProbe — ONLY code-page self-test slip (docs/fiscal-thermal-text-encoding.zh.md §5).
+// buildCodePageProbe — ONLY code-page self-test slip, Latin + Chinese (docs/fiscal-thermal-text-encoding.zh.md §5).
 // Chrome is ASCII on purpose; the reference row is a firmware-independent bitmap.
 func buildCodePageProbe(venue string) []byte {
 	w := newEscpos()
@@ -1140,6 +1140,15 @@ func buildCodePageProbe(venue string) []byte {
 	w.text("Which row matches the reference?")
 	w.lf()
 	w.content.Write(escposenc.CodePageProbeRows())
+	w.separator('-')
+	w.text("Chinese reference (image):")
+	w.lf()
+	w.content.Write(escposBitmapText(escposenc.HanProbeSample, bitmapTextStyle{}, w.hanFontPx))
+	w.lastTextBitmap = true
+	w.lf()
+	w.text("Which row matches the reference?")
+	w.lf()
+	w.content.Write(escposenc.HanProbeRows())
 	w.separator('-')
 	return w.finish(true)
 }

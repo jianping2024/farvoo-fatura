@@ -14,29 +14,15 @@ func TestNormalizeThermalEncoding(t *testing.T) {
 	}
 }
 
-func TestHasNonASCIIPortuguese(t *testing.T) {
-	if HasNonASCII("Recibo") {
-		t.Fatal("ASCII must be false")
+func TestNeedsRasterOnlyBeyondWindows1252(t *testing.T) {
+	for _, s := range []string{"TOTAL", "Água 500ml", "Preço", "Observação", "1ª Via", "Ananás", "€ 3,50"} {
+		if NeedsRaster(s) {
+			t.Fatalf("%q fits WPC1252 and must stay Font A", s)
+		}
 	}
-	if !HasNonASCII("Observação") {
-		t.Fatal("ã must be non-ASCII")
-	}
-	if !HasNonASCII("宫保") {
-		t.Fatal("Han must be non-ASCII")
-	}
-}
-
-func TestLineUsesRasterAutoOnly(t *testing.T) {
-	if !LineUsesRaster("auto", "Preço") {
-		t.Fatal("auto+accent must raster")
-	}
-	if LineUsesRaster("latin", "Preço") {
-		t.Fatal("latin must not raster via LineUsesRaster")
-	}
-	if LineUsesRaster("utf8", "Preço") {
-		t.Fatal("utf8 must not raster via LineUsesRaster")
-	}
-	if LineUsesRaster("auto", "TOTAL") {
-		t.Fatal("ASCII under auto stays Font A")
+	for _, s := range []string{"宫保鸡丁", "Água 宫保", "Борщ"} {
+		if !NeedsRaster(s) {
+			t.Fatalf("%q is beyond WPC1252 and must raster", s)
+		}
 	}
 }

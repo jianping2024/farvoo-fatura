@@ -378,17 +378,44 @@ func TestRenderESCPOS_AccentEncoding(t *testing.T) {
 		Compliance: ComplianceBlock{ATCUD: "A-1", QR: QRBlock{Content: "A:1"}, HashControlChars: "AbC/"},
 	}
 	raw := RenderESCPOS(p)
-	if bytes.Contains(raw, escposenc.Windows1252("Guaraná")) {
-		t.Fatal("auto must not emit Windows-1252 Guaraná")
+	// auto: pt accents fit WPC1252 → Font A (no GS v 0), never UTF-8.
+	if !bytes.Contains(raw, escposenc.Windows1252("Guaraná")) {
+		t.Fatal("auto must emit Windows-1252 Guaraná")
 	}
 	if bytes.Contains(raw, []byte("Guaraná")) {
 		t.Fatal("UTF-8 Guaraná on wire")
 	}
-	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
-		t.Fatal("auto accents must use GS v 0")
+	if bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
+		t.Fatal("pt accents must not raster")
 	}
 	if bytes.Contains(raw, []byte("Hash:")) {
 		t.Fatal("no Hash: line")
+	}
+}
+
+func TestRenderESCPOS_HanRastersAccentsStayFontA(t *testing.T) {
+	SetThermalEncoding("auto")
+	t.Cleanup(func() { SetThermalEncoding("auto") })
+	p := &Payload{
+		DocumentType: "FT", InvoiceNo: "FT X/1", PrintPurpose: "ORIGINAL",
+		IssuedAt: "2026-08-21T12:00:00",
+		Merchant: MerchantBlock{LegalName: "Demo", TaxRegistrationNumber: "1"},
+		Lines: []LineBlock{
+			{DisplayName: "宫保鸡丁", Quantity: "1.00", UnitPriceGross: "1.00", VATRate: "0.23", LineGross: "1.00"},
+			{DisplayName: "Guaraná", Quantity: "1.00", UnitPriceGross: "1.00", VATRate: "0.23", LineGross: "1.00"},
+		},
+		Totals:     TotalsBlock{GrossTotal: "2.00"},
+		Compliance: ComplianceBlock{ATCUD: "A-1", QR: QRBlock{Content: "A:1"}, HashControlChars: "AbC/"},
+	}
+	raw := RenderESCPOS(p)
+	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
+		t.Fatal("Han line must raster (GS v 0)")
+	}
+	if bytes.Contains(raw, []byte("宫保")) {
+		t.Fatal("UTF-8 Han on wire")
+	}
+	if !bytes.Contains(raw, escposenc.Windows1252("Guaraná")) {
+		t.Fatal("pt accents on the same receipt must stay Windows-1252 Font A")
 	}
 }
 
