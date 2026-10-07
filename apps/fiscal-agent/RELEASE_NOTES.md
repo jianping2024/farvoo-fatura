@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.30
+
+**修复：Settings 保存档口映射 / 换餐厅重新配对后，新单不打、要重启才恢复**
+
+- **根因：** Notifier 判断「这单接不接」用的是启动时的配置快照；启动后保存的映射（或换绑餐厅后重配的映射）不生效，新单被静默跳过，云端一直 pending。
+- **唯一写法 · 接单读配置：**仅 `freshAdmitConfig`（读盘，读不到退回快照）；**唯一写法 · 接单判断 + 跳过日志：**仅 `admitJob`（Realtime 事件 / 补拉 / 轮询同一入口）。
+- 跳过的单写日志：`skip job <id> (type=…): 原因`（同单 60s 一次）。
+- 未覆盖：改映射之前漏掉的旧单仍待下次重连补拉（超 10 分钟按过期处理）；换餐厅后发票模块 store / 营业时间仍需重启托盘才更新。
+- 钉死：`TestFreshAdmitConfigSeesMappingSavedAfterStart`；`TestAdmitSkipIsLogged`；`TestSoleAdmitPath`。
+
 ## 0.5.29
 
 **热敏文字编码：非 ASCII 固件无关位图（葡语重音）**
