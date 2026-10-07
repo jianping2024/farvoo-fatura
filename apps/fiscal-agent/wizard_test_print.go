@@ -10,9 +10,13 @@ type testPrintRequest struct {
 	Printer   string `json:"printer,omitempty"`
 	// Locale: slip language zh|en|pt — independent of tray ui_locale.
 	Locale string `json:"locale,omitempty"`
+	// Kind: "" = connection test slip; testPrintKindCodePage = code-page self-test slip.
+	Kind string `json:"kind,omitempty"`
 }
 
-func runTestPrintForStation(cfg *config, stationID, printerOverride, printLocale string) error {
+const testPrintKindCodePage = "code_page"
+
+func runTestPrintForStation(cfg *config, stationID, printerOverride, printLocale, kind string) error {
 	if cfg == nil {
 		return uiError("zh", "err_not_loaded")
 	}
@@ -50,17 +54,21 @@ func runTestPrintForStation(cfg *config, stationID, printerOverride, printLocale
 		}
 	}
 
-	payload := jobPayload{
-		ConnectionTest: true,
-		Locale:         slipLoc,
-		RestaurantName: venue,
+	var data []byte
+	if strings.TrimSpace(kind) == testPrintKindCodePage {
+		data = buildCodePageProbe(venue)
+	} else {
+		payload := jobPayload{
+			ConnectionTest: true,
+			Locale:         slipLoc,
+			RestaurantName: venue,
+		}
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			return err
+		}
+		data = escposFromJob(printJob{Type: "order_receipt", Payload: raw})
 	}
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	job := printJob{Type: "order_receipt", Payload: raw}
-	data := escposFromJob(job)
 	if err := printToTarget(target, data); err != nil {
 		return uiError(uiLoc, "err_print_failed", target.Display, err)
 	}

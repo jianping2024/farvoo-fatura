@@ -1115,3 +1115,31 @@ func buildConnectionTest(p jobPayload, lab ticketLabels) []byte {
 	w.lf()
 	return w.finish(true)
 }
+
+// buildCodePageProbe — ONLY code-page self-test slip (docs/fiscal-thermal-text-encoding.zh.md §5).
+// Chrome is ASCII on purpose; the reference row is a firmware-independent bitmap.
+func buildCodePageProbe(venue string) []byte {
+	w := newEscpos()
+	w.applyTextMode(escposTextLatin)
+	w.align(1)
+	w.bold(true)
+	w.text("CODE PAGE TEST")
+	w.bold(false)
+	w.lf()
+	w.align(0)
+	w.text(venue)
+	w.lf()
+	w.text(nowLocal())
+	w.lf()
+	w.separator('-')
+	w.text("Reference (image):")
+	w.lf()
+	w.content.Write(escposBitmapText(escposenc.CodePageProbeSample, bitmapTextStyle{}, w.hanFontPx))
+	w.lastTextBitmap = true
+	w.lf()
+	w.text("Which row matches the reference?")
+	w.lf()
+	w.content.Write(escposenc.CodePageProbeRows())
+	w.separator('-')
+	return w.finish(true)
+}

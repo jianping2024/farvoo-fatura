@@ -86,6 +86,7 @@
           <option value="pt">Português</option>
         </select>
         <button type="button" id="testPrintBtn" class="secondary">…</button>
+        <button type="button" id="codePageProbeBtn" class="secondary">…</button>
         <p class="err" id="testErr"></p>
         <p class="ok-msg" id="testSent"></p>
       </div>
@@ -253,6 +254,7 @@
         document.getElementById('testStationLabel').textContent = t('test_station_label');
         document.getElementById('testPrintLocaleLabel').textContent = t('test_print_locale_label');
         document.getElementById('testPrintBtn').textContent = t('test_print_btn');
+        document.getElementById('codePageProbeBtn').textContent = t('code_page_probe_btn');
         document.getElementById('doneBtn').textContent = t('done_btn');
         document.title = t('configure_page_title');
         updateScanHint();
@@ -322,6 +324,7 @@
         document.getElementById('scanBtn').disabled = scanning;
         document.getElementById('saveBtn').disabled = scanning;
         document.getElementById('testPrintBtn').disabled = scanning;
+        document.getElementById('codePageProbeBtn').disabled = scanning;
       }
 
       function buildPairHref(pairPath) {
@@ -806,7 +809,8 @@
           });
       });
 
-      document.getElementById('testPrintBtn').addEventListener('click', function () {
+      // kind: '' = connection test slip; 'code_page' = code-page self-test slip (same /api/test-print).
+      function sendTestPrint(kind, sentKey) {
         var testErr = document.getElementById('testErr');
         var testSent = document.getElementById('testSent');
         testErr.textContent = '';
@@ -826,7 +830,7 @@
         fetch('/api/test-print', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ station_id: sid, printer: printer, locale: slipLocale })
+          body: JSON.stringify({ station_id: sid, printer: printer, locale: slipLocale, kind: kind })
         })
           .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
           .then(function (res) {
@@ -834,9 +838,15 @@
               testErr.textContent = res.j.error || t('test_failed');
               return;
             }
-            testSent.textContent = t('test_sent');
+            testSent.textContent = t(sentKey);
           })
           .catch(function () { testErr.textContent = t('pair_service_unreachable'); });
+      }
+      document.getElementById('testPrintBtn').addEventListener('click', function () {
+        sendTestPrint('', 'test_sent');
+      });
+      document.getElementById('codePageProbeBtn').addEventListener('click', function () {
+        sendTestPrint('code_page', 'code_page_probe_sent');
       });
 
       document.getElementById('doneBtn').addEventListener('click', function () {
