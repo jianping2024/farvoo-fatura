@@ -69,6 +69,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: apps/fiscal-agent/go.mod
+          cache-dependency-path: apps/fiscal-agent/go.sum
 
       - name: Read version
         id: ver
