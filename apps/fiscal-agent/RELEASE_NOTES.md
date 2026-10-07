@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.31
+
+**新增：设置页「打印码页自检单」（诊断用，不改出纸策略）**
+
+- 设置页试打区新增按钮：打印一张自检单，顶部是固件无关的位图对照行，下面按 CP850 / CP860 / WPC1252 / CP858 各打一行同样的葡语重音字母（每行标 `n=`）。门店找出与对照图一致的那一行，即可知道该机固件认哪个 `ESC t` 码页。
+- 历史上只试过 WPC1252、UTF-8、GBK；CP850 / CP860 / CP858 此前未试过，本版用于现场验证。
+- **唯一写法：** 自检单各码页行=`escposenc.CodePageProbeRows`；整票=`buildCodePageProbe`；发送=复用 `/api/test-print`（`kind: "code_page"`），设置页走 `sendTestPrint`。
+- 不自动改配置，`auto` 位图出纸路径不变。详见 [`docs/fiscal-thermal-text-encoding.zh.md`](../../docs/fiscal-thermal-text-encoding.zh.md) §5。
+
 ## 0.5.30
 
 **修复：Settings 保存档口映射 / 换餐厅重新配对后，新单不打、要重启才恢复**

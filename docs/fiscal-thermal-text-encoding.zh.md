@@ -63,3 +63,24 @@ text_encoding
 | 配置写入 FT | **仅** `SetThermalEncoding` / `applyThermalEncodingFromConfig` |
 
 列对齐 Han 画布（`escposHanColumnRow` 等）是**版式**能力，不是第二套拉丁编码器；禁止在画布路径再塞 CP1252 重音。
+
+---
+
+## 5. 码页自检单（诊断，不改出纸策略）
+
+**目的：** 确认某台打印机固件到底认哪个 `ESC t` 码页。历史上只试过 `ESC t 16`（WPC1252）、`ESC 9`（UTF-8）、GBK，门店杂牌机全部乱码；CP850 / CP860 / CP858 未试过。
+
+| 项 | 定法 |
+|----|------|
+| 入口 | 设置页「打印码页自检单」→ **复用** `/api/test-print`，`kind: "code_page"`；不另开路由 |
+| 票面 | 标题/说明纯 ASCII；**参照行**＝`CodePageProbeSample` 的位图（固件无关）；下面每行 `ESC t n` + `n=… 名称` + 同一串葡语字母按该码页编码 |
+| 候选 | `escposenc.CodePageCandidates`：2 CP850 / 3 CP860 / 16 WPC1252 / 19 CP858 |
+| 读法 | 与参照图片字母完全一致的那一行即该机可用码页；全部不一致 → 该机继续走 §2 位图 |
+| 不做 | 自检结果**不**自动写配置、**不**改变 `auto` 出纸路径 |
+
+| 职责 | 唯一入口 |
+|------|----------|
+| 自检单票体（各码页行） | `escposenc.CodePageProbeRows` |
+| 自检单整票 | `buildCodePageProbe` |
+| 试打类型分流 | `runTestPrintForStation(…, kind)` |
+| 设置页发送 | `configure_ui.html` 的 `sendTestPrint(kind, sentKey)` |
