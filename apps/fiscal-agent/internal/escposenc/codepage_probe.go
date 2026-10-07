@@ -5,6 +5,7 @@ import (
 
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 // CodePageProbeSample is the pt-PT accent set printed on every probe row.
@@ -36,5 +37,28 @@ func CodePageProbeRows() []byte {
 		out = append(out, sample...)
 		out = append(out, '\n')
 	}
+	return append(out, SelectCodeTable(CodeTableWPC1252)...)
+}
+
+// HanProbeSample is the Chinese set printed on every Han probe row.
+const HanProbeSample = "宫保鸡丁 餐厅 打印测试"
+
+// HanProbeRows is the ONLY Chinese firmware probe body. Row order matters:
+// A raw GBK (printers that boot in Han mode) → B FS & + GBK + FS . → C ESC 9 1 + UTF-8,
+// then ESC @ + WPC1252 so a printer stuck in UTF-8/Han mode cannot taint what follows.
+func HanProbeRows() []byte {
+	gbk, _ := simplifiedchinese.GBK.NewEncoder().Bytes([]byte(HanProbeSample))
+	var out []byte
+	out = append(out, "A GBK       "...)
+	out = append(out, gbk...)
+	out = append(out, '\n')
+	out = append(out, "B FS&+GBK   "...)
+	out = append(out, 0x1C, 0x26)
+	out = append(out, gbk...)
+	out = append(out, 0x1C, 0x2E, '\n')
+	out = append(out, "C UTF-8     "...)
+	out = append(out, 0x1B, 0x39, 0x01)
+	out = append(out, HanProbeSample...)
+	out = append(out, '\n', 0x1B, 0x40)
 	return append(out, SelectCodeTable(CodeTableWPC1252)...)
 }

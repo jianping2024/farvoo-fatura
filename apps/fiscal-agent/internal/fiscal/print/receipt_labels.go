@@ -5,7 +5,7 @@ import "farvoo-fiscal-agent/internal/fiscal/locale"
 // ReceiptLabels is the ONLY fiscal ticket chrome copy (scheme A: en | pt),
 // excluding the document-number line prefix (ONLY documentNoPrefix).
 // Certification line stays Portuguese in BuildPayload — not in this struct.
-// pt-PT accents are intentional; thermal auto rasters non-ASCII
+// pt-PT accents are intentional; thermal auto prints them in WPC1252 Font A
 // (docs/fiscal-thermal-text-encoding.zh.md) — do not ASCII-fold to hide code-page bugs.
 type ReceiptLabels struct {
 	ClientePrefix     string

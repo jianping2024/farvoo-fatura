@@ -45,16 +45,8 @@ func TestBuildOrderReceiptPortuguesePrintLocale(t *testing.T) {
 			t.Fatalf("missing %q in receipt output", want)
 		}
 	}
-	// Limão / Preço / Mesa n.º / impressão → GS v 0 under auto (not CP1252 high bytes).
-	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
-		t.Fatal("pt receipt must raster accents via GS v 0")
-	}
-	if bytes.Contains(raw, []byte{0xe7}) || bytes.Contains(raw, []byte{0xe3}) || bytes.Contains(raw, []byte{0xba}) {
-		t.Fatal("pt auto must not emit Windows-1252 ç/ã/º for chrome")
-	}
-	if bytes.Contains(raw, []byte("Limão")) || bytes.Contains(raw, []byte("Preço")) {
-		t.Fatal("must not emit raw UTF-8 accents on wire")
-	}
+	// Limão / Preço / Mesa n.º → WPC1252 Font A under auto (same size/columns as ASCII).
+	assertAccentsInFirmwareFont(t, raw, "Limão", "Preço", "n.º")
 	if strings.Contains(s, "Receipt") || strings.Contains(s, "Table No.") {
 		t.Fatalf("pt locale must not use English chrome, got: %q", s)
 	}
@@ -257,13 +249,8 @@ func TestPreBillOmitsPaymentLines(t *testing.T) {
 	if !strings.Contains(s, "Consulta Mesa") {
 		t.Fatalf("pre_bill pt locale must show Consulta Mesa, got: %q", s)
 	}
-	// NÃO line is non-ASCII → GS v 0 under auto; fill labels stay ASCII Font A.
-	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
-		t.Fatal("pre_bill must raster Portuguese legal block (NÃO…)")
-	}
-	if bytes.Contains(raw, []byte("NÃO")) || bytes.Contains(raw, []byte("NÃ")) {
-		t.Fatal("must not emit raw UTF-8 NÃO on wire")
-	}
+	// NÃO legal block rides WPC1252 Font A under auto.
+	assertAccentsInFirmwareFont(t, raw, "NÃO")
 	if !strings.Contains(s, "NOME:") || !strings.Contains(s, "NIF:") {
 		t.Fatal("pre_bill must print NOME and NIF fill-in lines")
 	}
@@ -275,7 +262,7 @@ func TestPreBillOmitsPaymentLines(t *testing.T) {
 	}
 }
 
-func TestReceiptPortugueseMenuUsesBitmapDespiteChineseRestaurant(t *testing.T) {
+func TestReceiptPortugueseMenuStaysFirmwareFontDespiteChineseRestaurant(t *testing.T) {
 	payload, _ := json.Marshal(jobPayload{
 		Locale:           "pt",
 		RestaurantName:   "川味餐厅",
@@ -290,15 +277,7 @@ func TestReceiptPortugueseMenuUsesBitmapDespiteChineseRestaurant(t *testing.T) {
 	for _, jobType := range []string{"pre_bill", "order_receipt"} {
 		t.Run(jobType, func(t *testing.T) {
 			raw := escposFromJob(printJob{Type: jobType, Payload: payload})
-			if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
-				t.Fatalf("%s: expected GS v 0 for Portuguese accents", jobType)
-			}
-			if bytes.Contains(raw, []byte{0xe1}) {
-				t.Fatalf("%s: auto must not emit Windows-1252 á", jobType)
-			}
-			if bytes.Contains(raw, []byte{0xc3, 0xa1}) {
-				t.Fatalf("%s: must not emit raw UTF-8 for á", jobType)
-			}
+			assertAccentsInFirmwareFont(t, raw, "Chá camomila", "Chaminé")
 		})
 	}
 }
@@ -346,9 +325,7 @@ func TestPreBillEmptyLocaleUsesPortugueseLegalBlock(t *testing.T) {
 	if !strings.Contains(s, "Consulta Mesa") {
 		t.Fatal("empty payload.locale must default pre-bill chrome to pt")
 	}
-	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
-		t.Fatal("empty locale → pt legal block must raster non-ASCII")
-	}
+	assertAccentsInFirmwareFont(t, raw, "NÃO")
 	if !strings.Contains(s, "NOME:") {
 		t.Fatal("empty locale pre-bill must still print NOME fill line")
 	}

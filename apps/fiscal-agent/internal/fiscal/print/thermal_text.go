@@ -31,7 +31,7 @@ func emitThermalLine(b *bytes.Buffer, s string, sty thermalLineStyle) {
 		b.Write(escposenc.Windows1252(s))
 		b.WriteByte('\n')
 	default: // auto
-		if escposenc.HasNonASCII(s) {
+		if escposenc.NeedsRaster(s) {
 			b.Write(escposbitmap.Line(s, escposbitmap.Style{Bold: sty.Bold}, escposbitmap.DefaultFontPx))
 			return
 		}

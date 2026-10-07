@@ -31,16 +31,13 @@ func hasHan(s string) bool {
 	return false
 }
 
-// stationTicketNeedsBitmap — firmware-safe when chrome/content has non-ASCII (pt accents, Han, …).
+// stationTicketNeedsBitmap — only when content goes beyond WPC1252 (Han, …); pt accents stay Font A.
 func stationTicketNeedsBitmap(p jobPayload) bool {
 	if printLocaleIsZh(p.Locale) {
 		return true
 	}
-	if normalizePrintLocale(p.Locale) == "pt" {
-		return true
-	}
 	for _, ln := range p.Lines {
-		if escposenc.HasNonASCII(ln.CategoryGroupHeader) || escposenc.HasNonASCII(ln.DisplayName) || escposenc.HasNonASCII(ln.Note) {
+		if escposenc.NeedsRaster(ln.CategoryGroupHeader) || escposenc.NeedsRaster(ln.DisplayName) || escposenc.NeedsRaster(ln.Note) {
 			return true
 		}
 	}
@@ -57,14 +54,11 @@ func receiptTicketNeedsBitmap(p jobPayload) bool {
 	if printLocaleIsZh(p.Locale) {
 		return true
 	}
-	if normalizePrintLocale(p.Locale) == "pt" {
-		return true
-	}
-	if escposenc.HasNonASCII(formatSplitPayerForReceipt(p.PayerName)) {
+	if escposenc.NeedsRaster(formatSplitPayerForReceipt(p.PayerName)) {
 		return true
 	}
 	for _, ln := range p.Lines {
-		if escposenc.HasNonASCII(ln.DisplayName) || escposenc.HasNonASCII(ln.Note) {
+		if escposenc.NeedsRaster(ln.DisplayName) || escposenc.NeedsRaster(ln.Note) {
 			return true
 		}
 	}
@@ -76,11 +70,8 @@ func connectionTestNeedsBitmap(p jobPayload) bool {
 	if printLocaleIsZh(p.Locale) {
 		return true
 	}
-	if normalizePrintLocale(p.Locale) == "pt" {
-		return true
-	}
 	lab := printTicketLabels(p.Locale)
-	return escposenc.HasNonASCII(p.venueName()) || escposenc.HasNonASCII(lab.connectionTest)
+	return escposenc.NeedsRaster(p.venueName()) || escposenc.NeedsRaster(lab.connectionTest)
 }
 
 func encodeWindows1252(s string) []byte {

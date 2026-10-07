@@ -2,11 +2,11 @@ package main
 
 import "testing"
 
-func TestTextModeForConfiguredChineseDefaultsBitmap(t *testing.T) {
-	if got := textModeForConfiguredChinese(true); got != escposTextBitmap {
-		t.Fatalf("default chinese text mode = %v", got)
+func TestTextModeForThermalDefaultsBitmap(t *testing.T) {
+	if got := textModeForThermal(true); got != escposTextBitmap {
+		t.Fatalf("default raster text mode = %v", got)
 	}
-	if got := textModeForConfiguredChinese(false); got != escposTextLatin {
+	if got := textModeForThermal(false); got != escposTextLatin {
 		t.Fatalf("latin text mode = %v", got)
 	}
 }

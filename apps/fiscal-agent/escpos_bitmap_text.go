@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"farvoo-fiscal-agent/internal/escposbitmap"
-	"farvoo-fiscal-agent/internal/escposenc"
 )
 
 type escposTextMode int
@@ -55,15 +54,6 @@ func textModeForThermal(needFirmwareSafeRaster bool) escposTextMode {
 		}
 	}
 	return escposTextBitmap
-}
-
-// Deprecated name — tests / older call sites; forwards to textModeForThermal only.
-func textModeForConfiguredChinese(needChinese bool) escposTextMode {
-	return textModeForThermal(needChinese)
-}
-
-func needsBitmapText(s string) bool {
-	return escposenc.HasNonASCII(s)
 }
 
 func toBitmapStyle(style bitmapTextStyle) escposbitmap.Style {

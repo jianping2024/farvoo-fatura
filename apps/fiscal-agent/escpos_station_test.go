@@ -63,13 +63,8 @@ func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
 			t.Fatalf("missing %q in ticket output", want)
 		}
 	}
-	// auto + pt: accents (Água / Mesa n.º / …) are GS v 0 — not UTF-8 on the wire.
-	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
-		t.Fatal("pt station ticket must raster non-ASCII via GS v 0")
-	}
-	if bytes.Contains(raw, []byte("Água")) || bytes.Contains(raw, []byte("Observação")) {
-		t.Fatal("must not emit raw UTF-8 accents on wire")
-	}
+	// auto + pt: Água / Mesa n.º ride WPC1252 Font A — same 1×2 size and Qtd column as ASCII dishes.
+	assertAccentsInFirmwareFont(t, raw, "Água", "n.º")
 
 	idx := bytes.Index(raw, []byte("Artigos"))
 	if idx < 0 {
@@ -410,12 +405,7 @@ func TestStationTicketItemNoteUsesUnderline(t *testing.T) {
 	if !bytes.Contains(raw, []byte{0x1B, 0x2D, 0x01}) {
 		t.Fatal("expected ESC - 1 underline before item note")
 	}
-	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
-		t.Fatal("Observação note line must raster under pt auto")
-	}
-	if bytes.Contains(raw, []byte("Observação")) {
-		t.Fatal("must not emit raw UTF-8 Observação on wire")
-	}
+	assertAccentsInFirmwareFont(t, raw, "Observação")
 }
 
 func TestWrapDisplay(t *testing.T) {
@@ -475,11 +465,9 @@ func TestStationTicketItemNoteWrapsFullText(t *testing.T) {
 		}},
 	})
 	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
-		t.Fatal("pt note with Observação must emit GS v 0")
-	}
-	if bytes.Contains(raw, []byte("…")) || bytes.Contains(raw, []byte("Observação")) {
-		t.Fatal("station note must not ellipsis-truncate or emit UTF-8 Observação")
+	assertAccentsInFirmwareFont(t, raw, "Observação")
+	if bytes.Contains(raw, []byte("…")) {
+		t.Fatal("station note must not ellipsis-truncate")
 	}
 	// wrapDisplay fixture still multi-chunk (prefix width); product path rasters each text() line.
 	_ = chunks
