@@ -1132,23 +1132,22 @@ func buildCodePageProbe(venue string) []byte {
 	w.text(nowLocal())
 	w.lf()
 	w.separator('-')
-	w.text("Reference (image):")
-	w.lf()
-	w.content.Write(escposBitmapText(escposenc.CodePageProbeSample, bitmapTextStyle{}, w.hanFontPx))
-	w.lastTextBitmap = true
-	w.lf()
-	w.text("Which row matches the reference?")
-	w.lf()
-	w.content.Write(escposenc.CodePageProbeRows())
-	w.separator('-')
-	w.text("Chinese reference (image):")
-	w.lf()
-	w.content.Write(escposBitmapText(escposenc.HanProbeSample, bitmapTextStyle{}, w.hanFontPx))
-	w.lastTextBitmap = true
-	w.lf()
-	w.text("Which row matches the reference?")
-	w.lf()
-	w.content.Write(escposenc.HanProbeRows())
-	w.separator('-')
+	for _, sec := range []struct {
+		title, sample string
+		rows          []byte
+	}{
+		{"Reference (image):", escposenc.CodePageProbeSample, escposenc.CodePageProbeRows()},
+		{"Chinese reference (image):", escposenc.HanProbeSample, escposenc.HanProbeRows()},
+	} {
+		w.text(sec.title)
+		w.lf()
+		w.content.Write(escposBitmapText(sec.sample, bitmapTextStyle{}, w.hanFontPx))
+		w.lastTextBitmap = true
+		w.lf()
+		w.text("Which row matches the reference?")
+		w.lf()
+		w.content.Write(sec.rows)
+		w.separator('-')
+	}
 	return w.finish(true)
 }

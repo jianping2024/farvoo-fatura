@@ -11,15 +11,12 @@ import (
 // CodePageProbeSample is the pt-PT accent set printed on every probe row.
 const CodePageProbeSample = "ã õ ç á é í ó ú â ê ô à Ã Õ Ç É"
 
-// CodePageCandidate is one ESC t n row on the code-page self-test slip.
-type CodePageCandidate struct {
+// codePageCandidates — Epson ESC t numbering; one probe row each.
+var codePageCandidates = []struct {
 	N       byte
 	Name    string
 	Charmap *charmap.Charmap
-}
-
-// CodePageCandidates — Epson ESC t numbering. WPC1252 (16) is the table that already failed in stores.
-var CodePageCandidates = []CodePageCandidate{
+}{
 	{N: 2, Name: "CP850", Charmap: charmap.CodePage850},
 	{N: 3, Name: "CP860", Charmap: charmap.CodePage860},
 	{N: 16, Name: "WPC1252", Charmap: charmap.Windows1252},
@@ -30,7 +27,7 @@ var CodePageCandidates = []CodePageCandidate{
 // CodePageProbeSample encoded in that table, then LF. Restores WPC1252 at the end.
 func CodePageProbeRows() []byte {
 	var out []byte
-	for _, c := range CodePageCandidates {
+	for _, c := range codePageCandidates {
 		out = append(out, SelectCodeTable(c.N)...)
 		out = append(out, fmt.Sprintf("n=%-2d %-8s ", c.N, c.Name)...)
 		sample, _ := encoding.ReplaceUnsupported(c.Charmap.NewEncoder()).Bytes([]byte(CodePageProbeSample))
