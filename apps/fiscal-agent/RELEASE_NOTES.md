@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.33
+
+**新增：开台小票 `receipt_variant=open_table`（档口版式 + 一行金额）**
+
+- Mesa 冷开台入队 `order_receipt` / `open_table` 后，本端按档口出品联 chrome 打一张开台单：一行标题（按 `print_locale`）+ 合计金额，走收银默认机。
+- **唯一写法：** `receipt_variant=open_table` → `buildOpenTableSlip`；不走预结 `pre_bill` 文案/免责，不含付款行。
+- 单测：`TestBuildOpenTableSlipStationChromeWithAmount`（en locale 断言）。
+
 ## 0.5.32
 
 **修复：葡语重音菜（Água、Pêssego、Limão…）在厨打单上字变小、数量列错位、字体不一致**
