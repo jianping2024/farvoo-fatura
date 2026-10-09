@@ -491,3 +491,40 @@ func TestZhPreBillMenuOneRasterPerLine(t *testing.T) {
 		t.Fatal("price ink should sit in right price band")
 	}
 }
+
+func TestBuildOpenTableSlipStationChromeWithAmount(t *testing.T) {
+	payload, _ := json.Marshal(map[string]any{
+		"locale":          "en",
+		"display_name":    "A-03",
+		"guest_count":     3,
+		"receipt_variant": "open_table",
+		"subtotal":        59.7,
+		"amount_due":      59.7,
+		"order_time":      "2026-10-09 12:00",
+		"lines": []jobLine{
+			{ItemIndex: 1, DisplayName: "Open table", Qty: 1, UnitPrice: 59.7},
+		},
+	})
+	raw := escposFromJob(printJob{Type: "order_receipt", Payload: payload})
+	s := string(raw)
+	for _, want := range []string{
+		"Open table",
+		"Guest:3",
+		"Items",
+		"Qty",
+		"Amount Due:59.70",
+	} {
+		if !strings.Contains(s, want) {
+			t.Fatalf("missing %q in open_table slip, got: %q", want, s)
+		}
+	}
+	if strings.Contains(s, "Table Consultation") || strings.Contains(s, "Consulta Mesa") || strings.Contains(s, "Pre-Bill") {
+		t.Fatal("open_table must not use pre_bill title")
+	}
+	if strings.Contains(s, "NOT AN INVOICE") || strings.Contains(s, "não serve de fatura") {
+		t.Fatal("open_table must not print pre_bill disclaimer")
+	}
+	if strings.Contains(s, "Amount Paid") || strings.Contains(s, "Payment:") {
+		t.Fatal("open_table must not include payment lines")
+	}
+}

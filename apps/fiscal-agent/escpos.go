@@ -44,6 +44,7 @@ type ticketLabels struct {
 	guestOrder     string
 	receipt        string
 	preBill        string
+	openTable      string // cold-open slip title (receipt_variant=open_table)
 	tableNo        string
 	guest          string
 	items          string
@@ -78,6 +79,7 @@ func labelsFor(locale string) ticketLabels {
 			guestOrder:     "出菜单",
 			receipt:        "收据",
 			preBill:        "预结账单",
+			openTable:      "开台",
 			tableNo:        "桌号",
 			guest:          "人数",
 			items:          "菜品",
@@ -108,6 +110,7 @@ func labelsFor(locale string) ticketLabels {
 			guestOrder:     "Guest Order",
 			receipt:        "Receipt",
 			preBill:        "Table Consultation",
+			openTable:      "Open table",
 			tableNo:        "Table No.",
 			guest:          "Guest",
 			items:          "Items",
@@ -138,6 +141,7 @@ func labelsFor(locale string) ticketLabels {
 			guestOrder:     "Pedido",
 			receipt:        "Recibo",
 			preBill:        "Consulta Mesa",
+			openTable:      "Abrir mesa",
 			tableNo:        "Mesa n.º",
 			guest:          "Conv.",
 			items:          "Artigos",
@@ -945,6 +949,9 @@ func escposFromJob(job printJob) []byte {
 		if variant == "" {
 			variant = "final"
 		}
+		if variant == "open_table" {
+			return buildOpenTableSlip(p)
+		}
 		withPayment := variant == "final" || variant == "split_payment"
 		return buildOrderReceipt(p, printTicketLabels(p.Locale), withPayment, variant)
 	case "pre_bill":
@@ -953,6 +960,51 @@ func escposFromJob(job printJob) []byte {
 	default:
 		return buildStationTicket(p)
 	}
+}
+
+// buildOpenTableSlip — cold-open slip: station-slip chrome + one line + amount due (receipt printer).
+func buildOpenTableSlip(p jobPayload) []byte {
+	lab := printTicketLabels(p.Locale)
+	w := newEscposForStationTicket(p)
+	title := strings.TrimSpace(lab.openTable)
+	if title == "" {
+		title = lab.guestOrder
+	}
+	w.writeTicketMasthead(title)
+	var meta []string
+	if p.GuestCount > 0 {
+		meta = append(meta, fmt.Sprintf("%s:%d", lab.guest, p.GuestCount))
+	}
+	w.writeTableContext(p, lab, false, meta...)
+	w.separator('-')
+	w.writeBody1x2()
+	if stationSlipColumnBlockUsesHanCanvas(p, w) {
+		w.writeHanColumnRow(lab.items, lab.qty, hanColHeader)
+	} else {
+		w.text(stationSlipColumnHeaderLine(lab.items, lab.qty, escposWidth))
+		w.lf()
+	}
+	w.writeStationMenuLines(p, p.Lines)
+	due := p.AmountDue
+	if due <= 0 {
+		due = p.Subtotal
+	}
+	if due <= 0 {
+		for _, ln := range p.Lines {
+			q := ln.Qty
+			if q <= 0 {
+				q = 1
+			}
+			due += ln.UnitPrice * float64(q)
+		}
+	}
+	w.separator('-')
+	w.writeBody1x1()
+	if due > 0 {
+		w.writeReceiptAmountDueLine(lab.amountDue + ":" + formatMoney(due))
+	}
+	w.writeStationSlipFooter(p, lab)
+	return w.finish(true)
 }
 
 // buildStationTicket — internal station slip; fixed chrome from printTicketLabels(payload.locale).
