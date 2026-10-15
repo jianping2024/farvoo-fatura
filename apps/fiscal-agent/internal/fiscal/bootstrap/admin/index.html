@@ -821,6 +821,14 @@
               <input id="invName" value="Consumidor Final" />
             </div>
             <div id="grFields" class="hidden">
+              <div class="field hidden" id="gtPurposeWrap">
+                <label data-i18n="gt.purpose">运输场景</label>
+                <select id="invMovementPurpose">
+                  <option value="transfer" data-i18n="gt.purpose.transfer">调拨</option>
+                  <option value="customer" data-i18n="gt.purpose.customer">外送客户</option>
+                </select>
+                <p class="hint" id="gtPurposeHint"></p>
+              </div>
               <div class="field">
                 <label data-i18n="gr.customer_address">收货地址</label>
                 <input id="invGrAddress" data-i18n="gr.customer_address_ph" data-i18n-attr="placeholder" placeholder="街道门牌" />
@@ -841,7 +849,7 @@
                 <label data-i18n="gr.movement_start">开运时间</label>
                 <input id="invMovementStart" type="datetime-local" />
               </div>
-              <div class="field">
+              <div class="field" id="invRecipientVatWrap">
                 <label class="check-row" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
                   <input type="checkbox" id="invRecipientVat" checked />
                   <span data-i18n="gr.recipient_vat">收货方是 IVA 纳税人</span>
@@ -999,6 +1007,7 @@
               <button type="button" class="secondary" data-invoice-type="RG" role="tab"><span data-i18n="doc.tab.RG">收据</span></button>
               <button type="button" class="secondary" data-invoice-type="PF" role="tab"><span data-i18n="doc.tab.PF">形式发票</span></button>
               <button type="button" class="secondary" data-invoice-type="GR" role="tab"><span data-i18n="doc.tab.GR">发货单</span></button>
+              <button type="button" class="secondary" data-invoice-type="GT" role="tab"><span data-i18n="doc.tab.GT">运输单</span></button>
             </div>
             <div class="admin-list-toolbar">
               <div class="admin-list-toolbar__search">
@@ -1221,6 +1230,11 @@
                     <div class="series-card-head"><strong>GR</strong><span class="status-pill optional" id="seriesGrPill" data-i18n="common.optional">可选</span></div>
                     <div class="field"><label for="seriesGr" data-i18n="settings.series.number">系列编号</label><input id="seriesGr" /><span class="hint" id="seriesGrHint"></span></div>
                     <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesGr" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="GR">注册 GR</button></div>
+                  </div>
+                  <div class="series-card optional" data-series="gt">
+                    <div class="series-card-head"><strong>GT</strong><span class="status-pill optional" id="seriesGtPill" data-i18n="common.optional">可选</span></div>
+                    <div class="field"><label for="seriesGt" data-i18n="settings.series.number">系列编号</label><input id="seriesGt" /><span class="hint" id="seriesGtHint"></span></div>
+                    <div class="panel-footer" style="border:0;padding-top:0"><button type="button" id="btnSeriesGt" class="btn-sm" data-i18n="settings.series.register" data-i18n-type="GT">注册 GT</button></div>
                   </div>
                 </div>
                 <h3 style="margin:1rem 0 0.5rem;font-size:0.95rem" data-i18n="settings.series.activate">激活开票</h3>
@@ -1609,8 +1623,8 @@
   const DEFAULT_SALE_DOC = 'FS';
   /** Manual / Local API sale types (FT + FS + FR). */
   const SALE_DOC_TYPES = ['FT', 'FS', 'FR'];
-  /** Manual issue dropdown: sales + PF + GR. */
-  const MANUAL_DOC_TYPES = ['FT', 'FS', 'FR', 'PF', 'GR'];
+  /** Manual issue dropdown: sales + PF + GR + GT. */
+  const MANUAL_DOC_TYPES = ['FT', 'FS', 'FR', 'PF', 'GR', 'GT'];
   /** Bill-sync issue types only (FT + FS); FR is manual path. */
   const BILL_SYNC_DOC_TYPES = ['FT', 'FS'];
   const PAYMENT_METHODS = ['CASH', 'CARD', 'MBWAY', 'MULTIBANCO', 'MIXED', 'ACCOUNT', 'OTHER'];
@@ -2192,7 +2206,7 @@
   /** ONLY pagination bar for invoice list (FiscalUI.createListPaginationBar). */
   let invoiceListPaginationCtrl = null;
   /** ONLY active document-type tab on invoice list ('' = all, or FT / FS / FR / NC / ND). */
-  const INVOICE_LIST_DOC_TYPES = ['', 'FT', 'FS', 'FR', 'NC', 'ND', 'RG', 'PF', 'GR'];
+  const INVOICE_LIST_DOC_TYPES = ['', 'FT', 'FS', 'FR', 'NC', 'ND', 'RG', 'PF', 'GR', 'GT'];
   /** ONLY invoice type label for empty-state copy. */
   function invoiceListDocTypeLabel(t) {
     const code = String(t || '').trim().toUpperCase();
@@ -2496,10 +2510,10 @@
       !!(setupStatusCache && setupStatusCache.ready_to_issue);
   }
 
-  /** ONLY PF/GR annul button gate (N→A). */
+  /** ONLY PF/GR/GT annul button gate (N→A). */
   function invoiceCanAnnulPf(inv) {
     const t = String(inv.document_type || '');
-    return (t === 'PF' || t === 'GR') &&
+    return (t === 'PF' || t === 'GR' || t === 'GT') &&
       String(inv.document_status || '') === 'N';
   }
 
@@ -3293,7 +3307,8 @@
       { ok: st.nd_series_ok, code: st.nd_series_code, input: '#seriesNd', btn: '#btnSeriesNd', hint: '#seriesNdHint', label: 'ND', pill: '#seriesNdPill', optional: true },
       { ok: st.rg_series_ok, code: st.rg_series_code, input: '#seriesRg', btn: '#btnSeriesRg', hint: '#seriesRgHint', label: 'RG', pill: '#seriesRgPill', optional: true },
       { ok: st.pf_series_ok, code: st.pf_series_code, input: '#seriesPf', btn: '#btnSeriesPf', hint: '#seriesPfHint', label: 'PF', pill: '#seriesPfPill', optional: true },
-      { ok: st.gr_series_ok, code: st.gr_series_code, input: '#seriesGr', btn: '#btnSeriesGr', hint: '#seriesGrHint', label: 'GR', pill: '#seriesGrPill', optional: true }
+      { ok: st.gr_series_ok, code: st.gr_series_code, input: '#seriesGr', btn: '#btnSeriesGr', hint: '#seriesGrHint', label: 'GR', pill: '#seriesGrPill', optional: true },
+      { ok: st.gt_series_ok, code: st.gt_series_code, input: '#seriesGt', btn: '#btnSeriesGt', hint: '#seriesGtHint', label: 'GT', pill: '#seriesGtPill', optional: true }
     ];
     rows.forEach(r => {
       const inp = $(r.input);
@@ -5063,21 +5078,43 @@
     const docType = ($('#docType').value || DEFAULT_SALE_DOC);
     const isPf = docType === 'PF';
     const isGr = docType === 'GR';
+    const isGt = docType === 'GT';
     let tender = { ok: true, tendered: '' };
-    if (!isPf && !isGr) {
+    if (!isPf && !isGr && !isGt) {
       tender = readCashTenderedOrToast($('#invPay'), $('#invTendered'), orderCashTenderDue());
       if (!tender.ok) return;
     }
-    if (isGr) {
+    if (isGr || isGt) {
       if (!($('#invGrAddress').value || '').trim() || !($('#invGrCity').value || '').trim() || !($('#invGrPostal').value || '').trim()) {
-        toast(FiscalAdminI18n.t('gr.need_address'), 'error');
+        toast(FiscalAdminI18n.t(isGt ? 'gt.need_address' : 'gr.need_address'), 'error');
         return;
       }
       if (!($('#invShipFrom').value || '').trim() || !($('#invShipTo').value || '').trim() || !($('#invMovementStart').value || '').trim()) {
-        toast(FiscalAdminI18n.t('gr.need_transport'), 'error');
+        toast(FiscalAdminI18n.t(isGt ? 'gt.need_transport' : 'gr.need_transport'), 'error');
         return;
       }
-      if ($('#invRecipientVat').checked && !nif) {
+      if (isGt) {
+        const purpose = ($('#invMovementPurpose').value || '').trim();
+        if (purpose !== 'transfer' && purpose !== 'customer') {
+          toast(FiscalAdminI18n.t('gt.need_purpose'), 'error');
+          return;
+        }
+        if (purpose === 'transfer') {
+          const storeNif = ($('#nif').value || '').trim();
+          if (!nif || (storeNif && nif !== storeNif)) {
+            toast(FiscalAdminI18n.t('gt.transfer_nif'), 'error');
+            return;
+          }
+          const fromA = ($('#invShipFrom').value || '').trim();
+          const toA = ($('#invShipTo').value || '').trim();
+          if (fromA && toA && fromA === toA) {
+            toast(FiscalAdminI18n.t('gt.transfer_addr_hint'), 'info');
+          }
+        } else if ($('#invRecipientVat').checked && !nif) {
+          toast(FiscalAdminI18n.t('gr.need_nif'), 'error');
+          return;
+        }
+      } else if ($('#invRecipientVat').checked && !nif) {
         toast(FiscalAdminI18n.t('gr.need_nif'), 'error');
         return;
       }
@@ -5108,7 +5145,7 @@
     };
     if (currentOrder.proformaId) body.proforma_id = currentOrder.proformaId;
     if (isPf && currentOrder.validUntil) body.valid_until = currentOrder.validUntil;
-    if (isGr) {
+    if (isGr || isGt) {
       body.customer_address = ($('#invGrAddress').value || '').trim();
       body.customer_city = ($('#invGrCity').value || '').trim();
       body.customer_postal_code = ($('#invGrPostal').value || '').trim();
@@ -5118,11 +5155,18 @@
       body.movement_start_at = ms.length === 16 ? ms + ':00' : ms;
       body.recipient_is_vat_payer = !!$('#invRecipientVat').checked;
     }
+    if (isGt) {
+      body.movement_purpose = ($('#invMovementPurpose').value || '').trim();
+      if (body.movement_purpose === 'transfer') body.recipient_is_vat_payer = true;
+    }
     const res = await j('POST', '/local/v1/fiscal-documents/manual', body);
     const docId = res.document_id || '';
     const invNo = res.invoice_no || '';
     currentOrder = null;
     await pollPrintJob(res.print_job_id, FiscalAdminI18n.fmt('order.toast.issued', { no: (invNo || 'FT') }));
+    if (isGt && body.movement_purpose === 'customer') {
+      toast(FiscalAdminI18n.t('gt.customer_sale_hint'), 'info');
+    }
     await refreshInvoiceHubStats();
     await refreshInvoices();
     if (docId) {
@@ -6135,6 +6179,7 @@
   $('#seriesRg').value = 'RG' + y + 'DEMO01';
   $('#seriesPf').value = 'PF' + y + 'DEMO01';
   $('#seriesGr').value = 'GR' + y + 'DEMO01';
+  if ($('#seriesGt')) $('#seriesGt').value = 'GT' + y + 'DEMO01';
   $('#saftYear').value = String(y);
   $('#saftMonth').value = String(new Date().getMonth() + 1);
 
@@ -6207,15 +6252,44 @@
   $('#btnSeriesRg').onclick = () => registerSeries($('#btnSeriesRg'), '#seriesRg', 'RG', 'RG');
   $('#btnSeriesPf').onclick = () => registerSeries($('#btnSeriesPf'), '#seriesPf', 'PF', 'PF');
   $('#btnSeriesGr').onclick = () => registerSeries($('#btnSeriesGr'), '#seriesGr', 'GR', 'GR');
+  $('#btnSeriesGt').onclick = () => registerSeries($('#btnSeriesGt'), '#seriesGt', 'GT', 'GT');
+
+  function syncGtPurposeUI() {
+    const purpose = ($('#invMovementPurpose') && $('#invMovementPurpose').value) || 'transfer';
+    const hint = $('#gtPurposeHint');
+    if (hint) {
+      hint.textContent = purpose === 'transfer'
+        ? FiscalAdminI18n.t('gt.transfer_addr_hint')
+        : FiscalAdminI18n.t('gt.customer_sale_hint');
+    }
+    const vatWrap = $('#invRecipientVatWrap');
+    if (vatWrap) vatWrap.classList.toggle('hidden', purpose === 'transfer');
+    if (purpose === 'transfer') {
+      const storeNif = ($('#nif') && $('#nif').value || '').trim();
+      const legal = ($('#legal') && $('#legal').value || '').trim();
+      if (storeNif && $('#invNif') && !($('#invNif').value || '').trim()) $('#invNif').value = storeNif;
+      if (legal && $('#invName') && (!($('#invName').value || '').trim() || $('#invName').value === 'Consumidor Final')) {
+        $('#invName').value = legal;
+      }
+    }
+  }
 
   function syncGrFieldsVisibility() {
     const wrap = $('#grFields');
     if (!wrap) return;
-    wrap.classList.toggle('hidden', ($('#docType').value || '') !== 'GR');
+    const dt = ($('#docType').value || '');
+    const show = dt === 'GR' || dt === 'GT';
+    wrap.classList.toggle('hidden', !show);
+    const purposeWrap = $('#gtPurposeWrap');
+    if (purposeWrap) purposeWrap.classList.toggle('hidden', dt !== 'GT');
+    if (dt === 'GT') syncGtPurposeUI();
   }
   if ($('#docType')) {
     $('#docType').addEventListener('change', syncGrFieldsVisibility);
     syncGrFieldsVisibility();
+  }
+  if ($('#invMovementPurpose')) {
+    $('#invMovementPurpose').addEventListener('change', syncGtPurposeUI);
   }
 
   /** ONLY Admin path to POST /local/v1/setup/series/register. */

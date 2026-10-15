@@ -213,11 +213,12 @@ type SAFTWorkingDocument struct {
 	Lines           []SAFTLine
 }
 
-// SAFTStockMovement is one GR (guia de remessa) for SAF-T MovementOfGoods.
+// SAFTStockMovement is one GR/GT for SAF-T MovementOfGoods.
 type SAFTStockMovement struct {
 	ID                  string
 	DocumentNumber      string
 	ATCUD               string
+	MovementType        string // GR | GT
 	MovementDate        string
 	SystemEntryDate     string
 	MovementStatus      string
@@ -284,9 +285,9 @@ func (d *DB) LoadSAFTWorkingDocumentsForPeriod(storeID, startDate, endDate strin
 	return out, nil
 }
 
-// LoadSAFTStockMovementsForPeriod is the ONLY reader for SAF-T MovementOfGoods (GR) in a month.
+// LoadSAFTStockMovementsForPeriod is the ONLY reader for SAF-T MovementOfGoods (GR/GT) in a month.
 func (d *DB) LoadSAFTStockMovementsForPeriod(storeID, startDate, endDate string) ([]SAFTStockMovement, error) {
-	rows, err := d.SQL.Query(`SELECT i.id, i.invoice_no, i.atcud, i.invoice_date, i.system_entry_date,
+	rows, err := d.SQL.Query(`SELECT i.id, i.invoice_no, i.atcud, i.document_type, i.invoice_date, i.system_entry_date,
 		i.document_status, COALESCE(NULLIF(i.status_changed_at,''), i.system_entry_date),
 		COALESCE(i.status_reason,''), i.hash, i.hash_control, i.source_id,
 		i.gross_total, i.net_total, i.tax_payable,
@@ -297,7 +298,7 @@ func (d *DB) LoadSAFTStockMovementsForPeriod(storeID, startDate, endDate string)
 		FROM invoices i
 		JOIN invoice_customer_snapshots cs ON cs.invoice_id = i.id
 		WHERE i.store_id = ? AND i.invoice_date >= ? AND i.invoice_date <= ?
-		AND i.document_type = 'GR'
+		AND i.document_type IN ('GR','GT')
 		ORDER BY i.invoice_date, i.created_at`, storeID, startDate, endDate)
 	if err != nil {
 		return nil, err
@@ -308,7 +309,7 @@ func (d *DB) LoadSAFTStockMovementsForPeriod(storeID, startDate, endDate string)
 	for rows.Next() {
 		var m SAFTStockMovement
 		if err := rows.Scan(
-			&m.ID, &m.DocumentNumber, &m.ATCUD, &m.MovementDate, &m.SystemEntryDate,
+			&m.ID, &m.DocumentNumber, &m.ATCUD, &m.MovementType, &m.MovementDate, &m.SystemEntryDate,
 			&m.MovementStatus, &m.MovementStatusDate, &m.StatusReason, &m.Hash, &m.HashControl, &m.SourceID,
 			&m.GrossTotal, &m.NetTotal, &m.TaxPayable,
 			&m.ShipFromAddress, &m.ShipToAddress, &m.MovementStartAt, &m.ATDocCodeID,

@@ -1,8 +1,8 @@
 # GT：运输单（Guia de transporte）
 
-> **状态：定稿**（实现未落地）  
-> **权威：是**（GT 行为、实现分刀、与 GR 边界；库列复用 GR 迁移列，落地时同步 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md)）  
-> **对应实现：** 尚未落地（目标：`store.IssueGT` / `AnnulGT`、`service.IssueTransportNote`；复用 `at.TransportClient`）  
+> **状态：定稿**（T1–T4 mock 已落地）  
+> **权威：是**（GT 行为、实现分刀、与 GR 边界；库列见 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md)；迁移 `015_gt_transport.sql`）  
+> **对应实现：** `store.IssueGT` / `AnnulGT`、`service.IssueTransportNote` / `AnnulTransportNote`；复用 `at.TransportClient`（`MovementType=GT`）  
 > **用途/当事人：** [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) §9  
 > **测试场景：** [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) §10  
 > **计划顺序：** RG → PF → GR → **GT**  
@@ -195,29 +195,29 @@ Annul HTTP：复用 `POST …/fiscal-documents/{id}/annul`，按 `document_type`
 
 ### 刀 T1 — DDL + 领域
 
-1. `015_gt_transport.sql`：`movement_purpose`  
-2. schema：`document_type` 含 `GT`；GT 状态仅 `N`/`A`  
-3. `domain.DocumentGT`；列表 Tab；`ParseSaleDocumentType` **不**含 GT  
+1. [x] `015_gt_transport.sql`：`movement_purpose`  
+2. [x] schema：`document_type` 含 `GT`；GT 状态仅 `N`/`A`  
+3. [x] `domain.DocumentGT`；列表 Tab；`ParseSaleDocumentType` **不**含 GT  
 
 ### 刀 T2 — `IssueGT` / `AnnulGT` + service
 
-1. `store.IssueGT` / `AnnulGT`（照抄 GR 结构，`MovementType`/`document_type`=GT；无 delivery refs）  
-2. `service.IssueTransportNote` / `AnnulTransportNote`  
-3. TransportClient 传 `MovementType=GT`  
-4. 打印前缀 GT  
+1. [x] `store.IssueGT` / `AnnulGT`（照抄 GR 结构，`MovementType`/`document_type`=GT；无 delivery refs）  
+2. [x] `service.IssueTransportNote` / `AnnulTransportNote`  
+3. [x] TransportClient 传 `MovementType=GT`  
+4. [x] 打印前缀 GT  
 
 ### 刀 T3 — API / Admin / 营收 / SAF-T
 
-1. manual 分流 `document_type=GT`  
-2. annul 分流  
-3. setup：`gt_series_ok` + **`ready_to_gt`**（短名已拍板）  
-4. SAF-T load/build 含 GT（可与 GR 同 reader，按 `document_type` 写 MovementType）  
-5. 营收 `NOT IN (…,'GT')`  
-6. Admin：`transfer` 装卸提示；`customer` 签发成功轻提示另开发票
+1. [x] manual 分流 `document_type=GT`  
+2. [x] annul 分流  
+3. [x] setup：`gt_series_ok` + **`ready_to_gt`**（短名已拍板）  
+4. [x] SAF-T load/build 含 GT（可与 GR 同 reader，按 `document_type` 写 MovementType）  
+5. [x] 营收 `NOT IN (…,'GT')`  
+6. [x] Admin：`transfer` 装卸提示；`customer` 签发成功轻提示另开发票
 
 ### 刀 T4 — 回归
 
-`scripts/fiscal-gt-regression.mjs`：GT-01…08（mock）；调拨 NIF=本店；外送 NIF 门禁；作废；SAF-T；无 FT 关联。
+[x] `scripts/fiscal-gt-regression.mjs`：GT-01…（mock）；调拨 NIF=本店；外送 NIF 门禁；作废；SAF-T；无 FT 关联。
 
 ### 刀 T5 — live（非 GT 独有）
 

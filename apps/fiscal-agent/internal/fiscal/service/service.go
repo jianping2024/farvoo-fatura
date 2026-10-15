@@ -51,7 +51,7 @@ type FiscalService struct {
 	db          *store.DB
 	signer      store.Signer
 	at          at.Client
-	transport   at.TransportClient // Documentos de Transporte (GR/GT); ONLY via IssueDeliveryNote
+	transport   at.TransportClient // Documentos de Transporte (GR/GT); ONLY via IssueDeliveryNote / IssueTransportNote
 	dataDir     string
 	storeID     string
 	cloud       CloudProvision

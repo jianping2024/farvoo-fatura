@@ -164,7 +164,7 @@ func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps Handle
 			out["lines"] = detail.Lines
 		}
 	}
-	if detail.DocumentType == domain.DocumentGR {
+	if detail.DocumentType == domain.DocumentGR || detail.DocumentType == domain.DocumentGT {
 		out["movement_status"] = detail.DocumentStatus
 		if detail.ShipFromAddress != "" {
 			out["ship_from_address"] = detail.ShipFromAddress
@@ -180,6 +180,9 @@ func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps Handle
 		}
 		if detail.RecipientIsVATPayer != nil {
 			out["recipient_is_vat_payer"] = *detail.RecipientIsVATPayer
+		}
+		if detail.MovementPurpose != "" {
+			out["movement_purpose"] = detail.MovementPurpose
 		}
 		if detail.StatusReason != "" {
 			out["status_reason"] = detail.StatusReason
@@ -460,7 +463,7 @@ func handleAnnulProforma(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		return
 	}
 	body.OperatorID = id
-	// Dispatch by document_type: PF → AnnulProforma; GR → AnnulDeliveryNote (ONLY annul entries).
+	// Dispatch by document_type: PF → AnnulProforma; GR → AnnulDeliveryNote; GT → AnnulTransportNote.
 	detail, err := deps.Fiscal.GetInvoiceDetail(documentID)
 	if err != nil {
 		var ce *service.CodedError
@@ -475,6 +478,11 @@ func handleAnnulProforma(w http.ResponseWriter, r *http.Request, deps HandlerDep
 	switch detail.DocumentType {
 	case domain.DocumentGR:
 		res, err = deps.Fiscal.AnnulDeliveryNote(r.Context(), domain.AnnulDeliveryNoteRequest{
+			StoreID: deps.StoreID, RequestID: body.RequestID, DocumentID: documentID,
+			OperatorID: body.OperatorID, Reason: body.Reason,
+		})
+	case domain.DocumentGT:
+		res, err = deps.Fiscal.AnnulTransportNote(r.Context(), domain.AnnulTransportNoteRequest{
 			StoreID: deps.StoreID, RequestID: body.RequestID, DocumentID: documentID,
 			OperatorID: body.OperatorID, Reason: body.Reason,
 		})

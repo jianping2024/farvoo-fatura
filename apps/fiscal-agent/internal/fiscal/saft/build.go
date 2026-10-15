@@ -25,7 +25,7 @@ type BuildInput struct {
 	Invoices   []store.SAFTInvoice
 	Payments   []store.SAFTPayment         // RG receipts → Payments table
 	WorkDocs   []store.SAFTWorkingDocument // PF → WorkingDocuments
-	Movements  []store.SAFTStockMovement   // GR → MovementOfGoods
+	Movements  []store.SAFTStockMovement   // GR/GT → MovementOfGoods
 }
 
 // BuildResult is SAF-T XML output and validation outcome.
@@ -433,7 +433,11 @@ func writeStockMovement(b *strings.Builder, m store.SAFTStockMovement, check fun
 	writeElem(b, "Hash", m.Hash)
 	fmt.Fprintf(b, `<HashControl>%d</HashControl>`, m.HashControl)
 	writeElem(b, "MovementDate", m.MovementDate)
-	writeElem(b, "MovementType", "GR")
+	mt := strings.TrimSpace(m.MovementType)
+	if mt == "" {
+		mt = "GR"
+	}
+	writeElem(b, "MovementType", mt)
 	writeElem(b, "SystemEntryDate", m.SystemEntryDate)
 	custID := m.Customer.CustomerTaxID
 	if custID == "" {

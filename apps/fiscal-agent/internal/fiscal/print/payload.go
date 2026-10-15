@@ -31,6 +31,7 @@ type TransportBlock struct {
 	MovementStartAt     string `json:"movement_start_at,omitempty"`
 	ATDocCodeID         string `json:"at_doc_code_id,omitempty"`
 	RecipientIsVATPayer bool   `json:"recipient_is_vat_payer,omitempty"`
+	MovementPurpose     string `json:"movement_purpose,omitempty"` // GT: transfer | customer
 }
 
 type MerchantBlock struct {

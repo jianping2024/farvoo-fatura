@@ -21,13 +21,13 @@ type ManualLineInput struct {
 	Quantity       string `json:"quantity"`
 }
 
-// ManualIssueInput is the ONLY API input for manual FT/FS/FR/PF/GR (before snapshot build).
+// ManualIssueInput is the ONLY API input for manual FT/FS/FR/PF/GR/GT (before snapshot build).
 type ManualIssueInput struct {
 	RequestID            string
 	DocumentType         string
 	CustomerNIF          string
 	CustomerName         string
-	CustomerAddress      string // GR: required address detail
+	CustomerAddress      string // GR/GT: required address detail
 	CustomerCity         string
 	CustomerPostalCode   string
 	PaymentMethod        string
@@ -40,7 +40,8 @@ type ManualIssueInput struct {
 	ShipFromAddress      string
 	ShipToAddress        string
 	MovementStartAt      string
-	RecipientIsVATPayer  *bool // GR; nil → default true
+	RecipientIsVATPayer  *bool  // GR/GT customer; nil → default true
+	MovementPurpose      string // GT: transfer | customer
 }
 
 // BuildManualSaleSnapshot is the ONLY builder for manual FT → IssueDocument.

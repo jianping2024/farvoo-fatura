@@ -164,6 +164,7 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		ShipToAddress       string                    `json:"ship_to_address"`
 		MovementStartAt     string                    `json:"movement_start_at"`
 		RecipientIsVATPayer *bool                     `json:"recipient_is_vat_payer"`
+		MovementPurpose     string                    `json:"movement_purpose"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
@@ -190,6 +191,7 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		ValidUntil: body.ValidUntil,
 		ShipFromAddress: body.ShipFromAddress, ShipToAddress: body.ShipToAddress,
 		MovementStartAt: body.MovementStartAt, RecipientIsVATPayer: body.RecipientIsVATPayer,
+		MovementPurpose: body.MovementPurpose,
 	}, body.OperatorID, body.StationID, termID, termLabel)
 	if errors.Is(err, store.ErrConflict) {
 		writeErr(w, http.StatusConflict, "idempotency_conflict", err.Error())

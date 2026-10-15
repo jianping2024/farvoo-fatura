@@ -46,6 +46,7 @@ type BuildInput struct {
 	MovementStartAt           string
 	ATDocCodeID               string
 	RecipientIsVATPayer       bool
+	MovementPurpose           string // GT only
 }
 
 // LineAmounts is frozen line money for the print payload.
@@ -150,6 +151,7 @@ func BuildPayload(in BuildInput) (*Payload, string, error) {
 			MovementStartAt:     strings.TrimSpace(in.MovementStartAt),
 			ATDocCodeID:         strings.TrimSpace(in.ATDocCodeID),
 			RecipientIsVATPayer: in.RecipientIsVATPayer,
+			MovementPurpose:     strings.TrimSpace(in.MovementPurpose),
 		},
 	}
 	raw, err := json.Marshal(p)

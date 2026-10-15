@@ -116,6 +116,15 @@ func RenderESCPOS(p *Payload) []byte {
 			w("Destinatario nao sujeito a IVA")
 		}
 	}
+	if strings.EqualFold(p.DocumentType, "GT") {
+		w("GUIA DE TRANSPORTE")
+		if strings.EqualFold(p.Transport.MovementPurpose, "transfer") {
+			w("Transferencia")
+		}
+		if !p.Transport.RecipientIsVATPayer {
+			w("Destinatario nao sujeito a IVA")
+		}
+	}
 	if dt := formatIssuedAt(p.IssuedAt); dt != "" {
 		w(dt)
 	}
@@ -137,7 +146,7 @@ func RenderESCPOS(p *Payload) []byte {
 	if p.Customer.TaxID != "" {
 		w(L.NIFClientePrefix + p.Customer.TaxID)
 	}
-	if strings.EqualFold(p.DocumentType, "GR") {
+	if strings.EqualFold(p.DocumentType, "GR") || strings.EqualFold(p.DocumentType, "GT") {
 		if a := strings.TrimSpace(p.Transport.ShipFromAddress); a != "" {
 			w("Carga: " + a)
 		}
@@ -249,6 +258,11 @@ func documentNoPrefix(invoiceLocale, docType string) string {
 			return "Delivery note: "
 		}
 		return "Guia de remessa: "
+	case "GT":
+		if en {
+			return "Transport guide: "
+		}
+		return "Guia de transporte: "
 	default:
 		// FT and unknown → fatura / invoice number label
 		if en {

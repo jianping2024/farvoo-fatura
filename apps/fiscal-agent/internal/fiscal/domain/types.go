@@ -14,10 +14,12 @@ const (
 	DocumentRG DocumentType = "RG"
 	DocumentPF DocumentType = "PF"
 	DocumentGR DocumentType = "GR"
+	DocumentGT DocumentType = "GT"
 )
 
 // DocumentStatus is the lifecycle of a signed fiscal document (no DRAFT in DB).
 // For document_type=PF or GR, invoices.document_status stores N / A / F (SAF-T work/movement status).
+// For document_type=GT, only N / A (no F — GT does not link to FT).
 type DocumentStatus string
 
 const (
@@ -27,10 +29,16 @@ const (
 	DocumentDebitedPartial  DocumentStatus = "DEBITED_PARTIAL"
 	DocumentDebitedFull     DocumentStatus = "DEBITED_FULL"
 
-	// PF / GR status — only when document_type is PF or GR.
+	// PF / GR / GT status — work/movement status letters.
 	WorkStatusNormal   DocumentStatus = "N"
 	WorkStatusAnnulled DocumentStatus = "A"
-	WorkStatusInvoiced DocumentStatus = "F"
+	WorkStatusInvoiced DocumentStatus = "F" // PF/GR only
+)
+
+// GT movement_purpose values (P0).
+const (
+	MovementPurposeTransfer = "transfer"
+	MovementPurposeCustomer = "customer"
 )
 
 // PrintStatus tracks physical output separately from tax status.
@@ -201,6 +209,31 @@ type DeliveryNoteRequest struct {
 
 // AnnulDeliveryNoteRequest wraps GR annulment (N→A only).
 type AnnulDeliveryNoteRequest struct {
+	StoreID    string
+	RequestID  string
+	DocumentID string
+	OperatorID string
+	Reason     string
+}
+
+// TransportNoteRequest wraps GT (guia de transporte) issuance.
+type TransportNoteRequest struct {
+	StoreID             string
+	RequestID           string
+	OperatorID          string
+	StationID           string
+	FiscalTerminalID    string
+	FiscalTerminalLabel string
+	Snapshot            SaleSnapshot
+	MovementPurpose     string // transfer | customer
+	ShipFromAddress     string
+	ShipToAddress       string
+	MovementStartAt     string
+	RecipientIsVATPayer bool
+}
+
+// AnnulTransportNoteRequest wraps GT annulment (N→A only).
+type AnnulTransportNoteRequest struct {
 	StoreID    string
 	RequestID  string
 	DocumentID string

@@ -209,9 +209,9 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 
 | 字段 | 取值 |
 |------|------|
-| `document_type` | `FT` `FS` `FR` `NC` `ND` `RG` `PF` `GR`（`GT` 见 [`fiscal-gt.zh.md`](fiscal-gt.zh.md)，落地时加 DDL） |
+| `document_type` | `FT` `FS` `FR` `NC` `ND` `RG` `PF` `GR` `GT` |
 | `series.status` | `PENDING` `ACTIVE` `FAILED` `TERMINATED` |
-| `document_status` | 销售票：`SIGNED` `CREDITED_PARTIAL` `CREDITED_FULL` `DEBITED_PARTIAL` `DEBITED_FULL`；**PF / GR**：`N` `A` `F`；**GT（规划）**：仅 `N` `A` |
+| `document_status` | 销售票：`SIGNED` `CREDITED_PARTIAL` `CREDITED_FULL` `DEBITED_PARTIAL` `DEBITED_FULL`；**PF / GR**：`N` `A` `F`；**GT**：仅 `N` `A` |
 | `print_status`（单据） | `NOT_PRINTED` `PENDING` `PROCESSING` `PRINTED` `PRINT_FAILED` `REPRINTED` |
 | `job_status`（任务） | `PENDING` `PROCESSING` `PRINTED` `FAILED_BEFORE_WRITE` `UNKNOWN_AFTER_WRITE` `FAILED` |
 | `print_purpose` | `ORIGINAL` `REPRINT` |
@@ -469,11 +469,12 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | status_reason | TEXT | 否 | PF/GR 作废等原因；→ SAF-T `Reason` |
 | status_changed_at | TEXT | 否 | PF/GR 最近状态变更；→ `WorkStatusDate` / `MovementStatusDate` |
 | valid_until | TEXT | 否 | PF 可选有效期 `YYYY-MM-DD` |
-| ship_from_address | TEXT | 否 | GR/GT 装货地全文；GR 签发时应用层必填 |
-| ship_to_address | TEXT | 否 | GR/GT 卸货地全文；GR 签发时应用层必填 |
-| movement_start_at | TEXT | 否 | 运输开始 ISO；GR 签发时应用层必填 |
-| at_transport_doc_code | TEXT | 否 | AT 运输文档识别码；GR 签发成功后必有 |
+| ship_from_address | TEXT | 否 | GR/GT 装货地全文；签发时应用层必填 |
+| ship_to_address | TEXT | 否 | GR/GT 卸货地全文；签发时应用层必填 |
+| movement_start_at | TEXT | 否 | 运输开始 ISO；签发时应用层必填 |
+| at_transport_doc_code | TEXT | 否 | AT 运输文档识别码；签发成功后必有 |
 | recipient_is_vat_payer | INTEGER | 否 | `1`=IVA 纳税人；`0`=非纳税人；仅 GR/GT |
+| movement_purpose | TEXT | 否 | GT：`transfer` \| `customer`；签发时应用层必填；迁移 `015_gt_transport.sql` |
 | created_at | TEXT | 是 | 签发提交时间 UTC |
 | fiscal_terminal_id | TEXT | 否 | 开票电脑：`fiscal_terminals.id` 或哨兵 `loopback`（本机）；旧票可空 |
 | fiscal_terminal_label | TEXT | 否 | 开票时冻结展示名（备注，空则 IP） |

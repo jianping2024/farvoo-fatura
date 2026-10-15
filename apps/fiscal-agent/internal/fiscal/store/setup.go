@@ -335,6 +335,7 @@ type SetupStatus struct {
 	RGSeriesOK            bool   `json:"rg_series_ok"`
 	PFSeriesOK            bool   `json:"pf_series_ok"`
 	GRSeriesOK            bool   `json:"gr_series_ok"`
+	GTSeriesOK            bool   `json:"gt_series_ok"`
 	ActivatedOK           bool   `json:"activated_ok"`
 	OperatorOK            bool   `json:"operator_ok"`
 	SeriesCode            string `json:"series_code,omitempty"`
@@ -353,12 +354,15 @@ type SetupStatus struct {
 	PFValidation          string `json:"pf_validation_code,omitempty"`
 	GRSeriesCode          string `json:"gr_series_code,omitempty"`
 	GRValidation          string `json:"gr_validation_code,omitempty"`
+	GTSeriesCode          string `json:"gt_series_code,omitempty"`
+	GTValidation          string `json:"gt_validation_code,omitempty"`
 	ReadyToIssue          bool   `json:"ready_to_issue"`
 	ReadyToCredit         bool   `json:"ready_to_credit"`
 	ReadyToDebit          bool   `json:"ready_to_debit"`
 	ReadyToReceipt        bool   `json:"ready_to_receipt"`
 	ReadyToProforma       bool   `json:"ready_to_proforma"`
 	ReadyToDeliveryNote   bool   `json:"ready_to_delivery_note"`
+	ReadyToGT             bool   `json:"ready_to_gt"`
 	OperatorCanIssueNC    bool   `json:"operator_can_issue_nc"`
 	LocalProvisionAllowed bool   `json:"local_provision_allowed"`
 	FiscalProfileOK       bool   `json:"fiscal_profile_ok"`
@@ -448,6 +452,15 @@ func (d *DB) GetSetupStatus(storeID string) (*SetupStatus, error) {
 		s.GRSeriesCode = grCode.String
 		s.GRValidation = grVal.String
 	}
+	var gtCode, gtVal sql.NullString
+	err = d.SQL.QueryRow(`SELECT series_code, validation_code FROM series
+		WHERE store_id=? AND document_type='GT' AND status='ACTIVE' AND validation_code IS NOT NULL AND validation_code != ''
+		ORDER BY fiscal_year DESC LIMIT 1`, storeID).Scan(&gtCode, &gtVal)
+	if err == nil {
+		s.GTSeriesOK = true
+		s.GTSeriesCode = gtCode.String
+		s.GTValidation = gtVal.String
+	}
 	_ = d.SQL.QueryRow(`SELECT COUNT(1) FROM signing_keys WHERE status='ACTIVE'`).Scan(&n)
 	s.ActivatedOK = n > 0
 	n, err = d.CountActiveOperatorsWithPIN(storeID)
@@ -470,5 +483,6 @@ func (d *DB) GetSetupStatus(storeID string) (*SetupStatus, error) {
 	s.ReadyToReceipt = s.RGSeriesOK && s.ActivatedOK && s.OperatorOK
 	s.ReadyToProforma = s.PFSeriesOK && s.ActivatedOK && s.OperatorOK
 	s.ReadyToDeliveryNote = s.GRSeriesOK && s.ActivatedOK && s.OperatorOK
+	s.ReadyToGT = s.GTSeriesOK && s.ActivatedOK && s.OperatorOK
 	return s, nil
 }
