@@ -213,6 +213,30 @@ type SAFTWorkingDocument struct {
 	Lines           []SAFTLine
 }
 
+// SAFTStockMovement is one GR (guia de remessa) for SAF-T MovementOfGoods.
+type SAFTStockMovement struct {
+	ID                  string
+	DocumentNumber      string
+	ATCUD               string
+	MovementDate        string
+	SystemEntryDate     string
+	MovementStatus      string
+	MovementStatusDate  string
+	StatusReason        string
+	Hash                string
+	HashControl         int
+	SourceID            string
+	GrossTotal          string
+	NetTotal            string
+	TaxPayable          string
+	ShipFromAddress     string
+	ShipToAddress       string
+	MovementStartAt     string
+	ATDocCodeID         string
+	Customer            SAFTCustomer
+	Lines               []SAFTLine
+}
+
 // LoadSAFTWorkingDocumentsForPeriod is the ONLY reader for SAF-T WorkingDocuments (PF) in a month.
 func (d *DB) LoadSAFTWorkingDocumentsForPeriod(storeID, startDate, endDate string) ([]SAFTWorkingDocument, error) {
 	rows, err := d.SQL.Query(`SELECT i.id, i.invoice_no, i.atcud, i.invoice_date, i.system_entry_date,
@@ -259,6 +283,57 @@ func (d *DB) LoadSAFTWorkingDocumentsForPeriod(storeID, startDate, endDate strin
 	}
 	return out, nil
 }
+
+// LoadSAFTStockMovementsForPeriod is the ONLY reader for SAF-T MovementOfGoods (GR) in a month.
+func (d *DB) LoadSAFTStockMovementsForPeriod(storeID, startDate, endDate string) ([]SAFTStockMovement, error) {
+	rows, err := d.SQL.Query(`SELECT i.id, i.invoice_no, i.atcud, i.invoice_date, i.system_entry_date,
+		i.document_status, COALESCE(NULLIF(i.status_changed_at,''), i.system_entry_date),
+		COALESCE(i.status_reason,''), i.hash, i.hash_control, i.source_id,
+		i.gross_total, i.net_total, i.tax_payable,
+		COALESCE(i.ship_from_address,''), COALESCE(i.ship_to_address,''),
+		COALESCE(i.movement_start_at,''), COALESCE(i.at_transport_doc_code,''),
+		cs.customer_tax_id, cs.company_name, cs.address_detail, cs.city, cs.postal_code, cs.country,
+		cs.account_id, cs.self_billing_indicator
+		FROM invoices i
+		JOIN invoice_customer_snapshots cs ON cs.invoice_id = i.id
+		WHERE i.store_id = ? AND i.invoice_date >= ? AND i.invoice_date <= ?
+		AND i.document_type = 'GR'
+		ORDER BY i.invoice_date, i.created_at`, storeID, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SAFTStockMovement
+	var ids []string
+	for rows.Next() {
+		var m SAFTStockMovement
+		if err := rows.Scan(
+			&m.ID, &m.DocumentNumber, &m.ATCUD, &m.MovementDate, &m.SystemEntryDate,
+			&m.MovementStatus, &m.MovementStatusDate, &m.StatusReason, &m.Hash, &m.HashControl, &m.SourceID,
+			&m.GrossTotal, &m.NetTotal, &m.TaxPayable,
+			&m.ShipFromAddress, &m.ShipToAddress, &m.MovementStartAt, &m.ATDocCodeID,
+			&m.Customer.CustomerTaxID, &m.Customer.CompanyName, &m.Customer.AddressDetail,
+			&m.Customer.City, &m.Customer.PostalCode, &m.Customer.Country,
+			&m.Customer.AccountID, &m.Customer.SelfBillingIndicator,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+		ids = append(ids, m.ID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for i, id := range ids {
+		lines, err := d.loadSAFTLines(id)
+		if err != nil {
+			return nil, err
+		}
+		out[i].Lines = lines
+	}
+	return out, nil
+}
+
 func (d *DB) LoadSAFTPaymentsForPeriod(storeID, startDate, endDate string) ([]SAFTPayment, error) {
 	rows, err := d.SQL.Query(`SELECT i.id, i.invoice_no, i.atcud, i.invoice_date, i.system_entry_date,
 		i.source_id, i.gross_total,

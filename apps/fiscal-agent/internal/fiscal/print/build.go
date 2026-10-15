@@ -41,6 +41,11 @@ type BuildInput struct {
 	OriginalInvoiceNo         string
 	CreditReason              string
 	InvoiceLocale             string // en | pt from locale.InvoiceLocaleFromUI; empty → pt
+	ShipFromAddress           string // GR/GT
+	ShipToAddress             string
+	MovementStartAt           string
+	ATDocCodeID               string
+	RecipientIsVATPayer       bool
 }
 
 // LineAmounts is frozen line money for the print payload.
@@ -138,6 +143,13 @@ func BuildPayload(in BuildInput) (*Payload, string, error) {
 			CertificationLine: fmt.Sprintf("Processado por programa certificado n. %s/AT", in.SoftwareCertificateNumber),
 			OriginalInvoiceNo: strings.TrimSpace(in.OriginalInvoiceNo),
 			CreditReason:      strings.TrimSpace(in.CreditReason),
+		},
+		Transport: TransportBlock{
+			ShipFromAddress:     strings.TrimSpace(in.ShipFromAddress),
+			ShipToAddress:       strings.TrimSpace(in.ShipToAddress),
+			MovementStartAt:     strings.TrimSpace(in.MovementStartAt),
+			ATDocCodeID:         strings.TrimSpace(in.ATDocCodeID),
+			RecipientIsVATPayer: in.RecipientIsVATPayer,
 		},
 	}
 	raw, err := json.Marshal(p)

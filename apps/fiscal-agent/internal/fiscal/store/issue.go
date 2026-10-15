@@ -40,7 +40,8 @@ type IssueParams struct {
 	FiscalTerminalID     string // issuing PC (fiscal_terminals.id or domain.LoopbackFiscalTerminalID)
 	FiscalTerminalLabel  string // frozen display name at issue time
 	InvoiceLocale        string // en | pt — frozen into print payload (scheme A)
-	ProformaID           string // optional; sale → one PF soft link
+	ProformaID           string   // optional; sale → one PF soft link
+	DeliveryNoteIDs      []string // optional; FT → 1..N GR soft links
 	NowUTC               time.Time // injectable for tests
 }
 
@@ -274,6 +275,13 @@ func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueR
 
 	if err = linkProformaInTx(tx, p.StoreID, docID, p.ProformaID, systemEntry, p.OperatorID); err != nil {
 		return nil, err
+	}
+	if p.DocType == domain.DocumentFT {
+		if err = linkDeliveryNotesInTx(tx, p.StoreID, docID, p.DeliveryNoteIDs, systemEntry, p.OperatorID); err != nil {
+			return nil, err
+		}
+	} else if len(p.DeliveryNoteIDs) > 0 {
+		return nil, fmt.Errorf("store: delivery_note_ids only allowed on FT")
 	}
 
 	payloadJSON, err := json.Marshal(printPayload)

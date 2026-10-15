@@ -77,6 +77,12 @@ type InvoiceDetail struct {
 	StatusReason             string                `json:"status_reason,omitempty"`
 	StatusChangedAt          string                `json:"status_changed_at,omitempty"`
 	LinkedSaleInvoiceNos     []string              `json:"linked_sale_invoice_nos,omitempty"`
+	ShipFromAddress          string                `json:"ship_from_address,omitempty"`
+	ShipToAddress            string                `json:"ship_to_address,omitempty"`
+	MovementStartAt          string                `json:"movement_start_at,omitempty"`
+	ATDocCodeID              string                `json:"at_doc_code_id,omitempty"`
+	RecipientIsVATPayer      *bool                 `json:"recipient_is_vat_payer,omitempty"`
+	LinkedDeliveryInvoiceNos []string              `json:"linked_delivery_invoice_nos,omitempty"`
 }
 
 var allowedInvoicePageSizes = map[int]bool{10: true, 20: true}

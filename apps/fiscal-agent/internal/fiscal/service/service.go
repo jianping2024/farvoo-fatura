@@ -51,6 +51,7 @@ type FiscalService struct {
 	db          *store.DB
 	signer      store.Signer
 	at          at.Client
+	transport   at.TransportClient // Documentos de Transporte (GR/GT); ONLY via IssueDeliveryNote
 	dataDir     string
 	storeID     string
 	cloud       CloudProvision
@@ -69,7 +70,18 @@ func New(db *store.DB, sig store.Signer, atClient at.Client, dataDir, storeID st
 	if atClient == nil {
 		atClient = at.NewFromEnv()
 	}
-	return &FiscalService{db: db, signer: sig, at: atClient, dataDir: dataDir, storeID: storeID}
+	return &FiscalService{
+		db: db, signer: sig, at: atClient, transport: at.NewTransportFromEnv(),
+		dataDir: dataDir, storeID: storeID,
+	}
+}
+
+// SetTransportClient replaces the Documentos de Transporte client (tests).
+func (s *FiscalService) SetTransportClient(tc at.TransportClient) {
+	if s == nil {
+		return
+	}
+	s.transport = tc
 }
 
 // SetCloudProvision configures Agent→Farvoo fiscal-signing client (ONLY cloud provision config entry).
@@ -482,15 +494,21 @@ func (s *FiscalService) IssueDocument(ctx context.Context, req domain.IssueReque
 		StoreID: req.StoreID, RequestID: req.RequestID, DocType: docType,
 		Snapshot: req.Snapshot, OperatorID: req.OperatorID, StationID: req.StationID,
 		FiscalTerminalID: req.FiscalTerminalID, FiscalTerminalLabel: req.FiscalTerminalLabel,
-		InvoiceLocale: s.invoiceLocale(), ProformaID: req.ProformaID,
+		InvoiceLocale: s.invoiceLocale(), ProformaID: req.ProformaID, DeliveryNoteIDs: req.DeliveryNoteIDs,
 	})
 	if errors.Is(err, store.ErrNotFound) {
-		return nil, coded(ErrCodeNotFound, "proforma not found")
+		return nil, coded(ErrCodeNotFound, "linked document not found")
 	}
 	if errors.Is(err, store.ErrProformaNotAllowed) {
 		return nil, coded(ErrCodeProformaNotAllowed, "proforma cannot be linked")
 	}
+	if errors.Is(err, store.ErrDeliveryNotAllowed) {
+		return nil, coded(ErrCodeDeliveryNotAllowed, "delivery note cannot be linked")
+	}
 	if err != nil {
+		if strings.Contains(err.Error(), "delivery_note_ids only allowed") {
+			return nil, coded(ErrCodeValidationFailed, err.Error())
+		}
 		return nil, err
 	}
 	return &domain.IssueResult{

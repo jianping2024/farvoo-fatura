@@ -36,9 +36,9 @@ func IsAdjustableOriginalDocumentType(dt DocumentType) bool {
 	return IsSaleDocumentType(dt)
 }
 
-// AdminInvoiceListDocumentTypes is the tab order on Admin invoice list (FT/FS/FR/NC/ND/RG/PF).
+// AdminInvoiceListDocumentTypes is the tab order on Admin invoice list (FT/FS/FR/NC/ND/RG/PF/GR).
 var AdminInvoiceListDocumentTypes = []DocumentType{
-	DocumentFT, DocumentFS, DocumentFR, DocumentNC, DocumentND, DocumentRG, DocumentPF,
+	DocumentFT, DocumentFS, DocumentFR, DocumentNC, DocumentND, DocumentRG, DocumentPF, DocumentGR,
 }
 
 // IsReceiptableOriginalDocumentType reports originals eligible for RG (FT only).
@@ -57,7 +57,7 @@ func ParseInvoiceListDocumentType(s string) (DocumentType, error) {
 			return dt, nil
 		}
 	}
-	return "", fmt.Errorf("document_type must be FT, FS, FR, NC, ND, RG, or PF")
+	return "", fmt.Errorf("document_type must be FT, FS, FR, NC, ND, RG, PF, or GR")
 }
 
 // IsProformaDocumentType reports document_type PF.
@@ -65,8 +65,23 @@ func IsProformaDocumentType(dt DocumentType) bool {
 	return dt == DocumentPF
 }
 
+// IsDeliveryNoteDocumentType reports document_type GR.
+func IsDeliveryNoteDocumentType(dt DocumentType) bool {
+	return dt == DocumentGR
+}
+
 // IsLinkableProformaWorkStatus reports PF statuses that may be referenced by a sale invoice.
 func IsLinkableProformaWorkStatus(s string) bool {
+	switch DocumentStatus(s) {
+	case WorkStatusNormal, WorkStatusInvoiced:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsLinkableDeliveryNoteStatus reports GR statuses that may be referenced by an FT.
+func IsLinkableDeliveryNoteStatus(s string) bool {
 	switch DocumentStatus(s) {
 	case WorkStatusNormal, WorkStatusInvoiced:
 		return true

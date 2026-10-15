@@ -19,8 +19,18 @@ type Payload struct {
 	Lines            []LineBlock    `json:"lines"`
 	TaxSummary       []TaxSummaryRow `json:"tax_summary"`
 	Totals           TotalsBlock    `json:"totals"`
-	Payments         []PaymentBlock `json:"payments"`
+	Payments         []PaymentBlock  `json:"payments"`
 	Compliance       ComplianceBlock `json:"compliance"`
+	Transport        TransportBlock  `json:"transport,omitempty"` // GR/GT movement fields
+}
+
+// TransportBlock holds GR/GT ship addresses and AT transport doc code.
+type TransportBlock struct {
+	ShipFromAddress     string `json:"ship_from_address,omitempty"`
+	ShipToAddress       string `json:"ship_to_address,omitempty"`
+	MovementStartAt     string `json:"movement_start_at,omitempty"`
+	ATDocCodeID         string `json:"at_doc_code_id,omitempty"`
+	RecipientIsVATPayer bool   `json:"recipient_is_vat_payer,omitempty"`
 }
 
 type MerchantBlock struct {

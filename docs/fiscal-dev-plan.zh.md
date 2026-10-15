@@ -20,6 +20,7 @@
 | [`print-agent-lessons.zh.md`](print-agent-lessons.zh.md) | 打印/安装器踩坑 |
 | [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) | 九种单据**用途 / 当事人 / 开具方法**合订（含 GR/GT 行为口径） |
 | [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) | 九种单据开票场景与测试方案 |
+| [`fiscal-gr.zh.md`](fiscal-gr.zh.md) | **GR 发货单**行为、实现分刀、AT 运输测试接入（定稿未落地） |
 | [`fiscal-rg.zh.md`](fiscal-rg.zh.md) | **RG 收款收据**行为与唯一写路径（已落地） |
 
 冲突时：DDL / schema 定列；需求定业务规则；**谁先做哪一刀以本文为准**。
@@ -589,3 +590,4 @@ M1–M5 主路径稳定。
 | 2026-09-02 | **P1-U 已否决**：拍板记录见 [`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) |
 | 2026-09-02 | **P1-U 已关闭**：文档瘦身定稿见 [`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) |
 | 2026-10-15 | 增补用途合订 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md)（九种单据当事人/开具；GR/GT 行为口径） |
+| 2026-10-15 | 增补 [`fiscal-gr.zh.md`](fiscal-gr.zh.md)：GR 实现步骤 + AT 测试证下载结论（公开包已过期） |

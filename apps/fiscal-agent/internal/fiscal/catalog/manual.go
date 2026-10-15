@@ -21,18 +21,26 @@ type ManualLineInput struct {
 	Quantity       string `json:"quantity"`
 }
 
-// ManualIssueInput is the ONLY API input for manual FT/FS/FR/PF (before snapshot build).
+// ManualIssueInput is the ONLY API input for manual FT/FS/FR/PF/GR (before snapshot build).
 type ManualIssueInput struct {
-	RequestID        string
-	DocumentType     string
-	CustomerNIF      string
-	CustomerName     string
-	PaymentMethod    string
-	Tendered         string // CASH only; empty → no tendered/change
-	TableDisplayName string
-	Lines            []ManualLineInput
-	ProformaID       string // optional; sale → PF link
-	ValidUntil       string // optional; PF only YYYY-MM-DD
+	RequestID            string
+	DocumentType         string
+	CustomerNIF          string
+	CustomerName         string
+	CustomerAddress      string // GR: required address detail
+	CustomerCity         string
+	CustomerPostalCode   string
+	PaymentMethod        string
+	Tendered             string // CASH only; empty → no tendered/change
+	TableDisplayName     string
+	Lines                []ManualLineInput
+	ProformaID           string // optional; sale → PF link
+	DeliveryNoteIDs      []string // optional; FT → GR links
+	ValidUntil           string // optional; PF only YYYY-MM-DD
+	ShipFromAddress      string
+	ShipToAddress        string
+	MovementStartAt      string
+	RecipientIsVATPayer  *bool // GR; nil → default true
 }
 
 // BuildManualSaleSnapshot is the ONLY builder for manual FT → IssueDocument.

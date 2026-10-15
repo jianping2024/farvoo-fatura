@@ -110,6 +110,12 @@ func RenderESCPOS(p *Payload) []byte {
 		w("PRO-FORMA")
 		w("Este documento não serve de fatura")
 	}
+	if strings.EqualFold(p.DocumentType, "GR") {
+		w("GUIA DE REMESSA")
+		if !p.Transport.RecipientIsVATPayer {
+			w("Destinatario nao sujeito a IVA")
+		}
+	}
 	if dt := formatIssuedAt(p.IssuedAt); dt != "" {
 		w(dt)
 	}
@@ -130,6 +136,20 @@ func RenderESCPOS(p *Payload) []byte {
 	}
 	if p.Customer.TaxID != "" {
 		w(L.NIFClientePrefix + p.Customer.TaxID)
+	}
+	if strings.EqualFold(p.DocumentType, "GR") {
+		if a := strings.TrimSpace(p.Transport.ShipFromAddress); a != "" {
+			w("Carga: " + a)
+		}
+		if a := strings.TrimSpace(p.Transport.ShipToAddress); a != "" {
+			w("Descarga: " + a)
+		}
+		if t := strings.TrimSpace(p.Transport.MovementStartAt); t != "" {
+			w("Inicio transporte: " + t)
+		}
+		if c := strings.TrimSpace(p.Transport.ATDocCodeID); c != "" {
+			w("ATDocCodeID: " + c)
+		}
 	}
 
 	// ⑤ items table — rule / header / rule / lines.
@@ -224,6 +244,11 @@ func documentNoPrefix(invoiceLocale, docType string) string {
 			return "Proforma: "
 		}
 		return "Pro-forma: "
+	case "GR":
+		if en {
+			return "Delivery note: "
+		}
+		return "Guia de remessa: "
 	default:
 		// FT and unknown → fatura / invoice number label
 		if en {

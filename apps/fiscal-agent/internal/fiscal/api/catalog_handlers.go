@@ -144,18 +144,26 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		return
 	}
 	var body struct {
-		RequestID        string                    `json:"request_id"`
-		OperatorID       string                    `json:"operator_id"`
-		StationID        string                    `json:"station_id"`
-		DocumentType     string                    `json:"document_type"`
-		CustomerNIF      string                    `json:"customer_nif"`
-		CustomerName     string                    `json:"customer_name"`
-		PaymentMethod    string                    `json:"payment_method"`
-		Tendered         string                    `json:"tendered"`
-		TableDisplayName string                    `json:"table_display_name"`
-		Lines            []catalog.ManualLineInput `json:"lines"`
-		ProformaID       string                    `json:"proforma_id"`
-		ValidUntil       string                    `json:"valid_until"`
+		RequestID           string                    `json:"request_id"`
+		OperatorID          string                    `json:"operator_id"`
+		StationID           string                    `json:"station_id"`
+		DocumentType        string                    `json:"document_type"`
+		CustomerNIF         string                    `json:"customer_nif"`
+		CustomerName        string                    `json:"customer_name"`
+		CustomerAddress     string                    `json:"customer_address"`
+		CustomerCity        string                    `json:"customer_city"`
+		CustomerPostalCode  string                    `json:"customer_postal_code"`
+		PaymentMethod       string                    `json:"payment_method"`
+		Tendered            string                    `json:"tendered"`
+		TableDisplayName    string                    `json:"table_display_name"`
+		Lines               []catalog.ManualLineInput `json:"lines"`
+		ProformaID          string                    `json:"proforma_id"`
+		DeliveryNoteIDs     []string                  `json:"delivery_note_ids"`
+		ValidUntil          string                    `json:"valid_until"`
+		ShipFromAddress     string                    `json:"ship_from_address"`
+		ShipToAddress       string                    `json:"ship_to_address"`
+		MovementStartAt     string                    `json:"movement_start_at"`
+		RecipientIsVATPayer *bool                     `json:"recipient_is_vat_payer"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
@@ -174,9 +182,14 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 	res, err := deps.Fiscal.IssueManualFT(r.Context(), catalog.ManualIssueInput{
 		RequestID: body.RequestID, DocumentType: body.DocumentType,
 		CustomerNIF: body.CustomerNIF, CustomerName: body.CustomerName,
+		CustomerAddress: body.CustomerAddress, CustomerCity: body.CustomerCity,
+		CustomerPostalCode: body.CustomerPostalCode,
 		PaymentMethod: body.PaymentMethod, Tendered: body.Tendered,
 		TableDisplayName: body.TableDisplayName, Lines: body.Lines,
-		ProformaID: body.ProformaID, ValidUntil: body.ValidUntil,
+		ProformaID: body.ProformaID, DeliveryNoteIDs: body.DeliveryNoteIDs,
+		ValidUntil: body.ValidUntil,
+		ShipFromAddress: body.ShipFromAddress, ShipToAddress: body.ShipToAddress,
+		MovementStartAt: body.MovementStartAt, RecipientIsVATPayer: body.RecipientIsVATPayer,
 	}, body.OperatorID, body.StationID, termID, termLabel)
 	if errors.Is(err, store.ErrConflict) {
 		writeErr(w, http.StatusConflict, "idempotency_conflict", err.Error())

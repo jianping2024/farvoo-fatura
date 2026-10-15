@@ -22,9 +22,10 @@ type BuildInput struct {
 	Month     int
 	StartDate string
 	EndDate   string
-	Invoices  []store.SAFTInvoice
-	Payments  []store.SAFTPayment         // RG receipts → Payments table
-	WorkDocs  []store.SAFTWorkingDocument // PF → WorkingDocuments
+	Invoices   []store.SAFTInvoice
+	Payments   []store.SAFTPayment         // RG receipts → Payments table
+	WorkDocs   []store.SAFTWorkingDocument // PF → WorkingDocuments
+	Movements  []store.SAFTStockMovement   // GR → MovementOfGoods
 }
 
 // BuildResult is SAF-T XML output and validation outcome.
@@ -67,6 +68,14 @@ func Build(in BuildInput) (*BuildResult, error) {
 	writeHeader(&b, in, checkText)
 
 	b.WriteString(`<MasterFiles>`)
+	for _, mov := range in.Movements {
+		cid := customerKey(mov.Customer)
+		customers[cid] = mov.Customer
+		for _, ln := range mov.Lines {
+			products[ln.ProductCode] = ln
+			taxes[taxKeyFromLine(ln)] = struct{}{}
+		}
+	}
 	for _, inv := range in.Invoices {
 		cid := customerKey(inv.Customer)
 		customers[cid] = inv.Customer
@@ -114,6 +123,7 @@ func Build(in BuildInput) (*BuildResult, error) {
 	}
 	b.WriteString(`</SalesInvoices>`)
 	writeWorkingDocuments(&b, in.WorkDocs, checkText)
+	writeMovementOfGoods(&b, in.Movements, checkText)
 	writePayments(&b, in.Payments, checkText)
 	b.WriteString(`</SourceDocuments>`)
 	b.WriteString(`</AuditFile>`)
@@ -374,6 +384,99 @@ func writeWorkLine(b *strings.Builder, d store.SAFTWorkingDocument, ln store.SAF
 	writeElem(b, "UnitOfMeasure", ln.UnitOfMeasure)
 	writeElem(b, "UnitPrice", ln.UnitPriceNet)
 	writeElem(b, "TaxPointDate", d.WorkDate)
+	writeElem(b, "Description", ln.ProductDescription)
+	writeElem(b, "CreditAmount", ln.LineGross)
+	b.WriteString(`<Tax>`)
+	writeElem(b, "TaxType", ln.TaxType)
+	writeElem(b, "TaxCountryRegion", ln.TaxCountryRegion)
+	writeElem(b, "TaxCode", ln.TaxCode)
+	writeElem(b, "TaxPercentage", vatRatePercent(ln.VATRate))
+	b.WriteString(`</Tax>`)
+	b.WriteString(`</Line>`)
+}
+
+func writeMovementOfGoods(b *strings.Builder, moves []store.SAFTStockMovement, check func(string, string)) {
+	if len(moves) == 0 {
+		return
+	}
+	lineCount := 0
+	qtyIssued := decimal.Zero
+	for _, m := range moves {
+		for _, ln := range m.Lines {
+			lineCount++
+			q, _ := compliance.ParseDecimal(ln.Quantity)
+			qtyIssued = qtyIssued.Add(q)
+		}
+	}
+	b.WriteString(`<MovementOfGoods>`)
+	fmt.Fprintf(b, `<NumberOfMovementLines>%d</NumberOfMovementLines>`, lineCount)
+	writeElem(b, "TotalQuantityIssued", compliance.Money2(qtyIssued))
+	for _, m := range moves {
+		writeStockMovement(b, m, check)
+	}
+	b.WriteString(`</MovementOfGoods>`)
+}
+
+func writeStockMovement(b *strings.Builder, m store.SAFTStockMovement, check func(string, string)) {
+	check("stock_mov", m.DocumentNumber)
+	b.WriteString(`<StockMovement>`)
+	writeElem(b, "DocumentNumber", m.DocumentNumber)
+	writeElem(b, "ATCUD", m.ATCUD)
+	b.WriteString(`<DocumentStatus>`)
+	writeElem(b, "MovementStatus", m.MovementStatus)
+	writeElem(b, "MovementStatusDate", m.MovementStatusDate)
+	if r := strings.TrimSpace(m.StatusReason); r != "" {
+		writeElem(b, "Reason", r)
+	}
+	writeElem(b, "SourceID", m.SourceID)
+	b.WriteString(`</DocumentStatus>`)
+	writeElem(b, "Hash", m.Hash)
+	fmt.Fprintf(b, `<HashControl>%d</HashControl>`, m.HashControl)
+	writeElem(b, "MovementDate", m.MovementDate)
+	writeElem(b, "MovementType", "GR")
+	writeElem(b, "SystemEntryDate", m.SystemEntryDate)
+	custID := m.Customer.CustomerTaxID
+	if custID == "" {
+		custID = "999999990"
+	}
+	writeElem(b, "CustomerID", custID)
+	writeElem(b, "SourceID", m.SourceID)
+	if t := strings.TrimSpace(m.MovementStartAt); t != "" {
+		writeElem(b, "MovementStartTime", t)
+	}
+	if c := strings.TrimSpace(m.ATDocCodeID); c != "" {
+		writeElem(b, "ATDocCodeID", c)
+	}
+	for _, ln := range m.Lines {
+		writeMovementLine(b, m, ln, check)
+	}
+	b.WriteString(`<DocumentTotals>`)
+	writeElem(b, "TaxPayable", m.TaxPayable)
+	writeElem(b, "NetTotal", m.NetTotal)
+	writeElem(b, "GrossTotal", m.GrossTotal)
+	b.WriteString(`</DocumentTotals>`)
+	if a := strings.TrimSpace(m.ShipToAddress); a != "" {
+		b.WriteString(`<ShipTo>`)
+		writeElem(b, "AddressDetail", a)
+		b.WriteString(`</ShipTo>`)
+	}
+	if a := strings.TrimSpace(m.ShipFromAddress); a != "" {
+		b.WriteString(`<ShipFrom>`)
+		writeElem(b, "AddressDetail", a)
+		b.WriteString(`</ShipFrom>`)
+	}
+	b.WriteString(`</StockMovement>`)
+}
+
+func writeMovementLine(b *strings.Builder, m store.SAFTStockMovement, ln store.SAFTLine, check func(string, string)) {
+	check("mov_line", ln.ProductDescription)
+	b.WriteString(`<Line>`)
+	fmt.Fprintf(b, `<LineNumber>%d</LineNumber>`, ln.LineNumber)
+	writeElem(b, "ProductCode", ln.ProductCode)
+	writeElem(b, "ProductDescription", ln.ProductDescription)
+	writeElem(b, "Quantity", ln.Quantity)
+	writeElem(b, "UnitOfMeasure", ln.UnitOfMeasure)
+	writeElem(b, "UnitPrice", ln.UnitPriceNet)
 	writeElem(b, "Description", ln.ProductDescription)
 	writeElem(b, "CreditAmount", ln.LineGross)
 	b.WriteString(`<Tax>`)

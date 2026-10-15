@@ -164,6 +164,39 @@ func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps Handle
 			out["lines"] = detail.Lines
 		}
 	}
+	if detail.DocumentType == domain.DocumentGR {
+		out["movement_status"] = detail.DocumentStatus
+		if detail.ShipFromAddress != "" {
+			out["ship_from_address"] = detail.ShipFromAddress
+		}
+		if detail.ShipToAddress != "" {
+			out["ship_to_address"] = detail.ShipToAddress
+		}
+		if detail.MovementStartAt != "" {
+			out["movement_start_at"] = detail.MovementStartAt
+		}
+		if detail.ATDocCodeID != "" {
+			out["at_doc_code_id"] = detail.ATDocCodeID
+		}
+		if detail.RecipientIsVATPayer != nil {
+			out["recipient_is_vat_payer"] = *detail.RecipientIsVATPayer
+		}
+		if detail.StatusReason != "" {
+			out["status_reason"] = detail.StatusReason
+		}
+		if detail.StatusChangedAt != "" {
+			out["status_changed_at"] = detail.StatusChangedAt
+		}
+		if len(detail.LinkedSaleInvoiceNos) > 0 {
+			out["linked_sale_invoice_nos"] = detail.LinkedSaleInvoiceNos
+		}
+		if len(detail.Lines) > 0 {
+			out["lines"] = detail.Lines
+		}
+	}
+	if len(detail.LinkedDeliveryInvoiceNos) > 0 {
+		out["linked_delivery_invoice_nos"] = detail.LinkedDeliveryInvoiceNos
+	}
 	writeJSON(w, http.StatusOK, out)
 }
 
@@ -427,13 +460,30 @@ func handleAnnulProforma(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		return
 	}
 	body.OperatorID = id
-	res, err := deps.Fiscal.AnnulProforma(r.Context(), domain.AnnulProformaRequest{
-		StoreID:    deps.StoreID,
-		RequestID:  body.RequestID,
-		DocumentID: documentID,
-		OperatorID: body.OperatorID,
-		Reason:     body.Reason,
-	})
+	// Dispatch by document_type: PF → AnnulProforma; GR → AnnulDeliveryNote (ONLY annul entries).
+	detail, err := deps.Fiscal.GetInvoiceDetail(documentID)
+	if err != nil {
+		var ce *service.CodedError
+		if errors.As(err, &ce) && (ce.Code == service.ErrCodeNotFound || ce.Code == "not_found") {
+			writeErr(w, http.StatusNotFound, "not_found", ce.Msg)
+			return
+		}
+		writeCoded(w, err)
+		return
+	}
+	var res *domain.IssueResult
+	switch detail.DocumentType {
+	case domain.DocumentGR:
+		res, err = deps.Fiscal.AnnulDeliveryNote(r.Context(), domain.AnnulDeliveryNoteRequest{
+			StoreID: deps.StoreID, RequestID: body.RequestID, DocumentID: documentID,
+			OperatorID: body.OperatorID, Reason: body.Reason,
+		})
+	default:
+		res, err = deps.Fiscal.AnnulProforma(r.Context(), domain.AnnulProformaRequest{
+			StoreID: deps.StoreID, RequestID: body.RequestID, DocumentID: documentID,
+			OperatorID: body.OperatorID, Reason: body.Reason,
+		})
+	}
 	if err != nil {
 		var ce *service.CodedError
 		if errors.As(err, &ce) && ce.Code == service.ErrCodeNotFound {

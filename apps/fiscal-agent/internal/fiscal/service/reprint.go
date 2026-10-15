@@ -116,6 +116,27 @@ func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetai
 			return d, err
 		}
 		d.Lines = lines
+	case d.DocumentType == domain.DocumentGR:
+		extra, err := s.db.LoadDeliveryExtra(documentID)
+		if err != nil {
+			return d, err
+		}
+		if extra != nil {
+			d.ShipFromAddress = extra.ShipFromAddress
+			d.ShipToAddress = extra.ShipToAddress
+			d.MovementStartAt = extra.MovementStartAt
+			d.ATDocCodeID = extra.ATDocCodeID
+			vat := extra.RecipientIsVATPayer
+			d.RecipientIsVATPayer = &vat
+			d.StatusReason = extra.StatusReason
+			d.StatusChangedAt = extra.StatusChangedAt
+			d.LinkedSaleInvoiceNos = extra.LinkedSaleNumbers
+		}
+		lines, err := s.db.LoadInvoiceLinesAsCreditRemaining(documentID)
+		if err != nil {
+			return d, err
+		}
+		d.Lines = lines
 	}
 	if domain.IsSaleDocumentType(d.DocumentType) {
 		ref, err := s.db.ProformaRefForSale(documentID)
@@ -125,6 +146,13 @@ func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetai
 		if ref != nil {
 			d.ProformaID = ref.ProformaInvoiceID
 			d.ProformaInvoiceNo = ref.ProformaInvoiceNo
+		}
+		if d.DocumentType == domain.DocumentFT {
+			nos, err := s.db.DeliveryRefsForSale(documentID)
+			if err != nil {
+				return d, err
+			}
+			d.LinkedDeliveryInvoiceNos = nos
 		}
 	}
 	return d, nil

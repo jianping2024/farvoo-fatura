@@ -23,9 +23,10 @@ func IsReprintableDocumentStatus(s string) bool {
 	return false
 }
 
-// IsReprintableDocument is the ONLY reprint status gate (sale statuses or PF N/F).
+// IsReprintableDocument is the ONLY reprint status gate (sale statuses or PF/GR N/F).
 func IsReprintableDocument(docType, docStatus string) bool {
-	if DocumentType(docType) == DocumentPF {
+	switch DocumentType(docType) {
+	case DocumentPF, DocumentGR:
 		switch DocumentStatus(docStatus) {
 		case WorkStatusNormal, WorkStatusInvoiced:
 			return true

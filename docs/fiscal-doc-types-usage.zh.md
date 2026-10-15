@@ -2,7 +2,7 @@
 
 > **状态：定稿**  
 > **权威：是**（用途、当事人「谁开给谁」、开具方法与跨类型挂靠；实现细节以各里程碑设计文 + [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + DDL 为准）  
-> **对应实现：** FT/FS/FR/NC/ND/RG/PF **已落地**；GR/GT **未落地**（行为以本文 + [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) 为准）  
+> **对应实现：** FT/FS/FR/NC/ND/RG/PF/GR **已落地**（GR 默认 mock AT）；GT **未落地**（行为以本文 + [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) 为准）  
 > **测试对照：** [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md)  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
@@ -151,7 +151,7 @@ GT ──(通常无)──► （调拨可永远无销售票）
 ## 8. GR — Guia de remessa（发货 / 交货单）【未落地】
 
 > **法律依据（摘要）：** DL 147/2003（Regime de Bens em Circulação）art. 4.º；AT FAQ「Documentos de Transporte」（GR 与 GT **内容要素相同**，名称随商业习惯）。  
-> **实现权威设计文：** 尚未单开；落地前以本节 + 场景文 §9 为行为口径，落地时补 `fiscal-gr.zh.md` + DDL。
+> **实现权威设计文：** [`fiscal-gr.zh.md`](fiscal-gr.zh.md)（定稿；含实现分刀与 AT 测试接入）。
 
 ### 8.1 用途
 
@@ -197,7 +197,7 @@ GT ──(通常无)──► （调拨可永远无销售票）
 | 未开 FT | **允许**长期存在；可做「未开票 GR」提醒；**不**自动开 FT、**不**跨月自动作废 |
 | 作废 | **仅尚未挂任何真票**时可作废（须 reason）；已挂 FT 禁止作废 |
 | 退货 | 已开 FT → **NC** 冲 FT；不做 GD |
-| AT 运输实时通信 | **非** GR 本阶段（见 GT） |
+| AT 运输实时通信 | **签发前必须成功**（见 [`fiscal-gr.zh.md`](fiscal-gr.zh.md) §7–§8）；与 GT 共用通信客户端 |
 | 全局运输单 | **P0 不做** |
 
 ### 8.5 开 FT 时如何「选挂」GR
@@ -275,7 +275,8 @@ GT 证明「在途」，不是销售发票；外送时销售另开 FS/FT，两�
 | FS / FR / ND | [`fiscal-m6-fs-fr-nd.zh.md`](fiscal-m6-fs-fr-nd.zh.md) |
 | RG | [`fiscal-rg.zh.md`](fiscal-rg.zh.md) |
 | PF | [`fiscal-pf.zh.md`](fiscal-pf.zh.md) |
-| GR / GT | **本节**（落地前）；场景/测试 [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) |
+| GR | [`fiscal-gr.zh.md`](fiscal-gr.zh.md)（实现）；本节（用途） |
+| GT | **本节**（落地前）；场景/测试 [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) |
 | 工程顺序 | [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) |
 
 ---
@@ -285,3 +286,4 @@ GT 证明「在途」，不是销售发票；外送时销售另开 FS/FT，两�
 | 日期 | 说明 |
 |------|------|
 | 2026-10-15 | 初稿定稿：九种单据用途/当事人/开具方法合订；GR NIF 与选挂 FT、作废/部分开票 P0；GT 通信门槛；全局运输单 P0 不做 |
+| 2026-10-15 | GR 实现权威改挂 [`fiscal-gr.zh.md`](fiscal-gr.zh.md)；GR 签发前须 AT 运输通信 |

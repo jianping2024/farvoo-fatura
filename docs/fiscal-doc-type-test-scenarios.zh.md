@@ -4,7 +4,7 @@
 > **权威：否**（**用途/当事人/开具方法**以 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) 为准；实现规则以各里程碑设计文为准；本文是场景/测试对照；库列以 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/*.sql` 为准）  
 > **对应实现：**  
 > - 已落地：`FT` / `FS` / `FR` / `NC` / `ND` / `RG` / `PF`  
-> - 行为已写入用途总览、实现未落地：`GR` / `GT`（见用途文 §8 / §9）  
+> - 行为已写入用途总览、实现未落地：`GR`（权威 [`fiscal-gr.zh.md`](fiscal-gr.zh.md)）/ `GT`（见用途文 §9）  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 本文把 **9 种**单据的**可执行测试场景**写在一处。用途、谁开给谁、开具步骤见 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md)。
@@ -24,7 +24,7 @@
 | 5 | ND | Nota de débito | 借记/补收 | **已有** | 4.1 |
 | 6 | RG | Recibo | 收款收据 | **已有**（0.5.18） | 4.4 Payments |
 | 7 | PF | Fatura pró-forma | 形式发票 | **已有**（[`fiscal-pf.zh.md`](fiscal-pf.zh.md)） | 4.3 WorkingDocuments |
-| 8 | GR | Guia de remessa | 发货/交货单 | **未做**（用途见 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) §8） | 4.2 MovementOfGoods |
+| 8 | GR | Guia de remessa | 发货/交货单 | **已有**（[`fiscal-gr.zh.md`](fiscal-gr.zh.md) + 用途文 §8；mock AT） | 4.2 MovementOfGoods |
 | 9 | GT | Guia de transporte | 运输单 | **未做**（用途见 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) §9） | 4.2 |
 
 ### 1.2 P0 总原则（拍板）
@@ -297,7 +297,7 @@ GT ──(通常无)──► （可无销售票）
 
 ---
 
-## 9. GR — Guia de remessa（发货单）【未做 · 建议 M-C】
+## 9. GR — Guia de remessa（发货单）【已有 · mock AT】
 
 ### 9.1 使用场景
 
@@ -319,7 +319,7 @@ GT ──(通常无)──► （可无销售票）
 | 系列 | 独立 `GR` |
 | SAF-T | 4.2，`MovementType=GR` |
 | 退货 | P0 仍用 **NC** 冲 FT；不做 GD |
-| AT 运输实时通信 | **非**本阶段（见 GT） |
+| AT 运输实时通信 | **签发前必须成功**（见 [`fiscal-gr.zh.md`](fiscal-gr.zh.md) §7） |
 
 ### 9.3 测试场景
 
@@ -427,6 +427,7 @@ GT ──(通常无)──► （可无销售票）
 | [`fiscal-m6-fs-fr-nd.zh.md`](fiscal-m6-fs-fr-nd.zh.md) | FS/FR/ND 实现权威 |
 | [`fiscal-rg.zh.md`](fiscal-rg.zh.md) | RG 实现权威 |
 | [`fiscal-pf.zh.md`](fiscal-pf.zh.md) | PF 实现权威 |
+| [`fiscal-gr.zh.md`](fiscal-gr.zh.md) | GR 实现权威（未落地） |
 | [`fiscal-m5-saft.zh.md`](fiscal-m5-saft.zh.md) | SAF-T；新类型落地须扩展导出范围 |
 | [`fiscal-m6-manual-uat.zh.md`](fiscal-m6-manual-uat.zh.md) | 已有类型手测 |
 | [`fiscal-certification-checklist.zh.md`](fiscal-certification-checklist.zh.md) | 认证项；新类型不自动纳入除非认证范围变更 |
@@ -440,3 +441,4 @@ GT ──(通常无)──► （可无销售票）
 | 2026-09-24 | 初稿：9 种单据场景 + 测试 ID；新增 RG→PF→GR→GT 顺序与关联定法 |
 | 2026-09-30 | PF 权威改挂 [`fiscal-pf.zh.md`](fiscal-pf.zh.md)；抬头更正 RG 已落地 / PF 定稿未做 |
 | 2026-10-15 | 用途/开具改挂 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md)；PF 标已有；GR-04/10 与全局单 P0 对齐用途文 |
+| 2026-10-15 | GR 实现挂 [`fiscal-gr.zh.md`](fiscal-gr.zh.md)；通信改「签发前必须」 |

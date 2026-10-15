@@ -21,6 +21,9 @@ func (s *FiscalService) IssueManualFT(ctx context.Context, in catalog.ManualIssu
 	if strings.EqualFold(strings.TrimSpace(in.DocumentType), string(domain.DocumentPF)) {
 		return s.IssueManualProforma(ctx, in, operatorID, stationID, fiscalTerminalID, fiscalTerminalLabel)
 	}
+	if strings.EqualFold(strings.TrimSpace(in.DocumentType), string(domain.DocumentGR)) {
+		return s.IssueManualDeliveryNote(ctx, in, operatorID, stationID, fiscalTerminalID, fiscalTerminalLabel)
+	}
 	snap, err := catalog.BuildManualSaleSnapshot(s.db, in)
 	if err != nil {
 		return nil, err
@@ -38,6 +41,7 @@ func (s *FiscalService) IssueManualFT(ctx context.Context, in catalog.ManualIssu
 		FiscalTerminalLabel: fiscalTerminalLabel,
 		Snapshot:            snap,
 		ProformaID:          strings.TrimSpace(in.ProformaID),
+		DeliveryNoteIDs:     in.DeliveryNoteIDs,
 	}, docType)
 }
 

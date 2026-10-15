@@ -13,10 +13,11 @@ const (
 	DocumentND DocumentType = "ND"
 	DocumentRG DocumentType = "RG"
 	DocumentPF DocumentType = "PF"
+	DocumentGR DocumentType = "GR"
 )
 
 // DocumentStatus is the lifecycle of a signed fiscal document (no DRAFT in DB).
-// For document_type=PF, invoices.document_status stores SAF-T WorkStatus: N / A / F.
+// For document_type=PF or GR, invoices.document_status stores N / A / F (SAF-T work/movement status).
 type DocumentStatus string
 
 const (
@@ -26,7 +27,7 @@ const (
 	DocumentDebitedPartial  DocumentStatus = "DEBITED_PARTIAL"
 	DocumentDebitedFull     DocumentStatus = "DEBITED_FULL"
 
-	// PF WorkStatus (Portaria 302/2016) — only when document_type=PF.
+	// PF / GR status — only when document_type is PF or GR.
 	WorkStatusNormal   DocumentStatus = "N"
 	WorkStatusAnnulled DocumentStatus = "A"
 	WorkStatusInvoiced DocumentStatus = "F"
@@ -157,7 +158,8 @@ type IssueRequest struct {
 	FiscalTerminalID    string
 	FiscalTerminalLabel string
 	Snapshot            SaleSnapshot
-	ProformaID          string // optional; sale → PF soft link (max 1)
+	ProformaID          string   // optional; sale → PF soft link (max 1)
+	DeliveryNoteIDs     []string // optional; FT → 1..N GR soft links
 }
 
 // ProformaRequest wraps PF (pró-forma) issuance.
@@ -179,6 +181,31 @@ type AnnulProformaRequest struct {
 	DocumentID          string
 	OperatorID          string
 	Reason              string
+}
+
+// DeliveryNoteRequest wraps GR (guia de remessa) issuance.
+type DeliveryNoteRequest struct {
+	StoreID              string
+	RequestID            string
+	OperatorID           string
+	StationID            string
+	FiscalTerminalID     string
+	FiscalTerminalLabel  string
+	Snapshot             SaleSnapshot
+	ShipFromAddress      string
+	ShipToAddress        string
+	MovementStartAt      string // local wall YYYY-MM-DDTHH:MM:SS or RFC3339
+	RecipientIsVATPayer  bool
+	ATDocCodeID          string // from TransportClient; required before store write
+}
+
+// AnnulDeliveryNoteRequest wraps GR annulment (N→A only).
+type AnnulDeliveryNoteRequest struct {
+	StoreID    string
+	RequestID  string
+	DocumentID string
+	OperatorID string
+	Reason     string
 }
 
 // IssueResult is returned after a successful FT issuance.
