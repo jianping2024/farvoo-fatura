@@ -22,8 +22,8 @@
 | ND | 借记/补收 | 已有 | 改税基 | 原票购方（复制） | 原票详情「借记」 |
 | RG | 收款收据 | 已有 | 证明事后收款 | 原 FT 购方 | FT 详情「登记收款」 |
 | PF | 形式发票 | 已有 | 报价/确认（非税票） | 潜在购方 | **仅手工** |
-| GR | 发货/交货单 | **未做** | 货物移动（交货） | 收货客户 | **仅手工**（规划） |
-| GT | 运输单 | **未做** | 货物移动（在途） | 卸货方（调拨=本店；外送=客户） | **仅手工**（规划；须 AT 通信） |
+| GR | 发货/交货单 | **已有**（mock AT） | 货物移动（交货） | 收货客户 | **仅手工** |
+| GT | 运输单 | **未做**（设计已定） | 货物移动（在途） | 卸货方（调拨=本店；外送=客户） | **仅手工** |
 
 ### 0.1 总原则（P0）
 
@@ -33,7 +33,7 @@
 4. **软关联**（可选）：开真票时可挂 PF；开 **FT** 时可挂 1..N 张 GR。  
 5. **GT** 与销售票无强制关联（调拨可永远无 FT）。  
 6. **金额对齐**：仅 NC / ND / RG 须与原销售票余额规则对齐；PF / GR / GT 与真票金额**不必**相等。  
-7. **开发顺序：** RG → PF → GR → GT（GT 无 AT 运输通信方案则不做 IssueGT）。
+7. **开发顺序：** RG → PF → GR → GT（GT 设计见 [`fiscal-gt.zh.md`](fiscal-gt.zh.md)；mock 可做；live 随 A2）。
 
 ### 0.2 关联总图
 
@@ -212,8 +212,8 @@ GT ──(通常无)──► （调拨可永远无销售票）
 ## 9. GT — Guia de transporte（运输单）【未落地】
 
 > **法律依据（摘要）：** 同 §8（RBC）；与 GR 法定要素相同。  
-> **落地门槛：** 须有 AT 运输通信方案与验收环境；否则 **不开 IssueGT**。  
-> **实现权威设计文：** 尚未单开；行为口径见本节 + 场景文 §10。
+> **实现权威设计文：** [`fiscal-gt.zh.md`](fiscal-gt.zh.md)（定稿；mock 可开发；live 见 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) A2）。  
+> **落地门槛（更新）：** 通信方案已具备（`TransportClient` + mock；真 SOAP 走 A2）。**不再**以「无通信方案」挡 T1–T4；live 验收随 A2。
 
 ### 9.1 用途
 
@@ -242,10 +242,11 @@ GT 证明「在途」，不是销售发票；外送时销售另开 FS/FT，两�
 
 | 项 | P0 定法 |
 |----|---------|
-| 与销售票 | **无强制关联** |
+| 与销售票 | **无强制关联**；外送签发后可轻提示「另开发票」（见 [`fiscal-gt.zh.md`](fiscal-gt.zh.md)） |
 | 时点 | **上路前**；默认禁止「已上路补开」 |
 | 金额 | 非验收重点 |
-| 作废 | 仅正常未完成运输场景可作废（细则落地设计文拍板；须 reason） |
+| 作废 | **可作废**：仅 `N`→`A`（须 reason）；权限同 GR；细则见 [`fiscal-gt.zh.md`](fiscal-gt.zh.md) |
+| 调拨装卸地址 | 两处都必填；**允许相同**（仅提示宜不同） |
 | 全局运输单 | **P0 不做**（同 GR） |
 | SAF-T | 4.2，`MovementType=GT` |
 
@@ -276,7 +277,7 @@ GT 证明「在途」，不是销售发票；外送时销售另开 FS/FT，两�
 | RG | [`fiscal-rg.zh.md`](fiscal-rg.zh.md) |
 | PF | [`fiscal-pf.zh.md`](fiscal-pf.zh.md) |
 | GR | [`fiscal-gr.zh.md`](fiscal-gr.zh.md)（实现）；本节（用途） |
-| GT | **本节**（落地前）；场景/测试 [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) |
+| GT | [`fiscal-gt.zh.md`](fiscal-gt.zh.md)；场景 [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) §10 |
 | 工程顺序 | [`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) |
 
 ---
@@ -287,3 +288,4 @@ GT 证明「在途」，不是销售发票；外送时销售另开 FS/FT，两�
 |------|------|
 | 2026-10-15 | 初稿定稿：九种单据用途/当事人/开具方法合订；GR NIF 与选挂 FT、作废/部分开票 P0；GT 通信门槛；全局运输单 P0 不做 |
 | 2026-10-15 | GR 实现权威改挂 [`fiscal-gr.zh.md`](fiscal-gr.zh.md)；GR 签发前须 AT 运输通信 |
+| 2026-10-15 | GT 实现权威改挂 [`fiscal-gt.zh.md`](fiscal-gt.zh.md)；取消「无通信方案不开刀」 |

@@ -342,7 +342,9 @@ GT ──(通常无)──► （可无销售票）
 
 ---
 
-## 10. GT — Guia de transporte（运输单）【未做 · 建议 M-D】
+## 10. GT — Guia de transporte（运输单）【未做 · 设计已定】
+
+> **权威设计：** [`fiscal-gt.zh.md`](fiscal-gt.zh.md)
 
 ### 10.1 使用场景
 
@@ -351,17 +353,20 @@ GT ──(通常无)──► （可无销售票）
 
 ### 10.2 P0 规则（拍板）
 
-用途/当事人/开具步骤权威见 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) §9。
+用途/当事人/开具步骤权威见 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) §9 + [`fiscal-gt.zh.md`](fiscal-gt.zh.md)。
 
 | 项 | 定法 |
 |----|------|
 | 与销售票 | **无强制关联** |
-| 必填 | 品名/数量、装货地、卸货地、开始运输时间等 |
+| 必填 | 品名/数量、装货地、卸货地、开始运输时间、`movement_purpose` |
 | 金额 | 非验收重点 |
 | 时点 | **上路前**签发；默认禁止「已上路补开」 |
-| AT 通信 | **有通信方案才做 GT**；无方案则不做 IssueGT |
+| AT 通信 | mock 可开发；live 见 A2；签发前必须成功（失败整单失败） |
 | 全局运输单 | **P0 不做** |
 | 系列 | 独立 `GT` |
+| 状态 | 仅 `N` / `A`（无 `F`） |
+| 作废 | `N`→`A` 允许（须 reason）；mock 不按开运时刻拒 |
+| 调拨地址 | 装卸可相同（不硬拦） |
 | SAF-T | 4.2，`MovementType=GT` |
 | FS 兼运输单 | **禁止** |
 
@@ -378,7 +383,7 @@ GT ──(通常无)──► （可无销售票）
 | GT-07 | 负 | 试图用 FS 当 GT | — | 产品无此能力 |
 | GT-08 | SAF-T | 仅调拨 GT | 月导 | MovementOfGoods 有 GT；无对应假 FT |
 
-**落地门槛：** 无 AT 运输通信设计文与验收环境 → **不开 GT 开发刀**。
+**落地门槛：** 设计已定（[`fiscal-gt.zh.md`](fiscal-gt.zh.md)）；mock 可开 T1–T4；live 随 A2。
 
 **落地后回归（建议名）：** `scripts/fiscal-gt-regression.mjs`（含通信 mock）。
 

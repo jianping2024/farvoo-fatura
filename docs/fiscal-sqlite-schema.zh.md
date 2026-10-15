@@ -209,9 +209,9 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 
 | 字段 | 取值 |
 |------|------|
-| `document_type` | `FT` `FS` `FR` `NC` `ND` `RG` `PF` `GR` |
+| `document_type` | `FT` `FS` `FR` `NC` `ND` `RG` `PF` `GR`（`GT` 见 [`fiscal-gt.zh.md`](fiscal-gt.zh.md)，落地时加 DDL） |
 | `series.status` | `PENDING` `ACTIVE` `FAILED` `TERMINATED` |
-| `document_status` | 销售票：`SIGNED` `CREDITED_PARTIAL` `CREDITED_FULL` `DEBITED_PARTIAL` `DEBITED_FULL`；**PF / GR**：`N` `A` `F`（SAF-T WorkStatus / MovementStatus） |
+| `document_status` | 销售票：`SIGNED` `CREDITED_PARTIAL` `CREDITED_FULL` `DEBITED_PARTIAL` `DEBITED_FULL`；**PF / GR**：`N` `A` `F`；**GT（规划）**：仅 `N` `A` |
 | `print_status`（单据） | `NOT_PRINTED` `PENDING` `PROCESSING` `PRINTED` `PRINT_FAILED` `REPRINTED` |
 | `job_status`（任务） | `PENDING` `PROCESSING` `PRINTED` `FAILED_BEFORE_WRITE` `UNKNOWN_AFTER_WRITE` `FAILED` |
 | `print_purpose` | `ORIGINAL` `REPRINT` |

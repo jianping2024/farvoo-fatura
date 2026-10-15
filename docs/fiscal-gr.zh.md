@@ -25,7 +25,7 @@
 | 行级「已开票数量」进度 | P0 不做（仅单据级 `N`/`A`/`F`） |
 | GD、对 GR 开 NC | 不做；退货冲 FT |
 | FS/FR 挂 GR | P0 禁止（仅 FT） |
-| GT | 另文；可复用同一 `TransportClient` |
+| GT | 见 [`fiscal-gt.zh.md`](fiscal-gt.zh.md)；复用同一 `TransportClient` |
 
 ## 3. P0 定法
 
