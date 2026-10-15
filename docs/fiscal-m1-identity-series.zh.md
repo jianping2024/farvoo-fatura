@@ -16,7 +16,7 @@
 |----|------|
 | `at_env` | `mock`（默认，本地/CI）\| `test` \| `prod` |
 | mock | 不访问 AT；`registarSerie` 返回固定 8 位验证码（可配置） |
-| test/prod | 真实 SOAP（M1 实现客户端骨架；无证书材料时测试仍走 mock） |
+| test/prod | 真实 SOAP（M1 实现客户端骨架；**落地顺序见** [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) 刀 A0→A1；无证书材料时测试仍走 mock） |
 
 ## 3. 表单 → 列（一列一行）
 
@@ -128,4 +128,5 @@
 
 | 日期 | 变更 |
 |------|------|
+| 2026-10-15 | 交叉链接 AT test/prod 统一接入规划（系列 = A1） |
 | 2026-08-20 | M1 定稿：API、列映射、protect scheme、错误码 |

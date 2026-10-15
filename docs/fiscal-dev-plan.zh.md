@@ -20,7 +20,8 @@
 | [`print-agent-lessons.zh.md`](print-agent-lessons.zh.md) | 打印/安装器踩坑 |
 | [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) | 九种单据**用途 / 当事人 / 开具方法**合订（含 GR/GT 行为口径） |
 | [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) | 九种单据开票场景与测试方案 |
-| [`fiscal-gr.zh.md`](fiscal-gr.zh.md) | **GR 发货单**行为、实现分刀、AT 运输测试接入（定稿未落地） |
+| [`fiscal-gr.zh.md`](fiscal-gr.zh.md) | **GR 发货单**行为、实现分刀（G1–G6 已落地；G7 = live 运输） |
+| [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) | **AT test/prod 统一接入**（系列 SOAP + 运输 SOAP；A0–A3） |
 | [`fiscal-rg.zh.md`](fiscal-rg.zh.md) | **RG 收款收据**行为与唯一写路径（已落地） |
 
 冲突时：DDL / schema 定列；需求定业务规则；**谁先做哪一刀以本文为准**。
@@ -536,6 +537,7 @@ M1–M5 主路径稳定。
 | — | ~~NIF → 客户主档~~ | bill-draft P1 | **基本已有**（`ensureCustomerIDTx`） |
 | — | ~~客户地址字段~~ | — | **已否决**（餐馆占位 `Desconhecido` 够用） |
 | ★ | **P1-S 安全加固** | [`fiscal-p1-security-hardening.zh.md`](fiscal-p1-security-hardening.zh.md) | 登录 IP 限速、`FISCAL_SESSION_SECRET`、匿名 status 收紧 |
+| ★★ | **AT test/prod 真 SOAP** | [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) | 系列 + 运输统一接入；A0→A1→A2→A3；CI 仍 mock |
 | — | ~~**P1-U 托盘/安装体验**~~ | [`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) | **已否决**（2026-09-02）：无 checklist/进度/托盘开票就绪；托盘=厨打状态；Fiscal 见 Admin `17880` |
 
 **明确不在计划内（除非新开里程碑）：** 见下节。
@@ -591,3 +593,4 @@ M1–M5 主路径稳定。
 | 2026-09-02 | **P1-U 已关闭**：文档瘦身定稿见 [`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) |
 | 2026-10-15 | 增补用途合订 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md)（九种单据当事人/开具；GR/GT 行为口径） |
 | 2026-10-15 | 增补 [`fiscal-gr.zh.md`](fiscal-gr.zh.md)：GR 实现步骤 + AT 测试证下载结论（公开包已过期） |
+| 2026-10-15 | 增补 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md)：系列+运输统一接 test/prod（A0–A3） |

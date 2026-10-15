@@ -3,6 +3,7 @@
 > **状态：定稿**（G1–G6 已落地；G7 live AT 仍 blocked）  
 > **权威：是**（GR 行为、实现步骤、AT 运输通信与测试接入；库列与 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/014_gr_delivery.sql` 对齐）  
 > **对应实现：** `store.IssueGR` / `AnnulGR`、`store.linkDeliveryNotesInTx`、`service.IssueDeliveryNote`、`at.TransportClient`（默认 mock）  
+> **test/prod 统一接入：** 见 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md)（A2 = 原 G7）  
 > **用途/当事人：** [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) §8  
 > **测试场景：** [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) §9  
 > **计划顺序：** RG → PF → **GR** → GT  
@@ -334,11 +335,13 @@ apps/fiscal-agent/internal/fiscal/at/testdata/transport/
 
 ### 刀 G7 — AT test 实打（有证后）
 
-1. 换新证  
+> **并入统一规划：** [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) **刀 A2**（建议先完成 A0 共享底座 + A1 系列 live）。
+
+1. 换新证（若过期）  
 2. `-tags=at_transport_live` 打通 `:701`  
 3. 记录请求/响应样例（脱敏）入 `testdata/transport/fixtures/`  
 
-**关闭条件：** G1–G6 全绿；G7 有证则必须绿，无证则文档标明 blocked + mock 覆盖。
+**关闭条件：** G1–G6 全绿；G7/A2 有证则必须绿，无证则文档标明 blocked + mock 覆盖。
 
 ---
 
@@ -367,5 +370,6 @@ apps/fiscal-agent/internal/fiscal/at/testdata/transport/
 
 | 日期 | 说明 |
 |------|------|
+| 2026-10-15 | G7 并入 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) A2 |
 | 2026-10-15 | 定稿：行为 + 实现分刀 + AT 通信 P0；下载公开 zip 并记录证书已过期；测试接入步骤与刷新脚本 |
 | 2026-10-15 | 从 elsif 镜像取得现行 `TesteWebservices`（至 2027-01-06）与 `ChaveCifraPublicaAT`（至 2027-04-15）；更新 §8 |
