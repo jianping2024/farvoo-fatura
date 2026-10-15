@@ -18,7 +18,8 @@
 | restaurant-ordering `docs/technical/farvoo-fiscal-bill-sync-api.zh.md` | **餐馆 Farvoo ↔ Agent 账单同步**（M4 产品权威） |
 | restaurant-ordering `docs/technical/farvoo-fiscal-agent-integration.zh.md` | 总览（只读；**餐馆开票路径以 bill-sync-api 为准**，见 M4 §P0） |
 | [`print-agent-lessons.zh.md`](print-agent-lessons.zh.md) | 打印/安装器踩坑 |
-| [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) | 九种单据开票场景与测试方案（已有 FT/FS/FR/NC/ND + 规划 RG/PF/GR/GT） |
+| [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) | 九种单据**用途 / 当事人 / 开具方法**合订（含 GR/GT 行为口径） |
+| [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) | 九种单据开票场景与测试方案 |
 | [`fiscal-rg.zh.md`](fiscal-rg.zh.md) | **RG 收款收据**行为与唯一写路径（已落地） |
 
 冲突时：DDL / schema 定列；需求定业务规则；**谁先做哪一刀以本文为准**。
@@ -587,3 +588,4 @@ M1–M5 主路径稳定。
 | 2026-09-02 | **P1 里程碑草案**：[`fiscal-p1-security-hardening.zh.md`](fiscal-p1-security-hardening.zh.md)、[`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) |
 | 2026-09-02 | **P1-U 已否决**：拍板记录见 [`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) |
 | 2026-09-02 | **P1-U 已关闭**：文档瘦身定稿见 [`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) |
+| 2026-10-15 | 增补用途合订 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md)（九种单据当事人/开具；GR/GT 行为口径） |
