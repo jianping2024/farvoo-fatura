@@ -2,6 +2,18 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.39
+
+**出品联（Pedido）改版：数量 + 编号反白置前，更易读**
+
+- **抬头：** 「restaurant · 档口」1×1 居中；标题单独一行 2×2 加粗；桌号与下单时间 HH:MM 同一行 2×2 加粗；下一行人数 + 总份数（如 `4 artigos`）。
+- **菜品行：** 行首「` 1× 001 `」1×2 加粗 + `GS B` 反白，菜名同行 1×2 加粗；第二个菜名（中文副名）不加粗、备注 `» 正常冰` 加粗，均缩进到菜名列下；菜与菜之间虚线分隔。去掉右侧 Qtd 列与「Artigos / Qtd」列头。
+- **折行：** 菜名/备注按单词折行（不再从单词中间断开）。
+- **页脚：** 一行：下单日期时间 + 「Impresso por」。
+- 开台单（Abrir mesa）共用同一套抬头与菜品行。
+- `text_encoding=bitmap`：反白在 GS v 0 图像上做像素反转（`GS B` 对位图无效）。
+- 不支持 `GS B` 的老机型会把编号块打成普通加粗字，内容不丢。
+
 ## 0.5.38
 
 **修复：备注汉字与菜名同高——汉字段禁止 FS !**

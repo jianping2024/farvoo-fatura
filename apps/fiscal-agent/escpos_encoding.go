@@ -40,13 +40,14 @@ func stationTicketNeedsBitmap(p jobPayload) bool {
 		if escposenc.NeedsRaster(ln.CategoryGroupHeader) || escposenc.NeedsRaster(ln.DisplayName) || escposenc.NeedsRaster(ln.Note) {
 			return true
 		}
-		for _, label := range stationSlipLabels(ln) {
-			if escposenc.NeedsRaster(label) {
+		_, names := stationSlipNames(ln)
+		for _, name := range names {
+			if escposenc.NeedsRaster(name) {
 				return true
 			}
 		}
 	}
-	return false
+	return escposenc.NeedsRaster(p.stationName())
 }
 
 // printTicketLabels — ONLY fixed chrome for Mesa thermal tickets (station / pre-bill / receipt).
