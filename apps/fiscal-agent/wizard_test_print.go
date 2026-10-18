@@ -40,7 +40,62 @@ func buildStationSampleSlip(locale string) []byte {
 				PrintNames: []string{"Cola"}},
 		},
 	})
-	return escposFromJob(printJob{Type: "station_ticket", Payload: payload})
+	slip := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
+	return append(slip, buildQtyCodeProbeSlip(locale)...)
+}
+
+// qtyCodeProbeRows — candidate styles for the station-slip "2× 020" lead, one printed row each
+// (0.5.39 reverse 1×2 bold came out smeared on store printers).
+var qtyCodeProbeRows = []struct {
+	label     string
+	doubleW   bool
+	bold      bool
+	reverse   bool
+	underline byte // ESC - n: 0 off, 2 = 2-dot
+}{
+	{label: "OLD: reverse 1x2 bold (0.5.39)", bold: true, reverse: true},
+	{label: "A: reverse 1x2", reverse: true},
+	{label: "B: reverse 2x2", doubleW: true, reverse: true},
+	{label: "C: 2x2 bold", doubleW: true, bold: true},
+	{label: "D: 1x2 + underline", underline: 2},
+	{label: "E: 2x2", doubleW: true},
+}
+
+// buildQtyCodeProbeSlip — short second slip after the station sample: each lead style followed by
+// the same 1×2 dish name (never bold, like the slip), so the store can pick the clearest on real paper.
+func buildQtyCodeProbeSlip(locale string) []byte {
+	w := newEscposForStationTicket(jobPayload{Locale: locale})
+	block := stationSlipQtyCodeBlock(2, "020")
+	w.align(0)
+	w.writeBody1x1()
+	w.bold(true)
+	w.text("QTY / CODE PROBE")
+	w.lf()
+	for _, r := range qtyCodeProbeRows {
+		w.separator('-')
+		w.writeBody1x1()
+		w.text(r.label)
+		w.lf()
+		w.size(r.doubleW, true)
+		w.bold(r.bold)
+		lead := strings.TrimSpace(block)
+		if r.reverse {
+			lead = block
+			w.reverse(true)
+		}
+		if r.underline > 0 {
+			w.content.Write([]byte{0x1B, 0x2D, r.underline})
+		}
+		w.text(lead)
+		w.reverse(false)
+		w.underline(false)
+		w.size(false, true)
+		w.bold(false)
+		w.text(" Frango Piri-Piri")
+		w.lf()
+	}
+	w.separator('-')
+	return w.finish(true)
 }
 
 func runTestPrintForStation(cfg *config, stationID, printerOverride, printLocale, kind string) error {

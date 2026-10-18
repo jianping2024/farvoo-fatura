@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"testing"
 
 	"farvoo-fiscal-agent/internal/escposenc"
@@ -79,6 +80,35 @@ func TestBuildStationSampleSlipUsesFirmwareForAllLines(t *testing.T) {
 	}
 	if cutDotsInRaw(raw) == 0 {
 		t.Fatal("station sample must cut")
+	}
+	probe := bytesIndex(raw, []byte("QTY / CODE PROBE"))
+	if probe < 0 {
+		t.Fatal("station sample must append the qty/code probe slip")
+	}
+	for _, r := range qtyCodeProbeRows {
+		if bytesIndex(raw[probe:], []byte(r.label)) < 0 {
+			t.Fatalf("probe missing row %q", r.label)
+		}
+	}
+	if bytes.Count(raw, []byte{0x1D, 0x56, 0x42}) != 2 {
+		t.Fatal("sample slip and probe slip each cut once")
+	}
+}
+
+func TestQtyCodeProbeRowStyles(t *testing.T) {
+	raw := buildQtyCodeProbeSlip("pt")
+	block := escposenc.Windows1252(stationSlipQtyCodeBlock(2, "020"))
+	lead := escposenc.Windows1252("2× 020")
+	for _, want := range [][]byte{
+		append([]byte{0x1D, 0x21, 0x01, 0x1B, 0x45, 0x00, 0x1D, 0x42, 0x01}, block...), // A
+		append([]byte{0x1D, 0x21, 0x11, 0x1B, 0x45, 0x00, 0x1D, 0x42, 0x01}, block...), // B
+		append([]byte{0x1D, 0x21, 0x11, 0x1B, 0x45, 0x01}, lead...),                    // C
+		append([]byte{0x1D, 0x21, 0x01, 0x1B, 0x45, 0x00, 0x1B, 0x2D, 0x02}, lead...),  // D
+		append([]byte{0x1D, 0x21, 0x11, 0x1B, 0x45, 0x00}, lead...),                    // E
+	} {
+		if bytesIndex(raw, want) < 0 {
+			t.Fatalf("probe missing % X", want)
+		}
 	}
 }
 

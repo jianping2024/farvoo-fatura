@@ -207,7 +207,11 @@ func TestStationItemExtraNamesAndNoteHangUnderName(t *testing.T) {
 		t.Fatal("only the first row carries the qty+code block")
 	}
 	if bytes.Contains(raw, []byte{0x1B, 0x2D, 0x01}) {
-		t.Fatal("notes are bold, not underlined")
+		t.Fatal("notes must not be underlined")
+	}
+	// ESC E smears the tall 1×2 Font A on store printers: nothing after the header is bold.
+	if bytes.Contains(raw[first:], []byte{0x1B, 0x45, 0x01}) {
+		t.Fatal("dish rows and notes must not be bold")
 	}
 }
 
@@ -345,12 +349,12 @@ func TestZhStationSlipBitmapItemRowsAreRasters(t *testing.T) {
 
 func TestHanStationItemInvertsBlockBand(t *testing.T) {
 	fontPx := bitmapTextDefaultFontPx
-	spacePx := measureHanTextWidth(" ", fontPx, true)
+	spacePx := measureHanTextWidth(" ", fontPx, false)
 	blockText := strings.TrimSpace(stationSlipQtyCodeBlock(1, "001"))
-	blockEnd := spacePx*2 + measureHanTextWidth(blockText, fontPx, true)
+	blockEnd := spacePx*2 + measureHanTextWidth(blockText, fontPx, false)
 	row := mergeBitmapRows(
-		renderBitmapLeftRow(blockText, spacePx, fontPx, bitmapTextStyle{Bold: true}),
-		renderBitmapLeftRow("中水", blockEnd+spacePx, fontPx, bitmapTextStyle{Bold: true}),
+		renderBitmapLeftRow(blockText, spacePx, fontPx, bitmapTextStyle{}),
+		renderBitmapLeftRow("中水", blockEnd+spacePx, fontPx, bitmapTextStyle{}),
 	)
 	invertBitmapBand(row, 0, blockEnd)
 	if row.Width != bitmapTextMaxWidthPx {
