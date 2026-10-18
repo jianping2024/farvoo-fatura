@@ -11,7 +11,10 @@ type escposTextMode int
 const (
 	escposTextLatin escposTextMode = iota
 	escposTextUTF8
+	// escposTextBitmap — text_encoding=bitmap escape: every NeedsRaster line → GS v 0, Han column canvas.
 	escposTextBitmap
+	// escposTextAuto — default: per-line escposenc.LinePathFor (Font A / firmware Han / raster).
+	escposTextAuto
 )
 
 type bitmapTextStyle struct {
@@ -51,9 +54,11 @@ func textModeForThermal(needFirmwareSafeRaster bool) escposTextMode {
 			return escposTextUTF8
 		case "latin":
 			return escposTextLatin
+		case "bitmap":
+			return escposTextBitmap
 		}
 	}
-	return escposTextBitmap
+	return escposTextAuto
 }
 
 func toBitmapStyle(style bitmapTextStyle) escposbitmap.Style {

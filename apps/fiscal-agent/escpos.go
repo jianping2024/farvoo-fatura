@@ -402,8 +402,23 @@ func (w *escposWriter) text(s string) {
 		w.lastTextBitmap = false
 		return
 	}
-	// auto/bitmap: only lines beyond WPC1252 (Han, …) → GS v 0 (docs/fiscal-thermal-text-encoding.zh.md).
-	if w.textMode == escposTextBitmap && escposenc.NeedsRaster(s) {
+	// docs/fiscal-thermal-text-encoding.zh.md §3: auto splits per line; bitmap rasters every NeedsRaster line.
+	raster := w.textMode == escposTextBitmap && escposenc.NeedsRaster(s)
+	if w.textMode == escposTextAuto {
+		switch escposenc.LinePathFor(s) {
+		case escposenc.PathHanFirmware:
+			n := escposenc.HanFirmwareSize(w.doubleW, w.doubleH)
+			if w.underlineOn {
+				n |= 0x80 // FS ! bit 7 — Han underline (notes)
+			}
+			w.content.Write(escposenc.HanFirmwareLine(s, n))
+			w.lastTextBitmap = false
+			return
+		case escposenc.PathRaster:
+			raster = true
+		}
+	}
+	if raster {
 		fontPx := hanFontPxForRole(w.hanFontPx, w.hanRole)
 		w.content.Write(escposBitmapText(s, bitmapTextStyle{
 			Align:     w.alignMode,

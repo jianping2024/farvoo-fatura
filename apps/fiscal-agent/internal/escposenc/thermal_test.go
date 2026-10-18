@@ -26,3 +26,39 @@ func TestNeedsRasterOnlyBeyondWindows1252(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeThermalEncodingBitmap(t *testing.T) {
+	if got := NormalizeThermalEncoding(" Bitmap "); got != "bitmap" {
+		t.Fatalf("bitmap: %q", got)
+	}
+}
+
+func TestLinePathFor(t *testing.T) {
+	cases := map[string]LinePath{
+		"TOTAL":           PathLatin1252,
+		"Água 500ml":      PathLatin1252,
+		"宫保鸡丁":            PathHanFirmware,
+		"001-宫保鸡丁      1": PathHanFirmware,
+		"备注: 少放盐，不要葱（谢谢）": PathHanFirmware,
+		"Água 宫保":         PathRaster,
+		"Observação: 少放盐": PathRaster,
+		"Борщ":            PathRaster,
+		"宫保鸡丁 🍗":          PathRaster,
+	}
+	for s, want := range cases {
+		if got := LinePathFor(s); got != want {
+			t.Fatalf("LinePathFor(%q) = %d want %d", s, got, want)
+		}
+	}
+}
+
+func TestHanFirmwareLineBytes(t *testing.T) {
+	got := HanFirmwareLine("A宫", HanFirmwareSize(false, true))
+	want := []byte{0x1C, 0x26, 0x1C, 0x21, 0x04, 'A', 0xB9, 0xAC, 0x1C, 0x21, 0x00, 0x1C, 0x2E}
+	if string(got) != string(want) {
+		t.Fatalf("HanFirmwareLine = % X want % X", got, want)
+	}
+	if HanFirmwareSize(true, true) != 0x0C || HanFirmwareSize(false, false) != 0 {
+		t.Fatal("FS ! size map")
+	}
+}

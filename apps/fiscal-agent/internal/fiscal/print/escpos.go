@@ -78,17 +78,26 @@ func RenderESCPOS(p *Payload) []byte {
 		boldOn = on
 		bold(on)
 	}
+	doubleH := false
+	setDoubleH := func(on bool) {
+		doubleH = on
+		n := byte(0x00)
+		if on {
+			n = 0x01 // GS ! — double height only (width stays Font A cols)
+		}
+		b.Write([]byte{0x1D, 0x21, n})
+	}
 	w := func(s string) {
-		emitThermalLine(&b, s, thermalLineStyle{Bold: boldOn})
+		emitThermalLine(&b, s, thermalLineStyle{Bold: boldOn, DoubleH: doubleH})
 	}
 	rule := func() { w(strings.Repeat("-", receiptWidth)) }
 
 	// ① merchant — LegalName only: 1×2 bold, then dot gap (address/NIF stay 1×1)
 	align(1)
 	setBold(true)
-	b.Write([]byte{0x1D, 0x21, 0x01}) // GS ! — double height only
+	setDoubleH(true)
 	w(p.Merchant.LegalName)
-	b.Write([]byte{0x1D, 0x21, 0x00})
+	setDoubleH(false)
 	setBold(false)
 	b.Write(escFeedDots(receiptTopGapDots))
 	if p.Merchant.BusinessName != "" && p.Merchant.BusinessName != p.Merchant.LegalName {
@@ -179,9 +188,9 @@ func RenderESCPOS(p *Payload) []byte {
 	w(moneyRow(L.Net, p.Totals.NetTotal, receiptWidth))
 	w(moneyRow(L.VAT, p.Totals.TaxPayable, receiptWidth))
 	setBold(true)
-	b.Write([]byte{0x1D, 0x21, 0x01}) // GS ! — double height only (width stays Font A cols)
+	setDoubleH(true)
 	w(moneyRow(L.Total, p.Totals.GrossTotal, receiptWidth))
-	b.Write([]byte{0x1D, 0x21, 0x00})
+	setDoubleH(false)
 	setBold(false)
 	for _, pay := range p.Payments {
 		writePaymentBlock(w, L, pay, receiptWidth)

@@ -1,13 +1,14 @@
 package main
 
-import "unicode"
+import "farvoo-fiscal-agent/internal/escposenc"
 
-// Display columns match Font A pitch on 80mm (escposWidth): Han=2, Latin=1.
+// Display columns match Font A pitch on 80mm (escposWidth): firmware Han glyphs (ideographs,
+// CJK punctuation, full-width forms) = 2, Latin = 1.
 func displayCols(r rune) int {
 	if r == 0 {
 		return 0
 	}
-	if unicode.Is(unicode.Han, r) {
+	if escposenc.IsHanFirmwareRune(r) {
 		return 2
 	}
 	return 1

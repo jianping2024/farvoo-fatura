@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"farvoo-fiscal-agent/internal/escposenc"
 )
 
 func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
@@ -185,6 +187,7 @@ func TestHanColumnRowQtyInkInBand(t *testing.T) {
 }
 
 func TestStationSlipColumnBlockUsesHanCanvas_ZhForcesLatinMenu(t *testing.T) {
+	withThermalConfig(t, "bitmap") // Han column canvas exists only on the bitmap escape path
 	zh := jobPayload{
 		Locale: "zh",
 		Lines: []jobLine{{
@@ -208,6 +211,7 @@ func TestStationSlipColumnBlockUsesHanCanvas_ZhForcesLatinMenu(t *testing.T) {
 }
 
 func TestZhStationSlipLatinMenuEmitsColumnRasters(t *testing.T) {
+	withThermalConfig(t, "bitmap") // Han column canvas exists only on the bitmap escape path
 	payload, _ := json.Marshal(jobPayload{
 		Locale:           "zh",
 		TableDisplayName: "A-03",
@@ -251,6 +255,7 @@ func TestHanNoteWrapUsesPixelWidth(t *testing.T) {
 }
 
 func TestHanNoteEscposSingleWrapPath(t *testing.T) {
+	withThermalConfig(t, "bitmap") // Han column canvas exists only on the bitmap escape path
 	longNote := strings.Repeat("德萨发生发顺丰", 8)
 	prefix := labelsFor("zh").itemNote
 	payload, _ := json.Marshal(jobPayload{
@@ -483,6 +488,7 @@ func TestStationTicketItemNoteWrapsFullText(t *testing.T) {
 }
 
 func TestStationTicketLongZhNameWrapsNoEllipsis(t *testing.T) {
+	withThermalConfig(t, "bitmap") // Han column canvas exists only on the bitmap escape path
 	longName := "超长中文菜名测试一二三四五六七八九十甲乙丙丁戊己庚辛"
 	payload, _ := json.Marshal(jobPayload{
 		Locale:           "zh",
@@ -507,18 +513,26 @@ func TestStationTicketLongZhNameWrapsNoEllipsis(t *testing.T) {
 	}
 }
 
-func TestStationTicketUsesLatinEncodingOnly(t *testing.T) {
+func TestStationTicketHanMenuUsesFirmware1x2ByDefault(t *testing.T) {
+	withThermalConfig(t, "")
 	payload, _ := json.Marshal(jobPayload{
 		Lines: []jobLine{{
-			ItemCode:    "001",
-			ItemName:    "宫保鸡丁",
-			DisplayName: "001-宫保鸡丁",
-			Qty:         1,
+			ItemCode:   "001",
+			ItemName:   "Água 500ml",
+			Qty:        1,
+			PrintNames: []string{"Água 500ml", "宫保鸡丁"},
 		}},
 	})
 	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	if bytes.Contains(raw, []byte{0x1C, 0x26}) {
-		t.Fatal("station slip must not enter GBK mode")
+	gbk := []byte{0xB9, 0xAC, 0xB1, 0xA3} // 宫保
+	if !bytes.Contains(raw, []byte{0x1C, 0x26, 0x1C, 0x21, 0x04}) || !bytes.Contains(raw, gbk) {
+		t.Fatal("Han dish name must be FS & + FS ! 0x04 (1×2) + GBK")
+	}
+	if bytes.Contains(raw, []byte{0x1D, 0x76, 0x30, 0x00}) {
+		t.Fatal("auto must not raster Han dish names")
+	}
+	if !bytes.Contains(raw, escposenc.Windows1252("001-Água 500ml")) {
+		t.Fatal("pt name must stay Font A WPC1252")
 	}
 }
 

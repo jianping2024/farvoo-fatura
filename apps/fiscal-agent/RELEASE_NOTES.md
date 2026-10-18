@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.36
+
+**中文改走打印机汉字库（含 1×2 倍高）；出品联多语菜名**
+
+- `auto`（默认）逐行分流：葡语/英文 Font A + `GS !`；中文行 `FS &` + GBK + `FS !`（1×2 = `0x04`，2×2 = `0x0C`，按 pirata SIZE 自检）；同行葡语重音 + 汉字、西里尔、emoji 才转位图。厨打、预结、结账、FT 同一判定。
+- 新增 `text_encoding=bitmap`：旧的「中文转图片」整套路径（含 Han 列画布），给自检中文段 B 不对或倍高异常的机器用。
+- 出品联 `print_names`：每道菜按 Mesa 勾选的葡 / 英 / 中逐行 1×2 打印；编号与 Qty 只在第一行，每个名字各自换行；没有 `print_names` 的旧任务不变。
+- **唯一写法：** `escposenc.LinePathFor` / `HanFirmwareLine` / `HanFirmwareSize`；出品联菜名 `stationSlipLabels`。
+
 ## 0.5.35
 
 **码页自检单：记下汉语 B + 新增 SIZE 1×2 试打**
