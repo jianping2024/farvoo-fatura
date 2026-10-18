@@ -59,3 +59,32 @@ func TestBuildCodePageProbeHasReferenceBitmapAndAllRows(t *testing.T) {
 		t.Fatal("probe slip must cut")
 	}
 }
+
+func TestBuildStationSampleSlipUsesFirmwareForAllLines(t *testing.T) {
+	withThermalConfig(t, "")
+	raw := buildStationSampleSlip("pt")
+	if bytesIndex(raw, []byte{0x1D, 0x76, 0x30}) >= 0 {
+		t.Fatal("station sample must print pt + zh from printer fonts, no GS v 0")
+	}
+	for _, want := range [][]byte{
+		escposenc.Windows1252("012-Bacalhau à Brás"),
+		escposenc.Windows1252("Azeitonas"),
+		escposenc.Windows1252("Observação: sem cebola, "),
+		escposenc.Windows1252("006-Cola"),
+		{0x1C, 0x26, 0x1C, 0x21, 0x04}, // Han 1×2
+		{0x1C, 0x21, 0x84},             // Han 1×2 underline (note)
+	} {
+		if bytesIndex(raw, want) < 0 {
+			t.Fatalf("station sample missing % X", want)
+		}
+	}
+	if cutDotsInRaw(raw) == 0 {
+		t.Fatal("station sample must cut")
+	}
+}
+
+func TestRunTestPrintStationSampleNeedsMapping(t *testing.T) {
+	if err := runTestPrintForStation(&config{StationPrinters: map[string]string{}}, "", "", "pt", testPrintKindStationSample); err == nil {
+		t.Fatal("expected mapping error")
+	}
+}

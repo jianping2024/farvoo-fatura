@@ -96,6 +96,14 @@ func TestSizeProbeRowsPTAndHanB(t *testing.T) {
 	if !bytes.Contains(raw, append([]byte("MIX 1x2     "), HanFirmwareLine(SizeProbeMixSample, 0x01, HanSize1x2)...)) {
 		t.Fatal("MIX 1x2 row must be the HanFirmwareLine auto path")
 	}
+	for _, label := range []string{"MIX 1x1", "MIX 1x2 U", "MIX 2x2"} {
+		if !bytes.Contains(raw, []byte(label)) {
+			t.Fatalf("missing %s row", label)
+		}
+	}
+	if !bytes.Contains(raw, []byte{0x1C, 0x21, 0x84}) || !bytes.Contains(raw, []byte{0x1C, 0x21, 0x0C}) {
+		t.Fatal("MIX rows must cover FS ! 0x84 (1x2 underline) and 0x0C (2x2)")
+	}
 	if !bytes.HasSuffix(raw, append([]byte{0x1B, 0x40}, SelectCodeTable(CodeTableWPC1252)...)) {
 		t.Fatal("size probe must end with ESC @ + WPC1252")
 	}

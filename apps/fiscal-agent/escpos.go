@@ -1235,7 +1235,7 @@ func buildCodePageProbe(venue string) []byte {
 	}{
 		{"Reference (image):", escposenc.CodePageProbeSample, "Which row matches the reference?", escposenc.CodePageProbeRows(), true},
 		{"Chinese reference (image):", escposenc.HanProbeSample, "Which row matches the reference?", escposenc.HanProbeRows(), true},
-		{"SIZE 1x2 (PT vs ZH B):", "", "Is ZH B GS!1x2 or FS!1x2 as tall as PT 1x2?", escposenc.SizeProbeRows(), false},
+		{"SIZE 1x2 + MIX (PT vs ZH B):", "", "Which ZH row is as tall as PT 1x2? MIX rows: PT and ZH same height?", escposenc.SizeProbeRows(), false},
 	} {
 		w.text(sec.title)
 		w.lf()

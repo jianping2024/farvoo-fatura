@@ -113,7 +113,7 @@ Mesa：`escposWriter.text` 在 `escposTextAuto` 下按 `LinePathFor` 分流，�
 |----|------|
 | 葡语 | 参照位图 + CP850/860/WPC1252/CP858 |
 | 中文 | 参照位图 + A / **B** / C；pirata 认 **B** |
-| SIZE 1×2 | PT 1x1 / PT 1x2 / ZH B 1x1 / ZH B GS!1x2 / **ZH B FS!1x2** / **MIX 1x2**（`Água 少放盐`，即 auto 混排真实字节）；认与 PT 1x2 同高者（pirata：**FS!**；MIX 待测） |
+| SIZE 1×2 + MIX | PT 1x1 / PT 1x2 / ZH B 1x1 / ZH B GS!1x2 / **ZH B FS!1x2**；认与 PT 1x2 同高者（pirata：**FS!**）。MIX 行用 auto 混排真实字节（`HanFirmwareLine`）：**MIX 1x1** / **MIX 1x2**（`Água 少放盐`）/ **MIX 1x2 U**（`Observação: 少放盐`，备注下划线）/ **MIX 2x2**（`Mesa 桌 01`，抬头）；每行葡中同高、不乱码即通过（待测） |
 | 不做 | 自检结果不自动写配置 |
 
 | 职责 | 唯一入口 |
