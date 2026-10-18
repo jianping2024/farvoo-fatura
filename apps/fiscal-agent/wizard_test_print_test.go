@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"testing"
 
 	"farvoo-fiscal-agent/internal/escposenc"
@@ -68,11 +67,12 @@ func TestBuildStationSampleSlipUsesFirmwareForAllLines(t *testing.T) {
 		t.Fatal("station sample must print pt + zh from printer fonts, no GS v 0")
 	}
 	for _, want := range [][]byte{
-		append(reverseBlock(2, "012"), escposenc.Windows1252(" Bacalhau à Brás")...),
+		append(leadRow(2, "012"), escposenc.Windows1252(" Bacalhau à Brás")...),
 		escposenc.Windows1252("Azeitonas"),
 		escposenc.Windows1252("» sem cebola, "),
-		reverseBlock(1, "006"),
-		{0x1C, 0x26, 0x1D, 0x21, 0x01}, // Han 1×2 via GS ! (dish + note)
+		leadRow(1, "006"),
+		{0x1C, 0x26, 0xC6, 0xCF},       // 葡… other-language Han name 1×1 (no GS ! in FS & run)
+		{0x1C, 0x26, 0x1D, 0x21, 0x01}, // Han note 1×2
 	} {
 		if bytesIndex(raw, want) < 0 {
 			t.Fatalf("station sample missing % X", want)
@@ -80,35 +80,6 @@ func TestBuildStationSampleSlipUsesFirmwareForAllLines(t *testing.T) {
 	}
 	if cutDotsInRaw(raw) == 0 {
 		t.Fatal("station sample must cut")
-	}
-	probe := bytesIndex(raw, []byte("QTY / CODE PROBE"))
-	if probe < 0 {
-		t.Fatal("station sample must append the qty/code probe slip")
-	}
-	for _, r := range qtyCodeProbeRows {
-		if bytesIndex(raw[probe:], []byte(r.label)) < 0 {
-			t.Fatalf("probe missing row %q", r.label)
-		}
-	}
-	if bytes.Count(raw, []byte{0x1D, 0x56, 0x42}) != 2 {
-		t.Fatal("sample slip and probe slip each cut once")
-	}
-}
-
-func TestQtyCodeProbeRowStyles(t *testing.T) {
-	raw := buildQtyCodeProbeSlip("pt")
-	block := escposenc.Windows1252(stationSlipQtyCodeBlock(2, "020"))
-	lead := escposenc.Windows1252("2× 020")
-	for _, want := range [][]byte{
-		append([]byte{0x1D, 0x21, 0x01, 0x1B, 0x45, 0x00, 0x1D, 0x42, 0x01}, block...), // A
-		append([]byte{0x1D, 0x21, 0x11, 0x1B, 0x45, 0x00, 0x1D, 0x42, 0x01}, block...), // B
-		append([]byte{0x1D, 0x21, 0x11, 0x1B, 0x45, 0x01}, lead...),                    // C
-		append([]byte{0x1D, 0x21, 0x01, 0x1B, 0x45, 0x00, 0x1B, 0x2D, 0x02}, lead...),  // D
-		append([]byte{0x1D, 0x21, 0x11, 0x1B, 0x45, 0x00}, lead...),                    // E
-	} {
-		if bytesIndex(raw, want) < 0 {
-			t.Fatalf("probe missing % X", want)
-		}
 	}
 }
 
