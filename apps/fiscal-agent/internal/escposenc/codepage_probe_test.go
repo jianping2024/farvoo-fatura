@@ -71,3 +71,29 @@ func TestHanProbeRowsOrderAndRestore(t *testing.T) {
 		t.Fatal("Han probe must end with ESC @ + WPC1252")
 	}
 }
+
+func TestSizeProbeRowsPTAndHanB(t *testing.T) {
+	raw := SizeProbeRows()
+	gbkGong := []byte{0xB9, 0xAC} // 宫 in GBK
+	if !bytes.Contains(raw, []byte("PT 1x1")) || !bytes.Contains(raw, []byte("PT 1x2")) {
+		t.Fatal("missing PT size rows")
+	}
+	if !bytes.Contains(raw, []byte("ZH B 1x1")) || !bytes.Contains(raw, []byte("ZH B GS!1x2")) || !bytes.Contains(raw, []byte("ZH B FS!1x2")) {
+		t.Fatal("missing ZH B size rows")
+	}
+	// PT 1×2 uses GS ! 0x01 (same as writeBody1x2).
+	if !bytes.Contains(raw, []byte{0x1D, 0x21, 0x01}) {
+		t.Fatal("PT/ZH GS! 1x2 must emit GS ! 0x01")
+	}
+	// ZH B rows enter Chinese mode and emit GBK (size cmds may sit between FS & and glyphs).
+	if !bytes.Contains(raw, []byte{0x1C, 0x26}) || !bytes.Contains(raw, gbkGong) || !bytes.Contains(raw, []byte{0x1C, 0x2E}) {
+		t.Fatal("ZH B rows must use FS & … GBK … FS .")
+	}
+	// FS ! 0x04 = Kanji double-height alternate.
+	if !bytes.Contains(raw, []byte{0x1C, 0x21, 0x04}) {
+		t.Fatal("ZH B FS!1x2 must emit FS ! 0x04")
+	}
+	if !bytes.HasSuffix(raw, append([]byte{0x1B, 0x40}, SelectCodeTable(CodeTableWPC1252)...)) {
+		t.Fatal("size probe must end with ESC @ + WPC1252")
+	}
+}
