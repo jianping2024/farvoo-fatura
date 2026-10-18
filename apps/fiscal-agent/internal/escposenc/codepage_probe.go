@@ -42,9 +42,11 @@ const HanProbeSample = "宫保鸡丁 餐厅 打印测试"
 
 // SizeProbe samples — short so 1×2 still fits one line on POS-80.
 const (
-	SizeProbePTSample  = "Preco Agua"
-	SizeProbeZHSample  = "宫保鸡丁"
-	SizeProbeMixSample = "Água 少放盐"
+	SizeProbePTSample    = "Preco Agua"
+	SizeProbeZHSample    = "宫保鸡丁"
+	SizeProbeMixSample   = "Água 少放盐"
+	SizeProbeMixNote     = "Observação: 少放盐"
+	SizeProbeMixMasthead = "Mesa 桌 01"
 )
 
 // GS ! n — same Font A size command as writeBody1x2 (double height = 0x01).
@@ -121,10 +123,28 @@ func SizeProbeRows() []byte {
 	out = append(out, selectHanCharMode(0)...)
 	out = append(out, 0x1C, 0x2E, '\n')
 
-	// MIX 1×2 — the real auto path for a pt accent + Han line (HanFirmwareLine); should match PT 1x2.
+	// MIX rows — the real auto path for pt accent + Han on one line (HanFirmwareLine).
+	// Read: pt and Chinese on each row same height, no garble; 1x2 rows as tall as PT 1x2.
+	out = append(out, "MIX 1x1     "...)
+	out = append(out, HanFirmwareLine(SizeProbeMixSample, 0, HanSize1x1)...)
+	out = append(out, '\n')
+
 	out = append(out, selectCharSize(0x01)...)
 	out = append(out, "MIX 1x2     "...)
 	out = append(out, HanFirmwareLine(SizeProbeMixSample, 0x01, HanSize1x2)...)
+	out = append(out, '\n')
+
+	// Station note style: 1×2 + underline (ESC - 1 for Font A, FS ! bit 7 for Han).
+	out = append(out, "MIX 1x2 U   "...)
+	out = append(out, 0x1B, 0x2D, 0x01)
+	out = append(out, HanFirmwareLine(SizeProbeMixNote, 0x01, HanSize1x2|0x80)...)
+	out = append(out, 0x1B, 0x2D, 0x00, '\n')
+	out = append(out, selectCharSize(0)...)
+
+	// Masthead style 2×2 (GS ! 0x11 / FS ! 0x0C); 24 cols, label on its own line.
+	out = append(out, "MIX 2x2:\n"...)
+	out = append(out, selectCharSize(0x11)...)
+	out = append(out, HanFirmwareLine(SizeProbeMixMasthead, 0x11, HanSize2x2)...)
 	out = append(out, '\n')
 	out = append(out, selectCharSize(0)...)
 
