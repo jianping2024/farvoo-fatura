@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.34
+
+**新增：GR 发货单 + GT 运输单（mock AT）**
+
+- **GR（guia de remessa）：** 上路前 mock AT 运输通信 → 本机占号/Hash/ATCUD；可作废（N→A）；开 FT 时可挂 1..N 张 GR；进 SAF-T `MovementOfGoods`；不计入营收。
+- **GT（guia de transporte）：** 独立系列与写路径；场景 `transfer`｜`customer`；状态仅 N/A（无 F、无挂 FT）；`ready_to_gt`；装卸/开运/AT 码；打印前缀「Guia de transporte」。
+- **唯一写法：** GR=`IssueDeliveryNote`→`IssueGR`；GT=`IssueTransportNote`→`IssueGT`；共用 `at.TransportClient`（`MovementType` 分流）；迁移 `014_gr_delivery` / `015_gt_transport`。
+- 回归：`scripts/fiscal-gr-regression.mjs`、`scripts/fiscal-gt-regression.mjs`（mock）。Live AT SOAP 仍随 A2，不挡本版产品化。
+
 ## 0.5.33
 
 **新增：开台小票 `receipt_variant=open_table`（档口版式 + 一行金额）**
