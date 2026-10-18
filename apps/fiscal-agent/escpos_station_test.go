@@ -525,8 +525,8 @@ func TestStationTicketHanMenuUsesFirmware1x2ByDefault(t *testing.T) {
 	})
 	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
 	gbk := []byte{0xB9, 0xAC, 0xB1, 0xA3} // 宫保
-	if !bytes.Contains(raw, []byte{0x1C, 0x26, 0x1C, 0x21, 0x04}) || !bytes.Contains(raw, gbk) {
-		t.Fatal("Han dish name must be FS & + FS ! 0x04 (1×2) + GBK")
+	if !bytes.Contains(raw, append([]byte{0x1C, 0x26, 0x1D, 0x21, 0x01}, gbk...)) {
+		t.Fatal("Han dish name must be FS & + GS ! 0x01 (1×2) + GBK")
 	}
 	if bytes.Contains(raw, []byte{0x1D, 0x76, 0x30, 0x00}) {
 		t.Fatal("auto must not raster Han dish names")
@@ -622,8 +622,8 @@ func TestStationTicketPtNoteWithHanStaysFirmware(t *testing.T) {
 	if !bytes.Contains(raw, notePrefix) {
 		t.Fatal("pt note prefix must stay Font A WPC1252")
 	}
-	// note is underlined 1×2: Han run gets FS ! 0x04|0x80 with GS ! cleared around it.
-	if !bytes.Contains(raw, []byte{0x1D, 0x21, 0x00, 0x1C, 0x26, 0x1C, 0x21, 0x84}) {
-		t.Fatal("Han note run must clear GS ! and use FS ! 0x84 (1×2 + underline)")
+	// note is underlined 1×2: Han run FS & + GS ! 0x01 + FS ! underline + GBK.
+	if !bytes.Contains(raw, []byte{0x1C, 0x26, 0x1D, 0x21, 0x01, 0x1C, 0x21, 0x80}) {
+		t.Fatal("Han note run must use GS ! 0x01 + FS ! underline (0x80)")
 	}
 }

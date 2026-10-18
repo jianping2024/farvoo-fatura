@@ -14,34 +14,15 @@ type LinePath int
 const (
 	// PathLatin1252 — whole line fits WPC1252: Font A + ESC t 16 + GS ! size.
 	PathLatin1252 LinePath = iota
-	// PathHanFirmware — line with Han: Han runs FS & + GBK + FS ! size + FS . (pirata self-test B),
-	// every other run (ASCII, pt accents) Font A WPC1252 on the same line.
+	// PathHanFirmware — line with Han: Han runs FS & + GBK + GS ! size + FS .
+	// (store SIZE self-test: ZH B GS!1x2 = tall/thin; FS ! 0x04 = flat/wide — do not use for size).
 	PathHanFirmware
 	// PathRaster — anything else (Cyrillic, emoji…): GS v 0 bitmap.
 	PathRaster
 )
 
-// FS ! n (Han print mode) per Mesa/FT size role. pirata SIZE self-test: 0x04 = same height as
-// GS ! 0x01 on this firmware; 0x0C = double width + double height.
-const (
-	HanSize1x1 byte = 0x00
-	HanSize1x2 byte = 0x04
-	HanSize2x2 byte = 0x0C
-	HanSize2x1 byte = 0x08
-)
-
-// HanFirmwareSize maps the Font A GS ! role (double width / double height) to FS ! n.
-func HanFirmwareSize(doubleW, doubleH bool) byte {
-	switch {
-	case doubleW && doubleH:
-		return HanSize2x2
-	case doubleH:
-		return HanSize1x2
-	case doubleW:
-		return HanSize2x1
-	}
-	return HanSize1x1
-}
+// HanUnderline is FS ! bit 7 only — Kanji underline for notes. Never encode height/width in FS !.
+const HanUnderline byte = 0x80
 
 // IsHanFirmwareRune — CJK glyphs printed from the printer's Han font (Han ideographs, CJK
 // punctuation, full-width forms). Counted as 2 Font A columns.
@@ -95,15 +76,14 @@ func LinePathFor(s string) LinePath {
 	return PathRaster
 }
 
-// HanFirmwareLine is the ONLY firmware Han line encoder. The line is split into runs:
-//   - CJK runs (IsHanFirmwareRune): GS ! 0 + FS & + FS ! fsBang + GBK + FS ! 0 + FS . + GS ! gsBang
-//     — GS ! is cleared around Han so the bytes match the pirata "ZH B FS!1x2" self-test row
-//     (GS ! on Han printed short/distorted there);
+// HanFirmwareLine is the ONLY firmware Han line encoder. Bytes match store ZH B GS!1x2:
+//   - CJK runs (IsHanFirmwareRune): FS & + GS ! gsBang + [FS ! hanMode] + GBK + [FS ! 0] + FS .
 //   - everything else (ASCII, pt accents): Windows-1252 under the caller's ESC t 16 + GS ! gsBang.
 //
-// gsBang is the Font A GS ! n the caller has active for this line. No trailing LF.
-// Caller guarantees UsesHanFirmware(s).
-func HanFirmwareLine(s string, gsBang, fsBang byte) []byte {
+// gsBang is Font A GS ! n (body 1×2 = 0x01, masthead 2×2 = 0x11). hanMode is ONLY non-size
+// FS ! bits (HanUnderline); size must not use FS ! — that flattens Chinese on these printers.
+// No trailing LF. Caller guarantees UsesHanFirmware(s).
+func HanFirmwareLine(s string, gsBang, hanMode byte) []byte {
 	var out []byte
 	var run []rune
 	runHan := false
@@ -117,15 +97,18 @@ func HanFirmwareLine(s string, gsBang, fsBang byte) []byte {
 			return
 		}
 		gbk, _ := gbkEncoder.Bytes([]byte(string(run)))
+		out = append(out, 0x1C, 0x26) // FS &
 		if gsBang != 0 {
-			out = append(out, 0x1D, 0x21, 0x00)
+			out = append(out, 0x1D, 0x21, gsBang) // GS ! — same as Font A / ZH B GS!1x2
 		}
-		out = append(out, 0x1C, 0x26, 0x1C, 0x21, fsBang)
+		if hanMode != 0 {
+			out = append(out, 0x1C, 0x21, hanMode) // FS ! underline only
+		}
 		out = append(out, gbk...)
-		out = append(out, 0x1C, 0x21, 0x00, 0x1C, 0x2E)
-		if gsBang != 0 {
-			out = append(out, 0x1D, 0x21, gsBang)
+		if hanMode != 0 {
+			out = append(out, 0x1C, 0x21, 0x00)
 		}
+		out = append(out, 0x1C, 0x2E) // FS .
 		run = run[:0]
 	}
 	for _, r := range s {

@@ -18,7 +18,7 @@ func SetThermalEncoding(raw string) {
 
 type thermalLineStyle struct {
 	Bold bool
-	// DoubleH mirrors the caller's GS ! 0x01 so firmware Han lines get FS ! 1×2 too.
+	// DoubleH mirrors the caller's GS ! 0x01 so firmware Han lines get the same 1×2.
 	DoubleH bool
 }
 
@@ -42,7 +42,7 @@ func emitThermalLine(b *bytes.Buffer, s string, sty thermalLineStyle) {
 	default: // auto — docs/fiscal-thermal-text-encoding.zh.md §3
 		switch escposenc.LinePathFor(s) {
 		case escposenc.PathHanFirmware:
-			b.Write(escposenc.HanFirmwareLine(s, escposenc.FontASize(false, sty.DoubleH), escposenc.HanFirmwareSize(false, sty.DoubleH)))
+			b.Write(escposenc.HanFirmwareLine(s, escposenc.FontASize(false, sty.DoubleH), 0))
 			b.WriteByte('\n')
 		case escposenc.PathRaster:
 			b.Write(escposbitmap.Line(s, escposbitmap.Style{Bold: sty.Bold}, escposbitmap.DefaultFontPx))
