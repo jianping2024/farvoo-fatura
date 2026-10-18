@@ -67,12 +67,11 @@ func TestBuildStationSampleSlipUsesFirmwareForAllLines(t *testing.T) {
 		t.Fatal("station sample must print pt + zh from printer fonts, no GS v 0")
 	}
 	for _, want := range [][]byte{
-		escposenc.Windows1252("012-Bacalhau à Brás"),
+		append(reverseBlock(2, "012"), escposenc.Windows1252(" Bacalhau à Brás")...),
 		escposenc.Windows1252("Azeitonas"),
-		escposenc.Windows1252("Observação: sem cebola, "),
-		escposenc.Windows1252("006-Cola"),
+		escposenc.Windows1252("» sem cebola, "),
+		reverseBlock(1, "006"),
 		{0x1C, 0x26, 0x1D, 0x21, 0x01}, // Han 1×2 via GS ! (dish + note)
-		{0x1B, 0x2D, 0x01},             // note underline is ESC - only
 	} {
 		if bytesIndex(raw, want) < 0 {
 			t.Fatalf("station sample missing % X", want)

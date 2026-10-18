@@ -15,12 +15,6 @@ import (
 // 80mm paper ≈ 48 chars (Font A). Layout follows reference thermal receipts.
 const escposWidth = 48
 
-// Station slip menu body column model (Agent-side layout only).
-// Left/right symmetric: stationSlipSideMargin cols; Items, item rows, and notes share the same left edge.
-const (
-	stationSlipSideMargin  = 4
-	stationSlipQtyColWidth = 4 // fits "Qty" / 1–9999; frees item+note band toward right
-)
 
 // Top: no extra LF — most printers already feed after ESC @ init.
 // Bottom pad before GS V 66 cut — single source for station slip, pre-bill, and receipt tickets.
@@ -61,7 +55,8 @@ type ticketLabels struct {
 	orderedBy      string
 	amountPaid     string
 	station        string
-	itemNote       string // underlined guest note label, e.g. "备注: " / "Note: " / "Observação: "
+	itemCountOne   string // station slip meta, right of guest count
+	itemCountMany  string // fmt verb %d = total qty
 	// pre-bill legal chrome (Consulta de Mesa) — print_locale; empty locale → pt
 	notAnInvoice     string
 	invoiceFillHint  string
@@ -96,7 +91,8 @@ func labelsFor(locale string) ticketLabels {
 			orderedBy:      "下单方",
 			amountPaid:     "实付",
 			station:          "档口",
-			itemNote:         "备注: ",
+			itemCountOne:     "共1份",
+			itemCountMany:    "共%d份",
 			notAnInvoice:     "此单据不可作为发票使用",
 			invoiceFillHint:  "请填写发票信息",
 			invoiceFillName:  "姓名",
@@ -127,7 +123,8 @@ func labelsFor(locale string) ticketLabels {
 			orderedBy:      "Ordered By",
 			amountPaid:     "Amount Paid",
 			station:          "Station",
-			itemNote:         "Note: ",
+			itemCountOne:     "1 item",
+			itemCountMany:    "%d items",
 			notAnInvoice:     "THIS DOCUMENT IS NOT AN INVOICE",
 			invoiceFillHint:  "FILL IN FOR INVOICE",
 			invoiceFillName:  "Name",
@@ -158,7 +155,8 @@ func labelsFor(locale string) ticketLabels {
 			orderedBy:      "Pedido por",
 			amountPaid:     "Valor pago",
 			station:          "Estação",
-			itemNote:         "Observação: ",
+			itemCountOne:     "1 artigo",
+			itemCountMany:    "%d artigos",
 			notAnInvoice:     "ESTE DOCUMENTO NÃO SERVE DE FATURA",
 			invoiceFillHint:  "PARA A FATURA PREENCHER",
 			invoiceFillName:  "NOME",
@@ -444,6 +442,7 @@ func (w *escposWriter) writeResetPrintMode(out *bytes.Buffer) {
 	out.Write([]byte{0x1D, 0x21, 0})
 	out.Write([]byte{0x1B, 0x45, 0})
 	out.Write([]byte{0x1B, 0x2D, 0})
+	out.Write([]byte{0x1D, 0x42, 0}) // GS B 0 — station slip qty/code reverse
 	out.Write([]byte{0x1B, 0x32}) // ESC 2 — default line spacing
 }
 
@@ -566,91 +565,6 @@ func (w *escposWriter) writeReceiptAmountDueLine(s string) {
 	w.align(0)
 }
 
-func stationSlipQtyColStart(width int) int {
-	return width - stationSlipSideMargin - stationSlipQtyColWidth
-}
-
-func stationSlipHeaderItemsMaxWidth(width int) int {
-	return stationSlipQtyColStart(width) - stationSlipSideMargin
-}
-
-func stationSlipItemMaxWidth(width int) int {
-	return stationSlipQtyColStart(width) - stationSlipSideMargin
-}
-
-func placeRunesAt(buf []rune, start int, r []rune) {
-	for i, c := range r {
-		pos := start + i
-		if pos >= 0 && pos < len(buf) {
-			buf[pos] = c
-		}
-	}
-}
-
-func stationSlipColumnHeaderLine(itemsLabel, qtyLabel string, width int) string {
-	items := []rune(truncateDisplay(itemsLabel, stationSlipHeaderItemsMaxWidth(width)))
-	qty := []rune(truncateDisplay(padFieldRight(qtyLabel, stationSlipQtyColWidth), stationSlipQtyColWidth))
-	buf := make([]rune, width)
-	for i := range buf {
-		buf[i] = ' '
-	}
-	placeRunesAt(buf, stationSlipSideMargin, items)
-	placeRunesAt(buf, stationSlipQtyColStart(width), qty)
-	return string(buf)
-}
-
-// stationSlipItemLine — Latin Font A column layout only (48 cols). Han uses escposHanColumnRow.
-func stationSlipItemLine(leftLabel, qtyStr string, width int) string {
-	qtyStart := stationSlipQtyColStart(width)
-	qtyField := truncateDisplay(padFieldRight(strings.TrimSpace(qtyStr), stationSlipQtyColWidth), stationSlipQtyColWidth)
-	left := strings.Repeat(" ", stationSlipSideMargin) + leftLabel
-	pad := qtyStart - displayWidth(left)
-	if pad < 0 {
-		pad = 0
-	}
-	line := left + strings.Repeat(" ", pad) + qtyField
-	if trail := width - displayWidth(line); trail > 0 {
-		line += strings.Repeat(" ", trail)
-	}
-	return line
-}
-
-// stationSlipLabels is the ONLY station-slip dish label list: one entry per print_names name
-// (first gets the item_code prefix); legacy jobs → []{stationSlipItemLabel}.
-func stationSlipLabels(ln jobLine) []string {
-	var names []string
-	for _, n := range ln.PrintNames {
-		if n = strings.TrimSpace(n); n != "" {
-			names = append(names, n)
-		}
-	}
-	if len(names) == 0 {
-		return []string{stationSlipItemLabel(ln)}
-	}
-	if code := strings.TrimSpace(ln.ItemCode); code != "" {
-		names[0] = code + "-" + names[0]
-	}
-	return names
-}
-
-func stationSlipItemLabel(ln jobLine) string {
-	code := strings.TrimSpace(ln.ItemCode)
-	name := strings.TrimSpace(ln.ItemName)
-	if name == "" {
-		name = strings.TrimSpace(ln.DisplayName)
-	}
-	if code != "" && name != "" {
-		return code + "-" + name
-	}
-	if code != "" {
-		return code
-	}
-	if name != "" {
-		return name
-	}
-	return formatItemLabel(ln.ItemIndex, "")
-}
-
 func escposPadLine(left, right string, width int) string {
 	left = truncateDisplay(left, width-2)
 	right = truncateDisplay(right, width-2)
@@ -690,16 +604,6 @@ func (w *escposWriter) writeMasthead2x2Bold() {
 	w.size(true, true)
 	w.bold(true)
 	w.hanRole = hanFontLarge
-}
-
-func (w *escposWriter) writeHanColumnRow(left, right string, kind hanColumnRowKind) {
-	fontPx := hanFontPxForRole(w.hanFontPx, hanFontBody)
-	w.content.Write(escposHanColumnRow(left, right, kind, fontPx, bitmapTextStyle{
-		Align:     w.alignMode,
-		Bold:      w.boldOn,
-		Underline: w.underlineOn,
-	}))
-	w.lastTextBitmap = true
 }
 
 func ticketBrandingWord(locale string) string {
@@ -760,155 +664,6 @@ func sortStationMenuLines(lines []jobLine) []jobLine {
 	return out
 }
 
-// writeStationSlipHeader — branding, title, table context, Items/Qty column header (1×2).
-func (w *escposWriter) writeStationSlipHeader(p jobPayload, lab ticketLabels) {
-	w.writeTicketMasthead(lab.guestOrder)
-	var meta []string
-	if p.GuestCount > 0 {
-		meta = append(meta, fmt.Sprintf("%s:%d", lab.guest, p.GuestCount))
-	}
-	w.writeTableContext(p, lab, false, meta...)
-	w.separator('-')
-	w.writeBody1x2()
-	if stationSlipColumnBlockUsesHanCanvas(p, w) {
-		w.writeHanColumnRow(lab.items, lab.qty, hanColHeader)
-	} else {
-		w.text(stationSlipColumnHeaderLine(lab.items, lab.qty, escposWidth))
-		w.lf()
-	}
-}
-
-func stationSlipNoteMaxWidth(width int) int {
-	return stationSlipQtyColStart(width) - stationSlipSideMargin
-}
-
-func (w *escposWriter) writeHanStationNote(note, prefix string) {
-	fontPx := hanFontPxForRole(w.hanFontPx, hanFontBody)
-	style := bitmapTextStyle{
-		Align:     w.alignMode,
-		Bold:      w.boldOn,
-		Underline: true,
-	}
-	for _, nl := range wrapHanNoteLines(note, prefix, fontPx, false) {
-		w.writeBody1x2()
-		w.content.Write(escposHanLeftRow(nl.text, nl.x, fontPx, style))
-		w.lastTextBitmap = true
-	}
-}
-
-func (w *escposWriter) writeStationItemNoteLine(note string, width int, p jobPayload) {
-	note = strings.TrimSpace(note)
-	if note == "" {
-		return
-	}
-	prefix := printTicketLabels(p.Locale).itemNote
-	w.writeBody1x2()
-	if stationSlipColumnBlockUsesHanCanvas(p, w) {
-		w.writeHanStationNote(note, prefix)
-		return
-	}
-	indent := strings.Repeat(" ", stationSlipSideMargin)
-	maxW := stationSlipNoteMaxWidth(width)
-	w.underline(true)
-	for _, line := range wrapDisplay(prefix+note, maxW) {
-		w.text(indent + line)
-		w.lf()
-	}
-	w.underline(false)
-}
-
-// writeStationMenuLines — guest-order body at Font A 1×2 with column-model layout.
-func (w *escposWriter) writeStationMenuLines(p jobPayload, lines []jobLine) {
-	showGroup := p.stationSlipShowCategoryGroup()
-	w.writeBody1x2()
-	lastGroupHeader := ""
-	for _, ln := range sortStationMenuLines(lines) {
-		groupHeader := strings.TrimSpace(ln.CategoryGroupHeader)
-		if showGroup && groupHeader != "" && groupHeader != lastGroupHeader {
-			w.align(1)
-			w.text(groupHeader) // wrap inside escposBitmapText when Han
-			w.lf()
-			w.align(0)
-			lastGroupHeader = groupHeader
-		}
-
-		qty := ln.Qty
-		if qty <= 0 {
-			qty = 1
-		}
-		w.writeStationMenuItem(ln, qty, p)
-		w.writeStationItemNoteLine(ln.Note, escposWidth, p)
-	}
-}
-
-// writeStationMenuItem — one 1×2 row block per dish name; Qty only on the first name's first row.
-func (w *escposWriter) writeStationMenuItem(ln jobLine, qty int, p jobPayload) {
-	qtyStr := fmt.Sprintf("%d", qty)
-	for i, label := range stationSlipLabels(ln) {
-		if i > 0 {
-			qtyStr = ""
-		}
-		w.writeStationMenuLabel(label, qtyStr, p)
-	}
-}
-
-func (w *escposWriter) writeStationMenuLabel(label, qtyStr string, p jobPayload) {
-	if stationSlipColumnBlockUsesHanCanvas(p, w) {
-		fontPx := hanFontPxForRole(w.hanFontPx, hanFontBody)
-		maxPx := hanColumnLabelMaxPx(hanColItem)
-		maxCols := stationSlipItemMaxWidth(escposWidth)
-		var chunks []string
-		if displayWidth(label) <= maxCols {
-			chunks = []string{label}
-		} else {
-			chunks = wrapHanTextByPx(label, maxPx, fontPx, false)
-		}
-		if len(chunks) == 0 {
-			chunks = []string{label}
-		}
-		w.writeBody1x2()
-		w.writeHanColumnRow(chunks[0], qtyStr, hanColItem)
-		for _, c := range chunks[1:] {
-			w.writeBody1x2()
-			w.writeHanColumnRow(c, "", hanColItem)
-		}
-		return
-	}
-
-	maxLeft := stationSlipItemMaxWidth(escposWidth)
-	chunks := wrapDisplay(label, maxLeft)
-	if len(chunks) == 0 {
-		chunks = []string{label}
-	}
-	w.writeBody1x2()
-	w.text(stationSlipItemLine(chunks[0], qtyStr, escposWidth))
-	w.lf()
-	for _, c := range chunks[1:] {
-		w.writeBody1x2()
-		var b strings.Builder
-		col := 0
-		for col < stationSlipSideMargin {
-			b.WriteByte(' ')
-			col++
-		}
-		b.WriteString(c)
-		w.text(b.String())
-		w.lf()
-	}
-}
-
-func (w *escposWriter) writeStationSlipFooter(p jobPayload, lab ticketLabels) {
-	w.separator('-')
-	w.writeBody1x1()
-	orderAt := strings.TrimSpace(p.OrderTime)
-	if orderAt == "" {
-		orderAt = nowLocal()
-	}
-	w.text(fmt.Sprintf("%s:%s", lab.orderTime, orderAt))
-	w.lf()
-	w.text(fmt.Sprintf("%s:%s", lab.printedBy, ticketBrandingWord(w.printLocale)))
-	w.lf()
-}
 
 func formatItemLabel(idx int, name string) string {
 	name = strings.TrimSpace(name)
@@ -1011,20 +766,7 @@ func buildOpenTableSlip(p jobPayload) []byte {
 	if title == "" {
 		title = lab.guestOrder
 	}
-	w.writeTicketMasthead(title)
-	var meta []string
-	if p.GuestCount > 0 {
-		meta = append(meta, fmt.Sprintf("%s:%d", lab.guest, p.GuestCount))
-	}
-	w.writeTableContext(p, lab, false, meta...)
-	w.separator('-')
-	w.writeBody1x2()
-	if stationSlipColumnBlockUsesHanCanvas(p, w) {
-		w.writeHanColumnRow(lab.items, lab.qty, hanColHeader)
-	} else {
-		w.text(stationSlipColumnHeaderLine(lab.items, lab.qty, escposWidth))
-		w.lf()
-	}
+	w.writeStationSlipHeader(p, lab, title)
 	w.writeStationMenuLines(p, p.Lines)
 	due := p.AmountDue
 	if due <= 0 {
@@ -1052,7 +794,7 @@ func buildOpenTableSlip(p jobPayload) []byte {
 func buildStationTicket(p jobPayload) []byte {
 	lab := printTicketLabels(p.Locale)
 	w := newEscposForStationTicket(p)
-	w.writeStationSlipHeader(p, lab)
+	w.writeStationSlipHeader(p, lab, lab.guestOrder)
 	w.writeStationMenuLines(p, p.Lines)
 	w.writeStationSlipFooter(p, lab)
 	return w.finish(true)

@@ -9,8 +9,30 @@ import (
 	"farvoo-fiscal-agent/internal/escposenc"
 )
 
+var (
+	gsReverseOn  = []byte{0x1D, 0x42, 0x01}
+	gsReverseOff = []byte{0x1D, 0x42, 0x00}
+	gsV0         = []byte{0x1D, 0x76, 0x30, 0x00}
+)
+
+func stationTicketRaw(t *testing.T, p jobPayload) []byte {
+	t.Helper()
+	payload, err := json.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return escposFromJob(printJob{Type: "station_ticket", Payload: payload})
+}
+
+// reverseBlock is the exact Font A bytes of one dish lead: GS B 1 + " 1× 001 " + GS B 0.
+func reverseBlock(qty int, code string) []byte {
+	b := append([]byte{}, gsReverseOn...)
+	b = append(b, escposenc.Windows1252(stationSlipQtyCodeBlock(qty, code))...)
+	return append(b, gsReverseOff...)
+}
+
 func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
-	payload, err := json.Marshal(jobPayload{
+	raw := stationTicketRaw(t, jobPayload{
 		Locale:           "pt",
 		RestaurantName:   "川味餐厅",
 		TableDisplayName: "A-32",
@@ -26,7 +48,6 @@ func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
 				ItemName:            "Água 500ml",
 				DisplayName:         "001-Água 500ml",
 				Qty:                 1,
-				CategoryGroupSort:   0,
 				CategoryGroupHeader: "(Bebidas/ Drinks2)",
 			},
 			{
@@ -34,88 +55,80 @@ func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
 				ItemCode:            "007",
 				ItemName:            "Coca Cola Zero",
 				DisplayName:         "007-Coca Cola Zero",
-				Qty:                 1,
-				CategoryGroupSort:   0,
+				Qty:                 2,
 				CategoryGroupHeader: "(Bebidas/ Drinks2)",
 			},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
 	s := string(raw)
-	for _, bad := range []string{"Guest Order", "Table No.", "Items", "Qty", "Order Time:", "Printed By:"} {
+	for _, bad := range []string{"Guest Order", "Table No.", "Items", "Order Time:", "Printed By:", "Artigos", "Qtd"} {
 		if strings.Contains(s, bad) {
-			t.Fatalf("pt station ticket must not contain English chrome %q", bad)
+			t.Fatalf("pt station ticket must not contain %q", bad)
 		}
 	}
 	for _, want := range []string{
 		"restaurant",
 		"Pedido",
 		"Conv.:4",
-		"Artigos",
-		"Qtd",
+		"3 artigos",
 		"(Bebidas/ Drinks2)",
-		"007-Coca Cola Zero",
-		"Hora pedido:",
+		"Coca Cola Zero",
+		"2026-05-14 20:15",
 		"Impresso por:restaurant",
 	} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("missing %q in ticket output", want)
 		}
 	}
-	// auto + pt: Água / Mesa n.º ride WPC1252 Font A — same 1×2 size and Qtd column as ASCII dishes.
+	// table no. and order clock share one 2×2 row
+	if !bytes.Contains(raw, escposenc.Windows1252(escposPadLine("Mesa n.º:A-32", "20:15", escposWidth/2))) {
+		t.Fatal("table no. and HH:MM must share the 2×2 table row")
+	}
 	assertAccentsInFirmwareFont(t, raw, "Água", "n.º")
 
-	idx := bytes.Index(raw, []byte("Artigos"))
-	if idx < 0 {
-		t.Fatal(`missing "Artigos" column header`)
+	if !bytes.Contains(raw, append(reverseBlock(1, "001"), escposenc.Windows1252(" Água 500ml")...)) {
+		t.Fatal("dish row must be reverse qty+code block followed by the name")
 	}
-	if !bytes.Contains(raw[idx:], []byte{0x1D, 0x21, 0x01}) {
-		t.Fatal("menu body must use GS ! 1×2 after column headers")
+	if !bytes.Contains(raw, reverseBlock(2, "007")) {
+		t.Fatal("second dish must carry its own qty+code block")
 	}
-	if bytes.Contains(raw[idx:], []byte{0x1D, 0x21, 0x11}) {
-		t.Fatal("menu body must not use GS ! 2×2 after column headers")
+	idx := bytes.Index(raw, gsReverseOn)
+	if !bytes.Contains(raw[idx:], []byte{0x1D, 0x21, 0x01}) || bytes.Contains(raw[idx:], []byte{0x1D, 0x21, 0x11}) {
+		t.Fatal("menu body must stay GS ! 1×2 (never 2×2)")
 	}
 }
 
 func TestBuildStationTicketEnglishPrintLocale(t *testing.T) {
-	payload, err := json.Marshal(jobPayload{
+	s := string(stationTicketRaw(t, jobPayload{
 		Locale:           "en",
-		RestaurantName:   "川味餐厅",
 		TableDisplayName: "A-32",
 		GuestCount:       4,
 		OrderTime:        "2026-05-14 20:15",
-		StationSlipOptions: &stationSlipOptions{
-			ShowCategoryGroup: true,
-		},
-		Lines: []jobLine{
-			{
-				ItemIndex:           1,
-				ItemCode:            "001",
-				ItemName:            "Água 500ml",
-				DisplayName:         "001-Água 500ml",
-				Qty:                 1,
-				CategoryGroupSort:   0,
-				CategoryGroupHeader: "(Bebidas/ Drinks2)",
-			},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	s := string(raw)
-	for _, want := range []string{"Guest Order", "Table No.:A-32", "Guest:4", "Items", "Qty", "Order Time:"} {
+		Lines: []jobLine{{
+			ItemCode: "001", ItemName: "Água 500ml", Qty: 1,
+		}},
+	}))
+	for _, want := range []string{"Guest Order", "Table No.:A-32", "Guest:4", "1 item", "Printed By:restaurant"} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("missing %q in en station ticket", want)
 		}
 	}
 }
 
+func TestStationSlipHeaderShowsStationName(t *testing.T) {
+	raw := stationTicketRaw(t, jobPayload{
+		Locale:               "pt",
+		TableDisplayName:     "1",
+		StationDisplayNamePt: "BAR",
+		Lines:                []jobLine{{ItemCode: "001", ItemName: "Cola", Qty: 1}},
+	})
+	if !bytes.Contains(raw, escposenc.Windows1252("restaurant · BAR")) {
+		t.Fatal("branding line must carry the station name")
+	}
+}
+
 func TestStationSlipSkipsCategoryHeaderWhenDisabled(t *testing.T) {
-	payload, _ := json.Marshal(jobPayload{
+	raw := stationTicketRaw(t, jobPayload{
 		TableDisplayName: "1",
 		StationSlipOptions: &stationSlipOptions{
 			ShowCategoryGroup: false,
@@ -123,224 +136,251 @@ func TestStationSlipSkipsCategoryHeaderWhenDisabled(t *testing.T) {
 		Lines: []jobLine{{
 			ItemCode:            "001",
 			ItemName:            "Soup",
-			DisplayName:         "001-Soup",
 			Qty:                 1,
 			CategoryGroupHeader: "(Bebidas/ Drinks2)",
 		}},
 	})
-	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
 	if strings.Contains(string(raw), "(Bebidas/ Drinks2)") {
 		t.Fatal("category header must not print when show_category_group is false")
 	}
 }
 
-func TestStationSlipItemLineLayout(t *testing.T) {
-	line := stationSlipItemLine("001-Agua 500ml", "3", escposWidth)
-	if displayWidth(line) != escposWidth {
-		t.Fatalf("line display width %d want %d", displayWidth(line), escposWidth)
+func TestStationSlipNames(t *testing.T) {
+	code, names := stationSlipNames(jobLine{ItemCode: "001", ItemName: "Água 500ml"})
+	if code != "001" || len(names) != 1 || names[0] != "Água 500ml" {
+		t.Fatalf("legacy = %q %q", code, names)
 	}
-	runes := []rune(line)
-	if runes[stationSlipSideMargin] != '0' {
-		t.Fatalf("expected item label at col %d, got %q", stationSlipSideMargin, runes[stationSlipSideMargin])
+	code, names = stationSlipNames(jobLine{ItemCode: "001", ItemName: "Água 500ml", PrintNames: []string{" Água 500ml ", "", "矿泉水"}})
+	if code != "001" || len(names) != 2 || names[0] != "Água 500ml" || names[1] != "矿泉水" {
+		t.Fatalf("print_names = %q %q", code, names)
 	}
-	qtyCol := []rune(padFieldRight("3", stationSlipQtyColWidth))
-	qtyStart := stationSlipQtyColStart(escposWidth)
-	for i, c := range qtyCol {
-		if runes[qtyStart+i] != c {
-			t.Fatalf("expected centered qty at col %d: got %q want %q", qtyStart, string(runes[qtyStart:qtyStart+len(qtyCol)]), string(qtyCol))
-		}
+	// display_name fallback must not repeat the code
+	if _, names = stationSlipNames(jobLine{ItemCode: "003", DisplayName: "003-Cola"}); names[0] != "Cola" {
+		t.Fatalf("display_name fallback = %q", names)
 	}
-	for i := len(runes) - stationSlipSideMargin; i < len(runes); i++ {
-		if runes[i] != ' ' {
-			t.Fatalf("expected right margin %d cols", stationSlipSideMargin)
+	if code, names = stationSlipNames(jobLine{PrintNames: []string{"Cola", "Coke"}}); code != "" || names[1] != "Coke" {
+		t.Fatalf("no-code = %q %q", code, names)
+	}
+}
+
+func TestStationSlipQtyCodeBlock(t *testing.T) {
+	if got := stationSlipQtyCodeBlock(1, "001"); got != " 1× 001 " {
+		t.Fatalf("block %q", got)
+	}
+	if got := stationSlipQtyCodeBlock(12, ""); got != " 12× " {
+		t.Fatalf("no-code block %q", got)
+	}
+}
+
+func TestStationSlipClock(t *testing.T) {
+	for in, want := range map[string]string{
+		"2026-10-18 18:01":          "18:01",
+		"2026-10-18T09:05:00+01:00": "09:05",
+		"":                          "",
+		"garbage":                   "",
+	} {
+		if got := stationSlipClock(in); got != want {
+			t.Fatalf("clock(%q)=%q want %q", in, got, want)
 		}
 	}
 }
 
-// Han column row: Qty ink right-aligned in the Qty field on a full 576px canvas.
-func TestHanColumnRowQtyInkInBand(t *testing.T) {
-	fontPx := bitmapTextDefaultFontPx
-	labels := []string{"001-中水", "002-冰水 500毫升", "003-冰Vitalis 750ml"}
-	fieldEnd := hanQtyFieldEndPx()
-	tol := fontPx
+func TestStationItemExtraNamesAndNoteHangUnderName(t *testing.T) {
+	raw := stationTicketRaw(t, jobPayload{
+		Locale:           "pt",
+		TableDisplayName: "001",
+		Lines: []jobLine{{
+			ItemCode:   "020",
+			Qty:        7,
+			Note:       "sem sal",
+			PrintNames: []string{"Frango Piri-Piri", "Grilled chicken"},
+		}},
+	})
+	indent := strings.Repeat(" ", displayWidth(stationSlipQtyCodeBlock(7, "020"))+1)
+	first := bytes.Index(raw, append(reverseBlock(7, "020"), []byte(" Frango Piri-Piri")...))
+	second := bytes.Index(raw, []byte(indent+"Grilled chicken"))
+	note := bytes.Index(raw, escposenc.Windows1252(indent+"» sem sal"))
+	if first < 0 || second < 0 || note < 0 || !(first < second && second < note) {
+		t.Fatalf("want block+name < extra name < note, all hung under name; got %d %d %d", first, second, note)
+	}
+	if bytes.Count(raw, gsReverseOn) != 1 {
+		t.Fatal("only the first row carries the qty+code block")
+	}
+	if bytes.Contains(raw, []byte{0x1B, 0x2D, 0x01}) {
+		t.Fatal("notes are bold, not underlined")
+	}
+}
 
-	for _, label := range labels {
-		maxPx := hanColumnLabelMaxPx(hanColItem)
-		chunks := wrapHanTextByPx(label, maxPx, fontPx, false)
-		if len(chunks) == 0 {
-			t.Fatalf("empty wrap for %q", label)
-		}
-		img := renderBitmapColumnRow(chunks[0], "1", hanColItem, fontPx, bitmapTextStyle{})
-		if img.Width != bitmapTextMaxWidthPx {
-			t.Fatalf("%q canvas width %d want %d", label, img.Width, bitmapTextMaxWidthPx)
-		}
-		maxX := bitmapInkMaxX(img)
-		if maxX < fieldEnd-tol {
-			t.Fatalf("%q qty right edge %d want near field end %d", label, maxX, fieldEnd)
-		}
-		header := renderBitmapColumnRow("Items", "Qty", hanColHeader, fontPx, bitmapTextStyle{})
-		headerMax := bitmapInkMaxX(header)
-		if absInt(headerMax-maxX) > tol {
-			t.Fatalf("%q qty x mismatch header=%d item=%d", label, headerMax, maxX)
-		}
+func TestStationTicketLongNameWrapsUnderName(t *testing.T) {
+	long := "Bacalhau à Brás com Batata Palha e Azeitonas Pretas e Ovo Escalfado"
+	raw := stationTicketRaw(t, jobPayload{
+		Locale:           "pt",
+		TableDisplayName: "001",
+		Lines:            []jobLine{{ItemCode: "012", Qty: 2, PrintNames: []string{long}}},
+	})
+	if bytes.Contains(raw, []byte("…")) {
+		t.Fatal("dish names must wrap, never ellipsis")
+	}
+	indent := displayWidth(stationSlipQtyCodeBlock(2, "012")) + 1
+	chunks := stationSlipWrap(long, escposWidth-indent)
+	if len(chunks) < 2 {
+		t.Fatal("fixture too short to wrap")
+	}
+	if !bytes.Contains(raw, escposenc.Windows1252(strings.Repeat(" ", indent)+chunks[1])) {
+		t.Fatal("wrapped tail must hang under the name column")
+	}
+}
+
+func TestStationTicketItemNoteWrapsFullText(t *testing.T) {
+	note := "2 pacotes de acucar 1 pacote de leite em po sem canela e bem quente por favor"
+	raw := stationTicketRaw(t, jobPayload{
+		Locale:           "pt",
+		TableDisplayName: "068",
+		Lines:            []jobLine{{ItemCode: "903", ItemName: "Cafe", Qty: 2, Note: note}},
+	})
+	if bytes.Contains(raw, []byte("…")) {
+		t.Fatal("station note must not ellipsis-truncate")
+	}
+	if !bytes.Contains(raw, []byte("por favor")) {
+		t.Fatal("note tail missing")
+	}
+}
+
+func TestStationTicketHanMenuUsesFirmware1x2ByDefault(t *testing.T) {
+	withThermalConfig(t, "")
+	raw := stationTicketRaw(t, jobPayload{
+		Lines: []jobLine{{
+			ItemCode:   "001",
+			ItemName:   "Água 500ml",
+			Qty:        1,
+			PrintNames: []string{"Água 500ml", "宫保鸡丁"},
+		}},
+	})
+	gbk := []byte{0xB9, 0xAC, 0xB1, 0xA3} // 宫保
+	if !bytes.Contains(raw, append([]byte{0x1C, 0x26, 0x1D, 0x21, 0x01}, gbk...)) {
+		t.Fatal("Han dish name must be FS & + GS ! 0x01 (1×2) + GBK")
+	}
+	if bytes.Contains(raw, gsV0) {
+		t.Fatal("auto must not raster Han dish names")
+	}
+	if !bytes.Contains(raw, append(reverseBlock(1, "001"), escposenc.Windows1252(" Água 500ml")...)) {
+		t.Fatal("pt name must stay Font A WPC1252 after the reverse block")
+	}
+}
+
+func TestStationTicketHanNameOnBlockRowStaysFirmware(t *testing.T) {
+	withThermalConfig(t, "")
+	raw := stationTicketRaw(t, jobPayload{
+		Locale:           "pt",
+		TableDisplayName: "001",
+		Lines:            []jobLine{{ItemCode: "001", ItemName: "中水", Qty: 1, Note: "正常冰"}},
+	})
+	// reverse block (Font A) then firmware Han name on the same row
+	want := append(reverseBlock(1, "001"), ' ', 0x1C, 0x26)
+	if !bytes.Contains(raw, want) {
+		t.Fatal("Han name must follow the reverse block on the same row via FS &")
+	}
+	if bytes.Contains(raw, gsV0) {
+		t.Fatal("auto must not raster Han name or note")
+	}
+}
+
+func TestStationTicketPtNoteWithHanStaysFirmware(t *testing.T) {
+	withThermalConfig(t, "")
+	raw := stationTicketRaw(t, jobPayload{
+		Locale:           "pt",
+		TableDisplayName: "001",
+		Lines: []jobLine{{
+			ItemCode:   "012",
+			Qty:        2,
+			Note:       "sem cebola, 少放盐",
+			PrintNames: []string{"Bacalhau à Brás", "葡式炒鳕鱼"},
+		}},
+	})
+	if bytes.Contains(raw, gsV0) {
+		t.Fatal("Han note must not raster")
+	}
+	if !bytes.Contains(raw, escposenc.Windows1252("» sem cebola, ")) {
+		t.Fatal("note prefix must stay Font A WPC1252")
+	}
+	if !bytes.Contains(raw, []byte{0x1C, 0x26, 0x1D, 0x21, 0x01}) {
+		t.Fatal("Han note run must use GS ! 0x01 like dish names")
+	}
+	if bytes.Contains(raw, []byte{0x1C, 0x21}) {
+		t.Fatal("Han lines must not emit FS !")
 	}
 }
 
 func TestStationSlipColumnBlockUsesHanCanvas_ZhForcesLatinMenu(t *testing.T) {
-	withThermalConfig(t, "bitmap") // Han column canvas exists only on the bitmap escape path
-	zh := jobPayload{
-		Locale: "zh",
-		Lines: []jobLine{{
-			ItemCode: "031", ItemName: "Guarana", DisplayName: "031-Guarana", Qty: 1,
-		}},
+	withThermalConfig(t, "bitmap") // Han canvas exists only on the bitmap escape path
+	zh := jobPayload{Locale: "zh", Lines: []jobLine{{ItemCode: "031", ItemName: "Guarana", Qty: 1}}}
+	if !stationSlipColumnBlockUsesHanCanvas(zh, newEscposForStationTicket(zh)) {
+		t.Fatal("zh chrome must use the Han canvas even when dish names are Latin")
 	}
-	wZh := newEscposForStationTicket(zh)
-	if !stationSlipColumnBlockUsesHanCanvas(zh, wZh) {
-		t.Fatal("zh chrome must use Han Items/Qty canvas even when dish names are Latin")
-	}
-	en := jobPayload{
-		Locale: "en",
-		Lines: []jobLine{{
-			ItemCode: "031", ItemName: "Guarana", DisplayName: "031-Guarana", Qty: 1,
-		}},
-	}
-	wEn := newEscposForStationTicket(en)
-	if stationSlipColumnBlockUsesHanCanvas(en, wEn) {
-		t.Fatal("en Latin menu must stay on Font A column layout")
+	en := jobPayload{Locale: "en", Lines: []jobLine{{ItemCode: "031", ItemName: "Guarana", Qty: 1}}}
+	if stationSlipColumnBlockUsesHanCanvas(en, newEscposForStationTicket(en)) {
+		t.Fatal("en Latin menu must stay on Font A")
 	}
 }
 
-func TestZhStationSlipLatinMenuEmitsColumnRasters(t *testing.T) {
-	withThermalConfig(t, "bitmap") // Han column canvas exists only on the bitmap escape path
-	payload, _ := json.Marshal(jobPayload{
+func TestZhStationSlipBitmapItemRowsAreRasters(t *testing.T) {
+	withThermalConfig(t, "bitmap")
+	raw := stationTicketRaw(t, jobPayload{
 		Locale:           "zh",
 		TableDisplayName: "A-03",
 		GuestCount:       2,
 		Lines: []jobLine{
-			{ItemCode: "031", ItemName: "Guarana", DisplayName: "031-Guarana", Qty: 1},
-			{ItemCode: "007", ItemName: "Cola Zero", DisplayName: "007-Cola Zero", Qty: 1},
+			{ItemCode: "031", ItemName: "Guarana", Qty: 1},
+			{ItemCode: "007", ItemName: "可乐", Qty: 2, Note: "少冰"},
 		},
 	})
-	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	// 菜品/数量 header + 2 item rows → at least 3 GS v 0 from escposHanColumnRow
-	if n := bytes.Count(raw, []byte{0x1D, 0x76, 0x30, 0x00}); n < 3 {
-		t.Fatalf("GS v 0 count %d want >= 3 (zh Items/Qty on sole Han canvas)", n)
+	// 2 dish rows + 1 note row on the canvas
+	if n := bytes.Count(raw, gsV0); n < 3 {
+		t.Fatalf("GS v 0 count %d want >= 3", n)
+	}
+	if bytes.Contains(raw, gsReverseOn) {
+		t.Fatal("canvas rows invert pixels; GS B must not be used")
 	}
 }
 
-func TestHanNoteWrapUsesPixelWidth(t *testing.T) {
+func TestHanStationItemInvertsBlockBand(t *testing.T) {
 	fontPx := bitmapTextDefaultFontPx
-	prefix := labelsFor("zh").itemNote
-	note := strings.Repeat("测", 40)
-	lines := wrapHanNoteLines(note, prefix, fontPx, false)
-	if len(lines) < 2 {
-		t.Fatal("expected multi-line note wrap")
+	spacePx := measureHanTextWidth(" ", fontPx, true)
+	blockText := strings.TrimSpace(stationSlipQtyCodeBlock(1, "001"))
+	blockEnd := spacePx*2 + measureHanTextWidth(blockText, fontPx, true)
+	row := mergeBitmapRows(
+		renderBitmapLeftRow(blockText, spacePx, fontPx, bitmapTextStyle{Bold: true}),
+		renderBitmapLeftRow("中水", blockEnd+spacePx, fontPx, bitmapTextStyle{Bold: true}),
+	)
+	invertBitmapBand(row, 0, blockEnd)
+	if row.Width != bitmapTextMaxWidthPx {
+		t.Fatalf("canvas width %d want %d", row.Width, bitmapTextMaxWidthPx)
 	}
-	w0 := measureHanTextWidth(lines[0].text, fontPx, false)
-	lineEnd := hanNoteLeftPx() + w0
-	if lineEnd > hanQtyColStartPx()-hanColumnGapPx() {
-		t.Fatalf("first line extends past qty band: end %d max %d", lineEnd, hanQtyColStartPx()-hanColumnGapPx())
+	// background of the block band is ink (reverse); the gap before the name is blank
+	if row.Pixels[0] == 0 {
+		t.Fatal("block band must be inverted (ink at top-left)")
 	}
-	prefixW := measureHanTextWidth(prefix, fontPx, false)
-	firstBody := strings.TrimPrefix(lines[0].text, prefix)
-	if len([]rune(firstBody)) < 4 {
-		t.Fatalf("first line body too short (%d Han runes), regresses early wrap", len([]rune(firstBody)))
+	if bitmapInkInXBand(row, blockEnd, blockEnd+spacePx/2) {
+		t.Fatal("gap between block and name must stay blank")
 	}
-	if lines[1].x <= lines[0].x {
-		t.Fatalf("continuation must hang indent past prefix: x0=%d x1=%d", lines[0].x, lines[1].x)
-	}
-	if lines[1].x != hanNoteLeftPx()+prefixW {
-		t.Fatalf("hang x got %d want %d", lines[1].x, hanNoteLeftPx()+prefixW)
+	if !bitmapInkInXBand(row, blockEnd+spacePx, bitmapTextMaxWidthPx) {
+		t.Fatal("name ink missing after the block")
 	}
 }
 
-func TestHanNoteEscposSingleWrapPath(t *testing.T) {
-	withThermalConfig(t, "bitmap") // Han column canvas exists only on the bitmap escape path
-	longNote := strings.Repeat("德萨发生发顺丰", 8)
-	prefix := labelsFor("zh").itemNote
-	payload, _ := json.Marshal(jobPayload{
+func TestStationTicketLongZhNameWrapsNoEllipsis(t *testing.T) {
+	withThermalConfig(t, "bitmap")
+	longName := "超长中文菜名测试一二三四五六七八九十甲乙丙丁戊己庚辛"
+	raw := stationTicketRaw(t, jobPayload{
 		Locale:           "zh",
 		TableDisplayName: "A-01",
-		Lines: []jobLine{{
-			ItemCode:    "001",
-			ItemName:    "中水",
-			DisplayName: "001-中水",
-			Qty:         1,
-			Note:        longNote,
-		}},
+		Lines:            []jobLine{{ItemCode: "001", ItemName: longName, Qty: 1, Note: "我要冰的备注要打全"}},
 	})
-	fontPx := bitmapTextDefaultFontPx
-	wantLines := len(wrapHanNoteLines(longNote, prefix, fontPx, false))
-	itemLines := 1
-	wantRaster := wantLines + itemLines + 1 // header row
-	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	gotRaster := bytes.Count(raw, []byte{0x1D, 0x76, 0x30, 0x00})
-	if gotRaster < wantRaster {
-		t.Fatalf("GS v 0 count %d want at least %d (note must not double-wrap via escposBitmapText)", gotRaster, wantRaster)
+	if bytes.Contains(raw, []byte("…")) {
+		t.Fatal("zh station slip must not ellipsis-truncate menu or note")
 	}
-}
-
-func TestHanColumnLeftMatchesItemsMargin(t *testing.T) {
-	want := escposDisplayColToPx(stationSlipSideMargin)
-	if got := hanColumnLeftPx(hanColHeader); got != want {
-		t.Fatalf("header left px %d want %d", got, want)
-	}
-	if got := hanColumnLeftPx(hanColItem); got != want {
-		t.Fatalf("item left px %d want %d", got, want)
-	}
-	if got := hanNoteLeftPx(); got != want {
-		t.Fatalf("note left px %d want %d", got, want)
-	}
-}
-
-func TestHanItemLabelFont34SingleLine(t *testing.T) {
-	fontPx := 34
-	label := "002-冰水 500毫升"
-	maxPx := hanColumnLabelMaxPx(hanColItem)
-	maxCols := stationSlipItemMaxWidth(escposWidth)
-	var chunks []string
-	if displayWidth(label) <= maxCols {
-		chunks = []string{label}
-	} else {
-		chunks = wrapHanTextByPx(label, maxPx, fontPx, false)
-	}
-	if len(chunks) != 1 {
-		t.Fatalf("want single line for %q at font %d, got %d chunks %v", label, fontPx, len(chunks), chunks)
-	}
-	if chunks[0] != label {
-		t.Fatalf("chunk %q want %q", chunks[0], label)
-	}
-}
-
-func TestHanNoteFont34FirstLineFitsBody(t *testing.T) {
-	fontPx := 34
-	prefix := labelsFor("zh").itemNote
-	note := strings.Repeat("不要香菜", 6)
-	lines := wrapHanNoteLines(note, prefix, fontPx, false)
-	if len(lines) < 2 {
-		t.Fatal("expected multi-line note")
-	}
-	if !strings.HasPrefix(lines[0].text, prefix) {
-		t.Fatalf("first line %q missing prefix %q", lines[0].text, prefix)
-	}
-	firstBody := strings.TrimPrefix(lines[0].text, prefix)
-	if len([]rune(firstBody)) < 4 {
-		t.Fatalf("first line body too short (%q), prefix must not eat entire line width", firstBody)
-	}
-	if lines[0].x != hanNoteLeftPx() {
-		t.Fatalf("first line x got %d want %d", lines[0].x, hanNoteLeftPx())
-	}
-}
-
-func TestItemNotePrefixFollowsLocale(t *testing.T) {
-	if got := labelsFor("zh").itemNote; got != "备注: " {
-		t.Fatalf("zh itemNote %q", got)
-	}
-	if got := labelsFor("en").itemNote; got != "Note: " {
-		t.Fatalf("en itemNote %q", got)
-	}
-	if got := labelsFor("pt").itemNote; got != "Observação: " {
-		t.Fatalf("pt itemNote %q", got)
+	if bytes.Count(raw, gsV0) < 2 {
+		t.Fatal("long zh name+note should emit multiple bitmaps")
 	}
 }
 
@@ -350,12 +390,6 @@ func TestHanCanvasWidthIsPOS80(t *testing.T) {
 	}
 	if escposDisplayColToPx(1) != 12 {
 		t.Fatalf("col pitch %d want 12", escposDisplayColToPx(1))
-	}
-	if stationSlipQtyColWidth != 4 {
-		t.Fatalf("qty col width %d want 4", stationSlipQtyColWidth)
-	}
-	if stationSlipQtyColStart(escposWidth) != 40 {
-		t.Fatalf("qty start col %d want 40", stationSlipQtyColStart(escposWidth))
 	}
 }
 
@@ -377,40 +411,6 @@ func TestHanFontPxForRole(t *testing.T) {
 	if got := hanFontPxForRole(base, hanFontLarge); got != 36 {
 		t.Fatalf("large want 36 got %d", got)
 	}
-}
-
-func TestStationSlipColumnHeaderLayout(t *testing.T) {
-	line := stationSlipColumnHeaderLine("Items", "Qty", escposWidth)
-	runes := []rune(line)
-	if runes[stationSlipSideMargin] != 'I' {
-		t.Fatalf("expected Items at col %d (Guest 't'), got %q", stationSlipSideMargin, runes[stationSlipSideMargin])
-	}
-	qtyCol := []rune(padFieldRight("Qty", stationSlipQtyColWidth))
-	qtyStart := stationSlipQtyColStart(escposWidth)
-	for i, c := range qtyCol {
-		if runes[qtyStart+i] != c {
-			t.Fatalf("expected centered Qty header at col %d: got %q want %q", qtyStart, string(runes[qtyStart:qtyStart+len(qtyCol)]), string(qtyCol))
-		}
-	}
-}
-
-func TestStationTicketItemNoteUsesUnderline(t *testing.T) {
-	payload, _ := json.Marshal(jobPayload{
-		Locale:           "pt",
-		TableDisplayName: "A-1",
-		Lines: []jobLine{{
-			ItemCode:    "001",
-			ItemName:    "Soup",
-			DisplayName: "001-Soup",
-			Qty:         1,
-			Note:        "no onion",
-		}},
-	})
-	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	if !bytes.Contains(raw, []byte{0x1B, 0x2D, 0x01}) {
-		t.Fatal("expected ESC - 1 underline before item note")
-	}
-	assertAccentsInFirmwareFont(t, raw, "Observação")
 }
 
 func TestWrapDisplay(t *testing.T) {
@@ -439,197 +439,5 @@ func TestWrapDisplay(t *testing.T) {
 		if displayWidth(c) > 4 {
 			t.Fatalf("chunk %q wider than 4 cols", c)
 		}
-	}
-}
-
-func TestStationSlipNoteMaxWidthLeftOfQty(t *testing.T) {
-	maxW := stationSlipNoteMaxWidth(escposWidth)
-	if stationSlipSideMargin+maxW > stationSlipQtyColStart(escposWidth) {
-		t.Fatalf("note text band overlaps qty column: indent=%d max=%d qtyStart=%d",
-			stationSlipSideMargin, maxW, stationSlipQtyColStart(escposWidth))
-	}
-}
-
-func TestStationTicketItemNoteWrapsFullText(t *testing.T) {
-	note := "2 pacotes de acucar 1 pacote de leite em po sem canela e bem quente por favor"
-	full := labelsFor("pt").itemNote + note
-	maxW := stationSlipNoteMaxWidth(escposWidth)
-	chunks := wrapDisplay(full, maxW)
-	if len(chunks) < 2 {
-		t.Fatal("fixture note too short to exercise wrap")
-	}
-	payload, _ := json.Marshal(jobPayload{
-		Locale:           "pt",
-		TableDisplayName: "068",
-		Lines: []jobLine{{
-			ItemCode:    "903",
-			ItemName:    "Cafe",
-			DisplayName: "903-Cafe",
-			Qty:         2,
-			Note:        note,
-		}},
-	})
-	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	assertAccentsInFirmwareFont(t, raw, "Observação")
-	if bytes.Contains(raw, []byte("…")) {
-		t.Fatal("station note must not ellipsis-truncate")
-	}
-	// wrapDisplay fixture still multi-chunk (prefix width); product path rasters each text() line.
-	_ = chunks
-	itemLine := stationSlipItemLine("903-Cafe", "2", escposWidth)
-	qtyStart := stationSlipQtyColStart(escposWidth)
-	qtyCol := []rune(padFieldRight("2", stationSlipQtyColWidth))
-	runes := []rune(itemLine)
-	for i, c := range qtyCol {
-		if runes[qtyStart+i] != c {
-			t.Fatalf("qty column disturbed: got %q", itemLine)
-		}
-	}
-}
-
-func TestStationTicketLongZhNameWrapsNoEllipsis(t *testing.T) {
-	withThermalConfig(t, "bitmap") // Han column canvas exists only on the bitmap escape path
-	longName := "超长中文菜名测试一二三四五六七八九十甲乙丙丁戊己庚辛"
-	payload, _ := json.Marshal(jobPayload{
-		Locale:           "zh",
-		TableDisplayName: "A-01",
-		Lines: []jobLine{{
-			ItemCode:    "001",
-			ItemName:    longName,
-			DisplayName: "001-" + longName,
-			Qty:         1,
-			Note:        "我要冰的备注要打全",
-		}},
-	})
-	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	if bytes.Contains(raw, []byte("…")) {
-		t.Fatal("zh station slip must not ellipsis-truncate menu or note")
-	}
-	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30, 0x00}) {
-		t.Fatal("expected GS v 0 for zh menu")
-	}
-	if bytes.Count(raw, []byte{0x1D, 0x76, 0x30, 0x00}) < 2 {
-		t.Fatal("long zh name+note should emit multiple bitmaps")
-	}
-}
-
-func TestStationTicketHanMenuUsesFirmware1x2ByDefault(t *testing.T) {
-	withThermalConfig(t, "")
-	payload, _ := json.Marshal(jobPayload{
-		Lines: []jobLine{{
-			ItemCode:   "001",
-			ItemName:   "Água 500ml",
-			Qty:        1,
-			PrintNames: []string{"Água 500ml", "宫保鸡丁"},
-		}},
-	})
-	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	gbk := []byte{0xB9, 0xAC, 0xB1, 0xA3} // 宫保
-	if !bytes.Contains(raw, append([]byte{0x1C, 0x26, 0x1D, 0x21, 0x01}, gbk...)) {
-		t.Fatal("Han dish name must be FS & + GS ! 0x01 (1×2) + GBK")
-	}
-	if bytes.Contains(raw, []byte{0x1D, 0x76, 0x30, 0x00}) {
-		t.Fatal("auto must not raster Han dish names")
-	}
-	if !bytes.Contains(raw, escposenc.Windows1252("001-Água 500ml")) {
-		t.Fatal("pt name must stay Font A WPC1252")
-	}
-}
-
-func TestStationSlipLabelsPrintNames(t *testing.T) {
-	legacy := jobLine{ItemCode: "001", ItemName: "Água 500ml"}
-	if got := stationSlipLabels(legacy); len(got) != 1 || got[0] != stationSlipItemLabel(legacy) {
-		t.Fatalf("legacy labels = %q", got)
-	}
-	multi := jobLine{ItemCode: "001", ItemName: "Água 500ml", PrintNames: []string{" Água 500ml ", "", "矿泉水"}}
-	got := stationSlipLabels(multi)
-	if len(got) != 2 || got[0] != "001-Água 500ml" || got[1] != "矿泉水" {
-		t.Fatalf("multi labels = %q", got)
-	}
-	noCode := jobLine{PrintNames: []string{"Cola", "Coke"}}
-	if got := stationSlipLabels(noCode); got[0] != "Cola" || got[1] != "Coke" {
-		t.Fatalf("no-code labels = %q", got)
-	}
-}
-
-func TestStationTicketPrintNamesQtyOnlyOnFirstName(t *testing.T) {
-	payload, _ := json.Marshal(jobPayload{
-		Locale:           "pt",
-		TableDisplayName: "001",
-		Lines: []jobLine{{
-			ItemCode:    "020",
-			ItemName:    "Frango Piri-Piri",
-			DisplayName: "020-Frango Piri-Piri",
-			Qty:         7,
-			Note:        "sem sal",
-			PrintNames:  []string{"Frango Piri-Piri", "Grilled chicken"},
-		}},
-	})
-	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	first := bytes.Index(raw, []byte("020-Frango Piri-Piri"))
-	second := bytes.Index(raw, []byte("Grilled chicken"))
-	note := bytes.Index(raw, []byte("sem sal"))
-	if first < 0 || second < 0 || note < 0 || !(first < second && second < note) {
-		t.Fatalf("want first name < second name < note, got %d %d %d", first, second, note)
-	}
-	firstRow := raw[first : first+bytes.IndexByte(raw[first:], '\n')]
-	if !bytes.Contains(firstRow, []byte("7")) {
-		t.Fatalf("first name row must carry qty: %q", firstRow)
-	}
-	secondRow := raw[second : second+bytes.IndexByte(raw[second:], '\n')]
-	if bytes.Contains(secondRow, []byte("7")) || bytes.Contains(secondRow, []byte("020-")) {
-		t.Fatalf("second name row must have no qty or code: %q", secondRow)
-	}
-}
-
-func TestStationTicketPrintNamesLongNameWraps(t *testing.T) {
-	long := "Bacalhau à Brás com Batata Palha e Azeitonas Pretas"
-	payload, _ := json.Marshal(jobPayload{
-		Locale:           "pt",
-		TableDisplayName: "001",
-		Lines: []jobLine{{
-			ItemCode:   "012",
-			Qty:        2,
-			PrintNames: []string{"Cola", long},
-		}},
-	})
-	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	if bytes.Contains(raw, []byte("…")) {
-		t.Fatal("print_names must wrap, never ellipsis")
-	}
-	if !bytes.Contains(raw, []byte("Pretas")) {
-		t.Fatal("wrapped tail of second name missing")
-	}
-}
-
-func TestStationTicketPtNoteWithHanStaysFirmware(t *testing.T) {
-	withThermalConfig(t, "")
-	payload, _ := json.Marshal(jobPayload{
-		Locale:           "pt",
-		TableDisplayName: "001",
-		Lines: []jobLine{{
-			ItemCode:   "012",
-			Qty:        2,
-			Note:       "sem cebola, 少放盐",
-			PrintNames: []string{"Bacalhau à Brás", "葡式炒鳕鱼"},
-		}},
-	})
-	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	if bytes.Contains(raw, []byte{0x1D, 0x76, 0x30, 0x00}) {
-		t.Fatal("pt prefix + Han note must not raster")
-	}
-	notePrefix := escposenc.Windows1252("Observação: sem cebola, ")
-	if !bytes.Contains(raw, notePrefix) {
-		t.Fatal("pt note prefix must stay Font A WPC1252")
-	}
-	// note: ESC - for Font A; Han run same as dish name (FS & + GS ! 0x01 + GBK), no FS !.
-	if !bytes.Contains(raw, []byte{0x1B, 0x2D, 0x01}) {
-		t.Fatal("note must use ESC - underline for Font A")
-	}
-	if !bytes.Contains(raw, []byte{0x1C, 0x26, 0x1D, 0x21, 0x01}) {
-		t.Fatal("Han note run must use GS ! 0x01 like dish names")
-	}
-	if bytes.Contains(raw, []byte{0x1C, 0x21, 0x80}) {
-		t.Fatal("Han note must not emit FS ! underline")
 	}
 }

@@ -69,111 +69,9 @@ func escposDisplayColToPx(col int) int {
 	return col * bitmapTextMaxWidthPx / escposWidth
 }
 
-func hanQtyColStartPx() int {
-	return escposDisplayColToPx(stationSlipQtyColStart(escposWidth))
-}
-
-func hanQtyFieldEndPx() int {
-	return escposDisplayColToPx(stationSlipQtyColStart(escposWidth) + stationSlipQtyColWidth)
-}
-
-func hanColumnGapPx() int {
-	return escposDisplayColToPx(1)
-}
-
-// hanQtyTextStartPx — right-align s in the Qty field (Font A column semantics → px).
-func hanQtyTextStartPx(s string, fontPx int, bold bool) int {
-	if strings.TrimSpace(s) == "" {
-		return hanQtyColStartPx()
-	}
-	fieldEnd := hanQtyFieldEndPx()
-	rw := measureHanTextWidth(s, fontPx, bold)
-	rx := fieldEnd - rw
-	minX := hanQtyColStartPx()
-	if rx < minX {
-		return minX
-	}
-	return rx
-}
-
-func hanNoteLeftPx() int {
-	return escposDisplayColToPx(stationSlipSideMargin)
-}
-
-func hanNoteMaxPx() int {
-	max := hanQtyColStartPx() - hanNoteLeftPx() - hanColumnGapPx()
-	if max < 1 {
-		return 1
-	}
-	return max
-}
-
-type hanNoteLine struct {
-	x    int
-	text string
-}
-
-// wrapHanNoteLines — prefix on first line only (same font as body); continuations hang after prefix.
-func wrapHanNoteLines(note, prefix string, fontPx int, bold bool) []hanNoteLine {
-	note = strings.TrimSpace(note)
-	if note == "" {
-		return nil
-	}
-	leftPx := hanNoteLeftPx()
-	prefixW := measureHanTextWidth(prefix, fontPx, bold)
-	firstBodyMax := hanNoteMaxPx() - prefixW
-	if firstBodyMax < 1 {
-		firstBodyMax = 1
-	}
-	bodyChunks := wrapHanTextByPx(note, firstBodyMax, fontPx, bold)
-	if len(bodyChunks) == 0 {
-		return []hanNoteLine{{x: leftPx, text: prefix + note}}
-	}
-	out := []hanNoteLine{{x: leftPx, text: prefix + bodyChunks[0]}}
-	consumed := len([]rune(bodyChunks[0]))
-	noteRunes := []rune(note)
-	if consumed >= len(noteRunes) {
-		return out
-	}
-	remaining := strings.TrimSpace(string(noteRunes[consumed:]))
-	if remaining == "" {
-		return out
-	}
-	hangPx := leftPx + prefixW
-	contMax := hanQtyColStartPx() - hangPx - hanColumnGapPx()
-	if contMax < 1 {
-		contMax = 1
-	}
-	for _, c := range wrapHanTextByPx(remaining, contMax, fontPx, bold) {
-		out = append(out, hanNoteLine{x: hangPx, text: c})
-	}
-	return out
-}
-
-type hanColumnRowKind int
-
-const (
-	hanColHeader hanColumnRowKind = iota
-	hanColItem
-)
-
-func hanColumnLeftPx(_ hanColumnRowKind) int {
-	return escposDisplayColToPx(stationSlipSideMargin)
-}
-
-func hanColumnLabelMaxPx(kind hanColumnRowKind) int {
-	left := hanColumnLeftPx(kind)
-	gap := escposDisplayColToPx(1)
-	max := hanQtyColStartPx() - left - gap
-	if max < 1 {
-		return 1
-	}
-	return max
-}
-
-// stationSlipColumnBlockUsesHanCanvas — Items/Qty block uses one 576px ruler.
-// Sole gate: zh chrome (菜品/数量) OR any line/note with Han. Never mix space-padded
-// Han labels via escposBitmapText with Latin Font A qty (qty drifts to paper edge).
+// stationSlipColumnBlockUsesHanCanvas — menu rows use one 576px ruler (bitmap escape only).
+// Sole gate: zh chrome OR any line/note with Han. Never mix space-padded Han via
+// escposBitmapText with Font A rows (name/note hang indent drifts).
 func stationSlipColumnBlockUsesHanCanvas(p jobPayload, w *escposWriter) bool {
 	if w.textMode != escposTextBitmap {
 		return false
@@ -185,8 +83,9 @@ func stationSlipColumnBlockUsesHanCanvas(p jobPayload, w *escposWriter) bool {
 		if hasHan(strings.TrimSpace(ln.Note)) {
 			return true
 		}
-		for _, label := range stationSlipLabels(ln) {
-			if hasHan(label) {
+		_, names := stationSlipNames(ln)
+		for _, name := range names {
+			if hasHan(name) {
 				return true
 			}
 		}
@@ -282,11 +181,6 @@ func escposBitmapRaster(img bitmapTextImage, align byte) []byte {
 	out = append(out, data...)
 	// GS v 0 already advances by image height — do not append LF (that adds a blank line of paper).
 	return out
-}
-
-func escposHanColumnRow(left, right string, kind hanColumnRowKind, fontPx int, style bitmapTextStyle) []byte {
-	img := renderBitmapColumnRow(left, right, kind, fontPx, style)
-	return escposBitmapRaster(img, style.Align)
 }
 
 func escposHanLeftRow(text string, leftPx int, fontPx int, style bitmapTextStyle) []byte {

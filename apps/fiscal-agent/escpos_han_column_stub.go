@@ -4,25 +4,6 @@ package main
 
 import "strings"
 
-// renderBitmapColumnRow — stub places ink in left band + Qty right-aligned in field.
-func renderBitmapColumnRow(left, right string, kind hanColumnRowKind, fontPx int, style bitmapTextStyle) bitmapTextImage {
-	canvasW := bitmapTextMaxWidthPx
-	fontPx = resolveHanBitmapFontPx(fontPx)
-	height := fontPx + hanBitmapHeightPad
-	pixels := make([]byte, canvasW*height)
-	stamp := stubStampInk(pixels, canvasW, height, fontPx)
-
-	leftX := hanColumnLeftPx(kind)
-	if left != "" {
-		stamp(left, leftX)
-	}
-	if right != "" {
-		rx := hanQtyTextStartPx(right, fontPx, style.Bold)
-		stamp(right, rx)
-	}
-	return bitmapTextImage{Width: canvasW, Height: height, Pixels: pixels}
-}
-
 func renderBitmapLeftRow(text string, leftPx int, fontPx int, style bitmapTextStyle) bitmapTextImage {
 	canvasW := bitmapTextMaxWidthPx
 	text = strings.TrimSpace(text)
