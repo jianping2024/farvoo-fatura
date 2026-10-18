@@ -412,11 +412,11 @@ func TestRenderESCPOS_HanFirmwareAccentsStayFontA(t *testing.T) {
 		t.Fatal("auto must not raster pure Han lines")
 	}
 	gbk := []byte{0xB9, 0xAC, 0xB1, 0xA3} // 宫保
-	if !bytes.Contains(raw, append([]byte{0x1C, 0x26, 0x1C, 0x21, 0x04}, gbk...)) {
-		t.Fatal("1×2 LegalName in Han must be FS & + FS ! 0x04 + GBK")
+	if !bytes.Contains(raw, append([]byte{0x1C, 0x26, 0x1D, 0x21, 0x01}, gbk...)) {
+		t.Fatal("1×2 LegalName in Han must be FS & + GS ! 0x01 + GBK")
 	}
-	if !bytes.Contains(raw, []byte{0x1C, 0x26, 0x1C, 0x21, 0x00}) {
-		t.Fatal("1×1 Han item line must be FS & + FS ! 0")
+	if !bytes.Contains(raw, []byte{0x1C, 0x26}) || !bytes.Contains(raw, gbk) {
+		t.Fatal("1×1 Han item line must be FS & + GBK")
 	}
 	if bytes.Contains(raw, []byte("宫保")) {
 		t.Fatal("UTF-8 Han on wire")

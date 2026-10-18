@@ -407,11 +407,11 @@ func (w *escposWriter) text(s string) {
 	if w.textMode == escposTextAuto {
 		switch escposenc.LinePathFor(s) {
 		case escposenc.PathHanFirmware:
-			n := escposenc.HanFirmwareSize(w.doubleW, w.doubleH)
+			hanMode := byte(0)
 			if w.underlineOn {
-				n |= 0x80 // FS ! bit 7 — Han underline (notes)
+				hanMode = escposenc.HanUnderline
 			}
-			w.content.Write(escposenc.HanFirmwareLine(s, escposenc.FontASize(w.doubleW, w.doubleH), n))
+			w.content.Write(escposenc.HanFirmwareLine(s, escposenc.FontASize(w.doubleW, w.doubleH), hanMode))
 			w.lastTextBitmap = false
 			return
 		case escposenc.PathRaster:

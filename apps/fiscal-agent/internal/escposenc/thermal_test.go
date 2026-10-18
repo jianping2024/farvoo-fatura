@@ -53,19 +53,25 @@ func TestLinePathFor(t *testing.T) {
 }
 
 func TestHanFirmwareLineBytes(t *testing.T) {
-	// 1×2: Font A run keeps GS ! 0x01; Han run clears it, prints FS ! 0x04, then restores.
-	got := HanFirmwareLine("A宫", FontASize(false, true), HanFirmwareSize(false, true))
-	want := []byte{'A', 0x1D, 0x21, 0x00, 0x1C, 0x26, 0x1C, 0x21, 0x04, 0xB9, 0xAC, 0x1C, 0x21, 0x00, 0x1C, 0x2E, 0x1D, 0x21, 0x01}
+	// 1×2: Han run uses GS ! 0x01 inside FS & (same as ZH B GS!1x2); no FS ! size.
+	got := HanFirmwareLine("A宫", FontASize(false, true), 0)
+	want := []byte{'A', 0x1C, 0x26, 0x1D, 0x21, 0x01, 0xB9, 0xAC, 0x1C, 0x2E}
 	if string(got) != string(want) {
 		t.Fatalf("HanFirmwareLine = % X want % X", got, want)
 	}
-	// pt accent outside FS & in WPC1252 (á = E1); 1×1 needs no GS ! toggling.
+	// note underline: FS ! 0x80 only around GBK; size still GS !.
+	got = HanFirmwareLine("宫", FontASize(false, true), HanUnderline)
+	want = []byte{0x1C, 0x26, 0x1D, 0x21, 0x01, 0x1C, 0x21, 0x80, 0xB9, 0xAC, 0x1C, 0x21, 0x00, 0x1C, 0x2E}
+	if string(got) != string(want) {
+		t.Fatalf("underline HanFirmwareLine = % X want % X", got, want)
+	}
+	// pt accent outside FS & in WPC1252 (á = E1); 1×1 needs no GS !.
 	got = HanFirmwareLine("á宫!", 0, 0)
-	want = []byte{0xE1, 0x1C, 0x26, 0x1C, 0x21, 0x00, 0xB9, 0xAC, 0x1C, 0x21, 0x00, 0x1C, 0x2E, '!'}
+	want = []byte{0xE1, 0x1C, 0x26, 0xB9, 0xAC, 0x1C, 0x2E, '!'}
 	if string(got) != string(want) {
 		t.Fatalf("mixed HanFirmwareLine = % X want % X", got, want)
 	}
-	if HanFirmwareSize(true, true) != 0x0C || HanFirmwareSize(false, false) != 0 {
-		t.Fatal("FS ! size map")
+	if FontASize(true, true) != 0x11 || FontASize(false, false) != 0 {
+		t.Fatal("GS ! size map")
 	}
 }
