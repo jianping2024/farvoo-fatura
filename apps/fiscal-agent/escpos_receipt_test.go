@@ -440,6 +440,7 @@ func TestReceiptMenuHeaderAndAmountDueUse1x2Bold(t *testing.T) {
 }
 
 func TestZhPreBillMenuOneRasterPerLine(t *testing.T) {
+	withThermalConfig(t, "bitmap") // Han column canvas exists only on the bitmap escape path
 	fontPx := bitmapTextDefaultFontPx
 	style := bitmapTextStyle{Bold: true}
 	// Old path: pad to 48 cols then escposBitmapText/wrapDisplay → multi GS per logical line.

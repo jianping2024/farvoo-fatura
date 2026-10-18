@@ -1,6 +1,6 @@
 # 热敏票文字编码（葡语 Font A，汉语固件 B+FS!，位图逃生）
 
-> **状态：定稿（方案；实现尚未落地）**  
+> **状态：定稿（已实现 0.5.36，待门店试打）**  
 > **权威：是**  
 > **对应实现：** `internal/escposenc`（policy + 固件汉字行）+ `internal/escposbitmap`（位图逃生）+ Mesa `escposWriter.text` + `print.emitThermalLine`  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
@@ -42,8 +42,8 @@
 | # | 定法 |
 |---|------|
 | 1 | **葡语/英文（整行可编码进 WPC1252）**：Font A + `ESC t 16` + Windows-1252 + **`GS !` 字号**（正文 1×2 = `GS ! 0x01`，与现 `writeBody1x2` 同） |
-| 2 | **汉语行（含 ≥1 汉字，且其余字符均为 ASCII）**：`FS &` + GBK + **`FS !` 字号** + `FS .`。正文 1×2 = `FS ! 0x04`；1×1 = `FS ! 0`；标题级 2×2 = `FS ! 0x0C`（倍宽+倍高） |
-| 3 | **位图（整行 GS v 0）**：行内有既非 ASCII、又非汉字、又装不进 WPC1252 的字（西里尔；或同词葡语重音+汉字如 `Água 宫保`）；或 `text_encoding=bitmap` 强制逃生 |
+| 2 | **汉语行（含 ≥1 汉字，其余字符为 ASCII 或 GBK 内的中文标点/全角字符）**：`FS &` + `FS ! n` + GBK + `FS ! 0` + `FS .`（与自检 ZH B FS!1x2 同序）。正文 1×2 = `FS ! 0x04`；1×1 = `FS ! 0`；标题级 2×2 = `FS ! 0x0C`（倍宽+倍高）；下划线行（备注）再或 `0x80`。中文标点/全角按 2 列计（`displayCols`） |
+| 3 | **位图（整行 GS v 0）**：行内有既非 ASCII、又非汉字、又装不进 WPC1252 的字（西里尔、emoji；或同行葡语重音+汉字如 `Água 宫保`、pt 店备注 `Observação: 少放盐`）；或 `text_encoding=bitmap` 强制逃生 |
 | 4 | **禁止半行混排**：禁止「固件汉字标签 + Font A Qty/金额」若列宽会漂。出品联 Items/Qty：固件汉字模式用 **列宽模型**（汉字 2 列，与现 `displayWidth` 一致）空格垫 Qty；**仅**位图逃生时走 Han 列画布 |
 | 5 | **`text_encoding ∈ {auto, utf8, latin, bitmap}`**；旧 `gbk`→`auto`。**唯一** normalize：`escposenc.NormalizeThermalEncoding` |
 | 6 | **`auto`（默认）**：按 §3 逐行分流。Mesa 与 FT **同一判定** |
@@ -88,9 +88,10 @@ text_encoding
 | 职责 | 入口 |
 |------|------|
 | encoding normalize | **仅** `escposenc.NormalizeThermalEncoding` |
-| 行是否位图 | **仅** `escposenc.NeedsRaster`（语义收窄：超 1252 **且** 非「固件汉字行」时为 true；或见 `LinePath`） |
-| 行是否固件汉字 | **仅** `escposenc.UsesHanFirmware` |
-| 固件汉字行字节 | **仅** `escposenc.HanFirmwareLine(s, fsBangN)`（`FS&`+GBK+`FS!`+`FS.`） |
+| auto 行路径 | **仅** `escposenc.LinePathFor` → `PathLatin1252` / `PathHanFirmware` / `PathRaster` |
+| 行是否超 1252 | **仅** `escposenc.NeedsRaster`（语义不变；`bitmap` 逃生按它转位图，auto 再经 `LinePathFor` 细分） |
+| 行是否固件汉字 | **仅** `escposenc.UsesHanFirmware`（字符集 `IsHanFirmwareRune`） |
+| 固件汉字行字节 | **仅** `escposenc.HanFirmwareLine(s, n)`；字号 **仅** `escposenc.HanFirmwareSize(doubleW, doubleH)` |
 | 拉丁编码 | **仅** `escposenc.Windows1252` |
 | 行级位图 | **仅** `escposbitmap.Line` |
 | Mesa 票级模式 | **仅** `textModeForThermal`（`bitmap` 配置或票内需位图逃生时进 bitmap 模式能力） |
@@ -99,11 +100,7 @@ text_encoding
 | FT 流前缀 | **仅** `receiptStreamBegin` |
 | 配置写入 FT | **仅** `SetThermalEncoding` / `applyThermalEncodingFromConfig` |
 
-推荐单一枚举（实现时可二选一，文档口径以本表为准）：
-
-```text
-LinePath(s) ∈ { Latin1252, HanFirmware, Raster }
-```
+Mesa：`escposWriter.text` 在 `escposTextAuto` 下按 `LinePathFor` 分流，字号取当前 `GS !` 状态。FT：`emitThermalLine` 的 `thermalLineStyle.DoubleH` 跟 `RenderESCPOS` 的 `setDoubleH`。Han 列画布（`escposHan*Row`）只在 `escposTextBitmap` 下使用。
 
 ---
 
@@ -148,7 +145,7 @@ LinePath(s) ∈ { Latin1252, HanFirmware, Raster }
 
 ---
 
-## 8. 实现顺序（确认本方案后再动代码）
+## 8. 实现顺序（0.5.36 已完成 1–6 的代码部分；门店试打待做）
 
 1. 本文已定稿口径（本文件）  
 2. `escposenc`：`UsesHanFirmware` / `HanFirmwareLine` / 收窄 `NeedsRaster` / normalize 含 `bitmap`  
@@ -157,4 +154,4 @@ LinePath(s) ∈ { Latin1252, HanFirmware, Raster }
 5. 设置页 + i18n  
 6. 单测 + VERSION/NOTES + `./scripts/check-fiscal-agent.sh` + 门店试打  
 
-**未确认前禁止改出纸主路径。**
+`FS ! 0x08`（仅倍宽）未在门店验证；目前没有票面用到。

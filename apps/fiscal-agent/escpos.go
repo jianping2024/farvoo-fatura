@@ -184,6 +184,9 @@ type jobLine struct {
 	UnitPrice           float64 `json:"unit_price"`
 	CategoryGroupSort   int     `json:"category_group_sort"`
 	CategoryGroupHeader string  `json:"category_group_header"`
+	// PrintNames — station_ticket multilang dish names in print order (no item_code).
+	// docs/station-slip-print-names.zh.md; empty → single stationSlipItemLabel row.
+	PrintNames []string `json:"print_names"`
 }
 
 type jobPayload struct {
@@ -399,8 +402,23 @@ func (w *escposWriter) text(s string) {
 		w.lastTextBitmap = false
 		return
 	}
-	// auto/bitmap: only lines beyond WPC1252 (Han, …) → GS v 0 (docs/fiscal-thermal-text-encoding.zh.md).
-	if w.textMode == escposTextBitmap && escposenc.NeedsRaster(s) {
+	// docs/fiscal-thermal-text-encoding.zh.md §3: auto splits per line; bitmap rasters every NeedsRaster line.
+	raster := w.textMode == escposTextBitmap && escposenc.NeedsRaster(s)
+	if w.textMode == escposTextAuto {
+		switch escposenc.LinePathFor(s) {
+		case escposenc.PathHanFirmware:
+			n := escposenc.HanFirmwareSize(w.doubleW, w.doubleH)
+			if w.underlineOn {
+				n |= 0x80 // FS ! bit 7 — Han underline (notes)
+			}
+			w.content.Write(escposenc.HanFirmwareLine(s, n))
+			w.lastTextBitmap = false
+			return
+		case escposenc.PathRaster:
+			raster = true
+		}
+	}
+	if raster {
 		fontPx := hanFontPxForRole(w.hanFontPx, w.hanRole)
 		w.content.Write(escposBitmapText(s, bitmapTextStyle{
 			Align:     w.alignMode,
@@ -598,6 +616,24 @@ func stationSlipItemLine(leftLabel, qtyStr string, width int) string {
 		line += strings.Repeat(" ", trail)
 	}
 	return line
+}
+
+// stationSlipLabels is the ONLY station-slip dish label list: one entry per print_names name
+// (first gets the item_code prefix); legacy jobs → []{stationSlipItemLabel}.
+func stationSlipLabels(ln jobLine) []string {
+	var names []string
+	for _, n := range ln.PrintNames {
+		if n = strings.TrimSpace(n); n != "" {
+			names = append(names, n)
+		}
+	}
+	if len(names) == 0 {
+		return []string{stationSlipItemLabel(ln)}
+	}
+	if code := strings.TrimSpace(ln.ItemCode); code != "" {
+		names[0] = code + "-" + names[0]
+	}
+	return names
 }
 
 func stationSlipItemLabel(ln jobLine) string {
@@ -808,10 +844,18 @@ func (w *escposWriter) writeStationMenuLines(p jobPayload, lines []jobLine) {
 	}
 }
 
+// writeStationMenuItem — one 1×2 row block per dish name; Qty only on the first name's first row.
 func (w *escposWriter) writeStationMenuItem(ln jobLine, qty int, p jobPayload) {
-	label := stationSlipItemLabel(ln)
 	qtyStr := fmt.Sprintf("%d", qty)
+	for i, label := range stationSlipLabels(ln) {
+		if i > 0 {
+			qtyStr = ""
+		}
+		w.writeStationMenuLabel(label, qtyStr, p)
+	}
+}
 
+func (w *escposWriter) writeStationMenuLabel(label, qtyStr string, p jobPayload) {
 	if stationSlipColumnBlockUsesHanCanvas(p, w) {
 		fontPx := hanFontPxForRole(w.hanFontPx, hanFontBody)
 		maxPx := hanColumnLabelMaxPx(hanColItem)

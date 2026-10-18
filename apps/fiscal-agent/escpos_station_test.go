@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"farvoo-fiscal-agent/internal/escposenc"
 )
 
 func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
@@ -185,6 +187,7 @@ func TestHanColumnRowQtyInkInBand(t *testing.T) {
 }
 
 func TestStationSlipColumnBlockUsesHanCanvas_ZhForcesLatinMenu(t *testing.T) {
+	withThermalConfig(t, "bitmap") // Han column canvas exists only on the bitmap escape path
 	zh := jobPayload{
 		Locale: "zh",
 		Lines: []jobLine{{
@@ -208,6 +211,7 @@ func TestStationSlipColumnBlockUsesHanCanvas_ZhForcesLatinMenu(t *testing.T) {
 }
 
 func TestZhStationSlipLatinMenuEmitsColumnRasters(t *testing.T) {
+	withThermalConfig(t, "bitmap") // Han column canvas exists only on the bitmap escape path
 	payload, _ := json.Marshal(jobPayload{
 		Locale:           "zh",
 		TableDisplayName: "A-03",
@@ -251,6 +255,7 @@ func TestHanNoteWrapUsesPixelWidth(t *testing.T) {
 }
 
 func TestHanNoteEscposSingleWrapPath(t *testing.T) {
+	withThermalConfig(t, "bitmap") // Han column canvas exists only on the bitmap escape path
 	longNote := strings.Repeat("德萨发生发顺丰", 8)
 	prefix := labelsFor("zh").itemNote
 	payload, _ := json.Marshal(jobPayload{
@@ -483,6 +488,7 @@ func TestStationTicketItemNoteWrapsFullText(t *testing.T) {
 }
 
 func TestStationTicketLongZhNameWrapsNoEllipsis(t *testing.T) {
+	withThermalConfig(t, "bitmap") // Han column canvas exists only on the bitmap escape path
 	longName := "超长中文菜名测试一二三四五六七八九十甲乙丙丁戊己庚辛"
 	payload, _ := json.Marshal(jobPayload{
 		Locale:           "zh",
@@ -507,17 +513,91 @@ func TestStationTicketLongZhNameWrapsNoEllipsis(t *testing.T) {
 	}
 }
 
-func TestStationTicketUsesLatinEncodingOnly(t *testing.T) {
+func TestStationTicketHanMenuUsesFirmware1x2ByDefault(t *testing.T) {
+	withThermalConfig(t, "")
 	payload, _ := json.Marshal(jobPayload{
 		Lines: []jobLine{{
-			ItemCode:    "001",
-			ItemName:    "宫保鸡丁",
-			DisplayName: "001-宫保鸡丁",
-			Qty:         1,
+			ItemCode:   "001",
+			ItemName:   "Água 500ml",
+			Qty:        1,
+			PrintNames: []string{"Água 500ml", "宫保鸡丁"},
 		}},
 	})
 	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	if bytes.Contains(raw, []byte{0x1C, 0x26}) {
-		t.Fatal("station slip must not enter GBK mode")
+	gbk := []byte{0xB9, 0xAC, 0xB1, 0xA3} // 宫保
+	if !bytes.Contains(raw, []byte{0x1C, 0x26, 0x1C, 0x21, 0x04}) || !bytes.Contains(raw, gbk) {
+		t.Fatal("Han dish name must be FS & + FS ! 0x04 (1×2) + GBK")
+	}
+	if bytes.Contains(raw, []byte{0x1D, 0x76, 0x30, 0x00}) {
+		t.Fatal("auto must not raster Han dish names")
+	}
+	if !bytes.Contains(raw, escposenc.Windows1252("001-Água 500ml")) {
+		t.Fatal("pt name must stay Font A WPC1252")
+	}
+}
+
+func TestStationSlipLabelsPrintNames(t *testing.T) {
+	legacy := jobLine{ItemCode: "001", ItemName: "Água 500ml"}
+	if got := stationSlipLabels(legacy); len(got) != 1 || got[0] != stationSlipItemLabel(legacy) {
+		t.Fatalf("legacy labels = %q", got)
+	}
+	multi := jobLine{ItemCode: "001", ItemName: "Água 500ml", PrintNames: []string{" Água 500ml ", "", "矿泉水"}}
+	got := stationSlipLabels(multi)
+	if len(got) != 2 || got[0] != "001-Água 500ml" || got[1] != "矿泉水" {
+		t.Fatalf("multi labels = %q", got)
+	}
+	noCode := jobLine{PrintNames: []string{"Cola", "Coke"}}
+	if got := stationSlipLabels(noCode); got[0] != "Cola" || got[1] != "Coke" {
+		t.Fatalf("no-code labels = %q", got)
+	}
+}
+
+func TestStationTicketPrintNamesQtyOnlyOnFirstName(t *testing.T) {
+	payload, _ := json.Marshal(jobPayload{
+		Locale:           "pt",
+		TableDisplayName: "001",
+		Lines: []jobLine{{
+			ItemCode:    "020",
+			ItemName:    "Frango Piri-Piri",
+			DisplayName: "020-Frango Piri-Piri",
+			Qty:         7,
+			Note:        "sem sal",
+			PrintNames:  []string{"Frango Piri-Piri", "Grilled chicken"},
+		}},
+	})
+	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
+	first := bytes.Index(raw, []byte("020-Frango Piri-Piri"))
+	second := bytes.Index(raw, []byte("Grilled chicken"))
+	note := bytes.Index(raw, []byte("sem sal"))
+	if first < 0 || second < 0 || note < 0 || !(first < second && second < note) {
+		t.Fatalf("want first name < second name < note, got %d %d %d", first, second, note)
+	}
+	firstRow := raw[first : first+bytes.IndexByte(raw[first:], '\n')]
+	if !bytes.Contains(firstRow, []byte("7")) {
+		t.Fatalf("first name row must carry qty: %q", firstRow)
+	}
+	secondRow := raw[second : second+bytes.IndexByte(raw[second:], '\n')]
+	if bytes.Contains(secondRow, []byte("7")) || bytes.Contains(secondRow, []byte("020-")) {
+		t.Fatalf("second name row must have no qty or code: %q", secondRow)
+	}
+}
+
+func TestStationTicketPrintNamesLongNameWraps(t *testing.T) {
+	long := "Bacalhau à Brás com Batata Palha e Azeitonas Pretas"
+	payload, _ := json.Marshal(jobPayload{
+		Locale:           "pt",
+		TableDisplayName: "001",
+		Lines: []jobLine{{
+			ItemCode:   "012",
+			Qty:        2,
+			PrintNames: []string{"Cola", long},
+		}},
+	})
+	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
+	if bytes.Contains(raw, []byte("…")) {
+		t.Fatal("print_names must wrap, never ellipsis")
+	}
+	if !bytes.Contains(raw, []byte("Pretas")) {
+		t.Fatal("wrapped tail of second name missing")
 	}
 }

@@ -8,7 +8,27 @@ import (
 	"testing"
 )
 
-func TestBuildConnectionTestZHUsesBitmapByDefault(t *testing.T) {
+func TestBuildConnectionTestZHUsesFirmwareByDefault(t *testing.T) {
+	withThermalConfig(t, "")
+	payload, _ := json.Marshal(jobPayload{
+		ConnectionTest: true,
+		Locale:         "zh",
+		RestaurantName: "mesa.example.com",
+	})
+	raw := escposFromJob(printJob{Type: "order_receipt", Payload: payload})
+	if !bytes.Contains(raw, []byte{0x1C, 0x26}) || !bytes.Contains(raw, []byte{0x1C, 0x2E}) {
+		t.Fatal("Chinese headline must use firmware Han (FS & … FS .)")
+	}
+	if bytes.Contains(raw, []byte{0x1D, 0x76, 0x30, 0x00}) {
+		t.Fatal("auto must not raster a pure Han line")
+	}
+	if !bytes.Contains(raw, []byte("mesa.example.com")) {
+		t.Fatal("expected venue line")
+	}
+}
+
+func TestBuildConnectionTestZHUsesBitmapWhenConfigured(t *testing.T) {
+	withThermalConfig(t, "bitmap")
 	payload, _ := json.Marshal(jobPayload{
 		ConnectionTest: true,
 		Locale:         "zh",
@@ -23,7 +43,7 @@ func TestBuildConnectionTestZHUsesBitmapByDefault(t *testing.T) {
 		t.Fatal("bitmap mode must not enter/exit GBK Chinese mode")
 	}
 	if bytes.Contains(raw, []byte{0x1B, 0x39, 0x01}) {
-		t.Fatal("auto mode should not use ESC 9 UTF-8 on connection test")
+		t.Fatal("bitmap mode should not use ESC 9 UTF-8 on connection test")
 	}
 	venue := []byte("mesa.example.com")
 	if !bytes.Contains(raw, venue) {
@@ -86,6 +106,7 @@ func TestBuildConnectionTestZHUsesUTF8WhenConfigured(t *testing.T) {
 }
 
 func TestBuildStationTicketZHMenuUsesBitmapWithZhHeader(t *testing.T) {
+	withThermalConfig(t, "bitmap")
 	payload, _ := json.Marshal(jobPayload{
 		Locale:           "zh",
 		TableDisplayName: "8",

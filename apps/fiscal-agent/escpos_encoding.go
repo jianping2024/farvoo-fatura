@@ -40,6 +40,11 @@ func stationTicketNeedsBitmap(p jobPayload) bool {
 		if escposenc.NeedsRaster(ln.CategoryGroupHeader) || escposenc.NeedsRaster(ln.DisplayName) || escposenc.NeedsRaster(ln.Note) {
 			return true
 		}
+		for _, label := range stationSlipLabels(ln) {
+			if escposenc.NeedsRaster(label) {
+				return true
+			}
+		}
 	}
 	return false
 }

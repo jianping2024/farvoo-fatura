@@ -393,8 +393,41 @@ func TestRenderESCPOS_AccentEncoding(t *testing.T) {
 	}
 }
 
-func TestRenderESCPOS_HanRastersAccentsStayFontA(t *testing.T) {
+func TestRenderESCPOS_HanFirmwareAccentsStayFontA(t *testing.T) {
 	SetThermalEncoding("auto")
+	t.Cleanup(func() { SetThermalEncoding("auto") })
+	p := &Payload{
+		DocumentType: "FT", InvoiceNo: "FT X/1", PrintPurpose: "ORIGINAL",
+		IssuedAt: "2026-08-21T12:00:00",
+		Merchant: MerchantBlock{LegalName: "宫保餐厅", TaxRegistrationNumber: "1"},
+		Lines: []LineBlock{
+			{DisplayName: "宫保鸡丁", Quantity: "1.00", UnitPriceGross: "1.00", VATRate: "0.23", LineGross: "1.00"},
+			{DisplayName: "Guaraná", Quantity: "1.00", UnitPriceGross: "1.00", VATRate: "0.23", LineGross: "1.00"},
+		},
+		Totals:     TotalsBlock{GrossTotal: "2.00"},
+		Compliance: ComplianceBlock{ATCUD: "A-1", QR: QRBlock{Content: "A:1"}, HashControlChars: "AbC/"},
+	}
+	raw := RenderESCPOS(p)
+	if bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
+		t.Fatal("auto must not raster pure Han lines")
+	}
+	gbk := []byte{0xB9, 0xAC, 0xB1, 0xA3} // 宫保
+	if !bytes.Contains(raw, append([]byte{0x1C, 0x26, 0x1C, 0x21, 0x04}, gbk...)) {
+		t.Fatal("1×2 LegalName in Han must be FS & + FS ! 0x04 + GBK")
+	}
+	if !bytes.Contains(raw, []byte{0x1C, 0x26, 0x1C, 0x21, 0x00}) {
+		t.Fatal("1×1 Han item line must be FS & + FS ! 0")
+	}
+	if bytes.Contains(raw, []byte("宫保")) {
+		t.Fatal("UTF-8 Han on wire")
+	}
+	if !bytes.Contains(raw, escposenc.Windows1252("Guaraná")) {
+		t.Fatal("pt accents on the same receipt must stay Windows-1252 Font A")
+	}
+}
+
+func TestRenderESCPOS_HanRastersWhenBitmapEscape(t *testing.T) {
+	SetThermalEncoding("bitmap")
 	t.Cleanup(func() { SetThermalEncoding("auto") })
 	p := &Payload{
 		DocumentType: "FT", InvoiceNo: "FT X/1", PrintPurpose: "ORIGINAL",
