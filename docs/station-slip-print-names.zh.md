@@ -23,7 +23,7 @@ Mesa 入队可在同一道菜上带多个语种菜名。Agent 须按序 1×2 打
 | 3 | **兼容**：`print_names` 缺省、`null` 或空 → 行为与现网相同：`stationSlipItemLabel`（`item_code` + `item_name`/`display_name`）单行 + Qty |
 | 4 | **多行时**：第 1 个名：`format` = 有 `item_code` 则 `{code}-{name}` 否则 `name`；与 Qty 同列模型（或 Han 画布）打出。第 2…n 个名：仅菜名，同左边距，**不**打 Qty、**不**加编号 |
 | 5 | **备注**：全部 `print_names` 行打完后，再 `writeStationItemNoteLine`（空 note 跳过） |
-| 6 | **字号**：菜名行与备注行均为 **1×2**（`writeBody1x2`；葡语 Font A `GS !`，汉语固件 `FS &` + GBK + `FS !`，见 [`fiscal-thermal-text-encoding.zh.md`](fiscal-thermal-text-encoding.zh.md)） |
+| 6 | **字号**：菜名行与备注行均为 **1×2**（`writeBody1x2`；葡语 Font A `GS !`，汉语固件 `FS &` + `GS !` + GBK，见 [`fiscal-thermal-text-encoding.zh.md`](fiscal-thermal-text-encoding.zh.md)） |
 | 8 | **换行**：每个名字各自在菜名列内换行（汉字按 2 列）；续行同左边距、不打 Qty、不加编号 |
 | 7 | **结账 / 预结**：不读 `print_names`；保持现单语行逻辑 |
 

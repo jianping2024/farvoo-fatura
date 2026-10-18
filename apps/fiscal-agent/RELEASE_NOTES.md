@@ -2,15 +2,23 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.38
+
+**修复：备注汉字与菜名同高——汉字段禁止 FS !**
+
+- **根因：** 0.5.37 备注对汉字发 `FS ! 0x80`（下划线），门店机上会清掉 `GS !` 倍高 → `Observação:` 瘦长、`多冰` 变矮。
+- **改法：** `HanFirmwareLine` 只发 `FS &` + `GS !` + GBK + `FS .`；下划线仅 Font A `ESC -`。菜名与备注汉字同一字节路径。
+- **唯一写法：** `escposenc.HanFirmwareLine(s, FontASize(…))`。删除 `HanUnderline` / `hanMode`。
+- 定稿：[`docs/fiscal-thermal-text-encoding.zh.md`](../../docs/fiscal-thermal-text-encoding.zh.md)。
+
 ## 0.5.37
 
 **修复：中文 1×2 改走 GS !（瘦长）；废除 FS ! 当字号**
 
 - **根因：** 0.5.36 用 `FS ! 0x04` 当初「汉字 1×2」，门店实测是倍宽→中文变扁、列头「菜品/数量」换行；自检 **ZH B GS!1x2** 才与葡语同高瘦长。
-- **改法：** 固件汉字段与葡语同一 `GS !`（正文 `0x01`，抬头 `0x11`）；`FS !` 仅保留下划线位 `0x80`（备注）。样张、厨打、预结、结账、FT 同走 `HanFirmwareLine`，无旁路。
-- 自检 SIZE：ZH B / MIX 只调 `HanFirmwareLine`（与出纸同字节）；保留 **ZH B FS!flat** 对比行（应扁，勿当正道）。
-- **唯一写法：** `escposenc.HanFirmwareLine(s, FontASize(…), hanMode)`；`hanMode`=`0`|`HanUnderline`。删除 `HanFirmwareSize`。
-- 定稿：[`docs/fiscal-thermal-text-encoding.zh.md`](../../docs/fiscal-thermal-text-encoding.zh.md)。
+- **改法：** 固件汉字段与葡语同一 `GS !`；当时仍留 `FS ! 0x80` 备注下划线（**0.5.38 已去掉**）。
+- 自检 SIZE：ZH B / MIX 只调 `HanFirmwareLine`；保留 **ZH B FS!flat** 对比行。
+- **唯一写法（0.5.37）：** `HanFirmwareLine(s, FontASize, hanMode)`（hanMode 已于 0.5.38 删除）。
 
 ## 0.5.36
 

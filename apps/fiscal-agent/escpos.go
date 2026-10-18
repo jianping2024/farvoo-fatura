@@ -407,11 +407,8 @@ func (w *escposWriter) text(s string) {
 	if w.textMode == escposTextAuto {
 		switch escposenc.LinePathFor(s) {
 		case escposenc.PathHanFirmware:
-			hanMode := byte(0)
-			if w.underlineOn {
-				hanMode = escposenc.HanUnderline
-			}
-			w.content.Write(escposenc.HanFirmwareLine(s, escposenc.FontASize(w.doubleW, w.doubleH), hanMode))
+			// Underline stays ESC - (Font A); never FS ! on Han — that clears GS ! height on store printers.
+			w.content.Write(escposenc.HanFirmwareLine(s, escposenc.FontASize(w.doubleW, w.doubleH)))
 			w.lastTextBitmap = false
 			return
 		case escposenc.PathRaster:

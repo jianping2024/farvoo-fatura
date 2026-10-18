@@ -42,7 +42,7 @@ func emitThermalLine(b *bytes.Buffer, s string, sty thermalLineStyle) {
 	default: // auto — docs/fiscal-thermal-text-encoding.zh.md §3
 		switch escposenc.LinePathFor(s) {
 		case escposenc.PathHanFirmware:
-			b.Write(escposenc.HanFirmwareLine(s, escposenc.FontASize(false, sty.DoubleH), 0))
+			b.Write(escposenc.HanFirmwareLine(s, escposenc.FontASize(false, sty.DoubleH)))
 			b.WriteByte('\n')
 		case escposenc.PathRaster:
 			b.Write(escposbitmap.Line(s, escposbitmap.Style{Bold: sty.Bold}, escposbitmap.DefaultFontPx))

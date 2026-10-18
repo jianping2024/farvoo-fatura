@@ -96,11 +96,11 @@ func SizeProbeRows() []byte {
 
 	// ZH B — encoding + size via the ONLY auto encoder (HanFirmwareLine).
 	out = append(out, "ZH B 1x1    "...)
-	out = append(out, HanFirmwareLine(SizeProbeZHSample, 0, 0)...)
+	out = append(out, HanFirmwareLine(SizeProbeZHSample, 0)...)
 	out = append(out, '\n')
 
 	out = append(out, "ZH B GS!1x2 "...)
-	out = append(out, HanFirmwareLine(SizeProbeZHSample, 0x01, 0)...)
+	out = append(out, HanFirmwareLine(SizeProbeZHSample, 0x01)...)
 	out = append(out, '\n')
 	out = append(out, selectCharSize(0)...)
 
@@ -110,25 +110,26 @@ func SizeProbeRows() []byte {
 	out = append(out, gbk...)
 	out = append(out, 0x1C, 0x21, 0x00, 0x1C, 0x2E, '\n')
 
-	// MIX — same HanFirmwareLine bytes as station/FT auto path.
+	// MIX — same HanFirmwareLine bytes as station/FT auto path (no FS ! on Han).
 	out = append(out, "MIX 1x1     "...)
-	out = append(out, HanFirmwareLine(SizeProbeMixSample, 0, 0)...)
+	out = append(out, HanFirmwareLine(SizeProbeMixSample, 0)...)
 	out = append(out, '\n')
 
 	out = append(out, selectCharSize(0x01)...)
 	out = append(out, "MIX 1x2     "...)
-	out = append(out, HanFirmwareLine(SizeProbeMixSample, 0x01, 0)...)
+	out = append(out, HanFirmwareLine(SizeProbeMixSample, 0x01)...)
 	out = append(out, '\n')
 
+	// Note style: ESC - underlines Font A; Han run is identical to MIX 1x2 / dish names.
 	out = append(out, "MIX 1x2 U   "...)
 	out = append(out, 0x1B, 0x2D, 0x01)
-	out = append(out, HanFirmwareLine(SizeProbeMixNote, 0x01, HanUnderline)...)
+	out = append(out, HanFirmwareLine(SizeProbeMixNote, 0x01)...)
 	out = append(out, 0x1B, 0x2D, 0x00, '\n')
 	out = append(out, selectCharSize(0)...)
 
 	out = append(out, "MIX 2x2:\n"...)
 	out = append(out, selectCharSize(0x11)...)
-	out = append(out, HanFirmwareLine(SizeProbeMixMasthead, 0x11, 0)...)
+	out = append(out, HanFirmwareLine(SizeProbeMixMasthead, 0x11)...)
 	out = append(out, '\n')
 	out = append(out, selectCharSize(0)...)
 

@@ -81,18 +81,24 @@ func TestSizeProbeRowsPTAndHanB(t *testing.T) {
 	if !bytes.Contains(raw, []byte("ZH B 1x1")) || !bytes.Contains(raw, []byte("ZH B GS!1x2")) || !bytes.Contains(raw, []byte("ZH B FS!flat")) {
 		t.Fatal("missing ZH B size rows")
 	}
-	// Adopted path: ZH B GS!1x2 and MIX are HanFirmwareLine only (one encoder).
-	zhGS := append([]byte("ZH B GS!1x2 "), HanFirmwareLine(SizeProbeZHSample, 0x01, 0)...)
+	zhGS := append([]byte("ZH B GS!1x2 "), HanFirmwareLine(SizeProbeZHSample, 0x01)...)
 	if !bytes.Contains(raw, zhGS) {
 		t.Fatal("ZH B GS!1x2 must be HanFirmwareLine(…, GS! 0x01)")
 	}
-	if !bytes.Contains(raw, append([]byte("MIX 1x2     "), HanFirmwareLine(SizeProbeMixSample, 0x01, 0)...)) {
+	mix := HanFirmwareLine(SizeProbeMixSample, 0x01)
+	if !bytes.Contains(raw, append([]byte("MIX 1x2     "), mix...)) {
 		t.Fatal("MIX 1x2 row must be the HanFirmwareLine auto path")
 	}
-	if !bytes.Contains(raw, append([]byte("MIX 1x2 U   "), append([]byte{0x1B, 0x2D, 0x01}, HanFirmwareLine(SizeProbeMixNote, 0x01, HanUnderline)...)...)) {
-		t.Fatal("MIX 1x2 U must use HanFirmwareLine + HanUnderline")
+	// MIX 1x2 U: ESC - around the SAME HanFirmwareLine as MIX 1x2 note text — no FS ! 0x80.
+	note := HanFirmwareLine(SizeProbeMixNote, 0x01)
+	wantU := append([]byte("MIX 1x2 U   "), 0x1B, 0x2D, 0x01)
+	wantU = append(wantU, note...)
+	if !bytes.Contains(raw, wantU) {
+		t.Fatal("MIX 1x2 U must be ESC - + HanFirmwareLine (no FS !)")
 	}
-	// Contrast FS! flat row stays diagnostic-only (not HanFirmwareLine).
+	if bytes.Contains(raw, []byte{0x1C, 0x21, 0x80}) {
+		t.Fatal("auto/probe must not emit FS ! underline on Han")
+	}
 	if !bytes.Contains(raw, []byte{0x1C, 0x26, 0x1C, 0x21, 0x04}) || !bytes.Contains(raw, gbkGong) {
 		t.Fatal("ZH B FS!flat contrast row missing")
 	}

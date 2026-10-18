@@ -622,8 +622,14 @@ func TestStationTicketPtNoteWithHanStaysFirmware(t *testing.T) {
 	if !bytes.Contains(raw, notePrefix) {
 		t.Fatal("pt note prefix must stay Font A WPC1252")
 	}
-	// note is underlined 1×2: Han run FS & + GS ! 0x01 + FS ! underline + GBK.
-	if !bytes.Contains(raw, []byte{0x1C, 0x26, 0x1D, 0x21, 0x01, 0x1C, 0x21, 0x80}) {
-		t.Fatal("Han note run must use GS ! 0x01 + FS ! underline (0x80)")
+	// note: ESC - for Font A; Han run same as dish name (FS & + GS ! 0x01 + GBK), no FS !.
+	if !bytes.Contains(raw, []byte{0x1B, 0x2D, 0x01}) {
+		t.Fatal("note must use ESC - underline for Font A")
+	}
+	if !bytes.Contains(raw, []byte{0x1C, 0x26, 0x1D, 0x21, 0x01}) {
+		t.Fatal("Han note run must use GS ! 0x01 like dish names")
+	}
+	if bytes.Contains(raw, []byte{0x1C, 0x21, 0x80}) {
+		t.Fatal("Han note must not emit FS ! underline")
 	}
 }
