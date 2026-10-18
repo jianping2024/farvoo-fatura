@@ -3,7 +3,7 @@
 > **状态：定稿**  
 > **权威：是**（fiscal-agent 出品联出纸；产品与入队以 Mesa 为准）  
 > **产品定稿：** restaurant-ordering `docs/product/station-slip-multilang-names.zh.md`  
-> **对应实现（待落地）：** `jobLine` + `writeStationMenuItem` / `writeStationMenuLines`  
+> **对应实现：** `jobLine.PrintNames` + `stationSlipLabels` → `writeStationMenuItem` / `writeStationMenuLabel`  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 ---
@@ -23,7 +23,8 @@ Mesa 入队可在同一道菜上带多个语种菜名。Agent 须按序 1×2 打
 | 3 | **兼容**：`print_names` 缺省、`null` 或空 → 行为与现网相同：`stationSlipItemLabel`（`item_code` + `item_name`/`display_name`）单行 + Qty |
 | 4 | **多行时**：第 1 个名：`format` = 有 `item_code` 则 `{code}-{name}` 否则 `name`；与 Qty 同列模型（或 Han 画布）打出。第 2…n 个名：仅菜名，同左边距，**不**打 Qty、**不**加编号 |
 | 5 | **备注**：全部 `print_names` 行打完后，再 `writeStationItemNoteLine`（空 note 跳过） |
-| 6 | **字号**：菜名行与备注行均为 **1×2**（`writeBody1x2`；汉语编码路径跟 [`fiscal-thermal-text-encoding.zh.md`](fiscal-thermal-text-encoding.zh.md)） |
+| 6 | **字号**：菜名行与备注行均为 **1×2**（`writeBody1x2`；葡语 Font A `GS !`，汉语固件 `FS &` + GBK + `FS !`，见 [`fiscal-thermal-text-encoding.zh.md`](fiscal-thermal-text-encoding.zh.md)） |
+| 8 | **换行**：每个名字各自在菜名列内换行（汉字按 2 列）；续行同左边距、不打 Qty、不加编号 |
 | 7 | **结账 / 预结**：不读 `print_names`；保持现单语行逻辑 |
 
 ---
@@ -45,17 +46,16 @@ Mesa 入队可在同一道菜上带多个语种菜名。Agent 须按序 1×2 打
 
 | 职责 | 入口 |
 |------|------|
-| 解析是否多语 | `len(print_names) > 0` |
+| 菜名标签列表 | **仅** `stationSlipLabels`（trim 后非空的 `print_names`，首名缀 `item_code`；为空 → `[stationSlipItemLabel]`） |
 | 出品联菜单体 | **仅** `writeStationMenuLines` → `writeStationMenuItem` |
 | 备注 | **仅** `writeStationItemNoteLine`（调用顺序：菜名循环之后） |
 
 伪代码：
 
 ```text
-names = print_names if non-empty else [stationSlipItemLabel 的名部分…]
-for i, name in names:
-  label = (i==0 && item_code) ? code+"-"+name : name
-  write 1x2 row (qty only if i==0)
+labels = stationSlipLabels(line)   // 无 print_names → [stationSlipItemLabel]，与现网同一分支、同字节
+for i, label in labels:
+  writeStationMenuLabel(label, qty if i==0 else "")   // 1×2，按列宽换行
 writeStationItemNoteLine(note)
 ```
 

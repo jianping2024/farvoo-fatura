@@ -182,8 +182,13 @@ func stationSlipColumnBlockUsesHanCanvas(p jobPayload, w *escposWriter) bool {
 		return true
 	}
 	for _, ln := range p.Lines {
-		if hasHan(stationSlipItemLabel(ln)) || hasHan(strings.TrimSpace(ln.Note)) {
+		if hasHan(strings.TrimSpace(ln.Note)) {
 			return true
+		}
+		for _, label := range stationSlipLabels(ln) {
+			if hasHan(label) {
+				return true
+			}
 		}
 	}
 	return false
