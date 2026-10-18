@@ -15,10 +15,12 @@ import (
 //	Mesa n.º:001                18:01  2×2 bold
 //	Conv.:1                 3 artigos  1×1
 //	================================================
-//	[ 1× 001 ] Água 500ml              1×2 bold, qty+code reverse (GS B)
+//	[ 1× 001 ] Água 500ml              1×2, qty+code reverse (GS B)
 //	           中水                     1×2, hangs under name
-//	           » 正常冰                  1×2 bold note
-//	- - - - - - - - - - - - - - - - - - - - - - - -
+//	           » 正常冰                  1×2 note
+//
+// Dish rows are never bold: ESC E smears the tall 1×2 Font A on store printers (0.5.39).
+//   - - - - - - - - - - - - - - - - - - - - - - - -
 const stationSlipNotePrefix = "» "
 
 // stationSlipNames splits a dish into item_code and its print names (print_names first, else
@@ -240,7 +242,6 @@ func (w *escposWriter) writeStationItem(block string, names []string, note strin
 
 	w.align(0)
 	w.writeBody1x2()
-	w.bold(true)
 	w.reverse(true)
 	w.text(block)
 	w.reverse(false)
@@ -260,7 +261,6 @@ func (w *escposWriter) writeStationItem(block string, names []string, note strin
 		w.lf()
 	}
 
-	w.bold(false)
 	for _, name := range names[min(1, len(names)):] {
 		for _, c := range stationSlipWrap(name, maxW) {
 			w.text(pad + c)
@@ -268,12 +268,10 @@ func (w *escposWriter) writeStationItem(block string, names []string, note strin
 		}
 	}
 	if note != "" {
-		w.bold(true)
 		for _, c := range stationSlipWrap(stationSlipNotePrefix+note, maxW) {
 			w.text(pad + c)
 			w.lf()
 		}
-		w.bold(false)
 	}
 }
 
@@ -281,10 +279,10 @@ func (w *escposWriter) writeStationItem(block string, names []string, note strin
 // reversed by inverting its pixel band (GS B does not apply to GS v 0 images).
 func (w *escposWriter) writeHanStationItem(block string, names []string, note string) {
 	fontPx := hanFontPxForRole(w.hanFontPx, hanFontBody)
-	bold := bitmapTextStyle{Bold: true}
-	spacePx := measureHanTextWidth(" ", fontPx, true)
+	style := bitmapTextStyle{}
+	spacePx := measureHanTextWidth(" ", fontPx, false)
 	blockText := strings.TrimSpace(block)
-	blockEnd := spacePx*2 + measureHanTextWidth(blockText, fontPx, true)
+	blockEnd := spacePx*2 + measureHanTextWidth(blockText, fontPx, false)
 	nameX := blockEnd + spacePx
 	maxPx := bitmapTextMaxWidthPx - nameX
 
@@ -292,10 +290,10 @@ func (w *escposWriter) writeHanStationItem(block string, names []string, note st
 	if len(names) > 0 {
 		first = names[0]
 	}
-	chunks := wrapHanTextByPx(first, maxPx, fontPx, true)
-	row := renderBitmapLeftRow(blockText, spacePx, fontPx, bold)
+	chunks := wrapHanTextByPx(first, maxPx, fontPx, false)
+	row := renderBitmapLeftRow(blockText, spacePx, fontPx, style)
 	if len(chunks) > 0 {
-		row = mergeBitmapRows(row, renderBitmapLeftRow(chunks[0], nameX, fontPx, bold))
+		row = mergeBitmapRows(row, renderBitmapLeftRow(chunks[0], nameX, fontPx, style))
 		chunks = chunks[1:]
 	}
 	invertBitmapBand(row, 0, blockEnd)
@@ -304,16 +302,16 @@ func (w *escposWriter) writeHanStationItem(block string, names []string, note st
 	w.writeBody1x2()
 	w.writeHanRaster(row)
 	for _, c := range chunks {
-		w.writeHanRaster(renderBitmapLeftRow(c, nameX, fontPx, bold))
+		w.writeHanRaster(renderBitmapLeftRow(c, nameX, fontPx, style))
 	}
 	for _, name := range names[min(1, len(names)):] {
 		for _, c := range wrapHanTextByPx(name, maxPx, fontPx, false) {
-			w.writeHanRaster(renderBitmapLeftRow(c, nameX, fontPx, bitmapTextStyle{}))
+			w.writeHanRaster(renderBitmapLeftRow(c, nameX, fontPx, style))
 		}
 	}
 	if note != "" {
-		for _, c := range wrapHanTextByPx(stationSlipNotePrefix+note, maxPx, fontPx, true) {
-			w.writeHanRaster(renderBitmapLeftRow(c, nameX, fontPx, bold))
+		for _, c := range wrapHanTextByPx(stationSlipNotePrefix+note, maxPx, fontPx, false) {
+			w.writeHanRaster(renderBitmapLeftRow(c, nameX, fontPx, style))
 		}
 	}
 }

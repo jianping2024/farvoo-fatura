@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.40
+
+**出品联：菜品区取消加粗；试打新增「数量/编号」对比条**
+
+- **根因：** 0.5.39 门店实测，菜名/备注 1×2 + `ESC E` 加粗后瘦高字发糊；反白编号块加粗后白字几乎看不清。
+- **改法：** 菜名、副名、备注、编号块一律不加粗（与 0.5.38 旧版同字形）；编号块暂保留 `GS B` 反白（不加粗）。抬头 2×2 加粗不变。
+- **试打：** 「打印出品联样张」后另出一张对比条，同一行「2× 020 Frango Piri-Piri」六种打法：OLD（0.5.39 反白加粗）、A 反白 1×2、B 反白 2×2、C 2×2 加粗、D 1×2 + 粗下划线、E 2×2。按门店实物选定后再改出品联。
+
 ## 0.5.39
 
 **出品联（Pedido）改版：数量 + 编号反白置前，更易读**
