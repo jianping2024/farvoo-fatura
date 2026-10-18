@@ -3,6 +3,7 @@ package escposenc
 import (
 	"unicode"
 
+	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
@@ -13,9 +14,10 @@ type LinePath int
 const (
 	// PathLatin1252 — whole line fits WPC1252: Font A + ESC t 16 + GS ! size.
 	PathLatin1252 LinePath = iota
-	// PathHanFirmware — Han line: FS & + GBK + FS ! size + FS . (pirata self-test B).
+	// PathHanFirmware — line with Han: Han runs FS & + GBK + FS ! size + FS . (pirata self-test B),
+	// every other run (ASCII, pt accents) Font A WPC1252 on the same line.
 	PathHanFirmware
-	// PathRaster — anything else (Cyrillic, pt accent + Han on one line…): GS v 0 bitmap.
+	// PathRaster — anything else (Cyrillic, emoji…): GS v 0 bitmap.
 	PathRaster
 )
 
@@ -51,22 +53,32 @@ func IsHanFirmwareRune(r rune) bool {
 
 var gbkEncoder = simplifiedchinese.GBK.NewEncoder()
 
-// UsesHanFirmware is the ONLY "firmware Han line" test: ≥1 Han ideograph, every other rune
-// ASCII or a GBK-encodable CJK rune (IsHanFirmwareRune). pt accents never mix in (→ raster).
+func gbkEncodable(r rune) bool {
+	_, err := gbkEncoder.String(string(r))
+	return err == nil
+}
+
+func windows1252Encodable(r rune) bool {
+	_, ok := charmap.Windows1252.EncodeRune(r)
+	return ok
+}
+
+// UsesHanFirmware is the ONLY "firmware Han line" test: ≥1 Han ideograph; every rune is either a
+// GBK-encodable CJK rune (IsHanFirmwareRune) or fits WPC1252 (ASCII, pt accents).
 func UsesHanFirmware(s string) bool {
 	han := false
 	for _, r := range s {
-		if r <= unicode.MaxASCII {
+		if IsHanFirmwareRune(r) {
+			if !gbkEncodable(r) {
+				return false
+			}
+			if unicode.Is(unicode.Han, r) {
+				han = true
+			}
 			continue
 		}
-		if !IsHanFirmwareRune(r) {
+		if r > unicode.MaxASCII && !windows1252Encodable(r) {
 			return false
-		}
-		if _, err := gbkEncoder.String(string(r)); err != nil {
-			return false
-		}
-		if unicode.Is(unicode.Han, r) {
-			han = true
 		}
 	}
 	return han
@@ -83,15 +95,58 @@ func LinePathFor(s string) LinePath {
 	return PathRaster
 }
 
-// HanFirmwareLine is the ONLY firmware Han line encoder: FS & + FS ! n + GBK(s) + FS ! 0 + FS .
-// (same byte order as SizeProbeRows "ZH B FS!1x2"). No trailing LF. Caller guarantees
-// UsesHanFirmware(s).
-func HanFirmwareLine(s string, fsBangN byte) []byte {
-	gbk, _ := gbkEncoder.Bytes([]byte(s))
-	out := make([]byte, 0, len(gbk)+10)
-	out = append(out, 0x1C, 0x26)
-	out = append(out, 0x1C, 0x21, fsBangN)
-	out = append(out, gbk...)
-	out = append(out, 0x1C, 0x21, 0x00)
-	return append(out, 0x1C, 0x2E)
+// HanFirmwareLine is the ONLY firmware Han line encoder. The line is split into runs:
+//   - CJK runs (IsHanFirmwareRune): GS ! 0 + FS & + FS ! fsBang + GBK + FS ! 0 + FS . + GS ! gsBang
+//     — GS ! is cleared around Han so the bytes match the pirata "ZH B FS!1x2" self-test row
+//     (GS ! on Han printed short/distorted there);
+//   - everything else (ASCII, pt accents): Windows-1252 under the caller's ESC t 16 + GS ! gsBang.
+//
+// gsBang is the Font A GS ! n the caller has active for this line. No trailing LF.
+// Caller guarantees UsesHanFirmware(s).
+func HanFirmwareLine(s string, gsBang, fsBang byte) []byte {
+	var out []byte
+	var run []rune
+	runHan := false
+	flush := func() {
+		if len(run) == 0 {
+			return
+		}
+		if !runHan {
+			out = append(out, Windows1252(string(run))...)
+			run = run[:0]
+			return
+		}
+		gbk, _ := gbkEncoder.Bytes([]byte(string(run)))
+		if gsBang != 0 {
+			out = append(out, 0x1D, 0x21, 0x00)
+		}
+		out = append(out, 0x1C, 0x26, 0x1C, 0x21, fsBang)
+		out = append(out, gbk...)
+		out = append(out, 0x1C, 0x21, 0x00, 0x1C, 0x2E)
+		if gsBang != 0 {
+			out = append(out, 0x1D, 0x21, gsBang)
+		}
+		run = run[:0]
+	}
+	for _, r := range s {
+		if h := IsHanFirmwareRune(r); h != runHan {
+			flush()
+			runHan = h
+		}
+		run = append(run, r)
+	}
+	flush()
+	return out
+}
+
+// FontASize is GS ! n for Font A double width / double height (same bits as escposWriter.size).
+func FontASize(doubleW, doubleH bool) byte {
+	n := byte(0)
+	if doubleH {
+		n |= 0x01
+	}
+	if doubleW {
+		n |= 0x10
+	}
+	return n
 }

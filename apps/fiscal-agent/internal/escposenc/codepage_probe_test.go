@@ -93,6 +93,9 @@ func TestSizeProbeRowsPTAndHanB(t *testing.T) {
 	if !bytes.Contains(raw, []byte{0x1C, 0x21, 0x04}) {
 		t.Fatal("ZH B FS!1x2 must emit FS ! 0x04")
 	}
+	if !bytes.Contains(raw, append([]byte("MIX 1x2     "), HanFirmwareLine(SizeProbeMixSample, 0x01, HanSize1x2)...)) {
+		t.Fatal("MIX 1x2 row must be the HanFirmwareLine auto path")
+	}
 	if !bytes.HasSuffix(raw, append([]byte{0x1B, 0x40}, SelectCodeTable(CodeTableWPC1252)...)) {
 		t.Fatal("size probe must end with ESC @ + WPC1252")
 	}

@@ -42,8 +42,9 @@ const HanProbeSample = "宫保鸡丁 餐厅 打印测试"
 
 // SizeProbe samples — short so 1×2 still fits one line on POS-80.
 const (
-	SizeProbePTSample = "Preco Agua"
-	SizeProbeZHSample = "宫保鸡丁"
+	SizeProbePTSample  = "Preco Agua"
+	SizeProbeZHSample  = "宫保鸡丁"
+	SizeProbeMixSample = "Água 少放盐"
 )
 
 // GS ! n — same Font A size command as writeBody1x2 (double height = 0x01).
@@ -119,6 +120,13 @@ func SizeProbeRows() []byte {
 	out = append(out, gbk...)
 	out = append(out, selectHanCharMode(0)...)
 	out = append(out, 0x1C, 0x2E, '\n')
+
+	// MIX 1×2 — the real auto path for a pt accent + Han line (HanFirmwareLine); should match PT 1x2.
+	out = append(out, selectCharSize(0x01)...)
+	out = append(out, "MIX 1x2     "...)
+	out = append(out, HanFirmwareLine(SizeProbeMixSample, 0x01, HanSize1x2)...)
+	out = append(out, '\n')
+	out = append(out, selectCharSize(0)...)
 
 	out = append(out, 0x1B, 0x40) // ESC @ — leave Han/size modes
 	return append(out, SelectCodeTable(CodeTableWPC1252)...)
