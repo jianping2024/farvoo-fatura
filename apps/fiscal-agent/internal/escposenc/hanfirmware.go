@@ -15,14 +15,11 @@ const (
 	// PathLatin1252 — whole line fits WPC1252: Font A + ESC t 16 + GS ! size.
 	PathLatin1252 LinePath = iota
 	// PathHanFirmware — line with Han: Han runs FS & + GBK + GS ! size + FS .
-	// (store SIZE self-test: ZH B GS!1x2 = tall/thin; FS ! 0x04 = flat/wide — do not use for size).
+	// (store SIZE self-test: ZH B GS!1x2 = tall/thin; FS ! must not touch Han size or underline).
 	PathHanFirmware
 	// PathRaster — anything else (Cyrillic, emoji…): GS v 0 bitmap.
 	PathRaster
 )
-
-// HanUnderline is FS ! bit 7 only — Kanji underline for notes. Never encode height/width in FS !.
-const HanUnderline byte = 0x80
 
 // IsHanFirmwareRune — CJK glyphs printed from the printer's Han font (Han ideographs, CJK
 // punctuation, full-width forms). Counted as 2 Font A columns.
@@ -76,14 +73,15 @@ func LinePathFor(s string) LinePath {
 	return PathRaster
 }
 
-// HanFirmwareLine is the ONLY firmware Han line encoder. Bytes match store ZH B GS!1x2:
-//   - CJK runs (IsHanFirmwareRune): FS & + GS ! gsBang + [FS ! hanMode] + GBK + [FS ! 0] + FS .
+// HanFirmwareLine is the ONLY firmware Han line encoder. Bytes match store ZH B GS!1x2 / dish names:
+//   - CJK runs (IsHanFirmwareRune): FS & + GS ! gsBang + GBK + FS .
 //   - everything else (ASCII, pt accents): Windows-1252 under the caller's ESC t 16 + GS ! gsBang.
 //
-// gsBang is Font A GS ! n (body 1×2 = 0x01, masthead 2×2 = 0x11). hanMode is ONLY non-size
-// FS ! bits (HanUnderline); size must not use FS ! — that flattens Chinese on these printers.
+// gsBang is Font A GS ! n (body 1×2 = 0x01, masthead 2×2 = 0x11). Never emit FS ! here — on store
+// printers FS ! clears Kanji double-height (notes looked short next to Observação). Note underline
+// is Font A ESC - only (caller); Han glyphs stay the same height as dish names.
 // No trailing LF. Caller guarantees UsesHanFirmware(s).
-func HanFirmwareLine(s string, gsBang, hanMode byte) []byte {
+func HanFirmwareLine(s string, gsBang byte) []byte {
 	var out []byte
 	var run []rune
 	runHan := false
@@ -101,13 +99,7 @@ func HanFirmwareLine(s string, gsBang, hanMode byte) []byte {
 		if gsBang != 0 {
 			out = append(out, 0x1D, 0x21, gsBang) // GS ! — same as Font A / ZH B GS!1x2
 		}
-		if hanMode != 0 {
-			out = append(out, 0x1C, 0x21, hanMode) // FS ! underline only
-		}
 		out = append(out, gbk...)
-		if hanMode != 0 {
-			out = append(out, 0x1C, 0x21, 0x00)
-		}
 		out = append(out, 0x1C, 0x2E) // FS .
 		run = run[:0]
 	}

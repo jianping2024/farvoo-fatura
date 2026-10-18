@@ -53,20 +53,20 @@ func TestLinePathFor(t *testing.T) {
 }
 
 func TestHanFirmwareLineBytes(t *testing.T) {
-	// 1×2: Han run uses GS ! 0x01 inside FS & (same as ZH B GS!1x2); no FS ! size.
-	got := HanFirmwareLine("A宫", FontASize(false, true), 0)
+	// 1×2: Han run uses GS ! 0x01 inside FS & (same as ZH B GS!1x2); never FS !.
+	got := HanFirmwareLine("A宫", FontASize(false, true))
 	want := []byte{'A', 0x1C, 0x26, 0x1D, 0x21, 0x01, 0xB9, 0xAC, 0x1C, 0x2E}
 	if string(got) != string(want) {
 		t.Fatalf("HanFirmwareLine = % X want % X", got, want)
 	}
-	// note underline: FS ! 0x80 only around GBK; size still GS !.
-	got = HanFirmwareLine("宫", FontASize(false, true), HanUnderline)
-	want = []byte{0x1C, 0x26, 0x1D, 0x21, 0x01, 0x1C, 0x21, 0x80, 0xB9, 0xAC, 0x1C, 0x21, 0x00, 0x1C, 0x2E}
+	// note-style mixed line: same Han bytes as dish name (no FS ! underline).
+	got = HanFirmwareLine("Observação: 宫", FontASize(false, true))
+	want = append(Windows1252("Observação: "), 0x1C, 0x26, 0x1D, 0x21, 0x01, 0xB9, 0xAC, 0x1C, 0x2E)
 	if string(got) != string(want) {
-		t.Fatalf("underline HanFirmwareLine = % X want % X", got, want)
+		t.Fatalf("note HanFirmwareLine = % X want % X", got, want)
 	}
 	// pt accent outside FS & in WPC1252 (á = E1); 1×1 needs no GS !.
-	got = HanFirmwareLine("á宫!", 0, 0)
+	got = HanFirmwareLine("á宫!", 0)
 	want = []byte{0xE1, 0x1C, 0x26, 0xB9, 0xAC, 0x1C, 0x2E, '!'}
 	if string(got) != string(want) {
 		t.Fatalf("mixed HanFirmwareLine = % X want % X", got, want)

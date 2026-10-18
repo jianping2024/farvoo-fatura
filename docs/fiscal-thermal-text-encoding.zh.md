@@ -1,6 +1,6 @@
 # 热敏票文字编码（葡语 Font A，汉语固件 B+GS!，位图逃生）
 
-> **状态：定稿（已实现 0.5.37）**  
+> **状态：定稿（已实现 0.5.38）**  
 > **权威：是**  
 > **对应实现：** `internal/escposenc`（policy + 固件汉字行）+ `internal/escposbitmap`（位图逃生）+ Mesa `escposWriter.text` + `print.emitThermalLine`  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
@@ -15,7 +15,8 @@
 - 0.5.29：凡非 ASCII 整行位图 → 葡语丢倍高、Qtd 错位；已回退。
 - 0.5.32：`auto` = 仅 WPC1252 装不下的字（含汉字）→ 位图；葡语恢复真 `GS !` 1×2。中文仍无硬件 1×2。
 - 0.5.36：中文改固件 B + `FS ! 0x04` 当「1×2」——门店出纸中文变扁（实为倍宽），列头换行；自检 `ZH B GS!1x2` 才是瘦长。
-- **0.5.37（本版）：** 中文倍高改与葡语同一 `GS !`；废除用 `FS !` 当字号。
+- 0.5.37：中文倍高改与葡语同一 `GS !`；废除用 `FS !` 当字号（仍留 `FS ! 0x80` 备注下划线）。
+- **0.5.38（本版）：** 备注中文变矮——`FS ! 0x80` 会清掉汉字倍高；汉字段**禁止**任何 `FS !`；下划线仅 Font A `ESC -`。
 
 ### 0.2 门店码页自检（权威读数）
 
@@ -44,7 +45,7 @@
 | # | 定法 |
 |---|------|
 | 1 | **葡语/英文（整行可编码进 WPC1252）**：Font A + `ESC t 16` + Windows-1252 + **`GS !` 字号**（正文 1×2 = `GS ! 0x01`，与现 `writeBody1x2` 同） |
-| 2 | **汉语行（含 ≥1 汉字，其余字符为 GBK 内的中文标点/全角字符或 WPC1252 字符）**：按段输出——中文段 `FS &` + **`GS !` n** + GBK + `FS .`（与自检 ZH B GS!1x2 / `HanFirmwareLine` 同字节）；其余段（ASCII、葡语重音）照常 WPC1252 + `GS !`。如 `Observação: 少放盐`、`Água 宫保`。正文 1×2 = `GS ! 0x01`；1×1 = 不发 / `GS ! 0`；标题级 2×2 = `GS ! 0x11`。备注下划线：Font A 用 `ESC -`，汉字段另加 **`FS ! 0x80`（仅下划线位，不含倍高/倍宽）**。中文标点/全角按 2 列计（`displayCols`） |
+| 2 | **汉语行（含 ≥1 汉字，其余字符为 GBK 内的中文标点/全角字符或 WPC1252 字符）**：按段输出——中文段 `FS &` + **`GS !` n** + GBK + `FS .`（与自检 ZH B GS!1x2 / 菜名 / 备注汉字同一 `HanFirmwareLine`）；其余段（ASCII、葡语重音）照常 WPC1252 + `GS !`。如 `Observação: 少放盐`、`Água 宫保`。正文 1×2 = `GS ! 0x01`；1×1 = 不发 / `GS ! 0`；标题级 2×2 = `GS ! 0x11`。备注下划线：**仅** Font A `ESC -`；汉字段**禁止** `FS !`（含下划线位——门店实测会清掉倍高）。中文标点/全角按 2 列计（`displayCols`） |
 | 3 | **位图（整行 GS v 0）**：行内有既不在 GBK 中文、又装不进 WPC1252 的字（西里尔、emoji）；或 `text_encoding=bitmap` 强制逃生 |
 | 4 | **禁止半行混排**：禁止「固件汉字标签 + Font A Qty/金额」若列宽会漂。出品联 Items/Qty：固件汉字模式用 **列宽模型**（汉字 2 列，与现 `displayWidth` 一致）空格垫 Qty；**仅**位图逃生时走 Han 列画布 |
 | 5 | **`text_encoding ∈ {auto, utf8, latin, bitmap}`**；旧 `gbk`→`auto`。**唯一** normalize：`escposenc.NormalizeThermalEncoding` |
@@ -83,7 +84,7 @@ text_encoding
 | body / 1×1 | `GS ! 0x00` | （不发 / 同） |
 | body / 1×2 | `GS ! 0x01` | `GS ! 0x01` |
 | masthead / 2×2 | `GS ! 0x11` | `GS ! 0x11` |
-| note underline | `ESC - 1` | `FS ! 0x80`（仅下划线） |
+| note underline | `ESC - 1` | （不发；与菜名同 `GS !` 字节） |
 
 ---
 
@@ -95,7 +96,7 @@ text_encoding
 | auto 行路径 | **仅** `escposenc.LinePathFor` → `PathLatin1252` / `PathHanFirmware` / `PathRaster` |
 | 行是否超 1252 | **仅** `escposenc.NeedsRaster` |
 | 行是否固件汉字 | **仅** `escposenc.UsesHanFirmware`（字符集 `IsHanFirmwareRune`） |
-| 固件汉字行字节 | **仅** `escposenc.HanFirmwareLine(s, gsBang, hanMode)`；`gsBang`=`FontASize`；`hanMode`=`0` 或 `HanUnderline` |
+| 固件汉字行字节 | **仅** `escposenc.HanFirmwareLine(s, gsBang)`；`gsBang`=`FontASize` |
 | 拉丁编码 | **仅** `escposenc.Windows1252` |
 | 行级位图 | **仅** `escposbitmap.Line` |
 | Mesa 票级模式 | **仅** `textModeForThermal` |
@@ -104,7 +105,7 @@ text_encoding
 | FT 流前缀 | **仅** `receiptStreamBegin` |
 | 配置写入 FT | **仅** `SetThermalEncoding` / `applyThermalEncodingFromConfig` |
 
-禁止第二套「中文专用字号映射」或旁路拼 `FS !` 倍高/倍宽。Han 列画布（`escposHan*Row`）只在 `escposTextBitmap` 下使用。
+禁止第二套「中文专用字号映射」或对汉字段发任何 `FS !`（含下划线）。Han 列画布（`escposHan*Row`）只在 `escposTextBitmap` 下使用。
 
 ---
 
@@ -116,7 +117,7 @@ text_encoding
 |----|------|
 | 葡语 | 参照位图 + CP850/860/WPC1252/CP858 |
 | 中文 | 参照位图 + A / **B** / C；认 **B** |
-| SIZE 1×2 + MIX | PT 1x1 / PT 1x2；**ZH B 1x1 / ZH B GS!1x2**（均 `HanFirmwareLine`，与出纸同字节）；**ZH B FS!flat**（对比：`FS ! 0x04`，应扁，勿当正道）。MIX 1x1 / 1x2 / 1x2 U / 2x2 亦 `HanFirmwareLine`；葡中同高瘦长、不乱码即通过 |
+| SIZE 1×2 + MIX | PT 1x1 / PT 1x2；**ZH B 1x1 / ZH B GS!1x2**（均 `HanFirmwareLine`，与出纸同字节）；**ZH B FS!flat**（对比：`FS ! 0x04`，应扁，勿当正道）。MIX 1x1 / 1x2 / **1x2 U**（`ESC -` + 同一 `HanFirmwareLine`，无 `FS !`）/ 2x2；葡中同高瘦长、不乱码即通过 |
 | 不做 | 自检结果不自动写配置 |
 
 | 职责 | 唯一入口 |
@@ -153,7 +154,7 @@ text_encoding
 ## 8. 实现顺序
 
 1. 本文定稿口径（本文件）  
-2. `escposenc.HanFirmwareLine`：字号改 `GS !`；删 `HanFirmwareSize` / `FS !` 字号映射  
+2. `escposenc.HanFirmwareLine(s, gsBang)`：字号仅 `GS !`；汉字段永不发 `FS !`  
 3. Mesa `escposWriter.text` + FT `emitThermalLine`（同入口，无旁路）  
 4. 自检 SIZE：ZH/MIX 只调 `HanFirmwareLine`；保留 FS!flat 对比行  
 5. 单测 + VERSION/NOTES + `./scripts/check-fiscal-agent.sh` + 门店试打  
