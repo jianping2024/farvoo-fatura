@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.35
+
+**码页自检单：记下汉语 B + 新增 SIZE 1×2 试打**
+
+- 文档钉死 pirata 中文段实测：**B `FS &` + GBK + `FS .`** 与参照一致；A / C 乱码。
+- 自检单末段新增 **SIZE 1x2**：PT 1x1 / PT 1x2（`GS !`，同厨打正文）对照 **ZH B 1x1** / **ZH B GS!1x2** / **ZH B FS!1x2**（汉字倍高备选 `FS ! 0x04`）。看哪行和 PT 1x2 同高，即该机汉语能否用硬件倍高。
+- **唯一写法：** `escposenc.SizeProbeRows`；整票仍 `buildCodePageProbe`。不改 `auto` 出纸（中文默认仍位图）。
+
 ## 0.5.34
 
 **新增：GR 发货单 + GT 运输单（mock AT）**

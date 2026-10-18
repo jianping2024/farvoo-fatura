@@ -40,9 +40,26 @@ func CodePageProbeRows() []byte {
 // HanProbeSample is the Chinese set printed on every Han probe row.
 const HanProbeSample = "宫保鸡丁 餐厅 打印测试"
 
+// SizeProbe samples — short so 1×2 still fits one line on POS-80.
+const (
+	SizeProbePTSample = "Preco Agua"
+	SizeProbeZHSample = "宫保鸡丁"
+)
+
+// GS ! n — same Font A size command as writeBody1x2 (double height = 0x01).
+func selectCharSize(n byte) []byte {
+	return []byte{0x1D, 0x21, n}
+}
+
+// FS ! n — Kanji/Han print mode on many Chinese ESC/POS clones (0x04 = double height).
+func selectHanCharMode(n byte) []byte {
+	return []byte{0x1C, 0x21, n}
+}
+
 // HanProbeRows is the ONLY Chinese firmware probe body. Row order matters:
 // A raw GBK (printers that boot in Han mode) → B FS & + GBK + FS . → C ESC 9 1 + UTF-8,
 // then ESC @ + WPC1252 so a printer stuck in UTF-8/Han mode cannot taint what follows.
+// Store read (pirata CODE PAGE TEST): B matches Chinese reference; A and C do not.
 func HanProbeRows() []byte {
 	gbk, _ := simplifiedchinese.GBK.NewEncoder().Bytes([]byte(HanProbeSample))
 	var out []byte
@@ -57,5 +74,52 @@ func HanProbeRows() []byte {
 	out = append(out, 0x1B, 0x39, 0x01)
 	out = append(out, HanProbeSample...)
 	out = append(out, '\n', 0x1B, 0x40)
+	return append(out, SelectCodeTable(CodeTableWPC1252)...)
+}
+
+// SizeProbeRows compares Font A 1×2 (GS !) against Chinese B (FS&+GBK) at 1×1 / GS! 1×2 / FS! 1×2.
+// Read: if ZH B GS!1x2 or ZH B FS!1x2 is about as tall as PT 1x2, that size path works for Han on this firmware.
+func SizeProbeRows() []byte {
+	gbk, _ := simplifiedchinese.GBK.NewEncoder().Bytes([]byte(SizeProbeZHSample))
+	pt, _ := encoding.ReplaceUnsupported(charmap.Windows1252.NewEncoder()).Bytes([]byte(SizeProbePTSample))
+
+	var out []byte
+	out = append(out, SelectCodeTable(CodeTableWPC1252)...)
+	out = append(out, selectCharSize(0)...)
+	out = append(out, "PT 1x1      "...)
+	out = append(out, pt...)
+	out = append(out, '\n')
+
+	out = append(out, selectCharSize(0x01)...) // double height only (same as writeBody1x2)
+	out = append(out, "PT 1x2      "...)
+	out = append(out, pt...)
+	out = append(out, '\n')
+	out = append(out, selectCharSize(0)...)
+
+	// ZH B 1×1 — encoding path that matched Chinese reference at pirata.
+	out = append(out, "ZH B 1x1    "...)
+	out = append(out, 0x1C, 0x26)
+	out = append(out, selectCharSize(0)...)
+	out = append(out, selectHanCharMode(0)...)
+	out = append(out, gbk...)
+	out = append(out, 0x1C, 0x2E, '\n')
+
+	// ZH B + GS ! 1×2 (same command as Portuguese body).
+	out = append(out, "ZH B GS!1x2 "...)
+	out = append(out, 0x1C, 0x26)
+	out = append(out, selectCharSize(0x01)...)
+	out = append(out, gbk...)
+	out = append(out, selectCharSize(0)...)
+	out = append(out, 0x1C, 0x2E, '\n')
+
+	// ZH B + FS ! double-height (Kanji size; some clones ignore GS ! on Han).
+	out = append(out, "ZH B FS!1x2 "...)
+	out = append(out, 0x1C, 0x26)
+	out = append(out, selectHanCharMode(0x04)...)
+	out = append(out, gbk...)
+	out = append(out, selectHanCharMode(0)...)
+	out = append(out, 0x1C, 0x2E, '\n')
+
+	out = append(out, 0x1B, 0x40) // ESC @ — leave Han/size modes
 	return append(out, SelectCodeTable(CodeTableWPC1252)...)
 }

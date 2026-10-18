@@ -12,6 +12,7 @@
 - 0.3.83～0.5.28：葡语重音走打印机 Font A + `ESC t 16`（WPC1252），只有中文转位图——门店出纸正常。
 - 0.5.29 改成「含非 ASCII 整行转位图」：重音行改用微软雅黑位图，**丢了倍高**（厨打菜品行只剩一半高）、**比例字体导致 Qtd 列错位**、字形与其他行不同。
 - 0.5.31 码页自检单在 pirata 门店打印机上实测：CP850 / CP860 / WPC1252 / CP858 **全部正确**。0.5.29 当时的「葡语乱码」已无法复现与定位（可能是别台机器或当时 `text_encoding` 配置），故回退为只有 WPC1252 装不下的字才转位图。
+- 中文段（同机自检）：**B `FS &` + GBK + `FS .`** 与参照一致；A 直发 GBK、C UTF-8 **乱码**。汉语不乱码格式 = B（不是裸 GBK、不是 UTF-8）。`1×2` 是否同样可用 → 看自检单 **SIZE 1x2** 段（与葡语 Font A 对照），以出纸为准。
 
 ---
 
@@ -80,13 +81,15 @@ text_encoding
 | 票面 | 标题/说明纯 ASCII；**参照行**＝`CodePageProbeSample` 的位图（固件无关）；下面每行 `ESC t n` + `n=… 名称` + 同一串葡语字母按该码页编码 |
 | 候选 | `escposenc.CodePageCandidates`：2 CP850 / 3 CP860 / 16 WPC1252 / 19 CP858 |
 | 中文段 | 第二张参照位图（`HanProbeSample`）+ 三行：**A** 直发 GBK（开机即汉字模式的机型）/ **B** `FS &` + GBK + `FS .` / **C** `ESC 9 1` + UTF-8；末尾 `ESC @` + `ESC t 16` 复位，避免卡在汉字/UTF-8 模式 |
-| 读法 | 葡语段：与参照一致的 `n=` 即该机可用码页。中文段：与参照一致的 A/B/C 即该机可用汉字指令；全部不一致 → 中文继续走位图 |
+| SIZE 1×2 段 | 无位图参照；对照行：**PT 1x1** / **PT 1x2**（`GS ! 0x01`，与厨打 `writeBody1x2` 同）/ **ZH B 1x1** / **ZH B GS!1x2**（B 路径内 `GS !`）/ **ZH B FS!1x2**（B 路径内 `FS ! 0x04` 汉字倍高）；末尾 `ESC @` + WPC1252 |
+| 读法 | 葡语段：与参照一致的 `n=` 即该机可用码页。中文段：与参照一致的 A/B/C 即该机可用汉字指令（pirata：**B**）；全部不一致 → 中文继续走位图。SIZE：看 ZH B 哪一行与 **PT 1x2** 同高 → 该指令可给汉语真倍高 |
 | 不做 | 自检结果**不**自动写配置、**不**改变 `auto` 出纸路径 |
 
 | 职责 | 唯一入口 |
 |------|----------|
 | 自检单票体（各码页行） | `escposenc.CodePageProbeRows` |
 | 自检单票体（中文行） | `escposenc.HanProbeRows` |
+| 自检单票体（SIZE 1×2） | `escposenc.SizeProbeRows` |
 | 自检单整票 | `buildCodePageProbe` |
 | 试打类型分流 | `runTestPrintForStation(…, kind)` |
 | 设置页发送 | `configure_ui.html` 的 `sendTestPrint(kind, sentKey)` |
