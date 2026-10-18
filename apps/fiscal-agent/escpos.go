@@ -411,7 +411,7 @@ func (w *escposWriter) text(s string) {
 			if w.underlineOn {
 				n |= 0x80 // FS ! bit 7 — Han underline (notes)
 			}
-			w.content.Write(escposenc.HanFirmwareLine(s, n))
+			w.content.Write(escposenc.HanFirmwareLine(s, escposenc.FontASize(w.doubleW, w.doubleH), n))
 			w.lastTextBitmap = false
 			return
 		case escposenc.PathRaster:

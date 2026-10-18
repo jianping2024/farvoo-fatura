@@ -33,7 +33,7 @@
 |----|------|
 | 厨打 / 预结 / 结账 / 正式 FT 热敏**字形**与字号 | SAF-T XML（仍 Windows-1252，分轨） |
 | 葡语 Font A + `GS !`；汉语固件 B + `FS !`；位图逃生 | 自检结果自动写配置 |
-| `text_encoding` 四态（见 §2） | 整票无条件 GBK；字符级「半字 CP1252 + 半字 GBK」拼重音+汉字 |
+| `text_encoding` 四态（见 §2）；同行葡语重音 + 汉字按段切换 | 整票无条件 GBK |
 
 ---
 
@@ -42,8 +42,8 @@
 | # | 定法 |
 |---|------|
 | 1 | **葡语/英文（整行可编码进 WPC1252）**：Font A + `ESC t 16` + Windows-1252 + **`GS !` 字号**（正文 1×2 = `GS ! 0x01`，与现 `writeBody1x2` 同） |
-| 2 | **汉语行（含 ≥1 汉字，其余字符为 ASCII 或 GBK 内的中文标点/全角字符）**：`FS &` + `FS ! n` + GBK + `FS ! 0` + `FS .`（与自检 ZH B FS!1x2 同序）。正文 1×2 = `FS ! 0x04`；1×1 = `FS ! 0`；标题级 2×2 = `FS ! 0x0C`（倍宽+倍高）；下划线行（备注）再或 `0x80`。中文标点/全角按 2 列计（`displayCols`） |
-| 3 | **位图（整行 GS v 0）**：行内有既非 ASCII、又非汉字、又装不进 WPC1252 的字（西里尔、emoji；或同行葡语重音+汉字如 `Água 宫保`、pt 店备注 `Observação: 少放盐`）；或 `text_encoding=bitmap` 强制逃生 |
+| 2 | **汉语行（含 ≥1 汉字，其余字符为 GBK 内的中文标点/全角字符或 WPC1252 字符）**：按段输出——中文段 `GS ! 0` + `FS &` + `FS ! n` + GBK + `FS ! 0` + `FS .` + 恢复 `GS !`（与自检 ZH B FS!1x2 同字节：中文段内不留 `GS !`）；其余段（ASCII、葡语重音）照常 WPC1252 + `GS !`。如 `Observação: 少放盐`、`Água 宫保`。正文 1×2 = `FS ! 0x04`；1×1 = `FS ! 0`；标题级 2×2 = `FS ! 0x0C`（倍宽+倍高）；下划线行（备注）再或 `0x80`。中文标点/全角按 2 列计（`displayCols`） |
+| 3 | **位图（整行 GS v 0）**：行内有既不在 GBK 中文、又装不进 WPC1252 的字（西里尔、emoji）；或 `text_encoding=bitmap` 强制逃生 |
 | 4 | **禁止半行混排**：禁止「固件汉字标签 + Font A Qty/金额」若列宽会漂。出品联 Items/Qty：固件汉字模式用 **列宽模型**（汉字 2 列，与现 `displayWidth` 一致）空格垫 Qty；**仅**位图逃生时走 Han 列画布 |
 | 5 | **`text_encoding ∈ {auto, utf8, latin, bitmap}`**；旧 `gbk`→`auto`。**唯一** normalize：`escposenc.NormalizeThermalEncoding` |
 | 6 | **`auto`（默认）**：按 §3 逐行分流。Mesa 与 FT **同一判定** |
@@ -67,9 +67,10 @@ text_encoding
 └─ auto    → 逐行：
              ├─ 整行可 WPC1252
              │    → Font A + ESC t 16 + CP1252 + GS! 字号 + LF
-             ├─ UsesHanFirmware（含汉字且其余皆 ASCII）
-             │    → FS & + GBK + FS! 字号 + FS . + LF
-             └─ 其余（西里尔、重音+汉字混行…）
+             ├─ UsesHanFirmware（含汉字，其余皆 GBK 中文或 WPC1252）
+             │    → 按段：中文段 GS!0 + FS & + FS! 字号 + GBK + FS!0 + FS . + 恢复 GS!；
+             │      其余段 CP1252；+ LF
+             └─ 其余（西里尔、emoji…）
                   → escposbitmap.Line（GS v 0，无尾随 LF）
 ```
 
@@ -112,7 +113,7 @@ Mesa：`escposWriter.text` 在 `escposTextAuto` 下按 `LinePathFor` 分流，�
 |----|------|
 | 葡语 | 参照位图 + CP850/860/WPC1252/CP858 |
 | 中文 | 参照位图 + A / **B** / C；pirata 认 **B** |
-| SIZE 1×2 | PT 1x1 / PT 1x2 / ZH B 1x1 / ZH B GS!1x2 / **ZH B FS!1x2**；认与 PT 1x2 同高者（pirata：**FS!**） |
+| SIZE 1×2 | PT 1x1 / PT 1x2 / ZH B 1x1 / ZH B GS!1x2 / **ZH B FS!1x2** / **MIX 1x2**（`Água 少放盐`，即 auto 混排真实字节）；认与 PT 1x2 同高者（pirata：**FS!**；MIX 待测） |
 | 不做 | 自检结果不自动写配置 |
 
 | 职责 | 唯一入口 |

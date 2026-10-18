@@ -40,8 +40,8 @@ func TestLinePathFor(t *testing.T) {
 		"宫保鸡丁":            PathHanFirmware,
 		"001-宫保鸡丁      1": PathHanFirmware,
 		"备注: 少放盐，不要葱（谢谢）": PathHanFirmware,
-		"Água 宫保":         PathRaster,
-		"Observação: 少放盐": PathRaster,
+		"Água 宫保":         PathHanFirmware,
+		"Observação: 少放盐": PathHanFirmware,
 		"Борщ":            PathRaster,
 		"宫保鸡丁 🍗":          PathRaster,
 	}
@@ -53,10 +53,17 @@ func TestLinePathFor(t *testing.T) {
 }
 
 func TestHanFirmwareLineBytes(t *testing.T) {
-	got := HanFirmwareLine("A宫", HanFirmwareSize(false, true))
-	want := []byte{0x1C, 0x26, 0x1C, 0x21, 0x04, 'A', 0xB9, 0xAC, 0x1C, 0x21, 0x00, 0x1C, 0x2E}
+	// 1×2: Font A run keeps GS ! 0x01; Han run clears it, prints FS ! 0x04, then restores.
+	got := HanFirmwareLine("A宫", FontASize(false, true), HanFirmwareSize(false, true))
+	want := []byte{'A', 0x1D, 0x21, 0x00, 0x1C, 0x26, 0x1C, 0x21, 0x04, 0xB9, 0xAC, 0x1C, 0x21, 0x00, 0x1C, 0x2E, 0x1D, 0x21, 0x01}
 	if string(got) != string(want) {
 		t.Fatalf("HanFirmwareLine = % X want % X", got, want)
+	}
+	// pt accent outside FS & in WPC1252 (á = E1); 1×1 needs no GS ! toggling.
+	got = HanFirmwareLine("á宫!", 0, 0)
+	want = []byte{0xE1, 0x1C, 0x26, 0x1C, 0x21, 0x00, 0xB9, 0xAC, 0x1C, 0x21, 0x00, 0x1C, 0x2E, '!'}
+	if string(got) != string(want) {
+		t.Fatalf("mixed HanFirmwareLine = % X want % X", got, want)
 	}
 	if HanFirmwareSize(true, true) != 0x0C || HanFirmwareSize(false, false) != 0 {
 		t.Fatal("FS ! size map")

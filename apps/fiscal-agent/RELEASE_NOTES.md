@@ -6,7 +6,8 @@ Each release section starts with `## X.Y.Z`. The release workflow reads the matc
 
 **中文改走打印机汉字库（含 1×2 倍高）；出品联多语菜名**
 
-- `auto`（默认）逐行分流：葡语/英文 Font A + `GS !`；中文行 `FS &` + GBK + `FS !`（1×2 = `0x04`，2×2 = `0x0C`，按 pirata SIZE 自检）；同行葡语重音 + 汉字、西里尔、emoji 才转位图。厨打、预结、结账、FT 同一判定。
+- `auto`（默认）逐行分流：葡语/英文 Font A + `GS !`；含中文的行按段输出，中文段 `FS &` + GBK + `FS !`（1×2 = `0x04`，2×2 = `0x0C`，按 pirata SIZE 自检），段前清 `GS !`、段后恢复；葡语重音段照常 WPC1252，所以 `Observação: 少放盐` 也是同高 1×2。只有西里尔、emoji 才转位图。厨打、预结、结账、FT 同一判定。
+- 自检单 SIZE 段新增 **MIX 1x2**（`Água 少放盐`），到店看它是否和 PT 1x2 同高。
 - 新增 `text_encoding=bitmap`：旧的「中文转图片」整套路径（含 Han 列画布），给自检中文段 B 不对或倍高异常的机器用。
 - 出品联 `print_names`：每道菜按 Mesa 勾选的葡 / 英 / 中逐行 1×2 打印；编号与 Qty 只在第一行，每个名字各自换行；没有 `print_names` 的旧任务不变。
 - **唯一写法：** `escposenc.LinePathFor` / `HanFirmwareLine` / `HanFirmwareSize`；出品联菜名 `stationSlipLabels`。

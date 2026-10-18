@@ -601,3 +601,29 @@ func TestStationTicketPrintNamesLongNameWraps(t *testing.T) {
 		t.Fatal("wrapped tail of second name missing")
 	}
 }
+
+func TestStationTicketPtNoteWithHanStaysFirmware(t *testing.T) {
+	withThermalConfig(t, "")
+	payload, _ := json.Marshal(jobPayload{
+		Locale:           "pt",
+		TableDisplayName: "001",
+		Lines: []jobLine{{
+			ItemCode:   "012",
+			Qty:        2,
+			Note:       "sem cebola, 少放盐",
+			PrintNames: []string{"Bacalhau à Brás", "葡式炒鳕鱼"},
+		}},
+	})
+	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
+	if bytes.Contains(raw, []byte{0x1D, 0x76, 0x30, 0x00}) {
+		t.Fatal("pt prefix + Han note must not raster")
+	}
+	notePrefix := escposenc.Windows1252("Observação: sem cebola, ")
+	if !bytes.Contains(raw, notePrefix) {
+		t.Fatal("pt note prefix must stay Font A WPC1252")
+	}
+	// note is underlined 1×2: Han run gets FS ! 0x04|0x80 with GS ! cleared around it.
+	if !bytes.Contains(raw, []byte{0x1D, 0x21, 0x00, 0x1C, 0x26, 0x1C, 0x21, 0x84}) {
+		t.Fatal("Han note run must clear GS ! and use FS ! 0x84 (1×2 + underline)")
+	}
+}
