@@ -10,9 +10,11 @@ import (
 )
 
 var (
-	gsReverseOn  = []byte{0x1D, 0x42, 0x01}
-	gsReverseOff = []byte{0x1D, 0x42, 0x00}
-	gsV0         = []byte{0x1D, 0x76, 0x30, 0x00}
+	gsSize1x1 = []byte{0x1D, 0x21, 0x00}
+	gsSize1x2 = []byte{0x1D, 0x21, 0x01}
+	gsSize2x2 = []byte{0x1D, 0x21, 0x11}
+	gsReverse = []byte{0x1D, 0x42}
+	gsV0      = []byte{0x1D, 0x76, 0x30, 0x00}
 )
 
 func stationTicketRaw(t *testing.T, p jobPayload) []byte {
@@ -24,11 +26,11 @@ func stationTicketRaw(t *testing.T, p jobPayload) []byte {
 	return escposFromJob(printJob{Type: "station_ticket", Payload: payload})
 }
 
-// reverseBlock is the exact Font A bytes of one dish lead: GS B 1 + " 1× 001 " + GS B 0.
-func reverseBlock(qty int, code string) []byte {
-	b := append([]byte{}, gsReverseOn...)
-	b = append(b, escposenc.Windows1252(stationSlipQtyCodeBlock(qty, code))...)
-	return append(b, gsReverseOff...)
+// leadRow is the exact Font A bytes of one dish lead: GS ! 2×2 + "1× 001" + GS ! 1×2.
+func leadRow(qty int, code string) []byte {
+	b := append([]byte{}, gsSize2x2...)
+	b = append(b, escposenc.Windows1252(stationSlipQtyCodeLead(qty, code))...)
+	return append(b, gsSize1x2...)
 }
 
 func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
@@ -86,15 +88,14 @@ func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
 	}
 	assertAccentsInFirmwareFont(t, raw, "Água", "n.º")
 
-	if !bytes.Contains(raw, append(reverseBlock(1, "001"), escposenc.Windows1252(" Água 500ml")...)) {
-		t.Fatal("dish row must be reverse qty+code block followed by the name")
+	if !bytes.Contains(raw, append(leadRow(1, "001"), escposenc.Windows1252(" Água 500ml")...)) {
+		t.Fatal("dish row must be 2×2 qty+code lead followed by the 1×2 name")
 	}
-	if !bytes.Contains(raw, reverseBlock(2, "007")) {
-		t.Fatal("second dish must carry its own qty+code block")
+	if !bytes.Contains(raw, leadRow(2, "007")) {
+		t.Fatal("second dish must carry its own qty+code lead")
 	}
-	idx := bytes.Index(raw, gsReverseOn)
-	if !bytes.Contains(raw[idx:], []byte{0x1D, 0x21, 0x01}) || bytes.Contains(raw[idx:], []byte{0x1D, 0x21, 0x11}) {
-		t.Fatal("menu body must stay GS ! 1×2 (never 2×2)")
+	if bytes.Contains(raw, gsReverse) {
+		t.Fatal("dish rows must not use GS B reverse")
 	}
 }
 
@@ -163,12 +164,16 @@ func TestStationSlipNames(t *testing.T) {
 	}
 }
 
-func TestStationSlipQtyCodeBlock(t *testing.T) {
-	if got := stationSlipQtyCodeBlock(1, "001"); got != " 1× 001 " {
-		t.Fatalf("block %q", got)
+func TestStationSlipQtyCodeLead(t *testing.T) {
+	if got := stationSlipQtyCodeLead(1, "001"); got != "1× 001" {
+		t.Fatalf("lead %q", got)
 	}
-	if got := stationSlipQtyCodeBlock(12, ""); got != " 12× " {
-		t.Fatalf("no-code block %q", got)
+	if got := stationSlipQtyCodeLead(12, ""); got != "12×" {
+		t.Fatalf("no-code lead %q", got)
+	}
+	// "1× 001" at 2×2 = 12 cols + one 1×2 space
+	if got := stationSlipNameIndent("1× 001"); got != 13 {
+		t.Fatalf("indent %d want 13", got)
 	}
 }
 
@@ -196,15 +201,22 @@ func TestStationItemExtraNamesAndNoteHangUnderName(t *testing.T) {
 			PrintNames: []string{"Frango Piri-Piri", "Grilled chicken"},
 		}},
 	})
-	indent := strings.Repeat(" ", displayWidth(stationSlipQtyCodeBlock(7, "020"))+1)
-	first := bytes.Index(raw, append(reverseBlock(7, "020"), []byte(" Frango Piri-Piri")...))
+	indent := strings.Repeat(" ", stationSlipNameIndent(stationSlipQtyCodeLead(7, "020")))
+	first := bytes.Index(raw, append(leadRow(7, "020"), []byte(" Frango Piri-Piri")...))
 	second := bytes.Index(raw, []byte(indent+"Grilled chicken"))
 	note := bytes.Index(raw, escposenc.Windows1252(indent+"» sem sal"))
 	if first < 0 || second < 0 || note < 0 || !(first < second && second < note) {
-		t.Fatalf("want block+name < extra name < note, all hung under name; got %d %d %d", first, second, note)
+		t.Fatalf("want lead+name < extra name < note, all hung under name; got %d %d %d", first, second, note)
 	}
-	if bytes.Count(raw, gsReverseOn) != 1 {
-		t.Fatal("only the first row carries the qty+code block")
+	// other-language names 1×1, note back to 1×2
+	if !bytes.Contains(raw[first:second], gsSize1x1) {
+		t.Fatal("extra print_names must be 1×1")
+	}
+	if !bytes.Contains(raw[second:note], gsSize1x2) {
+		t.Fatal("note must be 1×2")
+	}
+	if bytes.Count(raw, gsSize2x2) != 3 {
+		t.Fatal("2×2 only for title, table row and the one dish lead")
 	}
 	if bytes.Contains(raw, []byte{0x1B, 0x2D, 0x01}) {
 		t.Fatal("notes must not be underlined")
@@ -225,7 +237,7 @@ func TestStationTicketLongNameWrapsUnderName(t *testing.T) {
 	if bytes.Contains(raw, []byte("…")) {
 		t.Fatal("dish names must wrap, never ellipsis")
 	}
-	indent := displayWidth(stationSlipQtyCodeBlock(2, "012")) + 1
+	indent := stationSlipNameIndent(stationSlipQtyCodeLead(2, "012"))
 	chunks := stationSlipWrap(long, escposWidth-indent)
 	if len(chunks) < 2 {
 		t.Fatal("fixture too short to wrap")
@@ -261,14 +273,17 @@ func TestStationTicketHanMenuUsesFirmware1x2ByDefault(t *testing.T) {
 		}},
 	})
 	gbk := []byte{0xB9, 0xAC, 0xB1, 0xA3} // 宫保
-	if !bytes.Contains(raw, append([]byte{0x1C, 0x26, 0x1D, 0x21, 0x01}, gbk...)) {
-		t.Fatal("Han dish name must be FS & + GS ! 0x01 (1×2) + GBK")
-	}
+
 	if bytes.Contains(raw, gsV0) {
 		t.Fatal("auto must not raster Han dish names")
 	}
-	if !bytes.Contains(raw, append(reverseBlock(1, "001"), escposenc.Windows1252(" Água 500ml")...)) {
-		t.Fatal("pt name must stay Font A WPC1252 after the reverse block")
+	if !bytes.Contains(raw, append(leadRow(1, "001"), escposenc.Windows1252(" Água 500ml")...)) {
+		t.Fatal("pt name must stay Font A WPC1252 after the 2×2 lead")
+	}
+	// second name 宫保鸡丁 is 1×1: GS ! 0 then FS & + GBK (HanFirmwareLine sends no GS ! at 1×1)
+	at := bytes.Index(raw, append([]byte{0x1C, 0x26}, gbk...))
+	if at < 0 || !bytes.Contains(raw[:at], gsSize1x1) || bytes.LastIndex(raw[:at], gsSize1x1) < bytes.LastIndex(raw[:at], gsSize1x2) {
+		t.Fatal("other-language Han name must print at 1×1 (GS ! 0x00 + FS & + GBK)")
 	}
 }
 
@@ -280,9 +295,9 @@ func TestStationTicketHanNameOnBlockRowStaysFirmware(t *testing.T) {
 		Lines:            []jobLine{{ItemCode: "001", ItemName: "中水", Qty: 1, Note: "正常冰"}},
 	})
 	// reverse block (Font A) then firmware Han name on the same row
-	want := append(reverseBlock(1, "001"), ' ', 0x1C, 0x26)
+	want := append(leadRow(1, "001"), ' ', 0x1C, 0x26)
 	if !bytes.Contains(raw, want) {
-		t.Fatal("Han name must follow the reverse block on the same row via FS &")
+		t.Fatal("Han name must follow the 2×2 lead on the same row via FS &")
 	}
 	if bytes.Contains(raw, gsV0) {
 		t.Fatal("auto must not raster Han name or note")
@@ -342,33 +357,28 @@ func TestZhStationSlipBitmapItemRowsAreRasters(t *testing.T) {
 	if n := bytes.Count(raw, gsV0); n < 3 {
 		t.Fatalf("GS v 0 count %d want >= 3", n)
 	}
-	if bytes.Contains(raw, gsReverseOn) {
-		t.Fatal("canvas rows invert pixels; GS B must not be used")
+	if bytes.Contains(raw, gsReverse) {
+		t.Fatal("GS B must not be used")
 	}
 }
 
-func TestHanStationItemInvertsBlockBand(t *testing.T) {
-	fontPx := bitmapTextDefaultFontPx
-	spacePx := measureHanTextWidth(" ", fontPx, false)
-	blockText := strings.TrimSpace(stationSlipQtyCodeBlock(1, "001"))
-	blockEnd := spacePx*2 + measureHanTextWidth(blockText, fontPx, false)
-	row := mergeBitmapRows(
-		renderBitmapLeftRow(blockText, spacePx, fontPx, bitmapTextStyle{}),
-		renderBitmapLeftRow("中水", blockEnd+spacePx, fontPx, bitmapTextStyle{}),
-	)
-	invertBitmapBand(row, 0, blockEnd)
-	if row.Width != bitmapTextMaxWidthPx {
-		t.Fatalf("canvas width %d want %d", row.Width, bitmapTextMaxWidthPx)
+func TestMergeBitmapRowsBottomAligns(t *testing.T) {
+	large := hanFontPxForRole(bitmapTextDefaultFontPx, hanFontLarge)
+	body := hanFontPxForRole(bitmapTextDefaultFontPx, hanFontBody)
+	nameX := escposDisplayColToPx(stationSlipNameIndent("1× 001"))
+	lead := renderBitmapLeftRow("1× 001", 0, large, bitmapTextStyle{})
+	name := renderBitmapLeftRow("中水", nameX, body, bitmapTextStyle{})
+	row := mergeBitmapRows(lead, name)
+	if row.Width != bitmapTextMaxWidthPx || row.Height != max(lead.Height, name.Height) {
+		t.Fatalf("merged %dx%d", row.Width, row.Height)
 	}
-	// background of the block band is ink (reverse); the gap before the name is blank
-	if row.Pixels[0] == 0 {
-		t.Fatal("block band must be inverted (ink at top-left)")
+	if !bitmapInkInXBand(row, nameX, bitmapTextMaxWidthPx) {
+		t.Fatal("name ink missing after the lead")
 	}
-	if bitmapInkInXBand(row, blockEnd, blockEnd+spacePx/2) {
-		t.Fatal("gap between block and name must stay blank")
-	}
-	if !bitmapInkInXBand(row, blockEnd+spacePx, bitmapTextMaxWidthPx) {
-		t.Fatal("name ink missing after the block")
+	// name sits on the bottom: its top rows (above the shorter glyph) stay blank
+	top := bitmapTextImage{Width: row.Width, Height: row.Height - name.Height, Pixels: row.Pixels[:row.Width*(row.Height-name.Height)]}
+	if top.Height > 0 && bitmapInkInXBand(top, nameX, bitmapTextMaxWidthPx) {
+		t.Fatal("shorter name must be bottom-aligned with the 2×2 lead")
 	}
 }
 

@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.41
+
+**出品联定稿：数量 + 编号 2×2 大字（不反白）；多语菜名分级字号**
+
+- **根因：** 0.5.39/0.5.40 门店实测 `GS B` 反白编号块白字被热量糊掉；对比条选定 E（2×2 不加粗）。
+- **菜品行：** 「`2× 012`」2×2、不加粗、不反白；第一个菜名 1×2 同行（底部对齐）；其他语言菜名 1×1、备注 `» …` 1×2，均缩进到菜名列下。
+- 删除反白（`GS B`）与试打对比条；样张提示文案按新字号更新。
+- `text_encoding=bitmap`：编号用 Han 大号、副名小号，同行图像底部对齐。
+
 ## 0.5.40
 
 **出品联：菜品区取消加粗；试打新增「数量/编号」对比条**

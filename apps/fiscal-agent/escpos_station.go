@@ -15,12 +15,12 @@ import (
 //	Mesa n.º:001                18:01  2×2 bold
 //	Conv.:1                 3 artigos  1×1
 //	================================================
-//	[ 1× 001 ] Água 500ml              1×2, qty+code reverse (GS B)
-//	           中水                     1×2, hangs under name
-//	           » 正常冰                  1×2 note
+//	1× 001 Água 500ml                  qty+code 2×2, first name 1×2 (same row)
+//	       中水                         other print_names 1×1, hang under name
+//	       » 正常冰                      note 1×2
+//	- - - - - - - - - - - - - - - - - - - - - - - -
 //
-// Dish rows are never bold: ESC E smears the tall 1×2 Font A on store printers (0.5.39).
-//   - - - - - - - - - - - - - - - - - - - - - - - -
+// Dish rows are never bold or reversed: ESC E / GS B smeared on store printers (0.5.39/0.5.40).
 const stationSlipNotePrefix = "» "
 
 // stationSlipNames splits a dish into item_code and its print names (print_names first, else
@@ -51,12 +51,17 @@ func stationSlipNames(ln jobLine) (code string, names []string) {
 	return code, names
 }
 
-// stationSlipQtyCodeBlock is the reverse-video lead of each dish row, e.g. " 1× 001 ".
-func stationSlipQtyCodeBlock(qty int, code string) string {
+// stationSlipQtyCodeLead is the 2×2 lead of each dish row, e.g. "1× 001".
+func stationSlipQtyCodeLead(qty int, code string) string {
 	if code == "" {
-		return fmt.Sprintf(" %d× ", qty)
+		return fmt.Sprintf("%d×", qty)
 	}
-	return fmt.Sprintf(" %d× %s ", qty, code)
+	return fmt.Sprintf("%d× %s", qty, code)
+}
+
+// stationSlipNameIndent — Font A column where names/notes start: 2×2 lead (2 cols per char) + 1×2 space.
+func stationSlipNameIndent(lead string) int {
+	return displayWidth(lead)*2 + 1
 }
 
 // stationSlipWrap wraps at the last space that fits (Latin words stay whole); Han runs
@@ -131,14 +136,6 @@ func stationSlipOrderAt(p jobPayload) string {
 	return nowLocal()
 }
 
-func (w *escposWriter) reverse(on bool) {
-	n := byte(0)
-	if on {
-		n = 1
-	}
-	w.content.Write([]byte{0x1D, 0x42, n})
-}
-
 // writeStationSlipHeader — branding · station, title, table + order clock, guest + item count.
 func (w *escposWriter) writeStationSlipHeader(p jobPayload, lab ticketLabels, title string) {
 	w.align(1)
@@ -210,12 +207,12 @@ func (w *escposWriter) writeStationMenuLines(p jobPayload, lines []jobLine) {
 			qty = 1
 		}
 		code, names := stationSlipNames(ln)
-		block := stationSlipQtyCodeBlock(qty, code)
+		lead := stationSlipQtyCodeLead(qty, code)
 		note := strings.TrimSpace(ln.Note)
 		if canvas {
-			w.writeHanStationItem(block, names, note)
+			w.writeHanStationItem(lead, names, note)
 		} else {
-			w.writeStationItem(block, names, note)
+			w.writeStationItem(lead, names, note)
 		}
 	}
 }
@@ -228,10 +225,10 @@ func (w *escposWriter) writeStationItemDivider() {
 	w.lf()
 }
 
-// writeStationItem — Font A / firmware Han path: GS B block, name on the same row,
-// extra names and the note hang under the name column.
-func (w *escposWriter) writeStationItem(block string, names []string, note string) {
-	indent := displayWidth(block) + 1
+// writeStationItem — Font A / firmware Han path: 2×2 lead, first name 1×2 on the same row;
+// other names (1×1) and the note (1×2) hang under the name column.
+func (w *escposWriter) writeStationItem(lead string, names []string, note string) {
+	indent := stationSlipNameIndent(lead)
 	maxW := escposWidth - indent
 	pad := strings.Repeat(" ", indent)
 	first := ""
@@ -242,11 +239,11 @@ func (w *escposWriter) writeStationItem(block string, names []string, note strin
 
 	w.align(0)
 	w.writeBody1x2()
-	w.reverse(true)
-	w.text(block)
-	w.reverse(false)
+	w.size(true, true)
+	w.text(lead)
+	w.size(false, true)
 	if len(chunks) > 0 {
-		// A raster segment is a full-width GS v 0 image — it cannot share the block's row.
+		// A raster segment is a full-width GS v 0 image — it cannot share the lead's row.
 		if w.textMode == escposTextAuto && escposenc.LinePathFor(chunks[0]) == escposenc.PathRaster {
 			w.lf()
 			w.text(pad + chunks[0])
@@ -261,13 +258,17 @@ func (w *escposWriter) writeStationItem(block string, names []string, note strin
 		w.lf()
 	}
 
-	for _, name := range names[min(1, len(names)):] {
-		for _, c := range stationSlipWrap(name, maxW) {
-			w.text(pad + c)
-			w.lf()
+	if len(names) > 1 {
+		w.writeBody1x1()
+		for _, name := range names[1:] {
+			for _, c := range stationSlipWrap(name, maxW) {
+				w.text(pad + c)
+				w.lf()
+			}
 		}
 	}
 	if note != "" {
+		w.writeBody1x2()
 		for _, c := range stationSlipWrap(stationSlipNotePrefix+note, maxW) {
 			w.text(pad + c)
 			w.lf()
@@ -275,43 +276,42 @@ func (w *escposWriter) writeStationItem(block string, names []string, note strin
 	}
 }
 
-// writeHanStationItem — bitmap escape: same layout on the 576px canvas; the block is
-// reversed by inverting its pixel band (GS B does not apply to GS v 0 images).
-func (w *escposWriter) writeHanStationItem(block string, names []string, note string) {
-	fontPx := hanFontPxForRole(w.hanFontPx, hanFontBody)
+// writeHanStationItem — bitmap escape: same layout on the 576px canvas (lead at the large
+// Han role, first name body, other names small, note body; rows bottom-aligned).
+func (w *escposWriter) writeHanStationItem(lead string, names []string, note string) {
+	bodyPx := hanFontPxForRole(w.hanFontPx, hanFontBody)
 	style := bitmapTextStyle{}
-	spacePx := measureHanTextWidth(" ", fontPx, false)
-	blockText := strings.TrimSpace(block)
-	blockEnd := spacePx*2 + measureHanTextWidth(blockText, fontPx, false)
-	nameX := blockEnd + spacePx
+	nameX := escposDisplayColToPx(stationSlipNameIndent(lead))
 	maxPx := bitmapTextMaxWidthPx - nameX
 
 	first := ""
 	if len(names) > 0 {
 		first = names[0]
 	}
-	chunks := wrapHanTextByPx(first, maxPx, fontPx, false)
-	row := renderBitmapLeftRow(blockText, spacePx, fontPx, style)
+	chunks := wrapHanTextByPx(first, maxPx, bodyPx, false)
+	row := renderBitmapLeftRow(lead, 0, hanFontPxForRole(w.hanFontPx, hanFontLarge), style)
 	if len(chunks) > 0 {
-		row = mergeBitmapRows(row, renderBitmapLeftRow(chunks[0], nameX, fontPx, style))
+		row = mergeBitmapRows(row, renderBitmapLeftRow(chunks[0], nameX, bodyPx, style))
 		chunks = chunks[1:]
 	}
-	invertBitmapBand(row, 0, blockEnd)
 
 	w.align(0)
 	w.writeBody1x2()
 	w.writeHanRaster(row)
 	for _, c := range chunks {
-		w.writeHanRaster(renderBitmapLeftRow(c, nameX, fontPx, style))
+		w.writeHanRaster(renderBitmapLeftRow(c, nameX, bodyPx, style))
 	}
-	for _, name := range names[min(1, len(names)):] {
-		for _, c := range wrapHanTextByPx(name, maxPx, fontPx, false) {
-			w.writeHanRaster(renderBitmapLeftRow(c, nameX, fontPx, style))
+	if len(names) > 1 {
+		smallPx := hanFontPxForRole(w.hanFontPx, hanFontSmall)
+		for _, name := range names[1:] {
+			for _, c := range wrapHanTextByPx(name, maxPx, smallPx, false) {
+				w.writeHanRaster(renderBitmapLeftRow(c, nameX, smallPx, style))
+			}
 		}
 	}
 	if note != "" {
-		for _, c := range wrapHanTextByPx(stationSlipNotePrefix+note, maxPx, fontPx, false) {
-			w.writeHanRaster(renderBitmapLeftRow(c, nameX, fontPx, style))
+		for _, c := range wrapHanTextByPx(stationSlipNotePrefix+note, maxPx, bodyPx, false) {
+			w.writeHanRaster(renderBitmapLeftRow(c, nameX, bodyPx, style))
 		}
 	}
 }
@@ -328,7 +328,7 @@ func (w *escposWriter) writeStationSlipFooter(p jobPayload, lab ticketLabels) {
 	w.writeReceiptPadLine(stationSlipOrderAt(p), fmt.Sprintf("%s:%s", lab.printedBy, ticketBrandingWord(w.printLocale)))
 }
 
-// mergeBitmapRows ORs two full-width rows (top-aligned) into one canvas.
+// mergeBitmapRows ORs two full-width rows into one canvas, bottom-aligned (like mixed GS ! sizes).
 func mergeBitmapRows(a, b bitmapTextImage) bitmapTextImage {
 	if a.Width == 0 {
 		return b
@@ -339,28 +339,14 @@ func mergeBitmapRows(a, b bitmapTextImage) bitmapTextImage {
 	h := max(a.Height, b.Height)
 	out := bitmapTextImage{Width: bitmapTextMaxWidthPx, Height: h, Pixels: make([]byte, bitmapTextMaxWidthPx*h)}
 	for _, img := range []bitmapTextImage{a, b} {
+		dy := h - img.Height
 		for y := 0; y < img.Height; y++ {
 			for x := 0; x < img.Width && x < out.Width; x++ {
 				if img.Pixels[y*img.Width+x] != 0 {
-					out.Pixels[y*out.Width+x] = 1
+					out.Pixels[(y+dy)*out.Width+x] = 1
 				}
 			}
 		}
 	}
 	return out
-}
-
-// invertBitmapBand flips ink in x ∈ [startPx, endPx) over the full row height.
-func invertBitmapBand(img bitmapTextImage, startPx, endPx int) {
-	endPx = min(endPx, img.Width)
-	for y := 0; y < img.Height; y++ {
-		for x := max(startPx, 0); x < endPx; x++ {
-			i := y*img.Width + x
-			if img.Pixels[i] == 0 {
-				img.Pixels[i] = 1
-			} else {
-				img.Pixels[i] = 0
-			}
-		}
-	}
 }

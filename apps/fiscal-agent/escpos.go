@@ -442,7 +442,6 @@ func (w *escposWriter) writeResetPrintMode(out *bytes.Buffer) {
 	out.Write([]byte{0x1D, 0x21, 0})
 	out.Write([]byte{0x1B, 0x45, 0})
 	out.Write([]byte{0x1B, 0x2D, 0})
-	out.Write([]byte{0x1D, 0x42, 0}) // GS B 0 — station slip qty/code reverse
 	out.Write([]byte{0x1B, 0x32}) // ESC 2 — default line spacing
 }
 

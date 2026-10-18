@@ -512,7 +512,7 @@ func TestBuildOpenTableSlipStationChromeWithAmount(t *testing.T) {
 		"Open table",
 		"Guest:3",
 		"1 item",
-		"\x1dB\x01 1\xd7 \x1dB\x00 Open table", // station-slip dish row: reverse qty block
+		"\x1d!\x111\xd7\x1d!\x01 Open table", // station-slip dish row: 2×2 qty lead + 1×2 name
 		"Amount Due:59.70",
 	} {
 		if !strings.Contains(s, want) {
