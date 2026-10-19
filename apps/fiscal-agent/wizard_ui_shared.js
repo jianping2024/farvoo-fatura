@@ -94,6 +94,74 @@
     });
   }
 
+  /** Thermal text_encoding choices; 'auto' first (recommended default). */
+  var TEXT_ENCODING_OPTIONS = ['auto', 'han_firmware', 'utf8', 'latin'];
+
+  /** Server sends normalizeTextEncoding(); anything unknown (legacy bitmap, '') shows as auto. */
+  function normalizeTextEncodingValue(v) {
+    v = String(v || '').trim().toLowerCase();
+    return TEXT_ENCODING_OPTIONS.indexOf(v) < 0 ? 'auto' : v;
+  }
+
+  /** Fill a <select> with text_encoding_* labels and select current (unknown -> auto). */
+  function fillTextEncodingSelect(sel, ui, current) {
+    if (!sel) return;
+    var cur = normalizeTextEncodingValue(current);
+    sel.innerHTML = '';
+    TEXT_ENCODING_OPTIONS.forEach(function (v) {
+      var o = document.createElement('option');
+      o.value = v;
+      o.textContent = t(ui, 'text_encoding_' + v);
+      if (v === cur) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+
+  /** Persist text_encoding via /api/ui-locale (saves config + applyThermalEncodingFromConfig). */
+  function postTextEncoding(enc) {
+    return fetch('/api/ui-locale', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text_encoding: normalizeTextEncodingValue(enc) }),
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        return { ok: r.ok, status: r.status, j: j };
+      });
+    });
+  }
+
+  /**
+   * Save-on-change for the text_encoding <select>. opts: getUI(), getCurrent(), setCurrent(v),
+   * errEl, okEl, log(msg) optional. Reverts the select when the save fails.
+   */
+  function bindTextEncodingSelect(sel, opts) {
+    if (!sel) return;
+    sel.addEventListener('change', function () {
+      var ui = opts.getUI();
+      var prev = opts.getCurrent();
+      if (opts.errEl) opts.errEl.textContent = '';
+      if (opts.okEl) opts.okEl.textContent = '';
+      sel.disabled = true;
+      if (opts.log) opts.log('phase text_encoding save value=' + sel.value);
+      function fail(msg) {
+        if (opts.errEl) opts.errEl.textContent = msg;
+        fillTextEncodingSelect(sel, ui, prev);
+      }
+      postTextEncoding(sel.value)
+        .then(function (res) {
+          if (!res.ok) {
+            fail((res.j && res.j.error) || t(ui, 'save_failed'));
+            return;
+          }
+          opts.setCurrent(res.j.text_encoding);
+          fillTextEncodingSelect(sel, ui, res.j.text_encoding);
+          if (opts.okEl) opts.okEl.textContent = t(ui, 'text_encoding_saved');
+        })
+        .catch(function () { fail(t(ui, 'pair_service_unreachable')); })
+        .finally(function () { sel.disabled = false; });
+    });
+  }
+
   function setTakeoverVisible(btn, show) {
     if (!btn) return;
     btn.classList.toggle('hidden', !show);
@@ -175,5 +243,10 @@
     printerDisplayName: printerDisplayName,
     savedPrinterAddrs: savedPrinterAddrs,
     mergePrinterGroup: mergePrinterGroup,
+    TEXT_ENCODING_OPTIONS: TEXT_ENCODING_OPTIONS,
+    normalizeTextEncodingValue: normalizeTextEncodingValue,
+    fillTextEncodingSelect: fillTextEncodingSelect,
+    postTextEncoding: postTextEncoding,
+    bindTextEncodingSelect: bindTextEncodingSelect,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

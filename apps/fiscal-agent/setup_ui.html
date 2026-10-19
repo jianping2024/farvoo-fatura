@@ -58,6 +58,13 @@
         <p class="warn hidden" id="stationsWarn"></p>
         <div id="stations"></div>
       </div>
+      <div class="stations" id="textEncodingBlock">
+        <label for="textEncoding" id="textEncodingLabel">…</label>
+        <select id="textEncoding"></select>
+        <p class="hint" id="textEncodingHint">…</p>
+        <p class="err" id="textEncodingErr"></p>
+        <p class="ok-msg" id="textEncodingOk"></p>
+      </div>
       <button type="button" id="saveBtn">Save and start printing</button>
       <button type="button" id="takeoverBtn" class="hidden">Take over & save</button>
       <p class="err" id="err"></p>
@@ -114,7 +121,7 @@
       var cache = { tcp: [], winspool: [] };
       var printerLists = { tcp: [], winspool: [] };
       var stations = [];
-      var saved = { station_printers: {} };
+      var saved = { station_printers: {}, text_encoding: 'auto' };
       var lastSavedMaps = {};
       var testConfirmed = false;
       var savedMappingEmpty = false;
@@ -166,6 +173,9 @@
         document.getElementById('finishConfirmNo').textContent = t('finish_back_to_test');
         document.getElementById('finishBtn').textContent = t('done_btn');
         document.getElementById('finishHint').textContent = t('setup_finish_hint');
+        document.getElementById('textEncodingLabel').textContent = t('text_encoding_label');
+        document.getElementById('textEncodingHint').textContent = t('text_encoding_hint');
+        MesaWizardUI.fillTextEncodingSelect(document.getElementById('textEncoding'), ui, saved.text_encoding);
         document.title = t('setup_page_title');
         updateScanHint();
       }
@@ -435,6 +445,7 @@
           .then(function (j) {
             if (gen !== pageLoadGen) return;
             saved.station_printers = j.station_printers || {};
+            saved.text_encoding = j.text_encoding || 'auto';
             seedDraftFromSaved();
             ui = j.ui || {};
             var loc = queryLocale();
@@ -459,6 +470,13 @@
           });
       }
       document.getElementById('refreshBtn').addEventListener('click', loadList);
+      MesaWizardUI.bindTextEncodingSelect(document.getElementById('textEncoding'), {
+        getUI: function () { return ui; },
+        getCurrent: function () { return saved.text_encoding; },
+        setCurrent: function (v) { saved.text_encoding = v; },
+        errEl: document.getElementById('textEncodingErr'),
+        okEl: document.getElementById('textEncodingOk'),
+      });
       function fillTestStationSelect(maps) {
         var sel = document.getElementById('testStation');
         sel.innerHTML = '';
