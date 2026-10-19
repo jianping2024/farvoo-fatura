@@ -168,10 +168,6 @@ func labelsFor(locale string) ticketLabels {
 	}
 }
 
-type stationSlipOptions struct {
-	ShowCategoryGroup bool `json:"show_category_group"`
-}
-
 type jobLine struct {
 	ItemIndex           int     `json:"item_index"`
 	ItemCode            string  `json:"item_code"`
@@ -182,7 +178,6 @@ type jobLine struct {
 	Note                string  `json:"note"`
 	UnitPrice           float64 `json:"unit_price"`
 	CategoryGroupSort   int     `json:"category_group_sort"`
-	CategoryGroupHeader string  `json:"category_group_header"`
 	// PrintNames — station_ticket multilang dish names in print order (no item_code).
 	// docs/station-slip-print-names.zh.md; empty → single stationSlipItemLabel row.
 	PrintNames []string `json:"print_names"`
@@ -198,7 +193,6 @@ type jobPayload struct {
 	StationDisplayNamePt string              `json:"station_display_name_pt"`
 	StationDisplayNameEn string              `json:"station_display_name_en"`
 	StationDisplayNameZh string              `json:"station_display_name_zh"`
-	StationSlipOptions   *stationSlipOptions `json:"station_slip_options"`
 	HanBitmapFontPx      int                 `json:"han_bitmap_font_px"`
 	Lines                []jobLine           `json:"lines"`
 	Subtotal             float64             `json:"subtotal"`
@@ -270,10 +264,6 @@ func (p jobPayload) venueName() string {
 		return s
 	}
 	return "restaurant"
-}
-
-func (p jobPayload) stationSlipShowCategoryGroup() bool {
-	return p.StationSlipOptions != nil && p.StationSlipOptions.ShowCategoryGroup
 }
 
 type escposWriter struct {

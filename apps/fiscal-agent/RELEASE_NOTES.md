@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.44
+
+**出品联去掉菜品分类行**
+
+- 不再打印「(PRATOS)」「(BEBIDAS)」等分类标题行及其上下分隔线；菜与菜之间仍是虚线分隔。即使服务端仍下发 `show_category_group` / `category_group_header` 也不打印。
+- 菜品顺序不变（仍按分类排序，再按点单顺序）。
+
 ## 0.5.43
 
 **出品联编号与菜名拉开间距；设置页可选热敏文字编码**
