@@ -10,9 +10,9 @@ import (
 // Station slip layout (2026-10-18 redesign):
 //
 //	        restaurant · BAR           1×1 centered
-//	            Pedido                 2×2 bold centered
+//	            Pedido                 2×2 bold centered (Chinese: not bold)
 //	================================================
-//	Mesa n.º:001                18:01  2×2 bold
+//	Mesa n.º:001                18:01  2×2 bold (Chinese: not bold)
 //	Conv.:1                 3 artigos  1×1
 //	================================================
 //	1× 001 Água 500ml                  qty+code 2×2, first name 1×2 (same row)
@@ -146,7 +146,7 @@ func (w *escposWriter) writeStationSlipHeader(p jobPayload, lab ticketLabels, ti
 	}
 	w.text(brand)
 	w.lf()
-	w.writeMasthead2x2Bold()
+	w.writeStationHeading2x2(title)
 	w.text(title)
 	w.lf()
 	w.separator('=')
@@ -162,15 +162,22 @@ func (w *escposWriter) writeStationSlipHeader(p jobPayload, lab ticketLabels, ti
 	w.separator('=')
 }
 
-// writeStationTableLine — table no. left, order clock right, both 2×2 bold (24 cols).
+// writeStationHeading2x2 — 2×2 for the title / table row; bold only for Latin. Chinese headings
+// stay regular so they match the unbolded dish rows (bold YaHei raster looked heavy, 0.5.45).
+func (w *escposWriter) writeStationHeading2x2(s string) {
+	w.size(true, true)
+	w.bold(!hasHan(s))
+}
+
+// writeStationTableLine — table no. left, order clock right, both 2×2 (24 cols); bold unless Chinese.
 func (w *escposWriter) writeStationTableLine(table, clock string) {
 	if table == "" && clock == "" {
 		return
 	}
 	w.align(0)
-	w.writeMasthead2x2Bold()
+	w.writeStationHeading2x2(table)
 	if w.textMode == escposTextBitmap && hasHan(table) {
-		w.writeRasterOr(escposHanPadRow(table, clock, w.hanFontPx, hanFontLarge, bitmapTextStyle{Bold: true}),
+		w.writeRasterOr(escposHanPadRow(table, clock, w.hanFontPx, hanFontLarge, bitmapTextStyle{}),
 			escposPadLine(table, clock, escposWidth/2))
 		w.lf()
 		return
