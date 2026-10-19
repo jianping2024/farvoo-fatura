@@ -262,8 +262,8 @@ func TestStationTicketItemNoteWrapsFullText(t *testing.T) {
 	}
 }
 
-func TestStationTicketHanMenuUsesFirmware1x2ByDefault(t *testing.T) {
-	withThermalConfig(t, "")
+func TestStationTicketHanMenuUsesFirmware1x2WhenOptedIn(t *testing.T) {
+	withThermalConfig(t, "han_firmware")
 	raw := stationTicketRaw(t, jobPayload{
 		Lines: []jobLine{{
 			ItemCode:   "001",
@@ -275,7 +275,7 @@ func TestStationTicketHanMenuUsesFirmware1x2ByDefault(t *testing.T) {
 	gbk := []byte{0xB9, 0xAC, 0xB1, 0xA3} // 宫保
 
 	if bytes.Contains(raw, gsV0) {
-		t.Fatal("auto must not raster Han dish names")
+		t.Fatal("han_firmware must not raster Han dish names")
 	}
 	if !bytes.Contains(raw, append(leadRow(1, "001"), escposenc.Windows1252(" Água 500ml")...)) {
 		t.Fatal("pt name must stay Font A WPC1252 after the 2×2 lead")
@@ -288,7 +288,7 @@ func TestStationTicketHanMenuUsesFirmware1x2ByDefault(t *testing.T) {
 }
 
 func TestStationTicketHanNameOnBlockRowStaysFirmware(t *testing.T) {
-	withThermalConfig(t, "")
+	withThermalConfig(t, "han_firmware")
 	raw := stationTicketRaw(t, jobPayload{
 		Locale:           "pt",
 		TableDisplayName: "001",
@@ -305,7 +305,7 @@ func TestStationTicketHanNameOnBlockRowStaysFirmware(t *testing.T) {
 }
 
 func TestStationTicketPtNoteWithHanStaysFirmware(t *testing.T) {
-	withThermalConfig(t, "")
+	withThermalConfig(t, "han_firmware")
 	raw := stationTicketRaw(t, jobPayload{
 		Locale:           "pt",
 		TableDisplayName: "001",
@@ -416,14 +416,49 @@ func absInt(n int) int {
 
 func TestHanFontPxForRole(t *testing.T) {
 	base := 24
-	if got := hanFontPxForRole(base, hanFontSmall); got != 18 {
-		t.Fatalf("small want 18 got %d", got)
+	if got := hanFontPxForRole(base, hanFontSmall); got != 24 {
+		t.Fatalf("small (1×1) want 24 got %d", got)
 	}
 	if got := hanFontPxForRole(base, hanFontBody); got != 24 {
-		t.Fatalf("body want 24 got %d", got)
+		t.Fatalf("body (1×2) want 24 got %d", got)
 	}
-	if got := hanFontPxForRole(base, hanFontLarge); got != 36 {
-		t.Fatalf("large want 36 got %d", got)
+	if got := hanFontPxForRole(base, hanFontLarge); got != 48 {
+		t.Fatalf("large (2×2) want 48 got %d", got)
+	}
+}
+
+// Body (1×2) rows double every dot row, like the printer's GS ! 0x01.
+func TestRenderHanRoleRowBodyIsDoubleHeight(t *testing.T) {
+	small := renderHanRoleRow("宫保鸡丁", 0, bitmapTextDefaultFontPx, hanFontSmall, bitmapTextStyle{})
+	body := renderHanRoleRow("宫保鸡丁", 0, bitmapTextDefaultFontPx, hanFontBody, bitmapTextStyle{})
+	if small.Height == 0 || body.Height != 2*small.Height {
+		t.Fatalf("body height %d want 2×small %d", body.Height, small.Height)
+	}
+}
+
+func TestStationTicketHanRastersByDefault(t *testing.T) {
+	withThermalConfig(t, "")
+	raw := stationTicketRaw(t, jobPayload{
+		Locale:           "pt",
+		TableDisplayName: "001",
+		Lines:            []jobLine{{ItemCode: "001", DisplayName: "宫保鸡丁", Qty: 2, Note: "少放盐"}},
+	})
+	if !bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
+		t.Fatal("default must raster Han dish names (GS v 0)")
+	}
+	if bytes.Contains(raw, []byte{0x1C, 0x26}) {
+		t.Fatal("default must not use printer Han font (FS &)")
+	}
+}
+
+// A failed render must still print the row (Font A, '?' for Han) — never drop a dish.
+func TestWriteHanRasterFallsBackWhenRenderFails(t *testing.T) {
+	w := newEscpos()
+	w.writeHanRaster(bitmapTextImage{}, "2\u00d7 15 宫保")
+	w.lf()
+	got := w.content.String()
+	if got != "2\xd7 15 ??\n" {
+		t.Fatalf("fallback = %q", got)
 	}
 }
 

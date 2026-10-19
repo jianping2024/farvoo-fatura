@@ -170,9 +170,8 @@ func (w *escposWriter) writeStationTableLine(table, clock string) {
 	w.align(0)
 	w.writeMasthead2x2Bold()
 	if w.textMode == escposTextBitmap && hasHan(table) {
-		fontPx := hanFontPxForRole(w.hanFontPx, hanFontLarge)
-		w.content.Write(escposHanPadRow(table, clock, fontPx, bitmapTextStyle{Bold: true}))
-		w.lastTextBitmap = true
+		w.writeRasterOr(escposHanPadRow(table, clock, w.hanFontPx, hanFontLarge, bitmapTextStyle{Bold: true}),
+			escposPadLine(table, clock, escposWidth/2))
 		w.lf()
 		return
 	}
@@ -244,7 +243,7 @@ func (w *escposWriter) writeStationItem(lead string, names []string, note string
 	w.size(false, true)
 	if len(chunks) > 0 {
 		// A raster segment is a full-width GS v 0 image — it cannot share the lead's row.
-		if w.textMode == escposTextAuto && escposenc.LinePathFor(chunks[0]) == escposenc.PathRaster {
+		if w.textMode == escposTextHanFirmware && escposenc.LinePathFor(chunks[0]) == escposenc.PathRaster {
 			w.lf()
 			w.text(pad + chunks[0])
 		} else {
@@ -276,49 +275,52 @@ func (w *escposWriter) writeStationItem(lead string, names []string, note string
 	}
 }
 
-// writeHanStationItem — bitmap escape: same layout on the 576px canvas (lead at the large
-// Han role, first name body, other names small, note body; rows bottom-aligned).
+// writeHanStationItem — bitmap path: same layout on the 576px canvas — lead 2×2, first name
+// 1×2, other names 1×1, note 1×2 (same sizes as writeStationItem); lead row bottom-aligned.
 func (w *escposWriter) writeHanStationItem(lead string, names []string, note string) {
 	bodyPx := hanFontPxForRole(w.hanFontPx, hanFontBody)
 	style := bitmapTextStyle{}
-	nameX := escposDisplayColToPx(stationSlipNameIndent(lead))
+	indent := stationSlipNameIndent(lead)
+	nameX := escposDisplayColToPx(indent)
 	maxPx := bitmapTextMaxWidthPx - nameX
+	pad := strings.Repeat(" ", indent)
 
 	first := ""
 	if len(names) > 0 {
 		first = names[0]
 	}
 	chunks := wrapHanTextByPx(first, maxPx, bodyPx, false)
-	row := renderBitmapLeftRow(lead, 0, hanFontPxForRole(w.hanFontPx, hanFontLarge), style)
+	row := renderHanRoleRow(lead, 0, w.hanFontPx, hanFontLarge, style)
+	rowText := lead
 	if len(chunks) > 0 {
-		row = mergeBitmapRows(row, renderBitmapLeftRow(chunks[0], nameX, bodyPx, style))
+		row = mergeBitmapRows(row, renderHanRoleRow(chunks[0], nameX, w.hanFontPx, hanFontBody, style))
+		rowText += " " + chunks[0]
 		chunks = chunks[1:]
 	}
 
 	w.align(0)
 	w.writeBody1x2()
-	w.writeHanRaster(row)
+	w.writeHanRaster(row, rowText)
 	for _, c := range chunks {
-		w.writeHanRaster(renderBitmapLeftRow(c, nameX, bodyPx, style))
+		w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontBody, style), pad+c)
 	}
 	if len(names) > 1 {
 		smallPx := hanFontPxForRole(w.hanFontPx, hanFontSmall)
 		for _, name := range names[1:] {
 			for _, c := range wrapHanTextByPx(name, maxPx, smallPx, false) {
-				w.writeHanRaster(renderBitmapLeftRow(c, nameX, smallPx, style))
+				w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontSmall, style), pad+c)
 			}
 		}
 	}
 	if note != "" {
 		for _, c := range wrapHanTextByPx(stationSlipNotePrefix+note, maxPx, bodyPx, false) {
-			w.writeHanRaster(renderBitmapLeftRow(c, nameX, bodyPx, style))
+			w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontBody, style), pad+c)
 		}
 	}
 }
 
-func (w *escposWriter) writeHanRaster(img bitmapTextImage) {
-	w.content.Write(escposBitmapRaster(img, 0))
-	w.lastTextBitmap = true
+func (w *escposWriter) writeHanRaster(img bitmapTextImage, fallback string) {
+	w.writeRasterOr(escposBitmapRaster(img, 0), fallback)
 }
 
 // writeStationSlipFooter — order date-time left, printed-by right (1×1).

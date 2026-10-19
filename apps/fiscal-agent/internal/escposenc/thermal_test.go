@@ -27,9 +27,18 @@ func TestNeedsRasterOnlyBeyondWindows1252(t *testing.T) {
 	}
 }
 
-func TestNormalizeThermalEncodingBitmap(t *testing.T) {
-	if got := NormalizeThermalEncoding(" Bitmap "); got != "bitmap" {
-		t.Fatalf("bitmap: %q", got)
+func TestNormalizeThermalEncodingBitmapIsAuto(t *testing.T) {
+	if got := NormalizeThermalEncoding(" Bitmap "); got != "auto" {
+		t.Fatalf("legacy bitmap must map to auto: %q", got)
+	}
+	if got := NormalizeThermalEncoding("HAN_FIRMWARE"); got != "han_firmware" {
+		t.Fatalf("han_firmware: %q", got)
+	}
+}
+
+func TestWindows1252Placeholder(t *testing.T) {
+	if got := string(Windows1252Placeholder("2× 宫保 ok")); got != "2\xd7 ?? ok" {
+		t.Fatalf("placeholder: %q", got)
 	}
 }
 

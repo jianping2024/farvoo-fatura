@@ -24,17 +24,21 @@ func withThermalConfig(t *testing.T, enc string) {
 	t.Cleanup(func() { configPathOverride = prev })
 }
 
-func TestTextModeForThermalDefaultsAuto(t *testing.T) {
+func TestTextModeForThermalDefaultsBitmap(t *testing.T) {
 	withThermalConfig(t, "")
-	if got := textModeForThermal(true); got != escposTextAuto {
-		t.Fatalf("default non-latin text mode = %v want auto", got)
+	if got := textModeForThermal(true); got != escposTextBitmap {
+		t.Fatalf("default non-latin text mode = %v want bitmap", got)
 	}
 	if got := textModeForThermal(false); got != escposTextLatin {
 		t.Fatalf("latin text mode = %v", got)
 	}
 	withThermalConfig(t, "bitmap")
 	if got := textModeForThermal(true); got != escposTextBitmap {
-		t.Fatalf("bitmap escape text mode = %v", got)
+		t.Fatalf("legacy bitmap text mode = %v", got)
+	}
+	withThermalConfig(t, "han_firmware")
+	if got := textModeForThermal(true); got != escposTextHanFirmware {
+		t.Fatalf("han_firmware text mode = %v", got)
 	}
 }
 

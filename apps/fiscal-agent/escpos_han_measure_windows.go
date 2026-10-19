@@ -17,7 +17,7 @@ func measureHanTextWidth(s string, fontPx int, bold bool) int {
 	}
 	defer procDeleteDC.Call(dc)
 
-	fontPx = resolveHanBitmapFontPx(fontPx)
+	fontPx = clampHanRenderPx(fontPx)
 	weight := uintptr(400)
 	if bold {
 		weight = 700

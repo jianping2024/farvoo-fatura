@@ -13,15 +13,23 @@ const (
 	DefaultFontPx = 24
 	MinFontPx     = 16
 	MaxFontPx     = 40
-	padY          = 1
-	heightPad     = 2
+	// MaxRenderPx — 2×2 renders at twice the base (han_bitmap_font_px) size.
+	MaxRenderPx = 2 * MaxFontPx
+	padY        = 1
+	heightPad   = 2
+	// Trim keeps this many blank dot rows above / below the ink (≈ Font A line gap).
+	trimPadTop    = 2
+	trimPadBottom = 4
 )
 
-// Style controls TrueType attributes baked into the raster.
+// Style controls TrueType attributes baked into the raster. DoubleW/DoubleH mirror the
+// caller's GS ! size so the bitmap matches firmware 1×2 / 2×2 (see Scale).
 type Style struct {
 	Align     byte
 	Bold      bool
 	Underline bool
+	DoubleW   bool
+	DoubleH   bool
 }
 
 // Image is a 1-bit ink mask (1 = black) on a full-width canvas.
@@ -29,6 +37,81 @@ type Image struct {
 	Width  int
 	Height int
 	Pixels []byte
+}
+
+// Scale is the ONLY GS ! size → bitmap mapping. basePx (han_bitmap_font_px, default 24) is a
+// 1×1 Han cell (24×24 dots, same as printer Han font). 1×2 renders at basePx and doubles every
+// dot row — exactly what the printer does for GS ! 0x01; 2×2 renders at 2×basePx (smoother than
+// doubling). 2×1 is not used on tickets and renders as 2×2.
+func Scale(basePx int, doubleW, doubleH bool) (renderPx, stretchY int) {
+	renderPx = ClampFontPx(basePx)
+	if doubleW {
+		return renderPx * 2, 1
+	}
+	if doubleH {
+		return renderPx, 2
+	}
+	return renderPx, 1
+}
+
+// StretchY repeats every dot row n times (n ≤ 1 → unchanged).
+func StretchY(img Image, n int) Image {
+	if n <= 1 || img.Width <= 0 || img.Height <= 0 || len(img.Pixels) != img.Width*img.Height {
+		return img
+	}
+	out := Image{Width: img.Width, Height: img.Height * n, Pixels: make([]byte, img.Width*img.Height*n)}
+	for y := 0; y < img.Height; y++ {
+		row := img.Pixels[y*img.Width : (y+1)*img.Width]
+		for k := 0; k < n; k++ {
+			copy(out.Pixels[(y*n+k)*img.Width:], row)
+		}
+	}
+	return out
+}
+
+// Trim drops blank dot rows above / below the ink, keeping trimPadTop / trimPadBottom
+// (TrueType line height ≈ 1.3em would otherwise waste paper). Inkless images are unchanged.
+func Trim(img Image) Image {
+	if img.Width <= 0 || img.Height <= 0 || len(img.Pixels) != img.Width*img.Height {
+		return img
+	}
+	inkRow := func(y int) bool {
+		for _, p := range img.Pixels[y*img.Width : (y+1)*img.Width] {
+			if p != 0 {
+				return true
+			}
+		}
+		return false
+	}
+	top := 0
+	for top < img.Height && !inkRow(top) {
+		top++
+	}
+	if top == img.Height {
+		return img
+	}
+	bottom := img.Height - 1
+	for bottom > top && !inkRow(bottom) {
+		bottom--
+	}
+	h := bottom - top + 1 + trimPadTop + trimPadBottom
+	out := Image{Width: img.Width, Height: h, Pixels: make([]byte, img.Width*h)}
+	copy(out.Pixels[trimPadTop*img.Width:], img.Pixels[top*img.Width:(bottom+1)*img.Width])
+	return out
+}
+
+// ClampRenderPx bounds the actual TrueType size (base × 2 for 2×2).
+func ClampRenderPx(n int) int {
+	if n <= 0 {
+		return DefaultFontPx
+	}
+	if n < MinFontPx {
+		return MinFontPx
+	}
+	if n > MaxRenderPx {
+		return MaxRenderPx
+	}
+	return n
 }
 
 // ClampFontPx matches web/Agent han_bitmap_font_px bounds.
@@ -96,7 +179,7 @@ func wrapDisplay(s string, maxCols int) []string {
 }
 
 func maxDisplayCols(fontPx int) int {
-	fontPx = ClampFontPx(fontPx)
+	fontPx = ClampRenderPx(fontPx)
 	colPx := fontPx / 2
 	if colPx < 1 {
 		colPx = 1
@@ -158,29 +241,31 @@ func Raster(img Image, align byte) []byte {
 }
 
 // Line is the ONLY line-level thermal text rasterizer (wraps; never truncates with ellipsis).
-func Line(s string, style Style, fontPx int) []byte {
+// basePx is han_bitmap_font_px; style.DoubleW/DoubleH pick the size via Scale.
+// Returns nil when any chunk fails to render — callers must fall back, never drop the line.
+func Line(s string, style Style, basePx int) []byte {
 	s = strings.TrimRight(s, "\r\n")
 	if s == "" {
 		return nil
 	}
-	fontPx = ClampFontPx(fontPx)
-	chunks := wrapDisplay(s, maxDisplayCols(fontPx))
+	renderPx, stretchY := Scale(basePx, style.DoubleW, style.DoubleH)
+	chunks := wrapDisplay(s, maxDisplayCols(renderPx))
 	if len(chunks) == 0 {
 		return nil
 	}
 	var out []byte
 	for _, chunk := range chunks {
-		img := renderText(chunk, style, fontPx)
+		img := renderText(chunk, style, renderPx)
 		if img.Width <= 0 || img.Height <= 0 || len(img.Pixels) != img.Width*img.Height {
-			continue
+			return nil
 		}
-		out = append(out, Raster(img, style.Align)...)
+		out = append(out, Raster(Trim(StretchY(img, stretchY)), style.Align)...)
 	}
 	return out
 }
 
 // RenderImage exposes platform text raster for Han column adapters / ink tests.
-// Product line emission must use Line only.
+// fontPx is the actual render size (already scaled). Product line emission must use Line only.
 func RenderImage(s string, style Style, fontPx int) Image {
-	return renderText(s, style, ClampFontPx(fontPx))
+	return renderText(s, style, ClampRenderPx(fontPx))
 }
