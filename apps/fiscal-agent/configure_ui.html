@@ -75,6 +75,13 @@
       <button type="button" id="takeoverBtn" class="hidden">…</button>
       <p class="err" id="saveErr"></p>
       <p class="ok-msg" id="saveOk"></p>
+      <div class="test-row" id="textEncodingBlock">
+        <label for="textEncoding" id="textEncodingLabel">…</label>
+        <select id="textEncoding"></select>
+        <p class="hint" id="textEncodingHint">…</p>
+        <p class="err" id="textEncodingErr"></p>
+        <p class="ok-msg" id="textEncodingOk"></p>
+      </div>
       <div class="test-row">
         <p class="section-title" id="testOptionalTitle">…</p>
         <label for="testStation" id="testStationLabel">…</label>
@@ -258,6 +265,9 @@
         document.getElementById('codePageProbeBtn').textContent = t('code_page_probe_btn');
         document.getElementById('stationSampleBtn').textContent = t('station_sample_btn');
         document.getElementById('doneBtn').textContent = t('done_btn');
+        document.getElementById('textEncodingLabel').textContent = t('text_encoding_label');
+        document.getElementById('textEncodingHint').textContent = t('text_encoding_hint');
+        MesaWizardUI.fillTextEncodingSelect(document.getElementById('textEncoding'), ui, state.text_encoding);
         document.title = t('configure_page_title');
         updateScanHint();
       }
@@ -749,6 +759,15 @@
           draftMappings[row.dataset.stationId] = e.target.value;
           refreshTestSelect();
         }
+      });
+
+      MesaWizardUI.bindTextEncodingSelect(document.getElementById('textEncoding'), {
+        getUI: function () { return ui; },
+        getCurrent: function () { return state.text_encoding; },
+        setCurrent: function (v) { state.text_encoding = v; },
+        errEl: document.getElementById('textEncodingErr'),
+        okEl: document.getElementById('textEncodingOk'),
+        log: dbg,
       });
 
       document.getElementById('scanBtn').addEventListener('click', function () {

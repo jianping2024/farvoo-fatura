@@ -490,3 +490,17 @@ func TestWrapDisplay(t *testing.T) {
 		}
 	}
 }
+
+// Bitmap lead (TrueType, wider than Font A 2×2 cells) must never touch the name column.
+func TestHanStationNameXClearsMeasuredLead(t *testing.T) {
+	for _, lead := range []string{"1×", "2× 012", "12× 1024"} {
+		leadW := measureHanTextWidth(lead, hanFontPxForRole(bitmapTextDefaultFontPx, hanFontLarge), false)
+		x := hanStationNameX(lead, bitmapTextDefaultFontPx)
+		if x < leadW+hanStationNameGapPx {
+			t.Fatalf("%q: nameX %d < lead %d + gap %d", lead, x, leadW, hanStationNameGapPx)
+		}
+		if x < escposDisplayColToPx(stationSlipNameIndent(lead)) {
+			t.Fatalf("%q: nameX %d left of Font A indent", lead, x)
+		}
+	}
+}
