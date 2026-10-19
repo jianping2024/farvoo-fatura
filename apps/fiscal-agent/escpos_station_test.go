@@ -351,6 +351,21 @@ func TestZhStationSlipBitmapItemRowsAreRasters(t *testing.T) {
 	}
 }
 
+// Chinese title / table row stay regular (bold YaHei clashed with the dish rows); Latin keeps bold.
+func TestStationSlipHeaderBoldOnlyForLatin(t *testing.T) {
+	withThermalConfig(t, "bitmap")
+	escBoldOn := []byte{0x1B, 0x45, 0x01}
+	lines := []jobLine{{ItemCode: "001", ItemName: "Água 500ml", Qty: 1}}
+	zh := stationTicketRaw(t, jobPayload{Locale: "zh", TableDisplayName: "001", GuestCount: 2, Lines: lines})
+	if bytes.Contains(zh, escBoldOn) {
+		t.Fatal("zh station slip header must not be bold")
+	}
+	pt := stationTicketRaw(t, jobPayload{Locale: "pt", TableDisplayName: "001", GuestCount: 2, Lines: lines})
+	if !bytes.Contains(pt, escBoldOn) {
+		t.Fatal("pt station slip header keeps bold")
+	}
+}
+
 func TestMergeBitmapRowsBottomAligns(t *testing.T) {
 	large := hanFontPxForRole(bitmapTextDefaultFontPx, hanFontLarge)
 	body := hanFontPxForRole(bitmapTextDefaultFontPx, hanFontBody)

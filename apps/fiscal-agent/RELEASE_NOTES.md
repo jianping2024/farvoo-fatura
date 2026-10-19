@@ -2,6 +2,12 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.45
+
+**中文出品联标题、桌号行不再加粗**
+
+- 「出菜单」标题和「桌号 / 下单时间」行仍是 2×2 大字，但中文时不加粗，与下面不加粗的菜品行协调。葡文/英文出品联保持原样（加粗）。
+
 ## 0.5.44
 
 **出品联去掉菜品分类行**
