@@ -281,7 +281,7 @@ func (w *escposWriter) writeHanStationItem(lead string, names []string, note str
 	bodyPx := hanFontPxForRole(w.hanFontPx, hanFontBody)
 	style := bitmapTextStyle{}
 	indent := stationSlipNameIndent(lead)
-	nameX := escposDisplayColToPx(indent)
+	nameX := hanStationNameX(lead, w.hanFontPx)
 	maxPx := bitmapTextMaxWidthPx - nameX
 	pad := strings.Repeat(" ", indent)
 
@@ -317,6 +317,20 @@ func (w *escposWriter) writeHanStationItem(lead string, names []string, note str
 			w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontBody, style), pad+c)
 		}
 	}
+}
+
+// hanStationNameGapPx — blank space between the bitmap lead and the name column
+// (one 2×2 space: 24 dots).
+const hanStationNameGapPx = 24
+
+// hanStationNameX — bitmap name column: the Font A indent, pushed right when the TrueType
+// lead (wider than Font A 2×2 cells) would touch the name.
+func hanStationNameX(lead string, basePx int) int {
+	x := escposDisplayColToPx(stationSlipNameIndent(lead))
+	if min := measureHanTextWidth(lead, hanFontPxForRole(basePx, hanFontLarge), false) + hanStationNameGapPx; min > x {
+		x = min
+	}
+	return x
 }
 
 func (w *escposWriter) writeHanRaster(img bitmapTextImage, fallback string) {
