@@ -1,6 +1,10 @@
 package main
 
-import "strings"
+import (
+	"strings"
+
+	"farvoo-fiscal-agent/internal/escposbitmap"
+)
 
 // Vertical padding for Han GS v 0 rows — keep tight vs Font A 1×2 (avoid paper waste).
 const (
@@ -8,34 +12,43 @@ const (
 	hanBitmapHeightPad = 2
 )
 
-// Han typography roles — map Latin ESC/POS size tiers to bitmap px (base B = han_bitmap_font_px).
+// Han typography roles — the Font A GS ! size each canvas row mirrors (base B = han_bitmap_font_px).
 type hanFontRole int
 
 const (
-	hanFontSmall hanFontRole = iota // branding / footer ≈ Font A 1×1
-	hanFontBody                     // column block + meta ≈ Font A 1×2
-	hanFontLarge                    // title / table no. ≈ Font A 2×2
+	hanFontSmall hanFontRole = iota // branding / footer = Font A 1×1
+	hanFontBody                     // column block + meta = Font A 1×2
+	hanFontLarge                    // title / table no. = Font A 2×2
 )
 
-func hanFontPxForRole(basePx int, role hanFontRole) int {
-	basePx = resolveHanBitmapFontPx(basePx)
-	var scaled float64
+func hanRoleSize(role hanFontRole) (doubleW, doubleH bool) {
 	switch role {
 	case hanFontSmall:
-		scaled = float64(basePx) * 0.75
+		return false, false
 	case hanFontLarge:
-		scaled = float64(basePx) * 1.5
+		return true, true
 	default:
-		scaled = float64(basePx)
+		return false, true
 	}
-	px := int(scaled + 0.5)
-	if px < bitmapTextMinFontPx {
-		return bitmapTextMinFontPx
-	}
-	if px > bitmapTextMaxFontPx {
-		return bitmapTextMaxFontPx
-	}
+}
+
+// hanFontPxForRole — TrueType render size for role (sole mapping: escposbitmap.Scale).
+func hanFontPxForRole(basePx int, role hanFontRole) int {
+	dw, dh := hanRoleSize(role)
+	px, _ := escposbitmap.Scale(basePx, dw, dh)
 	return px
+}
+
+// hanStretchRow applies the role's vertical dot doubling (1×2) to a rendered canvas row.
+func hanStretchRow(img bitmapTextImage, role hanFontRole) bitmapTextImage {
+	dw, dh := hanRoleSize(role)
+	_, stretchY := escposbitmap.Scale(bitmapTextDefaultFontPx, dw, dh)
+	return bitmapTextImage(escposbitmap.StretchY(escposbitmap.Image(img), stretchY))
+}
+
+// renderHanRoleRow — renderBitmapLeftRow at the role's size, stretched (not yet trimmed).
+func renderHanRoleRow(text string, leftPx, basePx int, role hanFontRole, style bitmapTextStyle) bitmapTextImage {
+	return hanStretchRow(renderBitmapLeftRow(text, leftPx, hanFontPxForRole(basePx, role), style), role)
 }
 
 // hanBitmapAlignStartPx — sole X anchor for Han lines on the 576px canvas (ESC a must not center GS v 0).
@@ -154,50 +167,22 @@ func fitHanTextToPx(s string, maxPx, fontPx int, bold bool) string {
 	return chunks[0]
 }
 
+// escposBitmapRaster trims a canvas row to its ink and encodes it via escposbitmap.Raster
+// (sole GS v 0 encoder; full-width canvas forces ESC a 0, no trailing LF). nil = render failed.
 func escposBitmapRaster(img bitmapTextImage, align byte) []byte {
-	if img.Width <= 0 || img.Height <= 0 || len(img.Pixels) != img.Width*img.Height {
-		return nil
-	}
-	// Full POS-80 canvas: alignment is baked into pixel layout; ESC a on GS v 0 is unreliable.
-	if img.Width >= bitmapTextMaxWidthPx {
-		align = 0
-	}
-	widthBytes := (img.Width + 7) / 8
-	data := make([]byte, widthBytes*img.Height)
-	for y := 0; y < img.Height; y++ {
-		for x := 0; x < img.Width; x++ {
-			if img.Pixels[y*img.Width+x] == 0 {
-				continue
-			}
-			data[y*widthBytes+x/8] |= 0x80 >> uint(x%8)
-		}
-	}
-	out := []byte{
-		0x1B, 0x61, align,
-		0x1D, 0x76, 0x30, 0x00,
-		byte(widthBytes & 0xff), byte((widthBytes >> 8) & 0xff),
-		byte(img.Height & 0xff), byte((img.Height >> 8) & 0xff),
-	}
-	out = append(out, data...)
-	// GS v 0 already advances by image height — do not append LF (that adds a blank line of paper).
-	return out
-}
-
-func escposHanLeftRow(text string, leftPx int, fontPx int, style bitmapTextStyle) []byte {
-	img := renderBitmapLeftRow(text, leftPx, fontPx, style)
-	return escposBitmapRaster(img, style.Align)
+	return escposbitmap.Raster(escposbitmap.Trim(escposbitmap.Image(img)), align)
 }
 
 // escposHanReceiptRow — one 576px raster: items | qty | price (Latin 25/9/14 col bands).
-func escposHanReceiptRow(left, mid, right string, fontPx int, style bitmapTextStyle) []byte {
-	img := renderBitmapReceiptRow(left, mid, right, fontPx, style)
-	return escposBitmapRaster(img, style.Align)
+func escposHanReceiptRow(left, mid, right string, basePx int, role hanFontRole, style bitmapTextStyle) []byte {
+	img := renderBitmapReceiptRow(left, mid, right, hanFontPxForRole(basePx, role), style)
+	return escposBitmapRaster(hanStretchRow(img, role), style.Align)
 }
 
 // escposHanPadRow — one 576px raster: left label + right-aligned value (fee lines).
-func escposHanPadRow(left, right string, fontPx int, style bitmapTextStyle) []byte {
-	img := renderBitmapPadRow(left, right, fontPx, style)
-	return escposBitmapRaster(img, style.Align)
+func escposHanPadRow(left, right string, basePx int, role hanFontRole, style bitmapTextStyle) []byte {
+	img := renderBitmapPadRow(left, right, hanFontPxForRole(basePx, role), style)
+	return escposBitmapRaster(hanStretchRow(img, role), style.Align)
 }
 
 // bitmapInkInXBand reports whether any set pixel lies in [startPx, endPx).

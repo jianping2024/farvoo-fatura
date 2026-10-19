@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -281,7 +282,6 @@ type escposWriter struct {
 	textMode        escposTextMode
 	printLocale     string
 	hanFontPx       int
-	hanRole         hanFontRole
 	hadDoubleHeight bool
 	alignMode       byte
 	boldOn          bool
@@ -400,9 +400,10 @@ func (w *escposWriter) text(s string) {
 		w.lastTextBitmap = false
 		return
 	}
-	// docs/fiscal-thermal-text-encoding.zh.md §3: auto splits per line; bitmap rasters every NeedsRaster line.
+	// docs/fiscal-thermal-text-encoding.zh.md §3: auto (bitmap) rasters every NeedsRaster line;
+	// han_firmware splits per line.
 	raster := w.textMode == escposTextBitmap && escposenc.NeedsRaster(s)
-	if w.textMode == escposTextAuto {
+	if w.textMode == escposTextHanFirmware {
 		switch escposenc.LinePathFor(s) {
 		case escposenc.PathHanFirmware:
 			// Underline stays ESC - (Font A); never FS ! on Han — that clears GS ! height on store printers.
@@ -414,19 +415,43 @@ func (w *escposWriter) text(s string) {
 		}
 	}
 	if raster {
-		fontPx := hanFontPxForRole(w.hanFontPx, w.hanRole)
-		w.content.Write(escposBitmapText(s, bitmapTextStyle{
+		w.writeRasterOr(escposBitmapText(s, bitmapTextStyle{
 			Align:     w.alignMode,
 			Bold:      w.boldOn,
 			Underline: w.underlineOn,
 			DoubleW:   w.doubleW,
 			DoubleH:   w.doubleH,
-		}, fontPx))
-		w.lastTextBitmap = true
+		}, w.hanFontPx), s)
 		return
 	}
 	w.content.Write(encodeWindows1252(s))
 	w.lastTextBitmap = false
+}
+
+// writeRasterOr writes one GS v 0 row, or — when rendering failed — the text in printer Font A
+// with runes beyond WPC1252 as '?' plus LF. Never drops the line. Either way the row is closed,
+// so the caller's lf() is a no-op.
+func (w *escposWriter) writeRasterOr(raster []byte, fallback string) {
+	w.lastTextBitmap = true
+	if len(raster) > 0 {
+		w.content.Write(raster)
+		return
+	}
+	log.Printf("thermal bitmap render failed; printing Font A fallback: %q", fallback)
+	w.content.Write(escposenc.Windows1252Placeholder(fallback))
+	w.content.WriteByte('\n')
+}
+
+// hanSizeRole — the canvas role matching the current GS ! size (sole source: w.size).
+func (w *escposWriter) hanSizeRole() hanFontRole {
+	switch {
+	case w.doubleW:
+		return hanFontLarge
+	case w.doubleH:
+		return hanFontBody
+	default:
+		return hanFontSmall
+	}
 }
 
 func (w *escposWriter) lf() {
@@ -522,12 +547,10 @@ func (w *escposWriter) rightLine(s string, bold bool) {
 
 func (w *escposWriter) writeReceiptMenuBodyLine(left, mid, right string, bold bool) {
 	if w.textMode == escposTextBitmap && (hasHan(left) || hasHan(mid) || hasHan(right)) {
-		fontPx := hanFontPxForRole(w.hanFontPx, hanFontBody)
-		w.content.Write(escposHanReceiptRow(left, mid, right, fontPx, bitmapTextStyle{
+		w.writeRasterOr(escposHanReceiptRow(left, mid, right, w.hanFontPx, hanFontBody, bitmapTextStyle{
 			Align: w.alignMode,
 			Bold:  bold,
-		}))
-		w.lastTextBitmap = true
+		}), escposThreeColLine(left, mid, right))
 		w.lf()
 		return
 	}
@@ -542,12 +565,10 @@ func (w *escposWriter) writeReceiptMenuBodyLine(left, mid, right string, bold bo
 
 func (w *escposWriter) writeReceiptPadLine(left, right string) {
 	if w.textMode == escposTextBitmap && (hasHan(left) || hasHan(right)) {
-		fontPx := hanFontPxForRole(w.hanFontPx, w.hanRole)
-		w.content.Write(escposHanPadRow(left, right, fontPx, bitmapTextStyle{
+		w.writeRasterOr(escposHanPadRow(left, right, w.hanFontPx, w.hanSizeRole(), bitmapTextStyle{
 			Align: w.alignMode,
 			Bold:  w.boldOn,
-		}))
-		w.lastTextBitmap = true
+		}), escposPadLine(left, right, escposWidth))
 		w.lf()
 		return
 	}
@@ -579,7 +600,6 @@ func (w *escposWriter) writeBody1x1() {
 	w.size(false, false)
 	w.bold(false)
 	w.underline(false)
-	w.hanRole = hanFontSmall
 }
 
 // writeBody1x2 — Font A double height (station slip menu body).
@@ -587,7 +607,6 @@ func (w *escposWriter) writeBody1x2() {
 	w.size(false, true)
 	w.bold(false)
 	w.underline(false)
-	w.hanRole = hanFontBody
 }
 
 // writeBody1x2Bold — receipt column header and amount due (Font A 1×2 bold).
@@ -595,14 +614,12 @@ func (w *escposWriter) writeBody1x2Bold() {
 	w.size(false, true)
 	w.bold(true)
 	w.underline(false)
-	w.hanRole = hanFontBody
 }
 
 // writeMasthead2x2Bold — ticket title and table number emphasis only.
 func (w *escposWriter) writeMasthead2x2Bold() {
 	w.size(true, true)
 	w.bold(true)
-	w.hanRole = hanFontLarge
 }
 
 func ticketBrandingWord(locale string) string {

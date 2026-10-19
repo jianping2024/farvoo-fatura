@@ -8,8 +8,8 @@ import (
 	"testing"
 )
 
-func TestBuildConnectionTestZHUsesFirmwareByDefault(t *testing.T) {
-	withThermalConfig(t, "")
+func TestBuildConnectionTestZHUsesFirmwareWhenOptedIn(t *testing.T) {
+	withThermalConfig(t, "han_firmware")
 	payload, _ := json.Marshal(jobPayload{
 		ConnectionTest: true,
 		Locale:         "zh",

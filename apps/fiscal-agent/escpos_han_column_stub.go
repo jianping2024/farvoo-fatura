@@ -10,7 +10,7 @@ func renderBitmapLeftRow(text string, leftPx int, fontPx int, style bitmapTextSt
 	if text == "" {
 		return bitmapTextImage{}
 	}
-	fontPx = resolveHanBitmapFontPx(fontPx)
+	fontPx = clampHanRenderPx(fontPx)
 	height := fontPx + hanBitmapHeightPad
 	pixels := make([]byte, canvasW*height)
 	stubStampInk(pixels, canvasW, height, fontPx)(text, leftPx)
@@ -19,7 +19,7 @@ func renderBitmapLeftRow(text string, leftPx int, fontPx int, style bitmapTextSt
 
 func renderBitmapReceiptRow(left, mid, right string, fontPx int, style bitmapTextStyle) bitmapTextImage {
 	canvasW := bitmapTextMaxWidthPx
-	fontPx = resolveHanBitmapFontPx(fontPx)
+	fontPx = clampHanRenderPx(fontPx)
 	height := fontPx + hanBitmapHeightPad
 	pixels := make([]byte, canvasW*height)
 	stamp := stubStampInk(pixels, canvasW, height, fontPx)
@@ -56,7 +56,7 @@ func renderBitmapReceiptRow(left, mid, right string, fontPx int, style bitmapTex
 
 func renderBitmapPadRow(left, right string, fontPx int, style bitmapTextStyle) bitmapTextImage {
 	canvasW := bitmapTextMaxWidthPx
-	fontPx = resolveHanBitmapFontPx(fontPx)
+	fontPx = clampHanRenderPx(fontPx)
 	height := fontPx + hanBitmapHeightPad
 	pixels := make([]byte, canvasW*height)
 	stamp := stubStampInk(pixels, canvasW, height, fontPx)

@@ -394,7 +394,7 @@ func TestRenderESCPOS_AccentEncoding(t *testing.T) {
 }
 
 func TestRenderESCPOS_HanFirmwareAccentsStayFontA(t *testing.T) {
-	SetThermalEncoding("auto")
+	SetThermalEncoding("han_firmware")
 	t.Cleanup(func() { SetThermalEncoding("auto") })
 	p := &Payload{
 		DocumentType: "FT", InvoiceNo: "FT X/1", PrintPurpose: "ORIGINAL",
@@ -409,7 +409,7 @@ func TestRenderESCPOS_HanFirmwareAccentsStayFontA(t *testing.T) {
 	}
 	raw := RenderESCPOS(p)
 	if bytes.Contains(raw, []byte{0x1D, 0x76, 0x30}) {
-		t.Fatal("auto must not raster pure Han lines")
+		t.Fatal("han_firmware must not raster pure Han lines")
 	}
 	gbk := []byte{0xB9, 0xAC, 0xB1, 0xA3} // 宫保
 	if !bytes.Contains(raw, append([]byte{0x1C, 0x26, 0x1D, 0x21, 0x01}, gbk...)) {
@@ -426,8 +426,8 @@ func TestRenderESCPOS_HanFirmwareAccentsStayFontA(t *testing.T) {
 	}
 }
 
-func TestRenderESCPOS_HanRastersWhenBitmapEscape(t *testing.T) {
-	SetThermalEncoding("bitmap")
+func TestRenderESCPOS_HanRastersByDefault(t *testing.T) {
+	SetThermalEncoding("auto")
 	t.Cleanup(func() { SetThermalEncoding("auto") })
 	p := &Payload{
 		DocumentType: "FT", InvoiceNo: "FT X/1", PrintPurpose: "ORIGINAL",

@@ -56,7 +56,7 @@ func renderText(s string, style Style, fontPx int) Image {
 	}
 	defer procDeleteDC.Call(dc)
 
-	fontPx = ClampFontPx(fontPx)
+	fontPx = ClampRenderPx(fontPx)
 	weight := uintptr(400)
 	if style.Bold {
 		weight = 700

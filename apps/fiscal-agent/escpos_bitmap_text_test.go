@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"testing"
+
+	"farvoo-fiscal-agent/internal/escposbitmap"
 )
 
 func TestRenderBitmapTextHasInkForHan(t *testing.T) {
@@ -69,7 +71,7 @@ func TestResolveHanBitmapFontPx(t *testing.T) {
 	if got := resolveHanBitmapFontPx(12); got != bitmapTextMinFontPx {
 		t.Fatalf("below min -> min, got %d", got)
 	}
-	if got := resolveHanBitmapFontPx(99); got != bitmapTextMaxFontPx {
+	if got := resolveHanBitmapFontPx(99); got != escposbitmap.MaxFontPx {
 		t.Fatalf("above max -> max, got %d", got)
 	}
 }

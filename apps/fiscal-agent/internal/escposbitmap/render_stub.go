@@ -7,7 +7,7 @@ func renderText(s string, style Style, fontPx int) Image {
 	if s == "" {
 		return Image{}
 	}
-	fontPx = ClampFontPx(fontPx)
+	fontPx = ClampRenderPx(fontPx)
 	charW := fontPx / 2
 	if charW < 1 {
 		charW = 1

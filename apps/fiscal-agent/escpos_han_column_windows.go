@@ -22,7 +22,7 @@ func renderBitmapLeftRow(text string, leftPx int, fontPx int, style bitmapTextSt
 	}
 	defer procDeleteDC.Call(dc)
 
-	fontPx = resolveHanBitmapFontPx(fontPx)
+	fontPx = clampHanRenderPx(fontPx)
 	weight := uintptr(400)
 	if style.Bold {
 		weight = 700
@@ -90,7 +90,7 @@ func renderBitmapReceiptRow(left, mid, right string, fontPx int, style bitmapTex
 	}
 	defer procDeleteDC.Call(dc)
 
-	fontPx = resolveHanBitmapFontPx(fontPx)
+	fontPx = clampHanRenderPx(fontPx)
 	weight := uintptr(400)
 	if style.Bold {
 		weight = 700
@@ -185,7 +185,7 @@ func renderBitmapPadRow(left, right string, fontPx int, style bitmapTextStyle) b
 	}
 	defer procDeleteDC.Call(dc)
 
-	fontPx = resolveHanBitmapFontPx(fontPx)
+	fontPx = clampHanRenderPx(fontPx)
 	weight := uintptr(400)
 	if style.Bold {
 		weight = 700

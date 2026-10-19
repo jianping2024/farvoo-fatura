@@ -61,7 +61,7 @@ func TestBuildCodePageProbeHasReferenceBitmapAndAllRows(t *testing.T) {
 }
 
 func TestBuildStationSampleSlipUsesFirmwareForAllLines(t *testing.T) {
-	withThermalConfig(t, "")
+	withThermalConfig(t, "han_firmware")
 	raw := buildStationSampleSlip("pt")
 	if bytesIndex(raw, []byte{0x1D, 0x76, 0x30}) >= 0 {
 		t.Fatal("station sample must print pt + zh from printer fonts, no GS v 0")

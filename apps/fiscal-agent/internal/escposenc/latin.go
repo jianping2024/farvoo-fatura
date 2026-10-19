@@ -19,6 +19,20 @@ func SelectCodeTable(n byte) []byte {
 	return []byte{0x1B, 0x74, n}
 }
 
+// Windows1252Placeholder is the ONLY fallback when a bitmap line fails to render: runes beyond
+// WPC1252 become '?' so the line still prints (never silently dropped).
+func Windows1252Placeholder(s string) []byte {
+	var b strings.Builder
+	for _, r := range s {
+		if NeedsRaster(string(r)) {
+			b.WriteByte('?')
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return Windows1252(b.String())
+}
+
 // Windows1252 encodes Latin for text_encoding=latin escape hatch and SAF-T.
 // Unmappable runes are omitted (never replaced with '?').
 func Windows1252(s string) []byte {

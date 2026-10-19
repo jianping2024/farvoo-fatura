@@ -449,7 +449,7 @@ func TestZhPreBillMenuOneRasterPerLine(t *testing.T) {
 	if oldGS < 2 {
 		t.Fatalf("sanity: padded three-col wrap should be ≥2 GS, got %d", oldGS)
 	}
-	newGS := bytes.Count(escposHanReceiptRow("001-中水", "9", "16.65", fontPx, style), []byte{0x1D, 0x76, 0x30, 0x00})
+	newGS := bytes.Count(escposHanReceiptRow("001-中水", "9", "16.65", fontPx, hanFontBody, style), []byte{0x1D, 0x76, 0x30, 0x00})
 	if newGS != 1 {
 		t.Fatalf("escposHanReceiptRow must emit exactly 1 GS v 0, got %d", newGS)
 	}
