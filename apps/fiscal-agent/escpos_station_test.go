@@ -40,9 +40,6 @@ func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
 		TableDisplayName: "A-32",
 		GuestCount:       4,
 		OrderTime:        "2026-05-14 20:15",
-		StationSlipOptions: &stationSlipOptions{
-			ShowCategoryGroup: true,
-		},
 		Lines: []jobLine{
 			{
 				ItemIndex:           1,
@@ -50,7 +47,6 @@ func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
 				ItemName:            "Água 500ml",
 				DisplayName:         "001-Água 500ml",
 				Qty:                 1,
-				CategoryGroupHeader: "(Bebidas/ Drinks2)",
 			},
 			{
 				ItemIndex:           7,
@@ -58,7 +54,6 @@ func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
 				ItemName:            "Coca Cola Zero",
 				DisplayName:         "007-Coca Cola Zero",
 				Qty:                 2,
-				CategoryGroupHeader: "(Bebidas/ Drinks2)",
 			},
 		},
 	})
@@ -73,7 +68,6 @@ func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
 		"Pedido",
 		"Conv.:4",
 		"3 artigos",
-		"(Bebidas/ Drinks2)",
 		"Coca Cola Zero",
 		"2026-05-14 20:15",
 		"Impresso por:restaurant",
@@ -128,21 +122,16 @@ func TestStationSlipHeaderShowsStationName(t *testing.T) {
 	}
 }
 
-func TestStationSlipSkipsCategoryHeaderWhenDisabled(t *testing.T) {
-	raw := stationTicketRaw(t, jobPayload{
-		TableDisplayName: "1",
-		StationSlipOptions: &stationSlipOptions{
-			ShowCategoryGroup: false,
-		},
-		Lines: []jobLine{{
-			ItemCode:            "001",
-			ItemName:            "Soup",
-			Qty:                 1,
-			CategoryGroupHeader: "(Bebidas/ Drinks2)",
-		}},
-	})
-	if strings.Contains(string(raw), "(Bebidas/ Drinks2)") {
-		t.Fatal("category header must not print when show_category_group is false")
+// Category headers ((PRATOS) / (BEBIDAS)) never print, even when the server still sends them.
+func TestStationSlipNeverPrintsCategoryHeader(t *testing.T) {
+	payload := []byte(`{"table_display_name":"1","station_slip_options":{"show_category_group":true},` +
+		`"lines":[{"item_code":"001","item_name":"Soup","qty":1,"category_group_header":"(Bebidas/ Drinks2)"}]}`)
+	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
+	if strings.Contains(string(raw), "Bebidas") {
+		t.Fatal("category header must never print on the station slip")
+	}
+	if !strings.Contains(string(raw), "Soup") {
+		t.Fatal("dish must still print")
 	}
 }
 

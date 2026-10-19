@@ -179,25 +179,11 @@ func (w *escposWriter) writeStationTableLine(table, clock string) {
 	w.lf()
 }
 
-// writeStationMenuLines — optional category headers, then one dish block per line.
+// writeStationMenuLines — one dish block per line (category order kept, no category header row).
 func (w *escposWriter) writeStationMenuLines(p jobPayload, lines []jobLine) {
-	showGroup := p.stationSlipShowCategoryGroup()
 	canvas := stationSlipColumnBlockUsesHanCanvas(p, w)
-	lastGroupHeader := ""
 	for i, ln := range sortStationMenuLines(lines) {
-		groupHeader := strings.TrimSpace(ln.CategoryGroupHeader)
-		if showGroup && groupHeader != "" && groupHeader != lastGroupHeader {
-			if i > 0 {
-				w.separator('-')
-			}
-			w.align(0)
-			w.writeBody1x1()
-			w.bold(true)
-			w.text(groupHeader)
-			w.lf()
-			w.separator('-')
-			lastGroupHeader = groupHeader
-		} else if i > 0 {
+		if i > 0 {
 			w.writeStationItemDivider()
 		}
 

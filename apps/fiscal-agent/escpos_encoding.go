@@ -37,7 +37,7 @@ func stationTicketNeedsBitmap(p jobPayload) bool {
 		return true
 	}
 	for _, ln := range p.Lines {
-		if escposenc.NeedsRaster(ln.CategoryGroupHeader) || escposenc.NeedsRaster(ln.DisplayName) || escposenc.NeedsRaster(ln.Note) {
+		if escposenc.NeedsRaster(ln.DisplayName) || escposenc.NeedsRaster(ln.Note) {
 			return true
 		}
 		_, names := stationSlipNames(ln)
