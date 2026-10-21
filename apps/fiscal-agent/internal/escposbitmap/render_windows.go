@@ -43,6 +43,10 @@ var (
 	procTextOutW           = gdi32.NewProc("TextOutW")
 )
 
+// gdiNonAntialiasedQuality — CreateFontW NONANTIALIASED_QUALITY. Smoothed / ClearType edges
+// turn black at the 1-bit threshold and fatten every stroke (store print 0.5.47: bold, blurry).
+const gdiNonAntialiasedQuality = 3
+
 func renderText(s string, style Style, fontPx int) Image {
 	canvasW := MaxWidthPx
 	s = strings.TrimRight(s, "\r\n")
@@ -68,7 +72,7 @@ func renderText(s string, style Style, fontPx int) Image {
 	}
 	font, _, _ := procCreateFontW.Call(
 		uintptr(^uint32(fontPx-1)+1), 0, 0, 0, weight, 0, underline, 0,
-		1, 4, 0, 0, 0, uintptr(unsafe.Pointer(face)),
+		1, 4, 0, gdiNonAntialiasedQuality, 0, uintptr(unsafe.Pointer(face)),
 	)
 	if font == 0 {
 		return Image{}
