@@ -1021,5 +1021,54 @@ func buildCodePageProbe(venue string) []byte {
 		w.content.Write(sec.rows)
 		w.separator('-')
 	}
+	w.writeBitmapSizeProbe()
 	return w.finish(true)
+}
+
+// bitmapSizeProbeBasePx — han_bitmap_font_px candidates printed on the self-test.
+var bitmapSizeProbeBasePx = []int{16, 18, 20, 24}
+
+// writeBitmapSizeProbe — Font A station item (reference) vs the real bitmap path
+// (writeHanStationItem) at several han_bitmap_font_px; then one raster after GS ! 0 vs
+// GS ! 0x01 (does the firmware stretch GS v 0 by the char size?).
+func (w *escposWriter) writeBitmapSizeProbe() {
+	lead := stationSlipQtyCodeLead(3, "902")
+	names := []string{"Café Cheio"}
+
+	w.writeBody1x1()
+	w.text("BITMAP SIZE (vs REF Font A):")
+	w.lf()
+	w.text("Which px block matches REF size?")
+	w.lf()
+	w.text("REF Font A")
+	w.lf()
+	w.writeStationItem(lead, names, "")
+
+	saved := w.hanFontPx
+	for _, px := range bitmapSizeProbeBasePx {
+		w.writeBody1x1()
+		w.text(fmt.Sprintf("px=%d", px))
+		w.lf()
+		w.hanFontPx = px
+		w.writeHanStationItem(lead, names, "三分糖")
+	}
+	w.hanFontPx = saved
+
+	w.writeBody1x1()
+	w.text("GS! test: A and B same height?")
+	w.lf()
+	const gsSample = "Café 三分糖"
+	img := renderHanRoleRow(gsSample, 0, bitmapTextDefaultFontPx, hanFontBody, bitmapTextStyle{})
+	for _, c := range []struct {
+		label   string
+		doubleH bool
+	}{{"A GS!0 (px=24)", false}, {"B GS!1x2 (px=24)", true}} {
+		w.writeBody1x1()
+		w.text(c.label)
+		w.lf()
+		w.size(false, c.doubleH)
+		w.writeHanRaster(img, gsSample)
+	}
+	w.writeBody1x1()
+	w.separator('-')
 }

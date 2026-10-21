@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"farvoo-fiscal-agent/internal/escposenc"
@@ -57,6 +58,17 @@ func TestBuildCodePageProbeHasReferenceBitmapAndAllRows(t *testing.T) {
 	}
 	if cutDotsInRaw(raw) == 0 {
 		t.Fatal("probe slip must cut")
+	}
+	if bytesIndex(raw, []byte("BITMAP SIZE")) < 0 {
+		t.Fatal("missing BITMAP SIZE section")
+	}
+	for _, px := range bitmapSizeProbeBasePx {
+		if bytesIndex(raw, []byte(fmt.Sprintf("px=%d", px))) < 0 {
+			t.Fatalf("missing px=%d block", px)
+		}
+	}
+	if bytesIndex(raw, []byte("GS! test")) < 0 {
+		t.Fatal("missing GS! test rows")
 	}
 }
 

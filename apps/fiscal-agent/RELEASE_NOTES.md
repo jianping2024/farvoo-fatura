@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.47
+
+**自检页新增「中文图片字号对比」**
+
+- 打码页自检（CODE PAGE TEST）末尾新增一段：先用打印机字体打一行参照 `3× 902 Café Cheio`，再用正式出品联的画图路径按 px=16 / 18 / 20 / 24 各打一组（含备注「三分糖」），看哪组和参照一样大。
+- 再打同一张图两次（A 前面不开倍高，B 开倍高），看打印机会不会拿倍高开关把图片再拉高。
+- 只加了自检内容，正式出单不变。
+
 ## 0.5.46
 
 **开台小票：只印大人/小孩人数（无份数、无应付）**
