@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.49
+
+**日志记录每张单收到的中文字号**
+
+- 每处理一张打印任务，`agent.log` 记一行：`print job <id> (<类型>): han_bitmap_font_px payload=<收到的值> used=<实际用的值>`。payload=0 表示云端没传这个字段（按默认 24 打）。
+- 用于排查「功能设置里改了中文字号，出单却没变」。
+
 ## 0.5.48
 
 **出品联：只有中文那一行才画成图片；中文图片字变细变清楚**
