@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.46
+
+**开台小票：只印大人/小孩人数（无份数、无应付）**
+
+- `receipt_variant=open_table`：`buildOpenTableSlip` 只打桌号 + 大人/小孩；不再打菜品行、「共 N 份」、应付金额。
+- 档口出品联仍走 `buildStationTicket`，与开台票分路。
+
 ## 0.5.45
 
 **中文出品联标题、桌号行不再加粗**

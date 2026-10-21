@@ -42,6 +42,8 @@ type ticketLabels struct {
 	openTable      string // cold-open slip title (receipt_variant=open_table)
 	tableNo        string
 	guest          string
+	adults         string // open_table headcount
+	children       string // open_table headcount
 	items          string
 	qty            string
 	originalPrice  string
@@ -78,6 +80,8 @@ func labelsFor(locale string) ticketLabels {
 			openTable:      "开台",
 			tableNo:        "桌号",
 			guest:          "人数",
+			adults:         "大人",
+			children:       "小孩",
 			items:          "菜品",
 			qty:            "数量",
 			originalPrice:  "原价",
@@ -110,6 +114,8 @@ func labelsFor(locale string) ticketLabels {
 			openTable:      "Open table",
 			tableNo:        "Table No.",
 			guest:          "Guest",
+			adults:         "Adults",
+			children:       "Children",
 			items:          "Items",
 			qty:            "Qty",
 			originalPrice:  "Pri",
@@ -142,6 +148,8 @@ func labelsFor(locale string) ticketLabels {
 			openTable:      "Abrir mesa",
 			tableNo:        "Mesa n.º",
 			guest:          "Conv.",
+			adults:         "Adultos",
+			children:       "Crianças",
 			items:          "Artigos",
 			qty:            "Qtd",
 			originalPrice:  "Preço",
@@ -190,6 +198,8 @@ type jobPayload struct {
 	TableDisplayName     string              `json:"display_name"`
 	TableID              string              `json:"table_id"`
 	GuestCount           int                 `json:"guest_count"`
+	AdultCount           int                 `json:"adult_count"` // open_table sole headcount
+	ChildCount           int                 `json:"child_count"` // open_table sole headcount
 	StationDisplayNamePt string              `json:"station_display_name_pt"`
 	StationDisplayNameEn string              `json:"station_display_name_en"`
 	StationDisplayNameZh string              `json:"station_display_name_zh"`
@@ -202,7 +212,7 @@ type jobPayload struct {
 	OrderedBy            string              `json:"ordered_by"`
 	OrderTime            string              `json:"order_time"`
 	PrintTime            string              `json:"print_time"`
-	// pre_bill | checkout_bill | split_payment | final (empty → final on order_receipt)
+	// pre_bill | checkout_bill | split_payment | final | open_table (empty → final on order_receipt)
 	ReceiptVariant string `json:"receipt_variant"`
 	PayerName      string `json:"payer_name"`
 }
@@ -764,34 +774,51 @@ func escposFromJob(job printJob) []byte {
 	}
 }
 
-// buildOpenTableSlip — cold-open slip: station-slip chrome + one line + amount due (receipt printer).
+// buildOpenTableSlip — cold-open headcount notice only (adult/child).
+// No dish lines, no portion/"共N份" count, no amount due. Does not share station menu body.
 func buildOpenTableSlip(p jobPayload) []byte {
 	lab := printTicketLabels(p.Locale)
 	w := newEscposForStationTicket(p)
 	title := strings.TrimSpace(lab.openTable)
 	if title == "" {
-		title = lab.guestOrder
+		title = "Open table"
 	}
-	w.writeStationSlipHeader(p, lab, title)
-	w.writeStationMenuLines(p, p.Lines)
-	due := p.AmountDue
-	if due <= 0 {
-		due = p.Subtotal
-	}
-	if due <= 0 {
-		for _, ln := range p.Lines {
-			q := ln.Qty
-			if q <= 0 {
-				q = 1
-			}
-			due += ln.UnitPrice * float64(q)
-		}
-	}
-	w.separator('-')
+
+	w.align(1)
 	w.writeBody1x1()
-	if due > 0 {
-		w.writeReceiptAmountDueLine(lab.amountDue + ":" + formatMoney(due))
+	w.text(ticketBrandingWord(w.printLocale))
+	w.lf()
+	w.writeStationHeading2x2(title)
+	w.text(title)
+	w.lf()
+	w.separator('=')
+
+	w.writeStationTableLine(p.tableNoLabel(lab), stationSlipClock(stationSlipOrderAt(p)))
+
+	adults := p.AdultCount
+	if adults < 0 {
+		adults = 0
 	}
+	children := p.ChildCount
+	if children < 0 {
+		children = 0
+	}
+	adultLabel := strings.TrimSpace(lab.adults)
+	if adultLabel == "" {
+		adultLabel = "Adults"
+	}
+	childLabel := strings.TrimSpace(lab.children)
+	if childLabel == "" {
+		childLabel = "Children"
+	}
+	w.writeBody1x1()
+	w.align(0)
+	w.text(fmt.Sprintf("%s:%d", adultLabel, adults))
+	w.lf()
+	w.text(fmt.Sprintf("%s:%d", childLabel, children))
+	w.lf()
+	w.separator('=')
+
 	w.writeStationSlipFooter(p, lab)
 	return w.finish(true)
 }

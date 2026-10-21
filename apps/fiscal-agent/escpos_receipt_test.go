@@ -493,39 +493,56 @@ func TestZhPreBillMenuOneRasterPerLine(t *testing.T) {
 	}
 }
 
-func TestBuildOpenTableSlipStationChromeWithAmount(t *testing.T) {
+func TestBuildOpenTableSlipHeadcountOnly(t *testing.T) {
 	payload, _ := json.Marshal(map[string]any{
 		"locale":          "en",
 		"display_name":    "A-03",
-		"guest_count":     3,
 		"receipt_variant": "open_table",
-		"subtotal":        59.7,
-		"amount_due":      59.7,
+		"adult_count":     6,
+		"child_count":     2,
 		"order_time":      "2026-10-09 12:00",
-		"lines": []jobLine{
-			{ItemIndex: 1, DisplayName: "Open table", Qty: 1, UnitPrice: 59.7},
-		},
+		"lines":           []jobLine{},
 	})
 	raw := escposFromJob(printJob{Type: "order_receipt", Payload: payload})
 	s := string(raw)
 	for _, want := range []string{
 		"Open table",
-		"Guest:3",
-		"1 item",
-		"\x1d!\x111\xd7\x1d!\x01 Open table", // station-slip dish row: 2×2 qty lead + 1×2 name
-		"Amount Due:59.70",
+		"Adults:6",
+		"Children:2",
 	} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("missing %q in open_table slip, got: %q", want, s)
 		}
 	}
-	if strings.Contains(s, "Table Consultation") || strings.Contains(s, "Consulta Mesa") || strings.Contains(s, "Pre-Bill") {
-		t.Fatal("open_table must not use pre_bill title")
+	for _, forbid := range []string{
+		"1 item",
+		"Amount Due",
+		"Guest:3",
+		"Table Consultation",
+		"Consulta Mesa",
+		"Pre-Bill",
+		"NOT AN INVOICE",
+		"Amount Paid",
+		"Payment:",
+	} {
+		if strings.Contains(s, forbid) {
+			t.Fatalf("open_table must not contain %q; got %q", forbid, s)
+		}
 	}
-	if strings.Contains(s, "NOT AN INVOICE") || strings.Contains(s, "não serve de fatura") {
-		t.Fatal("open_table must not print pre_bill disclaimer")
-	}
-	if strings.Contains(s, "Amount Paid") || strings.Contains(s, "Payment:") {
-		t.Fatal("open_table must not include payment lines")
+}
+
+func TestBuildOpenTableSlipZhNoPortionCount(t *testing.T) {
+	payload, _ := json.Marshal(map[string]any{
+		"locale":          "zh",
+		"display_name":    "08",
+		"receipt_variant": "open_table",
+		"adult_count":     8,
+		"child_count":     0,
+		"lines":           []jobLine{},
+	})
+	raw := escposFromJob(printJob{Type: "order_receipt", Payload: payload})
+	s := string(raw)
+	if strings.Contains(s, "共1份") || strings.Contains(s, "共8份") || strings.Contains(s, "Amount Due") || strings.Contains(s, "应付") {
+		t.Fatalf("open_table zh must not print portion count or amount due: %q", s)
 	}
 }
