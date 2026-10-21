@@ -749,6 +749,9 @@ func nowLocal() string {
 func escposFromJob(job printJob) []byte {
 	p := parseJobPayload(job)
 	lab := printTicketLabels(p.Locale)
+	// payload 0 = key missing (falls back to the default); used = what the Han raster renders at.
+	log.Printf("print job %s (%s): han_bitmap_font_px payload=%d used=%d",
+		job.ID, job.Type, p.HanBitmapFontPx, resolveHanBitmapFontPx(p.HanBitmapFontPx))
 
 	switch job.Type {
 	case "station_ticket":
