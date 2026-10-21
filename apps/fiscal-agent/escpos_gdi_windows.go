@@ -10,6 +10,10 @@ import (
 // Shared GDI procs for Han *column* canvases only.
 // Line-level text raster lives ONLY in internal/escposbitmap (do not reintroduce line GDI here).
 
+// gdiNonAntialiasedQuality — CreateFontW NONANTIALIASED_QUALITY. Smoothed / ClearType edges
+// turn black at the 1-bit threshold and fatten every stroke (store print 0.5.47: bold, blurry).
+const gdiNonAntialiasedQuality = 3
+
 type gdiSize struct{ CX, CY int32 }
 type gdiBitmapInfoHeader struct {
 	Size          uint32

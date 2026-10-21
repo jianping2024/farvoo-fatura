@@ -319,15 +319,40 @@ func TestStationTicketPtNoteWithHanStaysFirmware(t *testing.T) {
 	}
 }
 
-func TestStationSlipColumnBlockUsesHanCanvas_ZhForcesLatinMenu(t *testing.T) {
+func TestStationItemUsesHanCanvasOnlyForRasterFirstName(t *testing.T) {
 	withThermalConfig(t, "bitmap") // Han canvas exists only on the bitmap escape path
-	zh := jobPayload{Locale: "zh", Lines: []jobLine{{ItemCode: "031", ItemName: "Guarana", Qty: 1}}}
-	if !stationSlipColumnBlockUsesHanCanvas(zh, newEscposForStationTicket(zh)) {
-		t.Fatal("zh chrome must use the Han canvas even when dish names are Latin")
+	w := newEscposForStationTicket(jobPayload{Locale: "zh", Lines: []jobLine{{ItemCode: "031", ItemName: "可乐", Qty: 1}}})
+	if !stationItemUsesHanCanvas(w, []string{"可乐"}) {
+		t.Fatal("Han first name must use the canvas row")
 	}
-	en := jobPayload{Locale: "en", Lines: []jobLine{{ItemCode: "031", ItemName: "Guarana", Qty: 1}}}
-	if stationSlipColumnBlockUsesHanCanvas(en, newEscposForStationTicket(en)) {
-		t.Fatal("en Latin menu must stay on Font A")
+	if stationItemUsesHanCanvas(w, []string{"Café Cheio", "咖啡"}) {
+		t.Fatal("Latin first name stays Font A even with a Han sub-name")
+	}
+}
+
+// Store 0.5.47: only Han rows raster — a Latin dish with a Han note keeps the Font A lead/name
+// bytes (same as a pt-only slip) and the note is one GS v 0 row.
+func TestStationSlipLatinDishHanNoteOnlyNoteRasters(t *testing.T) {
+	withThermalConfig(t, "bitmap")
+	for _, loc := range []string{"pt", "zh"} {
+		raw := stationTicketRaw(t, jobPayload{
+			Locale:           loc,
+			TableDisplayName: "A-01",
+			Lines: []jobLine{
+				{ItemCode: "902", ItemName: "Café Cheio", Qty: 3, Note: "三分糖"},
+				{ItemCode: "901", ItemName: "Café", Qty: 1},
+			},
+		})
+		a := bytes.Index(raw, append(leadRow(3, "902"), escposenc.Windows1252(" Café Cheio")...))
+		b := bytes.Index(raw, append(leadRow(1, "901"), escposenc.Windows1252(" Café")...))
+		if a < 0 || b < 0 {
+			t.Fatalf("%s: Latin dish rows must stay Font A (a=%d b=%d)", loc, a, b)
+		}
+		lo, hi := min(a, b), max(a, b)
+		// zh chrome (title / footer labels) rasters on its own; the menu block holds only the note.
+		if n := bytes.Count(raw[lo:hi], gsV0); n != 1 {
+			t.Fatalf("%s: menu GS v 0 count %d want 1 (note only)", loc, n)
+		}
 	}
 }
 
@@ -342,9 +367,12 @@ func TestZhStationSlipBitmapItemRowsAreRasters(t *testing.T) {
 			{ItemCode: "007", ItemName: "可乐", Qty: 2, Note: "少冰"},
 		},
 	})
-	// 2 dish rows + 1 note row on the canvas
-	if n := bytes.Count(raw, gsV0); n < 3 {
-		t.Fatalf("GS v 0 count %d want >= 3", n)
+	// 可乐 dish row + 少冰 note on the canvas; Guarana stays Font A
+	if n := bytes.Count(raw, gsV0); n < 2 {
+		t.Fatalf("GS v 0 count %d want >= 2", n)
+	}
+	if !bytes.Contains(raw, append(leadRow(1, "031"), escposenc.Windows1252(" Guarana")...)) {
+		t.Fatal("Latin dish on a zh slip must stay Font A")
 	}
 	if bytes.Contains(raw, gsReverse) {
 		t.Fatal("GS B must not be used")

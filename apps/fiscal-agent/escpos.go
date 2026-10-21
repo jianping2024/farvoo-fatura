@@ -828,7 +828,7 @@ func buildStationTicket(p jobPayload) []byte {
 	lab := printTicketLabels(p.Locale)
 	w := newEscposForStationTicket(p)
 	w.writeStationSlipHeader(p, lab, lab.guestOrder)
-	w.writeStationMenuLines(p, p.Lines)
+	w.writeStationMenuLines(p.Lines)
 	w.writeStationSlipFooter(p, lab)
 	return w.finish(true)
 }
@@ -1026,15 +1026,17 @@ func buildCodePageProbe(venue string) []byte {
 }
 
 // bitmapSizeProbeBasePx — han_bitmap_font_px candidates printed on the self-test.
-var bitmapSizeProbeBasePx = []int{16, 18, 20, 24}
+var bitmapSizeProbeBasePx = []int{22, 24}
 
-// writeBitmapSizeProbe — Font A station item (reference) vs the real bitmap path
-// (writeHanStationItem) at several han_bitmap_font_px; then one raster after GS ! 0 vs
-// GS ! 0x01 (does the firmware stretch GS v 0 by the char size?).
+// bitmapSizeProbeLines — Latin dish + Han note (only the note rasters) and a Han dish (canvas row).
+var bitmapSizeProbeLines = []jobLine{
+	{ItemCode: "902", ItemName: "Café Cheio", Qty: 3, Note: "三分糖"},
+	{ItemCode: "015", ItemName: "宫保鸡丁", Qty: 1},
+}
+
+// writeBitmapSizeProbe — the real station menu path (writeStationMenuLines, bitmap mode) at a few
+// han_bitmap_font_px, under a Font A reference row: does the Han raster match Font A size?
 func (w *escposWriter) writeBitmapSizeProbe() {
-	lead := stationSlipQtyCodeLead(3, "902")
-	names := []string{"Café Cheio"}
-
 	w.writeBody1x1()
 	w.text("BITMAP SIZE (vs REF Font A):")
 	w.lf()
@@ -1042,33 +1044,18 @@ func (w *escposWriter) writeBitmapSizeProbe() {
 	w.lf()
 	w.text("REF Font A")
 	w.lf()
-	w.writeStationItem(lead, names, "")
+	w.writeStationItem(stationSlipQtyCodeLead(3, "902"), []string{"Café Cheio"}, "")
 
-	saved := w.hanFontPx
+	savedMode, savedPx := w.textMode, w.hanFontPx
+	w.textMode = escposTextBitmap
 	for _, px := range bitmapSizeProbeBasePx {
 		w.writeBody1x1()
 		w.text(fmt.Sprintf("px=%d", px))
 		w.lf()
 		w.hanFontPx = px
-		w.writeHanStationItem(lead, names, "三分糖")
+		w.writeStationMenuLines(bitmapSizeProbeLines)
 	}
-	w.hanFontPx = saved
-
-	w.writeBody1x1()
-	w.text("GS! test: A and B same height?")
-	w.lf()
-	const gsSample = "Café 三分糖"
-	img := renderHanRoleRow(gsSample, 0, bitmapTextDefaultFontPx, hanFontBody, bitmapTextStyle{})
-	for _, c := range []struct {
-		label   string
-		doubleH bool
-	}{{"A GS!0 (px=24)", false}, {"B GS!1x2 (px=24)", true}} {
-		w.writeBody1x1()
-		w.text(c.label)
-		w.lf()
-		w.size(false, c.doubleH)
-		w.writeHanRaster(img, gsSample)
-	}
+	w.textMode, w.hanFontPx = savedMode, savedPx
 	w.writeBody1x1()
 	w.separator('-')
 }

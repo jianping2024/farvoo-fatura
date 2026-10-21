@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"farvoo-fiscal-agent/internal/escposbitmap"
+	"farvoo-fiscal-agent/internal/escposenc"
 )
 
 // Vertical padding for Han GS v 0 rows — keep tight vs Font A 1×2 (avoid paper waste).
@@ -82,28 +83,11 @@ func escposDisplayColToPx(col int) int {
 	return col * bitmapTextMaxWidthPx / escposWidth
 }
 
-// stationSlipColumnBlockUsesHanCanvas — menu rows use one 576px ruler (bitmap escape only).
-// Sole gate: zh chrome OR any line/note with Han. Never mix space-padded Han via
-// escposBitmapText with Font A rows (name/note hang indent drifts).
-func stationSlipColumnBlockUsesHanCanvas(p jobPayload, w *escposWriter) bool {
-	if w.textMode != escposTextBitmap {
-		return false
-	}
-	if printLocaleIsZh(p.Locale) {
-		return true
-	}
-	for _, ln := range p.Lines {
-		if hasHan(strings.TrimSpace(ln.Note)) {
-			return true
-		}
-		_, names := stationSlipNames(ln)
-		for _, name := range names {
-			if hasHan(name) {
-				return true
-			}
-		}
-	}
-	return false
+// stationItemUsesHanCanvas — sole per-dish gate (bitmap escape only): the lead + first-name row
+// is one 576px canvas only when the first name needs a raster (it cannot share a Font A row).
+// Every other dish stays on Font A; its Han hang lines go through writeStationHangLine.
+func stationItemUsesHanCanvas(w *escposWriter, names []string) bool {
+	return w.textMode == escposTextBitmap && len(names) > 0 && escposenc.NeedsRaster(names[0])
 }
 
 func lastSpaceRunes(b []rune) int {

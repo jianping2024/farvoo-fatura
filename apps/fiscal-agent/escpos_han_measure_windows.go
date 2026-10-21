@@ -25,7 +25,7 @@ func measureHanTextWidth(s string, fontPx int, bold bool) int {
 	face, _ := syscall.UTF16PtrFromString("Microsoft YaHei")
 	font, _, _ := procCreateFontW.Call(
 		uintptr(^uint32(fontPx-1)+1), 0, 0, 0, weight, 0, 0, 0,
-		1, 4, 0, 0, 0, uintptr(unsafe.Pointer(face)),
+		1, 4, 0, gdiNonAntialiasedQuality, 0, uintptr(unsafe.Pointer(face)),
 	)
 	if font == 0 {
 		return displayWidth(s) * (fontPx / 2)

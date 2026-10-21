@@ -67,9 +67,10 @@ func TestBuildCodePageProbeHasReferenceBitmapAndAllRows(t *testing.T) {
 			t.Fatalf("missing px=%d block", px)
 		}
 	}
-	if bytesIndex(raw, []byte("GS! test")) < 0 {
-		t.Fatal("missing GS! test rows")
+	if bytesIndex(raw, []byte{0x1D, 0x76, 0x30}) < 0 {
+		t.Fatal("size probe must raster the Han note / dish")
 	}
+
 }
 
 func TestBuildStationSampleSlipUsesFirmwareForAllLines(t *testing.T) {

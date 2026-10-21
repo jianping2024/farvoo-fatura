@@ -30,7 +30,7 @@ func renderBitmapLeftRow(text string, leftPx int, fontPx int, style bitmapTextSt
 	face, _ := syscall.UTF16PtrFromString("Microsoft YaHei")
 	font, _, _ := procCreateFontW.Call(
 		uintptr(^uint32(fontPx-1)+1), 0, 0, 0, weight, 0, uintptr(boolToUintptr(style.Underline)), 0,
-		1, 4, 0, 0, 0, uintptr(unsafe.Pointer(face)),
+		1, 4, 0, gdiNonAntialiasedQuality, 0, uintptr(unsafe.Pointer(face)),
 	)
 	if font == 0 {
 		return bitmapTextImage{}
@@ -98,7 +98,7 @@ func renderBitmapReceiptRow(left, mid, right string, fontPx int, style bitmapTex
 	face, _ := syscall.UTF16PtrFromString("Microsoft YaHei")
 	font, _, _ := procCreateFontW.Call(
 		uintptr(^uint32(fontPx-1)+1), 0, 0, 0, weight, 0, 0, 0,
-		1, 4, 0, 0, 0, uintptr(unsafe.Pointer(face)),
+		1, 4, 0, gdiNonAntialiasedQuality, 0, uintptr(unsafe.Pointer(face)),
 	)
 	if font == 0 {
 		return bitmapTextImage{}
@@ -193,7 +193,7 @@ func renderBitmapPadRow(left, right string, fontPx int, style bitmapTextStyle) b
 	face, _ := syscall.UTF16PtrFromString("Microsoft YaHei")
 	font, _, _ := procCreateFontW.Call(
 		uintptr(^uint32(fontPx-1)+1), 0, 0, 0, weight, 0, 0, 0,
-		1, 4, 0, 0, 0, uintptr(unsafe.Pointer(face)),
+		1, 4, 0, gdiNonAntialiasedQuality, 0, uintptr(unsafe.Pointer(face)),
 	)
 	if font == 0 {
 		return bitmapTextImage{}

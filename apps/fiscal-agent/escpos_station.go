@@ -187,8 +187,7 @@ func (w *escposWriter) writeStationTableLine(table, clock string) {
 }
 
 // writeStationMenuLines — one dish block per line (category order kept, no category header row).
-func (w *escposWriter) writeStationMenuLines(p jobPayload, lines []jobLine) {
-	canvas := stationSlipColumnBlockUsesHanCanvas(p, w)
+func (w *escposWriter) writeStationMenuLines(lines []jobLine) {
 	for i, ln := range sortStationMenuLines(lines) {
 		if i > 0 {
 			w.writeStationItemDivider()
@@ -201,7 +200,7 @@ func (w *escposWriter) writeStationMenuLines(p jobPayload, lines []jobLine) {
 		code, names := stationSlipNames(ln)
 		lead := stationSlipQtyCodeLead(qty, code)
 		note := strings.TrimSpace(ln.Note)
-		if canvas {
+		if stationItemUsesHanCanvas(w, names) {
 			w.writeHanStationItem(lead, names, note)
 		} else {
 			w.writeStationItem(lead, names, note)
@@ -246,26 +245,36 @@ func (w *escposWriter) writeStationItem(lead string, names []string, note string
 	}
 	w.lf()
 	for _, c := range chunks {
-		w.text(pad + c)
-		w.lf()
+		w.writeStationHangLine(pad, c)
 	}
 
 	if len(names) > 1 {
 		w.writeBody1x1()
 		for _, name := range names[1:] {
 			for _, c := range stationSlipWrap(name, maxW) {
-				w.text(pad + c)
-				w.lf()
+				w.writeStationHangLine(pad, c)
 			}
 		}
 	}
 	if note != "" {
 		w.writeBody1x2()
 		for _, c := range stationSlipWrap(stationSlipNotePrefix+note, maxW) {
-			w.text(pad + c)
-			w.lf()
+			w.writeStationHangLine(pad, c)
 		}
 	}
+}
+
+// writeStationHangLine — one row under the Font A name column. On the bitmap path a row that
+// needs a raster (Han…) is a GS v 0 image anchored at that column's dot X, at the current GS !
+// size, so it lines up with the Font A rows around it (space-padded raster text would drift).
+func (w *escposWriter) writeStationHangLine(pad, s string) {
+	if w.textMode == escposTextBitmap && escposenc.NeedsRaster(s) {
+		x := escposDisplayColToPx(len(pad))
+		w.writeHanRaster(renderHanRoleRow(s, x, w.hanFontPx, w.hanSizeRole(), bitmapTextStyle{}), pad+s)
+		return
+	}
+	w.text(pad + s)
+	w.lf()
 }
 
 // writeHanStationItem — bitmap path: same layout on the 576px canvas — lead 2×2, first name
