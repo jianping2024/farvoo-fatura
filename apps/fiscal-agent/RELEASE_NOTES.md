@@ -2,6 +2,12 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.51
+
+**出品联大类行改为 1×2 居中**
+
+- `category_group_header` 行：倍高（1×2）、居中；仍原样文案、同类一次、受 `show_category_group` 控制、上下无分隔线。
+
 ## 0.5.50
 
 **出品联恢复菜品大类行（受开关控制）**
