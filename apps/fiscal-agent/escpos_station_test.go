@@ -122,16 +122,78 @@ func TestStationSlipHeaderShowsStationName(t *testing.T) {
 	}
 }
 
-// Category headers ((PRATOS) / (BEBIDAS)) never print, even when the server still sends them.
-func TestStationSlipNeverPrintsCategoryHeader(t *testing.T) {
-	payload := []byte(`{"table_display_name":"1","station_slip_options":{"show_category_group":true},` +
-		`"lines":[{"item_code":"001","item_name":"Soup","qty":1,"category_group_header":"(Bebidas/ Drinks2)"}]}`)
-	raw := escposFromJob(printJob{Type: "station_ticket", Payload: payload})
-	if strings.Contains(string(raw), "Bebidas") {
-		t.Fatal("category header must never print on the station slip")
+func TestStationSlipPrintsCategoryHeaderWhenEnabled(t *testing.T) {
+	raw := stationTicketRaw(t, jobPayload{
+		Locale:           "pt",
+		TableDisplayName: "1",
+		StationSlipOptions: &stationSlipOptions{
+			ShowCategoryGroup: true,
+		},
+		Lines: []jobLine{
+			{
+				ItemIndex: 1, ItemCode: "001", ItemName: "Água 500ml", Qty: 1,
+				CategoryGroupSort: 0, CategoryGroupHeader: "(BEBIDAS)",
+			},
+			{
+				ItemIndex: 2, ItemCode: "007", ItemName: "Cola", Qty: 2,
+				CategoryGroupSort: 0, CategoryGroupHeader: "(BEBIDAS)",
+			},
+			{
+				ItemIndex: 3, ItemCode: "020", ItemName: "Frango", Qty: 1,
+				CategoryGroupSort: 1, CategoryGroupHeader: "(PRATOS)",
+			},
+		},
+	})
+	if !bytes.Contains(raw, []byte("(BEBIDAS)")) || !bytes.Contains(raw, []byte("(PRATOS)")) {
+		t.Fatal("category headers must print as-is when show_category_group is true")
 	}
-	if !strings.Contains(string(raw), "Soup") {
-		t.Fatal("dish must still print")
+	if bytes.Count(raw, []byte("(BEBIDAS)")) != 1 {
+		t.Fatalf("same category header must print once, got %d", bytes.Count(raw, []byte("(BEBIDAS)")))
+	}
+	bebidas := bytes.Index(raw, []byte("(BEBIDAS)"))
+	agua := bytes.Index(raw, escposenc.Windows1252("Água 500ml"))
+	cola := bytes.Index(raw, []byte("Cola"))
+	pratos := bytes.Index(raw, []byte("(PRATOS)"))
+	frango := bytes.Index(raw, []byte("Frango"))
+	if !(bebidas < agua && agua < cola && cola < pratos && pratos < frango) {
+		t.Fatalf("want (BEBIDAS) < dishes < (PRATOS) < Frango; idx %d %d %d %d %d",
+			bebidas, agua, cola, pratos, frango)
+	}
+	// No solid separators around category headers (dish-to-dish dashed divider still OK).
+	solid := []byte(strings.Repeat("-", 8))
+	before := raw[max(0, bebidas-40):bebidas]
+	after := raw[bebidas+len("(BEBIDAS)") : min(len(raw), bebidas+len("(BEBIDAS)")+40)]
+	if bytes.Contains(before, solid) || bytes.Contains(after, solid) {
+		t.Fatal("category header must not be wrapped in solid separators")
+	}
+}
+
+func TestStationSlipSkipsCategoryHeaderWhenDisabled(t *testing.T) {
+	raw := stationTicketRaw(t, jobPayload{
+		TableDisplayName: "1",
+		StationSlipOptions: &stationSlipOptions{
+			ShowCategoryGroup: false,
+		},
+		Lines: []jobLine{{
+			ItemCode: "001", ItemName: "Soup", Qty: 1,
+			CategoryGroupHeader: "(Bebidas/ Drinks2)",
+		}},
+	})
+	if strings.Contains(string(raw), "Bebidas") {
+		t.Fatal("category header must not print when show_category_group is false")
+	}
+}
+
+func TestStationSlipSkipsCategoryHeaderWhenOptionsNil(t *testing.T) {
+	raw := stationTicketRaw(t, jobPayload{
+		TableDisplayName: "1",
+		Lines: []jobLine{{
+			ItemCode: "001", ItemName: "Soup", Qty: 1,
+			CategoryGroupHeader: "(BEBIDAS)",
+		}},
+	})
+	if strings.Contains(string(raw), "BEBIDAS") {
+		t.Fatal("category header must not print when station_slip_options is absent")
 	}
 }
 
