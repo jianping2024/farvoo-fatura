@@ -166,6 +166,14 @@ func TestStationSlipPrintsCategoryHeaderWhenEnabled(t *testing.T) {
 	if bytes.Contains(before, solid) || bytes.Contains(after, solid) {
 		t.Fatal("category header must not be wrapped in solid separators")
 	}
+	// 1×2 centered: ESC a 1 + GS ! 0x01 (+ bold/underline off from writeBody1x2) before header.
+	wantLead := append([]byte{}, 0x1B, 0x61, 0x01)
+	wantLead = append(wantLead, gsSize1x2...)
+	wantLead = append(wantLead, 0x1B, 0x45, 0x00, 0x1B, 0x2D, 0x00)
+	wantLead = append(wantLead, []byte("(BEBIDAS)")...)
+	if !bytes.Contains(raw, wantLead) {
+		t.Fatal("category header must be 1×2 and centered")
+	}
 }
 
 func TestStationSlipSkipsCategoryHeaderWhenDisabled(t *testing.T) {

@@ -15,14 +15,14 @@ import (
 //	Mesa n.º:001                18:01  2×2 bold (Chinese: not bold)
 //	Conv.:1                 3 artigos  1×1
 //	================================================
-//	(BEBIDAS)                          optional; when station_slip_options.show_category_group
+//	       (BEBIDAS)                   optional 1×2 centered; show_category_group
 //	1× 001 Água 500ml                  qty+code 2×2, first name 1×2 (same row)
 //	       中水                         other print_names 1×1, hang under name
 //	       » 正常冰                      note 1×2
 //	- - - - - - - - - - - - - - - - - - - - - - - -
 //
 // Dish rows are never bold or reversed: ESC E / GS B smeared on store printers (0.5.39/0.5.40).
-// Category headers print as-is from category_group_header (once per group); no separators around them.
+// Category headers print as-is from category_group_header (once per group), 1×2 centered; no separators.
 const stationSlipNotePrefix = "» "
 
 // stationSlipNames splits a dish into item_code and its print names (print_names first, else
@@ -188,20 +188,25 @@ func (w *escposWriter) writeStationTableLine(table, clock string) {
 	w.lf()
 }
 
+// writeStationCategoryHeader — 唯一写法：出品联大类行版式（1×2 居中、原文、无上下分隔线）。
+func (w *escposWriter) writeStationCategoryHeader(header string) {
+	w.align(1)
+	w.writeBody1x2()
+	w.text(header)
+	w.lf()
+	w.align(0)
+}
+
 // writeStationMenuLines — optional category headers (once per group), then one dish block per line.
 // Whether to show: only p.stationSlipShowCategoryGroup(). Text: only ln.CategoryGroupHeader as-is.
+// Chrome: only writeStationCategoryHeader.
 func (w *escposWriter) writeStationMenuLines(p jobPayload, lines []jobLine) {
 	showGroup := p.stationSlipShowCategoryGroup()
 	lastGroupHeader := ""
 	for i, ln := range sortStationMenuLines(lines) {
 		groupHeader := strings.TrimSpace(ln.CategoryGroupHeader)
 		if showGroup && groupHeader != "" && groupHeader != lastGroupHeader {
-			w.align(0)
-			w.writeBody1x1()
-			w.bold(true)
-			w.text(groupHeader)
-			w.lf()
-			w.bold(false)
+			w.writeStationCategoryHeader(groupHeader)
 			lastGroupHeader = groupHeader
 		} else if i > 0 {
 			w.writeStationItemDivider()
