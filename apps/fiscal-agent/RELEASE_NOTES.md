@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.50
+
+**出品联恢复菜品大类行（受开关控制）**
+
+- 当 `station_slip_options.show_category_group=true` 时，同类第一道菜前打印一行服务端下发的 `category_group_header`（原样，如 `(BEBIDAS)`）；同类只打一次。
+- 缺省 / `false` / 无 options：不打大类行（与 0.5.44 后行为一致）。
+- 大类行上下不加分隔线；菜与菜之间虚线照旧。样式：左对齐、1×1、加粗。
+
 ## 0.5.49
 
 **日志记录每张单收到的中文字号**
