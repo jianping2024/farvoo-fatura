@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.52
+
+**打印机映射页显示档口中文名**
+
+- 「打印机设置」/ 首次配对：档口主标题跟界面语言走（中文界面优先中文名）；副标题列出与主标题不同的其它已填语言（`ZH … · EN … · PT …`）。
+- 试打档口下拉与列表同一套主标题规则；逻辑只在 `wizard_ui_shared.js` 一份。
+
 ## 0.5.51
 
 **出品联大类行改为 1×2 居中**
