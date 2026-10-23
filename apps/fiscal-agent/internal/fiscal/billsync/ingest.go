@@ -73,6 +73,9 @@ type Line struct {
 	UnitPriceGross string `json:"unit_price_gross"`
 	LineGross      string `json:"line_gross"`
 	VATRate        string `json:"vat_rate"`
+	// OpenPrice: cashier-priced line (Farvoo checkout take-away). One item_code, a different
+	// unit price per line — same-code conflict check compares name + vat_rate only.
+	OpenPrice bool `json:"open_price,omitempty"`
 }
 
 // SplitPart is optional business split draft.
@@ -132,9 +135,11 @@ func CollectLines(snap Snapshot) ([]Line, error) {
 
 // ValidateAndDedupeProducts checks item_code / vat_rate and same-code field conflicts.
 // Returns one ProductUpsertInput per distinct item_code (first occurrence wins when identical).
+// Open-price lines (both flagged) may differ in unit price; the product keeps the first price.
 func ValidateAndDedupeProducts(lines []Line) ([]store.ProductUpsertInput, error) {
 	type seen struct {
 		name, price, vat string
+		openPrice        bool
 	}
 	m := map[string]seen{}
 	var order []string
@@ -151,12 +156,13 @@ func ValidateAndDedupeProducts(lines []Line) ([]store.ProductUpsertInput, error)
 		price := strings.TrimSpace(ln.UnitPriceGross)
 		vat := norm
 		if prev, ok := m[code]; ok {
-			if prev.name != name || prev.price != price || prev.vat != vat {
+			priceConflict := prev.price != price && !(prev.openPrice && ln.OpenPrice)
+			if prev.name != name || priceConflict || prev.vat != vat {
 				return nil, ingestErr(CodeItemCodeConflict, fmt.Sprintf("item_code %q conflict on name/price/vat_rate", code))
 			}
 			continue
 		}
-		m[code] = seen{name: name, price: price, vat: vat}
+		m[code] = seen{name: name, price: price, vat: vat, openPrice: ln.OpenPrice}
 		order = append(order, code)
 	}
 	var out []store.ProductUpsertInput
