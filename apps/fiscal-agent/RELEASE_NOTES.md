@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.53
+
+**BillSync：open_price 同行可不同单价**
+
+- Farvoo 外卖/打包费等同 `item_code`、不同收银单价且 `open_price: true` 时，同码冲突只比名称 + VAT；目录行仍严格比对名称/单价/VAT。
+- 每笔仍各自发票行；商品主数据保留首次单价。
+
 ## 0.5.52
 
 **打印机映射页显示档口中文名**
