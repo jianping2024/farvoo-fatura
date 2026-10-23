@@ -183,6 +183,65 @@
     return (p && p.label) || addr;
   }
 
+  function trimStationName(v) {
+    return String(v == null ? '' : v).trim();
+  }
+
+  /**
+   * Merge API row with optional namesById (configure keeps id-only rows for saved maps).
+   * Sole name resolution for mapping UI — do not reimplement in configure/setup HTML.
+   */
+  function resolveStationNames(station, namesById) {
+    var s = station || {};
+    var id = trimStationName(s.id);
+    var known = namesById && id ? namesById[id] : null;
+    if (known) {
+      return {
+        id: id,
+        name_zh: known.name_zh,
+        name_en: known.name_en,
+        name_pt: known.name_pt,
+      };
+    }
+    return s;
+  }
+
+  /**
+   * Sole primary station title on printer-mapping pages (configure + setup + test dropdown).
+   * Follows agent UI locale: zh → name_zh|pt|en; pt → name_pt|en|zh; else → name_en|pt|zh.
+   */
+  function stationPrimaryLabel(station, uiLocale, namesById) {
+    var s = resolveStationNames(station, namesById);
+    var zh = trimStationName(s.name_zh);
+    var en = trimStationName(s.name_en);
+    var pt = trimStationName(s.name_pt);
+    var id = trimStationName(s.id) || '?';
+    var loc = String(uiLocale || '').trim().toLowerCase();
+    if (loc === 'zh') return zh || pt || en || id;
+    if (loc === 'pt') return pt || en || zh || id;
+    return en || pt || zh || id;
+  }
+
+  /**
+   * Sole alt line under the title: other filled languages that differ from title.
+   * Format: "ZH 后厨 · EN Kitchen · PT Cozinha" (omit empty / same-as-title).
+   */
+  function stationAltLine(station, title, namesById) {
+    var s = resolveStationNames(station, namesById);
+    var titleNorm = trimStationName(title);
+    var parts = [];
+    [
+      ['ZH', s.name_zh],
+      ['EN', s.name_en],
+      ['PT', s.name_pt],
+    ].forEach(function (pair) {
+      var value = trimStationName(pair[1]);
+      if (!value || value === titleNorm) return;
+      parts.push(pair[0] + ' ' + value);
+    });
+    return parts.join(' · ');
+  }
+
   /** Unique printer addrs from a station_printers map. */
   function savedPrinterAddrs(maps) {
     maps = maps || {};
@@ -241,6 +300,9 @@
     setTakeoverVisible: setTakeoverVisible,
     setTestBlockVisible: setTestBlockVisible,
     printerDisplayName: printerDisplayName,
+    resolveStationNames: resolveStationNames,
+    stationPrimaryLabel: stationPrimaryLabel,
+    stationAltLine: stationAltLine,
     savedPrinterAddrs: savedPrinterAddrs,
     mergePrinterGroup: mergePrinterGroup,
     TEXT_ENCODING_OPTIONS: TEXT_ENCODING_OPTIONS,

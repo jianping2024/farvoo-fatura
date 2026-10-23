@@ -130,6 +130,7 @@
         MesaWizardUI.setTestBlockVisible(show);
       }
       var ui = {};
+      var uiLocale = '';
       var printerScanInFlight = false;
       var pageLoadGen = 0;
       var printerScanGen = 0;
@@ -257,10 +258,6 @@
         return false;
       }
 
-      function stationLabel(s) {
-        return s.name_en || s.name_pt || s.name_zh || s.id;
-      }
-
       function rebuildPrinterLists() {
         var addrs = MesaWizardUI.savedPrinterAddrs(saved.station_printers);
         var tcpSaved = [];
@@ -333,12 +330,12 @@
           var row = document.createElement('div');
           row.className = 'station-row';
           row.dataset.stationId = s.id;
-          var sub = document.createElement('div');
-          sub.className = 'station-sub';
-          sub.textContent = s.name_pt && s.name_en !== s.name_pt ? s.name_pt : '';
           var lab = document.createElement('label');
           lab.className = 'station-name';
-          lab.textContent = stationLabel(s);
+          lab.textContent = MesaWizardUI.stationPrimaryLabel(s, uiLocale);
+          var sub = document.createElement('div');
+          sub.className = 'station-sub';
+          sub.textContent = MesaWizardUI.stationAltLine(s, lab.textContent);
           var stationSel = document.createElement('select');
           stationSel.className = 'station-printer';
           fillStationSelect(stationSel, stationMappedValue(s.id));
@@ -448,6 +445,7 @@
             saved.text_encoding = j.text_encoding || 'auto';
             seedDraftFromSaved();
             ui = j.ui || {};
+            uiLocale = j.ui_locale || '';
             var loc = queryLocale();
             if (!loc || loc === j.ui_locale) return;
             return fetch('/api/ui-locale', {
@@ -457,6 +455,7 @@
             }).then(function (r) { return r.json(); }).then(function (savedPrefs) {
               if (gen !== pageLoadGen) return;
               ui = savedPrefs.ui || ui;
+              uiLocale = savedPrefs.ui_locale || loc || uiLocale;
             });
           })
           .catch(function () {
@@ -486,7 +485,7 @@
           var o = document.createElement('option');
           o.value = sid;
           var label = sid;
-          stations.forEach(function (s) { if (s.id === sid) label = stationLabel(s); });
+          stations.forEach(function (s) { if (s.id === sid) label = MesaWizardUI.stationPrimaryLabel(s, uiLocale); });
           o.textContent = label;
           sel.appendChild(o);
         });

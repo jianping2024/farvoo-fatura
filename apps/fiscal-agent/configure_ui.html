@@ -365,14 +365,6 @@
         document.getElementById('mainCard').classList.remove('hidden');
       }
 
-      function stationLabel(s) {
-        var known = stationNamesById[s.id];
-        if (known) {
-          return known.name_en || known.name_pt || known.name_zh || known.id;
-        }
-        return s.name_en || s.name_pt || s.name_zh || s.id;
-      }
-
       function rebuildPrinterLists(reason) {
         var saved = MesaWizardUI.savedPrinterAddrs(state.station_printers);
         var tcpSaved = [];
@@ -481,10 +473,10 @@
           row.dataset.stationId = s.id;
           var lab = document.createElement('div');
           lab.className = 'station-name';
-          lab.textContent = stationLabel(s);
+          lab.textContent = MesaWizardUI.stationPrimaryLabel(s, state.ui_locale, stationNamesById);
           var sub = document.createElement('div');
           sub.className = 'station-sub';
-          if (s.name_en) sub.textContent = s.name_en;
+          sub.textContent = MesaWizardUI.stationAltLine(s, lab.textContent, stationNamesById);
           var sel = document.createElement('select');
           sel.className = 'station-printer';
           fillSelect(sel, mappedValue(s.id));
@@ -536,7 +528,7 @@
         visible.forEach(function (s) {
           var o = document.createElement('option');
           o.value = s.id;
-          o.textContent = stationLabel(s);
+          o.textContent = MesaWizardUI.stationPrimaryLabel(s, state.ui_locale, stationNamesById);
           sel.appendChild(o);
         });
       }
