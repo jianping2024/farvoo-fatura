@@ -28,10 +28,19 @@ func TestWizardUISharedJSEmbedded(t *testing.T) {
 	if !strings.Contains(body, "save_auth_revoked") {
 		t.Fatal("missing save_auth_revoked key reference")
 	}
-	for _, name := range []string{"printerDisplayName", "savedPrinterAddrs", "mergePrinterGroup"} {
+	for _, name := range []string{
+		"printerDisplayName", "savedPrinterAddrs", "mergePrinterGroup",
+		"stationPrimaryLabel", "stationAltLine", "resolveStationNames",
+	} {
 		if !strings.Contains(body, name+":") && !strings.Contains(body, "function "+name) {
 			t.Fatalf("shared js missing %s", name)
 		}
+	}
+	if n := strings.Count(body, "function stationPrimaryLabel"); n != 1 {
+		t.Fatalf("stationPrimaryLabel must be defined once, got %d", n)
+	}
+	if n := strings.Count(body, "function stationAltLine"); n != 1 {
+		t.Fatalf("stationAltLine must be defined once, got %d", n)
 	}
 }
 
@@ -45,6 +54,9 @@ func TestConfigureUIUsesSharedWizardJS(t *testing.T) {
 		"function printerDisplayName",
 		"function savedPrinterAddrs",
 		"function mergePrinterGroup",
+		"function stationPrimaryLabel",
+		"function stationAltLine",
+		"function stationLabel",
 	} {
 		if strings.Contains(html, fn) {
 			t.Fatalf("duplicate %s should live in wizard_ui_shared.js", fn)
@@ -55,6 +67,15 @@ func TestConfigureUIUsesSharedWizardJS(t *testing.T) {
 	}
 	if !strings.Contains(html, "MesaWizardUI.mergePrinterGroup") {
 		t.Fatal("configure must call MesaWizardUI.mergePrinterGroup")
+	}
+	if !strings.Contains(html, "MesaWizardUI.stationPrimaryLabel") {
+		t.Fatal("configure must call MesaWizardUI.stationPrimaryLabel")
+	}
+	if !strings.Contains(html, "MesaWizardUI.stationAltLine") {
+		t.Fatal("configure must call MesaWizardUI.stationAltLine")
+	}
+	if strings.Contains(html, "name_en ||") {
+		t.Fatal("configure must not inline EN-first station name priority")
 	}
 }
 
@@ -68,6 +89,9 @@ func TestSetupUIUsesSharedWizardJS(t *testing.T) {
 		"function printerDisplayName",
 		"function savedPrinterAddrs",
 		"function mergePrinterGroup",
+		"function stationPrimaryLabel",
+		"function stationAltLine",
+		"function stationLabel",
 	} {
 		if strings.Contains(html, fn) {
 			t.Fatalf("duplicate %s should live in wizard_ui_shared.js", fn)
@@ -78,6 +102,15 @@ func TestSetupUIUsesSharedWizardJS(t *testing.T) {
 	}
 	if !strings.Contains(html, "MesaWizardUI.mergePrinterGroup") {
 		t.Fatal("setup must call MesaWizardUI.mergePrinterGroup")
+	}
+	if !strings.Contains(html, "MesaWizardUI.stationPrimaryLabel") {
+		t.Fatal("setup must call MesaWizardUI.stationPrimaryLabel")
+	}
+	if !strings.Contains(html, "MesaWizardUI.stationAltLine") {
+		t.Fatal("setup must call MesaWizardUI.stationAltLine")
+	}
+	if strings.Contains(html, "name_en ||") {
+		t.Fatal("setup must not inline EN-first station name priority")
 	}
 }
 
