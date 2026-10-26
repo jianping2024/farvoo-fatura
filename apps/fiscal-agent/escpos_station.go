@@ -16,7 +16,7 @@ import (
 //	Conv.:1                 3 artigos  1×1
 //	================================================
 //	       (BEBIDAS)                   optional 1×2 centered; show_category_group
-//	1× 001 Água 500ml                  qty+code 2×2, first name 1×2 (same row)
+//	1x 001 Água 500ml                   qty+code 2×2, first name 1×2 (same row)
 //	       中水                         other print_names 1×2, hang under name
 //	       » 正常冰                      note 1×2
 //	- - - - - - - - - - - - - - - - - - - - - - - -
@@ -53,12 +53,13 @@ func stationSlipNames(ln jobLine) (code string, names []string) {
 	return code, names
 }
 
-// stationSlipQtyCodeLead is the 2×2 lead of each dish row, e.g. "1× 001".
+// stationSlipQtyCodeLead — ONLY writer for dish qty×code lead (ASCII "x"; Unicode ×
+// is blank on some store Font A glyphs at 2×2). e.g. "1x 001".
 func stationSlipQtyCodeLead(qty int, code string) string {
 	if code == "" {
-		return fmt.Sprintf("%d×", qty)
+		return fmt.Sprintf("%dx", qty)
 	}
-	return fmt.Sprintf("%d× %s", qty, code)
+	return fmt.Sprintf("%dx %s", qty, code)
 }
 
 // stationSlipNameIndent — Font A column where names/notes start: 2×2 lead (2 cols per char) + 1×2 space.

@@ -26,7 +26,7 @@ func stationTicketRaw(t *testing.T, p jobPayload) []byte {
 	return escposFromJob(printJob{Type: "station_ticket", Payload: payload})
 }
 
-// leadRow is the exact Font A bytes of one dish lead: GS ! 2×2 + "1× 001" + GS ! 1×2.
+// leadRow is the exact Font A bytes of one dish lead: GS ! 2×2 + "1x 001" + GS ! 1×2.
 func leadRow(qty int, code string) []byte {
 	b := append([]byte{}, gsSize2x2...)
 	b = append(b, escposenc.Windows1252(stationSlipQtyCodeLead(qty, code))...)
@@ -224,14 +224,14 @@ func TestStationSlipNames(t *testing.T) {
 }
 
 func TestStationSlipQtyCodeLead(t *testing.T) {
-	if got := stationSlipQtyCodeLead(1, "001"); got != "1× 001" {
+	if got := stationSlipQtyCodeLead(1, "001"); got != "1x 001" {
 		t.Fatalf("lead %q", got)
 	}
-	if got := stationSlipQtyCodeLead(12, ""); got != "12×" {
+	if got := stationSlipQtyCodeLead(12, ""); got != "12x" {
 		t.Fatalf("no-code lead %q", got)
 	}
-	// "1× 001" at 2×2 = 12 cols + one 1×2 space
-	if got := stationSlipNameIndent("1× 001"); got != 13 {
+	// "1x 001" at 2×2 = 12 cols + one 1×2 space
+	if got := stationSlipNameIndent("1x 001"); got != 13 {
 		t.Fatalf("indent %d want 13", got)
 	}
 }
@@ -467,8 +467,8 @@ func TestStationSlipHeaderBoldOnlyForLatin(t *testing.T) {
 func TestMergeBitmapRowsBottomAligns(t *testing.T) {
 	large := hanFontPxForRole(bitmapTextDefaultFontPx, hanFontLarge)
 	body := hanFontPxForRole(bitmapTextDefaultFontPx, hanFontBody)
-	nameX := escposDisplayColToPx(stationSlipNameIndent("1× 001"))
-	lead := renderBitmapLeftRow("1× 001", 0, large, bitmapTextStyle{})
+	nameX := escposDisplayColToPx(stationSlipNameIndent("1x 001"))
+	lead := renderBitmapLeftRow("1x 001", 0, large, bitmapTextStyle{})
 	name := renderBitmapLeftRow("中水", nameX, body, bitmapTextStyle{})
 	row := mergeBitmapRows(lead, name)
 	if row.Width != bitmapTextMaxWidthPx || row.Height != max(lead.Height, name.Height) {
@@ -595,7 +595,7 @@ func TestWrapDisplay(t *testing.T) {
 
 // Bitmap lead (TrueType, wider than Font A 2×2 cells) must never touch the name column.
 func TestHanStationNameXClearsMeasuredLead(t *testing.T) {
-	for _, lead := range []string{"1×", "2× 012", "12× 1024"} {
+	for _, lead := range []string{"1x", "2x 012", "12x 1024"} {
 		leadW := measureHanTextWidth(lead, hanFontPxForRole(bitmapTextDefaultFontPx, hanFontLarge), false)
 		x := hanStationNameX(lead, bitmapTextDefaultFontPx)
 		if x < leadW+hanStationNameGapPx {

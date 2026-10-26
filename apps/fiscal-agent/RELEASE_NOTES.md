@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.55
+
+**出品联数量乘号改为 ASCII x**
+
+- 菜品行首「数量×编号」由 Unicode `×`（部分机型 2×2 Font A 空白）改为 ASCII `x`，例如 `1x 01`、`2x 43`。
+- 唯一写法仍为 `stationSlipQtyCodeLead`。
+
 ## 0.5.54
 
 **出品联：Mesa 直接跟桌号；副名中文改为 1×2**
