@@ -45,8 +45,8 @@ func TestBuildOrderReceiptPortuguesePrintLocale(t *testing.T) {
 			t.Fatalf("missing %q in receipt output", want)
 		}
 	}
-	// Limão / Preço / Mesa n.º → WPC1252 Font A under auto (same size/columns as ASCII).
-	assertAccentsInFirmwareFont(t, raw, "Limão", "Preço", "n.º")
+	// Limão / Preço → WPC1252 Font A under auto (same size/columns as ASCII).
+	assertAccentsInFirmwareFont(t, raw, "Limão", "Preço")
 	if strings.Contains(s, "Receipt") || strings.Contains(s, "Table No.") {
 		t.Fatalf("pt locale must not use English chrome, got: %q", s)
 	}
@@ -74,7 +74,7 @@ func TestBuildOrderReceiptEnglishLayout(t *testing.T) {
 	s := string(raw)
 	for _, want := range []string{
 		"Receipt",
-		"Table No.:01",
+		"Table No. 01",
 		"Guest:4",
 		"Fee Details",
 		"Amount Due:13.75",
@@ -192,7 +192,7 @@ func TestBuildOrderReceiptSplitPaymentGuestNumber(t *testing.T) {
 	if !strings.Contains(s, "Guest:2") {
 		t.Fatalf("expected Guest:2, got excerpt around guest: %q", s)
 	}
-	if !strings.Contains(s, "Table No.:A-05") {
+	if !strings.Contains(s, "Table No. A-05") {
 		t.Fatalf("split receipt must show display_name, got: %q", s)
 	}
 }

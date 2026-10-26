@@ -77,10 +77,10 @@ func TestBuildStationTicketPortuguesePrintLocale(t *testing.T) {
 		}
 	}
 	// table no. and order clock share one 2×2 row
-	if !bytes.Contains(raw, escposenc.Windows1252(escposPadLine("Mesa n.º:A-32", "20:15", escposWidth/2))) {
+	if !bytes.Contains(raw, escposenc.Windows1252(escposPadLine("Mesa A-32", "20:15", escposWidth/2))) {
 		t.Fatal("table no. and HH:MM must share the 2×2 table row")
 	}
-	assertAccentsInFirmwareFont(t, raw, "Água", "n.º")
+	assertAccentsInFirmwareFont(t, raw, "Água")
 
 	if !bytes.Contains(raw, append(leadRow(1, "001"), escposenc.Windows1252(" Água 500ml")...)) {
 		t.Fatal("dish row must be 2×2 qty+code lead followed by the 1×2 name")
@@ -103,7 +103,7 @@ func TestBuildStationTicketEnglishPrintLocale(t *testing.T) {
 			ItemCode: "001", ItemName: "Água 500ml", Qty: 1,
 		}},
 	}))
-	for _, want := range []string{"Guest Order", "Table No.:A-32", "Guest:4", "1 item", "Printed By:restaurant"} {
+	for _, want := range []string{"Guest Order", "Table No. A-32", "Guest:4", "1 item", "Printed By:restaurant"} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("missing %q in en station ticket", want)
 		}
@@ -267,9 +267,9 @@ func TestStationItemExtraNamesAndNoteHangUnderName(t *testing.T) {
 	if first < 0 || second < 0 || note < 0 || !(first < second && second < note) {
 		t.Fatalf("want lead+name < extra name < note, all hung under name; got %d %d %d", first, second, note)
 	}
-	// other-language names 1×1, note back to 1×2
-	if !bytes.Contains(raw[first:second], gsSize1x1) {
-		t.Fatal("extra print_names must be 1×1")
+	// other-language names stay 1×2 (same as first name); note also 1×2
+	if bytes.Contains(raw[first:second], gsSize1x1) {
+		t.Fatal("extra print_names must stay 1×2, not drop to 1×1")
 	}
 	if !bytes.Contains(raw[second:note], gsSize1x2) {
 		t.Fatal("note must be 1×2")
@@ -339,10 +339,10 @@ func TestStationTicketHanMenuUsesFirmware1x2WhenOptedIn(t *testing.T) {
 	if !bytes.Contains(raw, append(leadRow(1, "001"), escposenc.Windows1252(" Água 500ml")...)) {
 		t.Fatal("pt name must stay Font A WPC1252 after the 2×2 lead")
 	}
-	// second name 宫保鸡丁 is 1×1: GS ! 0 then FS & + GBK (HanFirmwareLine sends no GS ! at 1×1)
-	at := bytes.Index(raw, append([]byte{0x1C, 0x26}, gbk...))
-	if at < 0 || !bytes.Contains(raw[:at], gsSize1x1) || bytes.LastIndex(raw[:at], gsSize1x1) < bytes.LastIndex(raw[:at], gsSize1x2) {
-		t.Fatal("other-language Han name must print at 1×1 (GS ! 0x00 + FS & + GBK)")
+	// second name 宫保鸡丁 is 1×2: FS & + GS ! 0x01 + GBK (same as note / ZH B GS!1x2)
+	wantHan1x2 := append([]byte{0x1C, 0x26, 0x1D, 0x21, 0x01}, gbk...)
+	if !bytes.Contains(raw, wantHan1x2) {
+		t.Fatal("other-language Han name must print at 1×2 (FS & + GS ! 0x01 + GBK)")
 	}
 }
 

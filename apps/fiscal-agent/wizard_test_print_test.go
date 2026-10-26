@@ -84,8 +84,8 @@ func TestBuildStationSampleSlipUsesFirmwareForAllLines(t *testing.T) {
 		escposenc.Windows1252("Azeitonas"),
 		escposenc.Windows1252("» sem cebola, "),
 		leadRow(1, "006"),
-		{0x1C, 0x26, 0xC6, 0xCF},       // 葡… other-language Han name 1×1 (no GS ! in FS & run)
-		{0x1C, 0x26, 0x1D, 0x21, 0x01}, // Han note 1×2
+		{0x1C, 0x26, 0x1D, 0x21, 0x01, 0xC6, 0xCF}, // 葡… other-language Han name 1×2
+		{0x1C, 0x26, 0x1D, 0x21, 0x01},             // Han note 1×2
 	} {
 		if bytesIndex(raw, want) < 0 {
 			t.Fatalf("station sample missing % X", want)

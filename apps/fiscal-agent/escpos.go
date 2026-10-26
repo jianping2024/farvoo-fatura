@@ -146,7 +146,7 @@ func labelsFor(locale string) ticketLabels {
 			receipt:        "Recibo",
 			preBill:        "Consulta Mesa",
 			openTable:      "Abrir mesa",
-			tableNo:        "Mesa n.º",
+			tableNo:        "Mesa",
 			guest:          "Conv.",
 			adults:         "Adultos",
 			children:       "Crianças",
@@ -231,6 +231,7 @@ func parseJobPayload(job printJob) jobPayload {
 }
 
 // formatTableNoLabel prints table labels from JSON (string or legacy numeric).
+// Prefix and table id are space-separated (e.g. "Mesa 16A", "Table No. 01").
 func formatTableNoLabel(lab ticketLabels, tableNo string) string {
 	t := strings.TrimSpace(tableNo)
 	if t == "" {
@@ -238,10 +239,10 @@ func formatTableNoLabel(lab ticketLabels, tableNo string) string {
 	}
 	if len(t) <= 2 {
 		if n, err := strconv.Atoi(t); err == nil && strconv.Itoa(n) == t {
-			return fmt.Sprintf("%s:%02d", lab.tableNo, n)
+			return fmt.Sprintf("%s %02d", lab.tableNo, n)
 		}
 	}
-	return fmt.Sprintf("%s:%s", lab.tableNo, t)
+	return fmt.Sprintf("%s %s", lab.tableNo, t)
 }
 
 func (p jobPayload) tableNoLabel(lab ticketLabels) string {

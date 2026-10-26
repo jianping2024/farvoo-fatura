@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.54
+
+**出品联：Mesa 直接跟桌号；副名中文改为 1×2**
+
+- 桌号行去掉 `n.º`：由 `Mesa n.º:16A` 改为 `Mesa 16A`（空格分隔；预结/收据固定栏同口径）。
+- 多语菜名第二语种（如中文副名）由 1×1 改为 1×2，与首名同倍高。
+
 ## 0.5.53
 
 **BillSync：open_price 同行可不同单价**

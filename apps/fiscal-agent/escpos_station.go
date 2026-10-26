@@ -12,12 +12,12 @@ import (
 //	        restaurant · BAR           1×1 centered
 //	            Pedido                 2×2 bold centered (Chinese: not bold)
 //	================================================
-//	Mesa n.º:001                18:01  2×2 bold (Chinese: not bold)
+//	Mesa 001                    18:01  2×2 bold (Chinese: not bold)
 //	Conv.:1                 3 artigos  1×1
 //	================================================
 //	       (BEBIDAS)                   optional 1×2 centered; show_category_group
 //	1× 001 Água 500ml                  qty+code 2×2, first name 1×2 (same row)
-//	       中水                         other print_names 1×1, hang under name
+//	       中水                         other print_names 1×2, hang under name
 //	       » 正常冰                      note 1×2
 //	- - - - - - - - - - - - - - - - - - - - - - - -
 //
@@ -236,7 +236,7 @@ func (w *escposWriter) writeStationItemDivider() {
 }
 
 // writeStationItem — Font A / firmware Han path: 2×2 lead, first name 1×2 on the same row;
-// other names (1×1) and the note (1×2) hang under the name column.
+// other names and the note (both 1×2) hang under the name column.
 func (w *escposWriter) writeStationItem(lead string, names []string, note string) {
 	indent := stationSlipNameIndent(lead)
 	maxW := escposWidth - indent
@@ -268,7 +268,7 @@ func (w *escposWriter) writeStationItem(lead string, names []string, note string
 	}
 
 	if len(names) > 1 {
-		w.writeBody1x1()
+		w.writeBody1x2()
 		for _, name := range names[1:] {
 			for _, c := range stationSlipWrap(name, maxW) {
 				w.writeStationHangLine(pad, c)
@@ -297,7 +297,7 @@ func (w *escposWriter) writeStationHangLine(pad, s string) {
 }
 
 // writeHanStationItem — bitmap path: same layout on the 576px canvas — lead 2×2, first name
-// 1×2, other names 1×1, note 1×2 (same sizes as writeStationItem); lead row bottom-aligned.
+// 1×2, other names 1×2, note 1×2 (same sizes as writeStationItem); lead row bottom-aligned.
 func (w *escposWriter) writeHanStationItem(lead string, names []string, note string) {
 	bodyPx := hanFontPxForRole(w.hanFontPx, hanFontBody)
 	style := bitmapTextStyle{}
@@ -326,10 +326,9 @@ func (w *escposWriter) writeHanStationItem(lead string, names []string, note str
 		w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontBody, style), pad+c)
 	}
 	if len(names) > 1 {
-		smallPx := hanFontPxForRole(w.hanFontPx, hanFontSmall)
 		for _, name := range names[1:] {
-			for _, c := range wrapHanTextByPx(name, maxPx, smallPx, false) {
-				w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontSmall, style), pad+c)
+			for _, c := range wrapHanTextByPx(name, maxPx, bodyPx, false) {
+				w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontBody, style), pad+c)
 			}
 		}
 	}
