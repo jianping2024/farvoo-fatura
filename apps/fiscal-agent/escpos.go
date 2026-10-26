@@ -42,8 +42,6 @@ type ticketLabels struct {
 	openTable      string // cold-open slip title (receipt_variant=open_table)
 	tableNo        string
 	guest          string
-	adults         string // open_table headcount
-	children       string // open_table headcount
 	items          string
 	qty            string
 	originalPrice  string
@@ -80,8 +78,6 @@ func labelsFor(locale string) ticketLabels {
 			openTable:      "开台",
 			tableNo:        "桌号",
 			guest:          "人数",
-			adults:         "大人",
-			children:       "小孩",
 			items:          "菜品",
 			qty:            "数量",
 			originalPrice:  "原价",
@@ -114,8 +110,6 @@ func labelsFor(locale string) ticketLabels {
 			openTable:      "Open table",
 			tableNo:        "Table No.",
 			guest:          "Guest",
-			adults:         "Adults",
-			children:       "Children",
 			items:          "Items",
 			qty:            "Qty",
 			originalPrice:  "Pri",
@@ -148,8 +142,6 @@ func labelsFor(locale string) ticketLabels {
 			openTable:      "Abrir mesa",
 			tableNo:        "Mesa",
 			guest:          "Conv.",
-			adults:         "Adultos",
-			children:       "Crianças",
 			items:          "Artigos",
 			qty:            "Qtd",
 			originalPrice:  "Preço",
@@ -818,19 +810,11 @@ func buildOpenTableSlip(p jobPayload) []byte {
 	if children < 0 {
 		children = 0
 	}
-	adultLabel := strings.TrimSpace(lab.adults)
-	if adultLabel == "" {
-		adultLabel = "Adults"
-	}
-	childLabel := strings.TrimSpace(lab.children)
-	if childLabel == "" {
-		childLabel = "Children"
-	}
-	w.writeBody1x1()
-	w.align(0)
-	w.text(fmt.Sprintf("%s:%d", adultLabel, adults))
-	w.lf()
-	w.text(fmt.Sprintf("%s:%d", childLabel, children))
+	// Fixed A/C abbreviations (locale-independent) for kitchen glanceability at 2×2.
+	headcount := fmt.Sprintf("A:%d  C:%d", adults, children)
+	w.writeStationHeading2x2(headcount)
+	w.align(1)
+	w.text(headcount)
 	w.lf()
 	w.separator('=')
 
