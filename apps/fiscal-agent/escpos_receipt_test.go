@@ -505,14 +505,25 @@ func TestBuildOpenTableSlipHeadcountOnly(t *testing.T) {
 	})
 	raw := escposFromJob(printJob{Type: "order_receipt", Payload: payload})
 	s := string(raw)
+	headcount := "A:6  C:2"
 	for _, want := range []string{
 		"Open table",
-		"Adults:6",
-		"Children:2",
+		headcount,
 	} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("missing %q in open_table slip, got: %q", want, s)
 		}
+	}
+	hcIdx := bytes.Index(raw, []byte(headcount))
+	if hcIdx < 0 {
+		t.Fatal("missing headcount line")
+	}
+	segStart := hcIdx - 16
+	if segStart < 0 {
+		segStart = 0
+	}
+	if !bytes.Contains(raw[segStart:hcIdx+len(headcount)], []byte{0x1D, 0x21, 0x11}) {
+		t.Fatal("open_table headcount must use GS ! 2×2")
 	}
 	for _, forbid := range []string{
 		"1 item",

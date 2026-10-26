@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.56
+
+**开台票人数：A/C 并排 2×2 居中**
+
+- 大人/小孩改为固定缩写 `A:n  C:n`，同一行、2×2、居中，与桌号同级醒目。
+- 去掉三语 Adultos/Children/大人等开台人数文案字段。
+
 ## 0.5.55
 
 **出品联数量乘号改为 ASCII x**
