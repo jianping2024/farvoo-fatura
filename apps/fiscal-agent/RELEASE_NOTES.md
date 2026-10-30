@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.57
+
+**档口小票：葡语菜名字号可调（1×2 / 2×2）**
+
+- 本机配置 `station_pt_name_size`（默认 `1x2`）：只控制出品联第一行菜名（通常葡语）的 Font A 字号；可选 `2x2` 与数量编号同大。
+- 数量×编号、中文副名、备注、抬头、结账/预结不变。设置页 / 首次配对与「热敏文字编码」并列下拉，改完下一张档口票生效。
+
 ## 0.5.56
 
 **开台票人数：A/C 并排 2×2 居中**

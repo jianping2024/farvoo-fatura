@@ -82,6 +82,13 @@
         <p class="err" id="textEncodingErr"></p>
         <p class="ok-msg" id="textEncodingOk"></p>
       </div>
+      <div class="test-row" id="stationPtNameSizeBlock">
+        <label for="stationPtNameSize" id="stationPtNameSizeLabel">…</label>
+        <select id="stationPtNameSize"></select>
+        <p class="hint" id="stationPtNameSizeHint">…</p>
+        <p class="err" id="stationPtNameSizeErr"></p>
+        <p class="ok-msg" id="stationPtNameSizeOk"></p>
+      </div>
       <div class="test-row">
         <p class="section-title" id="testOptionalTitle">…</p>
         <label for="testStation" id="testStationLabel">…</label>
@@ -268,6 +275,9 @@
         document.getElementById('textEncodingLabel').textContent = t('text_encoding_label');
         document.getElementById('textEncodingHint').textContent = t('text_encoding_hint');
         MesaWizardUI.fillTextEncodingSelect(document.getElementById('textEncoding'), ui, state.text_encoding);
+        document.getElementById('stationPtNameSizeLabel').textContent = t('station_pt_name_size_label');
+        document.getElementById('stationPtNameSizeHint').textContent = t('station_pt_name_size_hint');
+        MesaWizardUI.fillStationPtNameSizeSelect(document.getElementById('stationPtNameSize'), ui, state.station_pt_name_size);
         document.title = t('configure_page_title');
         updateScanHint();
       }
@@ -759,6 +769,14 @@
         setCurrent: function (v) { state.text_encoding = v; },
         errEl: document.getElementById('textEncodingErr'),
         okEl: document.getElementById('textEncodingOk'),
+        log: dbg,
+      });
+      MesaWizardUI.bindStationPtNameSizeSelect(document.getElementById('stationPtNameSize'), {
+        getUI: function () { return ui; },
+        getCurrent: function () { return state.station_pt_name_size; },
+        setCurrent: function (v) { state.station_pt_name_size = v; },
+        errEl: document.getElementById('stationPtNameSizeErr'),
+        okEl: document.getElementById('stationPtNameSizeOk'),
         log: dbg,
       });
 
