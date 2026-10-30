@@ -162,6 +162,67 @@
     });
   }
 
+  /** Station slip first-name (PT) Font A size; 1x2 default matches current paper. */
+  var STATION_PT_NAME_SIZE_OPTIONS = ['1x2', '2x2'];
+
+  function normalizeStationPtNameSizeValue(v) {
+    v = String(v || '').trim().toLowerCase();
+    return STATION_PT_NAME_SIZE_OPTIONS.indexOf(v) < 0 ? '1x2' : v;
+  }
+
+  function fillStationPtNameSizeSelect(sel, ui, current) {
+    if (!sel) return;
+    var cur = normalizeStationPtNameSizeValue(current);
+    sel.innerHTML = '';
+    STATION_PT_NAME_SIZE_OPTIONS.forEach(function (v) {
+      var o = document.createElement('option');
+      o.value = v;
+      o.textContent = t(ui, 'station_pt_name_size_' + v);
+      if (v === cur) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+
+  function postStationPtNameSize(size) {
+    return fetch('/api/ui-locale', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ station_pt_name_size: normalizeStationPtNameSizeValue(size) }),
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        return { ok: r.ok, status: r.status, j: j };
+      });
+    });
+  }
+
+  function bindStationPtNameSizeSelect(sel, opts) {
+    if (!sel) return;
+    sel.addEventListener('change', function () {
+      var ui = opts.getUI();
+      var prev = opts.getCurrent();
+      if (opts.errEl) opts.errEl.textContent = '';
+      if (opts.okEl) opts.okEl.textContent = '';
+      sel.disabled = true;
+      if (opts.log) opts.log('phase station_pt_name_size save value=' + sel.value);
+      function fail(msg) {
+        if (opts.errEl) opts.errEl.textContent = msg;
+        fillStationPtNameSizeSelect(sel, ui, prev);
+      }
+      postStationPtNameSize(sel.value)
+        .then(function (res) {
+          if (!res.ok) {
+            fail((res.j && res.j.error) || t(ui, 'save_failed'));
+            return;
+          }
+          opts.setCurrent(res.j.station_pt_name_size);
+          fillStationPtNameSizeSelect(sel, ui, res.j.station_pt_name_size);
+          if (opts.okEl) opts.okEl.textContent = t(ui, 'station_pt_name_size_saved');
+        })
+        .catch(function () { fail(t(ui, 'pair_service_unreachable')); })
+        .finally(function () { sel.disabled = false; });
+    });
+  }
+
   function setTakeoverVisible(btn, show) {
     if (!btn) return;
     btn.classList.toggle('hidden', !show);
@@ -310,5 +371,10 @@
     fillTextEncodingSelect: fillTextEncodingSelect,
     postTextEncoding: postTextEncoding,
     bindTextEncodingSelect: bindTextEncodingSelect,
+    STATION_PT_NAME_SIZE_OPTIONS: STATION_PT_NAME_SIZE_OPTIONS,
+    normalizeStationPtNameSizeValue: normalizeStationPtNameSizeValue,
+    fillStationPtNameSizeSelect: fillStationPtNameSizeSelect,
+    postStationPtNameSize: postStationPtNameSize,
+    bindStationPtNameSizeSelect: bindStationPtNameSizeSelect,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -16,11 +16,12 @@ import (
 //	Conv.:1                 3 artigos  1×1
 //	================================================
 //	       (BEBIDAS)                   optional 1×2 centered; show_category_group
-//	1x 001 Água 500ml                   qty+code 2×2, first name 1×2 (same row)
+//	1x 001 Água 500ml                   qty+code 2×2; first name 1×2 (default) or 2×2
 //	       中水                         other print_names 1×2, hang under name
 //	       » 正常冰                      note 1×2
 //	- - - - - - - - - - - - - - - - - - - - - - - -
 //
+// First-name size is agent config station_pt_name_size (1x2|2x2). Lead / secondary / note unchanged.
 // Dish rows are never bold or reversed: ESC E / GS B smeared on store printers (0.5.39/0.5.40).
 // Category headers print as-is from category_group_header (once per group), 1×2 centered; no separators.
 const stationSlipNotePrefix = "» "
@@ -236,28 +237,36 @@ func (w *escposWriter) writeStationItemDivider() {
 	w.lf()
 }
 
-// writeStationItem — Font A / firmware Han path: 2×2 lead, first name 1×2 on the same row;
-// other names and the note (both 1×2) hang under the name column.
+// writeStationItem — Font A / firmware Han path: 2×2 lead; first name 1×2 (default) or 2×2
+// on the same row (station_pt_name_size); other names and the note (both 1×2) hang under the name.
 func (w *escposWriter) writeStationItem(lead string, names []string, note string) {
-	indent := stationSlipNameIndent(lead)
-	maxW := escposWidth - indent
-	pad := strings.Repeat(" ", indent)
+	first2x2 := w.stationFirstName2x2
+	maxFirst := stationSlipFirstNameMaxCols(lead, first2x2)
+	firstPad := stationSlipFirstNameHangPad(lead, first2x2)
+	hangIndent := stationSlipNameHangIndent(lead, first2x2)
+	hangPad := strings.Repeat(" ", hangIndent)
+	// Secondary / note wrap at 1×2 over the hang indent width.
+	maxHang := escposWidth - hangIndent
+
 	first := ""
 	if len(names) > 0 {
 		first = names[0]
 	}
-	chunks := stationSlipWrap(first, maxW)
+	chunks := stationSlipWrap(first, maxFirst)
 
 	w.align(0)
-	w.writeBody1x2()
+	w.bold(false)
+	w.underline(false)
 	w.size(true, true)
 	w.text(lead)
-	w.size(false, true)
+	if !first2x2 {
+		w.size(false, true)
+	}
 	if len(chunks) > 0 {
 		// A raster segment is a full-width GS v 0 image — it cannot share the lead's row.
 		if w.textMode == escposTextHanFirmware && escposenc.LinePathFor(chunks[0]) == escposenc.PathRaster {
 			w.lf()
-			w.text(pad + chunks[0])
+			w.text(firstPad + chunks[0])
 		} else {
 			w.text(" " + chunks[0])
 		}
@@ -265,21 +274,26 @@ func (w *escposWriter) writeStationItem(lead string, names []string, note string
 	}
 	w.lf()
 	for _, c := range chunks {
-		w.writeStationHangLine(pad, c)
+		if first2x2 {
+			w.size(true, true)
+		} else {
+			w.writeBody1x2()
+		}
+		w.writeStationHangLine(firstPad, c)
 	}
 
 	if len(names) > 1 {
 		w.writeBody1x2()
 		for _, name := range names[1:] {
-			for _, c := range stationSlipWrap(name, maxW) {
-				w.writeStationHangLine(pad, c)
+			for _, c := range stationSlipWrap(name, maxHang) {
+				w.writeStationHangLine(hangPad, c)
 			}
 		}
 	}
 	if note != "" {
 		w.writeBody1x2()
-		for _, c := range stationSlipWrap(stationSlipNotePrefix+note, maxW) {
-			w.writeStationHangLine(pad, c)
+		for _, c := range stationSlipWrap(stationSlipNotePrefix+note, maxHang) {
+			w.writeStationHangLine(hangPad, c)
 		}
 	}
 }
@@ -297,25 +311,31 @@ func (w *escposWriter) writeStationHangLine(pad, s string) {
 	w.lf()
 }
 
-// writeHanStationItem — bitmap path: same layout on the 576px canvas — lead 2×2, first name
-// 1×2, other names 1×2, note 1×2 (same sizes as writeStationItem); lead row bottom-aligned.
+// writeHanStationItem — bitmap path: same layout on the 576px canvas as writeStationItem
+// (lead 2×2; first name 1×2 or 2×2; other names / note 1×2); lead row bottom-aligned.
 func (w *escposWriter) writeHanStationItem(lead string, names []string, note string) {
+	firstRole := hanFontBody
+	if w.stationFirstName2x2 {
+		firstRole = hanFontLarge
+	}
+	firstPx := hanFontPxForRole(w.hanFontPx, firstRole)
 	bodyPx := hanFontPxForRole(w.hanFontPx, hanFontBody)
 	style := bitmapTextStyle{}
-	indent := stationSlipNameIndent(lead)
+	hangIndent := stationSlipNameHangIndent(lead, w.stationFirstName2x2)
+	hangPad := strings.Repeat(" ", hangIndent)
+	firstPad := stationSlipFirstNameHangPad(lead, w.stationFirstName2x2)
 	nameX := hanStationNameX(lead, w.hanFontPx)
 	maxPx := bitmapTextMaxWidthPx - nameX
-	pad := strings.Repeat(" ", indent)
 
 	first := ""
 	if len(names) > 0 {
 		first = names[0]
 	}
-	chunks := wrapHanTextByPx(first, maxPx, bodyPx, false)
+	chunks := wrapHanTextByPx(first, maxPx, firstPx, false)
 	row := renderHanRoleRow(lead, 0, w.hanFontPx, hanFontLarge, style)
 	rowText := lead
 	if len(chunks) > 0 {
-		row = mergeBitmapRows(row, renderHanRoleRow(chunks[0], nameX, w.hanFontPx, hanFontBody, style))
+		row = mergeBitmapRows(row, renderHanRoleRow(chunks[0], nameX, w.hanFontPx, firstRole, style))
 		rowText += " " + chunks[0]
 		chunks = chunks[1:]
 	}
@@ -324,18 +344,18 @@ func (w *escposWriter) writeHanStationItem(lead string, names []string, note str
 	w.writeBody1x2()
 	w.writeHanRaster(row, rowText)
 	for _, c := range chunks {
-		w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontBody, style), pad+c)
+		w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, firstRole, style), firstPad+c)
 	}
 	if len(names) > 1 {
 		for _, name := range names[1:] {
 			for _, c := range wrapHanTextByPx(name, maxPx, bodyPx, false) {
-				w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontBody, style), pad+c)
+				w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontBody, style), hangPad+c)
 			}
 		}
 	}
 	if note != "" {
 		for _, c := range wrapHanTextByPx(stationSlipNotePrefix+note, maxPx, bodyPx, false) {
-			w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontBody, style), pad+c)
+			w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontBody, style), hangPad+c)
 		}
 	}
 }

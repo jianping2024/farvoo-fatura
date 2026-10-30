@@ -286,13 +286,15 @@ type escposWriter struct {
 	textMode        escposTextMode
 	printLocale     string
 	hanFontPx       int
-	hadDoubleHeight bool
-	alignMode       byte
-	boldOn          bool
-	underlineOn     bool
-	doubleW         bool
-	doubleH         bool
-	lastTextBitmap  bool
+	// stationFirstName2x2 — station_ticket print_names[0] at Font A 2×2 (else 1×2). From agent config.
+	stationFirstName2x2 bool
+	hadDoubleHeight     bool
+	alignMode           byte
+	boldOn              bool
+	underlineOn         bool
+	doubleW             bool
+	doubleH             bool
+	lastTextBitmap      bool
 }
 
 func writeMarginLines(b *bytes.Buffer, lines int) {
@@ -318,6 +320,7 @@ func newEscposForStationTicket(p jobPayload) *escposWriter {
 	w := newEscpos()
 	w.printLocale = normalizePrintLocale(p.Locale)
 	w.hanFontPx = resolveHanBitmapFontPx(p.HanBitmapFontPx)
+	w.stationFirstName2x2 = stationPtNameSizeIs2x2(stationPtNameSizeFromConfig())
 	w.applyTextMode(textModeForThermal(stationTicketNeedsBitmap(p)))
 	return w
 }

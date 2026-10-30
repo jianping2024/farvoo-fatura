@@ -34,6 +34,8 @@ type config struct {
 	ValidUntil string `json:"valid_until,omitempty"`
 	// TextEncoding: auto (Han as bitmap) | han_firmware | utf8 | latin — thermal glyphs; see docs/fiscal-thermal-text-encoding.zh.md
 	TextEncoding string `json:"text_encoding,omitempty"`
+	// StationPtNameSize: station_ticket first dish name (print_names[0]) Font A size — "1x2" (default) | "2x2".
+	StationPtNameSize string `json:"station_pt_name_size,omitempty"`
 	// FiscalAllowLocalProvision: allow Admin activate with pasted product PEM (UAT only).
 	// nil / omitted → default false (Ops cloud provision). Explicit true enables.
 	// Env FISCAL_ALLOW_LOCAL_PROVISION wins when set (CI / forced override).
@@ -259,6 +261,9 @@ func mergePairConfig(prev, next *config) {
 	}
 	if strings.TrimSpace(prev.TextEncoding) != "" && strings.TrimSpace(next.TextEncoding) == "" {
 		next.TextEncoding = prev.TextEncoding
+	}
+	if strings.TrimSpace(prev.StationPtNameSize) != "" && strings.TrimSpace(next.StationPtNameSize) == "" {
+		next.StationPtNameSize = prev.StationPtNameSize
 	}
 	if prev.CashDrawerPin == 2 || prev.CashDrawerPin == 5 {
 		if next.CashDrawerPin != 2 && next.CashDrawerPin != 5 {

@@ -15,10 +15,11 @@ type printerListEntry struct {
 }
 
 type setupRequestBody struct {
-	StationPrinters map[string]string `json:"station_printers"`
-	ForceTakeover   bool              `json:"force_takeover,omitempty"`
-	UILocale        string            `json:"ui_locale,omitempty"`
-	TextEncoding    string            `json:"text_encoding,omitempty"`
+	StationPrinters   map[string]string `json:"station_printers"`
+	ForceTakeover     bool              `json:"force_takeover,omitempty"`
+	UILocale          string            `json:"ui_locale,omitempty"`
+	TextEncoding      string            `json:"text_encoding,omitempty"`
+	StationPtNameSize string            `json:"station_pt_name_size,omitempty"`
 }
 
 func discoverAllPrinters(timeout time.Duration, workers int) (tcp []printerListEntry, winspool []printerListEntry, err error) {
@@ -95,15 +96,16 @@ func writeConfigureState(w http.ResponseWriter, cfg *config) {
 	}
 	loc := cfg.uiLocale()
 	writePairJSON(w, http.StatusOK, map[string]any{
-		"paired":           strings.TrimSpace(cfg.AgentJWT) != "",
-		"api_base":         cfg.APIBase,
-		"device_id":        cfg.DeviceID,
-		"station_printers": cfg.StationPrinters,
-		"station_count":    stationCount,
-		"ui_locale":        loc,
-		"text_encoding":    normalizeTextEncoding(cfg.TextEncoding),
-		"ui":               uiBundleMap(loc),
-		"pair_path":        "/pair",
+		"paired":                strings.TrimSpace(cfg.AgentJWT) != "",
+		"api_base":              cfg.APIBase,
+		"device_id":             cfg.DeviceID,
+		"station_printers":      cfg.StationPrinters,
+		"station_count":         stationCount,
+		"ui_locale":             loc,
+		"text_encoding":         normalizeTextEncoding(cfg.TextEncoding),
+		"station_pt_name_size":  normalizeStationPtNameSize(cfg.StationPtNameSize),
+		"ui":                    uiBundleMap(loc),
+		"pair_path":             "/pair",
 	})
 }
 
@@ -116,8 +118,9 @@ func registerUILocaleRoute(mux *http.ServeMux, configPath string, cfg **config) 
 			return
 		}
 		var body struct {
-			Locale       string `json:"ui_locale"`
-			TextEncoding string `json:"text_encoding"`
+			Locale            string `json:"ui_locale"`
+			TextEncoding      string `json:"text_encoding"`
+			StationPtNameSize string `json:"station_pt_name_size"`
 		}
 		if err := json.NewDecoder(io.LimitReader(r.Body, 512)).Decode(&body); err != nil {
 			writePairJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
@@ -130,6 +133,9 @@ func registerUILocaleRoute(mux *http.ServeMux, configPath string, cfg **config) 
 		if strings.TrimSpace(body.TextEncoding) != "" {
 			c.TextEncoding = normalizeTextEncoding(body.TextEncoding)
 		}
+		if strings.TrimSpace(body.StationPtNameSize) != "" {
+			c.StationPtNameSize = normalizeStationPtNameSize(body.StationPtNameSize)
+		}
 		if err := saveConfig(configPath, c); err != nil {
 			writePairJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
@@ -138,10 +144,11 @@ func registerUILocaleRoute(mux *http.ServeMux, configPath string, cfg **config) 
 		*cfg = c
 		loc := c.uiLocale()
 		writePairJSON(w, http.StatusOK, map[string]any{
-			"status":        "ok",
-			"ui_locale":     loc,
-			"text_encoding": normalizeTextEncoding(c.TextEncoding),
-			"ui":            uiBundleMap(loc),
+			"status":               "ok",
+			"ui_locale":            loc,
+			"text_encoding":        normalizeTextEncoding(c.TextEncoding),
+			"station_pt_name_size": normalizeStationPtNameSize(c.StationPtNameSize),
+			"ui":                   uiBundleMap(loc),
 		})
 	})
 }
@@ -224,6 +231,9 @@ func registerPrinterWizardRoutes(mux *http.ServeMux, configPath string, cfg **co
 		}
 		if enc := strings.TrimSpace(body.TextEncoding); enc != "" {
 			c.TextEncoding = normalizeTextEncoding(enc)
+		}
+		if size := strings.TrimSpace(body.StationPtNameSize); size != "" {
+			c.StationPtNameSize = normalizeStationPtNameSize(size)
 		}
 		status, resp := persistStationPrinterSetup(configPath, cfg, c, body)
 		if status >= 200 && status < 300 {
