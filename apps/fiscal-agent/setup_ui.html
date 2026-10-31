@@ -65,12 +65,44 @@
         <p class="err" id="textEncodingErr"></p>
         <p class="ok-msg" id="textEncodingOk"></p>
       </div>
+      <div class="stations" id="hanBitmapFontPxBlock">
+        <label for="hanBitmapFontPx" id="hanBitmapFontPxLabel">…</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="hanBitmapFontPx" min="16" max="40" step="1" style="width:5em" />
+          <span id="hanBitmapFontPxUnit">px</span>
+        </div>
+        <p class="hint" id="hanBitmapFontPxHint">…</p>
+        <p class="err" id="hanBitmapFontPxErr"></p>
+        <p class="ok-msg" id="hanBitmapFontPxOk"></p>
+      </div>
       <div class="stations" id="stationPtNameSizeBlock">
         <label for="stationPtNameSize" id="stationPtNameSizeLabel">…</label>
         <select id="stationPtNameSize"></select>
         <p class="hint" id="stationPtNameSizeHint">…</p>
         <p class="err" id="stationPtNameSizeErr"></p>
         <p class="ok-msg" id="stationPtNameSizeOk"></p>
+      </div>
+      <div class="stations" id="stationNameOneLineBlock">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+          <input type="checkbox" id="stationNameOneLine" style="margin-top:3px" />
+          <span>
+            <span id="stationNameOneLineLabel">…</span>
+            <p class="hint" id="stationNameOneLineHint" style="margin:4px 0 0">…</p>
+          </span>
+        </label>
+        <p class="err" id="stationNameOneLineErr"></p>
+        <p class="ok-msg" id="stationNameOneLineOk"></p>
+      </div>
+      <div class="stations" id="stationNoteOneLineBlock">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+          <input type="checkbox" id="stationNoteOneLine" style="margin-top:3px" />
+          <span>
+            <span id="stationNoteOneLineLabel">…</span>
+            <p class="hint" id="stationNoteOneLineHint" style="margin:4px 0 0">…</p>
+          </span>
+        </label>
+        <p class="err" id="stationNoteOneLineErr"></p>
+        <p class="ok-msg" id="stationNoteOneLineOk"></p>
       </div>
       <button type="button" id="saveBtn">Save and start printing</button>
       <button type="button" id="takeoverBtn" class="hidden">Take over & save</button>
@@ -128,7 +160,14 @@
       var cache = { tcp: [], winspool: [] };
       var printerLists = { tcp: [], winspool: [] };
       var stations = [];
-      var saved = { station_printers: {}, text_encoding: 'auto', station_pt_name_size: '1x2' };
+      var saved = {
+        station_printers: {},
+        text_encoding: 'auto',
+        station_pt_name_size: '1x2',
+        han_bitmap_font_px: 22,
+        station_name_one_line: false,
+        station_note_one_line: false,
+      };
       var lastSavedMaps = {};
       var testConfirmed = false;
       var savedMappingEmpty = false;
@@ -184,9 +223,21 @@
         document.getElementById('textEncodingLabel').textContent = t('text_encoding_label');
         document.getElementById('textEncodingHint').textContent = t('text_encoding_hint');
         MesaWizardUI.fillTextEncodingSelect(document.getElementById('textEncoding'), ui, saved.text_encoding);
+        document.getElementById('hanBitmapFontPxLabel').textContent = t('han_bitmap_font_px_label');
+        document.getElementById('hanBitmapFontPxHint').textContent = t('han_bitmap_font_px_hint');
+        document.getElementById('hanBitmapFontPxUnit').textContent = t('han_bitmap_font_px_unit');
+        document.getElementById('hanBitmapFontPx').value = String(
+          MesaWizardUI.normalizeHanBitmapFontPxValue(saved.han_bitmap_font_px)
+        );
         document.getElementById('stationPtNameSizeLabel').textContent = t('station_pt_name_size_label');
         document.getElementById('stationPtNameSizeHint').textContent = t('station_pt_name_size_hint');
         MesaWizardUI.fillStationPtNameSizeSelect(document.getElementById('stationPtNameSize'), ui, saved.station_pt_name_size);
+        document.getElementById('stationNameOneLineLabel').textContent = t('station_name_one_line_label');
+        document.getElementById('stationNameOneLineHint').textContent = t('station_name_one_line_hint');
+        document.getElementById('stationNameOneLine').checked = !!saved.station_name_one_line;
+        document.getElementById('stationNoteOneLineLabel').textContent = t('station_note_one_line_label');
+        document.getElementById('stationNoteOneLineHint').textContent = t('station_note_one_line_hint');
+        document.getElementById('stationNoteOneLine').checked = !!saved.station_note_one_line;
         document.title = t('setup_page_title');
         updateScanHint();
       }
@@ -454,6 +505,9 @@
             saved.station_printers = j.station_printers || {};
             saved.text_encoding = j.text_encoding || 'auto';
             saved.station_pt_name_size = j.station_pt_name_size || '1x2';
+            saved.han_bitmap_font_px = MesaWizardUI.normalizeHanBitmapFontPxValue(j.han_bitmap_font_px);
+            saved.station_name_one_line = !!j.station_name_one_line;
+            saved.station_note_one_line = !!j.station_note_one_line;
             seedDraftFromSaved();
             ui = j.ui || {};
             uiLocale = j.ui_locale || '';
@@ -487,12 +541,33 @@
         errEl: document.getElementById('textEncodingErr'),
         okEl: document.getElementById('textEncodingOk'),
       });
+      MesaWizardUI.bindHanBitmapFontPxInput(document.getElementById('hanBitmapFontPx'), {
+        getUI: function () { return ui; },
+        getCurrent: function () { return MesaWizardUI.normalizeHanBitmapFontPxValue(saved.han_bitmap_font_px); },
+        setCurrent: function (v) { saved.han_bitmap_font_px = v; },
+        errEl: document.getElementById('hanBitmapFontPxErr'),
+        okEl: document.getElementById('hanBitmapFontPxOk'),
+      });
       MesaWizardUI.bindStationPtNameSizeSelect(document.getElementById('stationPtNameSize'), {
         getUI: function () { return ui; },
         getCurrent: function () { return saved.station_pt_name_size; },
         setCurrent: function (v) { saved.station_pt_name_size = v; },
         errEl: document.getElementById('stationPtNameSizeErr'),
         okEl: document.getElementById('stationPtNameSizeOk'),
+      });
+      MesaWizardUI.bindStationOneLineCheckbox(document.getElementById('stationNameOneLine'), 'station_name_one_line', {
+        getUI: function () { return ui; },
+        getCurrent: function () { return !!saved.station_name_one_line; },
+        setCurrent: function (v) { saved.station_name_one_line = !!v; },
+        errEl: document.getElementById('stationNameOneLineErr'),
+        okEl: document.getElementById('stationNameOneLineOk'),
+      });
+      MesaWizardUI.bindStationOneLineCheckbox(document.getElementById('stationNoteOneLine'), 'station_note_one_line', {
+        getUI: function () { return ui; },
+        getCurrent: function () { return !!saved.station_note_one_line; },
+        setCurrent: function (v) { saved.station_note_one_line = !!v; },
+        errEl: document.getElementById('stationNoteOneLineErr'),
+        okEl: document.getElementById('stationNoteOneLineOk'),
       });
       function fillTestStationSelect(maps) {
         var sel = document.getElementById('testStation');

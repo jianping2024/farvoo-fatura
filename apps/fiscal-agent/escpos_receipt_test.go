@@ -444,8 +444,9 @@ func TestZhPreBillMenuOneRasterPerLine(t *testing.T) {
 	fontPx := bitmapTextDefaultFontPx
 	style := bitmapTextStyle{Bold: true}
 	// Old path: pad to 48 cols then escposBitmapText/wrapDisplay → multi GS per logical line.
+	// Use 28px so maxDisplayCols < 48 and the padded row still wraps (default 22 fits 48 cols).
 	padded := escposThreeColLine("001-中水", "9", "16.65")
-	oldGS := bytes.Count(escposBitmapText(padded, style, fontPx), []byte{0x1D, 0x76, 0x30, 0x00})
+	oldGS := bytes.Count(escposBitmapText(padded, style, 28), []byte{0x1D, 0x76, 0x30, 0x00})
 	if oldGS < 2 {
 		t.Fatalf("sanity: padded three-col wrap should be ≥2 GS, got %d", oldGS)
 	}

@@ -24,7 +24,8 @@ Mesa 入队可在同一道菜上带多个语种菜名。Agent 须按序 1×2 打
 | 4 | **多行时**：第 1 个名：`format` = 有 `item_code` 则 `{code}-{name}` 否则 `name`；与 Qty 同列模型（或 Han 画布）打出。第 2…n 个名：仅菜名，同左边距，**不**打 Qty、**不**加编号 |
 | 5 | **备注**：全部 `print_names` 行打完后，再 `writeStationItemNoteLine`（空 note 跳过） |
 | 6 | **字号**：`print_names[0]`（通常葡语）由 agent 本机 `station_pt_name_size` 控制：**`1x2`（默认）** 或 **`2x2`**；第 2…n 名与备注固定 **1×2**；数量×编号 lead 固定 **2×2**。葡语 Font A `GS !`，汉语固件 `FS &` + `GS !` + GBK，见 [`fiscal-thermal-text-encoding.zh.md`](fiscal-thermal-text-encoding.zh.md) |
-| 8 | **换行**：每个名字各自在菜名列内换行（汉字按 2 列）；续行同左边距、不打 Qty、不加编号 |
+| 8 | **换行（默认）**：每个名字各自在菜名列内换行（汉字按 2 列）；续行同左边距、不打 Qty、不加编号 |
+| 9 | **强制一行（本机）**：`station_name_one_line` / `station_note_one_line`（默认关）。开启后各 `print_names` / 备注只保留 wrap 首段，超出**硬丢弃**（不加 `…`）。闸门仅 `stationSlipKeepLines` |
 | 7 | **结账 / 预结**：不读 `print_names`；保持现单语行逻辑 |
 
 ---

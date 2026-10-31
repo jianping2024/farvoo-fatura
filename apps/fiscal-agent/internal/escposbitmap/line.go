@@ -10,7 +10,7 @@ import (
 // POS-80 printable width: Font A 48 cols × 12 dots = 576.
 const (
 	MaxWidthPx    = 576
-	DefaultFontPx = 24
+	DefaultFontPx = 22
 	MinFontPx     = 16
 	MaxFontPx     = 40
 	// MaxRenderPx — 2×2 renders at twice the base (han_bitmap_font_px) size.
@@ -39,10 +39,10 @@ type Image struct {
 	Pixels []byte
 }
 
-// Scale is the ONLY GS ! size → bitmap mapping. basePx (han_bitmap_font_px, default 24) is a
-// 1×1 Han cell (24×24 dots, same as printer Han font). 1×2 renders at basePx and doubles every
-// dot row — exactly what the printer does for GS ! 0x01; 2×2 renders at 2×basePx (smoother than
-// doubling). 2×1 is not used on tickets and renders as 2×2.
+// Scale is the ONLY GS ! size → bitmap mapping. basePx (han_bitmap_font_px, default 22) is a
+// 1×1 Han cell. 1×2 renders at basePx and doubles every dot row — exactly what the printer does
+// for GS ! 0x01; 2×2 renders at 2×basePx (smoother than doubling). 2×1 is not used on tickets
+// and renders as 2×2.
 func Scale(basePx int, doubleW, doubleH bool) (renderPx, stretchY int) {
 	renderPx = ClampFontPx(basePx)
 	if doubleW {

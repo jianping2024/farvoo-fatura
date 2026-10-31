@@ -51,7 +51,7 @@
 |---|------|
 | 1 | **葡语/英文（整行可编码进 WPC1252）**：Font A + `ESC t 16` + Windows-1252 + **`GS !` 字号**（正文 1×2 = `GS ! 0x01`，与现 `writeBody1x2` 同） |
 | 2 | **汉语行（仅 `han_firmware`；含 ≥1 汉字，其余字符为 GBK 内的中文标点/全角字符或 WPC1252 字符）**：按段输出——中文段 `FS &` + **`GS !` n** + GBK + `FS .`（与自检 ZH B GS!1x2 / 菜名 / 备注汉字同一 `HanFirmwareLine`）；其余段（ASCII、葡语重音）照常 WPC1252 + `GS !`。如 `Observação: 少放盐`、`Água 宫保`。正文 1×2 = `GS ! 0x01`；1×1 = 不发 / `GS ! 0`；标题级 2×2 = `GS ! 0x11`。备注下划线：**仅** Font A `ESC -`；汉字段**禁止** `FS !`（含下划线位——门店实测会清掉倍高）。中文标点/全角按 2 列计（`displayCols`） |
-| 3 | **位图（整行 GS v 0，`auto` 默认）**：凡 `NeedsRaster` 行（汉字、西里尔、emoji…）。字号按 `escposbitmap.Scale`：基准 `han_bitmap_font_px`（默认 24）= 1×1 汉字格；1×2 = 同字号逐点行 ×2；2×2 = 2× 基准渲染。整行图按墨迹上下裁紧（上 2 / 下 4 点）。渲染失败 → 本行 Font A + `?` 占位（`Windows1252Placeholder`），**禁止丢行** |
+| 3 | **位图（整行 GS v 0，`auto` 默认）**：凡 `NeedsRaster` 行（汉字、西里尔、emoji…）。字号按 `escposbitmap.Scale`：基准 `han_bitmap_font_px`（Agent `config.json`，默认 **22**）= 1×1 汉字格；1×2 = 同字号逐点行 ×2；2×2 = 2× 基准渲染。整行图按墨迹上下裁紧（上 2 / 下 4 点）。渲染失败 → 本行 Font A + `?` 占位（`Windows1252Placeholder`），**禁止丢行**。云端 job payload 旧字段忽略 |
 | 4 | **禁止半行混排**：位图是整行图，不能与 Font A 同行。`auto` 下出品联**按菜逐行**判断（`stationItemUsesHanCanvas`）：首菜名需位图时，编号 2×2 + 菜名 1×2 同一张 **Han 列画布**（576 点标尺，底部对齐）；否则编号/菜名走 Font A，副名/备注里需位图的行单独成图、按 Font A 名称列的点位左对齐（`writeStationHangLine`）。账单列仍走 Han 列画布。GDI 渲染用 `NONANTIALIASED_QUALITY`（抗锯齿边在 1-bit 阈值下会把笔画加粗）；`han_firmware` 用列宽模型空格垫 |
 | 5 | **`text_encoding ∈ {auto, han_firmware, utf8, latin}`**；旧 `gbk` / `bitmap`→`auto`。**唯一** normalize：`escposenc.NormalizeThermalEncoding` |
 | 6 | **`auto`（默认，界面名「标准」）**：按 §3 逐行分流。Mesa 与 FT **同一判定**、同一字号映射 |
