@@ -252,7 +252,7 @@ func (w *escposWriter) writeStationItem(lead string, names []string, note string
 	if len(names) > 0 {
 		first = names[0]
 	}
-	chunks := stationSlipWrap(first, maxFirst)
+	chunks := stationSlipKeepLines(stationSlipWrap(first, maxFirst), w.stationNameOneLine)
 
 	w.align(0)
 	w.bold(false)
@@ -285,14 +285,14 @@ func (w *escposWriter) writeStationItem(lead string, names []string, note string
 	if len(names) > 1 {
 		w.writeBody1x2()
 		for _, name := range names[1:] {
-			for _, c := range stationSlipWrap(name, maxHang) {
+			for _, c := range stationSlipKeepLines(stationSlipWrap(name, maxHang), w.stationNameOneLine) {
 				w.writeStationHangLine(hangPad, c)
 			}
 		}
 	}
 	if note != "" {
 		w.writeBody1x2()
-		for _, c := range stationSlipWrap(stationSlipNotePrefix+note, maxHang) {
+		for _, c := range stationSlipKeepLines(stationSlipWrap(stationSlipNotePrefix+note, maxHang), w.stationNoteOneLine) {
 			w.writeStationHangLine(hangPad, c)
 		}
 	}
@@ -331,7 +331,7 @@ func (w *escposWriter) writeHanStationItem(lead string, names []string, note str
 	if len(names) > 0 {
 		first = names[0]
 	}
-	chunks := wrapHanTextByPx(first, maxPx, firstPx, false)
+	chunks := stationSlipKeepLines(wrapHanTextByPx(first, maxPx, firstPx, false), w.stationNameOneLine)
 	row := renderHanRoleRow(lead, 0, w.hanFontPx, hanFontLarge, style)
 	rowText := lead
 	if len(chunks) > 0 {
@@ -348,13 +348,13 @@ func (w *escposWriter) writeHanStationItem(lead string, names []string, note str
 	}
 	if len(names) > 1 {
 		for _, name := range names[1:] {
-			for _, c := range wrapHanTextByPx(name, maxPx, bodyPx, false) {
+			for _, c := range stationSlipKeepLines(wrapHanTextByPx(name, maxPx, bodyPx, false), w.stationNameOneLine) {
 				w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontBody, style), hangPad+c)
 			}
 		}
 	}
 	if note != "" {
-		for _, c := range wrapHanTextByPx(stationSlipNotePrefix+note, maxPx, bodyPx, false) {
+		for _, c := range stationSlipKeepLines(wrapHanTextByPx(stationSlipNotePrefix+note, maxPx, bodyPx, false), w.stationNoteOneLine) {
 			w.writeHanRaster(renderHanRoleRow(c, nameX, w.hanFontPx, hanFontBody, style), hangPad+c)
 		}
 	}

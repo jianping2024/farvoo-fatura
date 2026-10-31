@@ -102,10 +102,13 @@ func writeConfigureState(w http.ResponseWriter, cfg *config) {
 		"station_printers":      cfg.StationPrinters,
 		"station_count":         stationCount,
 		"ui_locale":             loc,
-		"text_encoding":         normalizeTextEncoding(cfg.TextEncoding),
-		"station_pt_name_size":  normalizeStationPtNameSize(cfg.StationPtNameSize),
-		"ui":                    uiBundleMap(loc),
-		"pair_path":             "/pair",
+		"text_encoding":          normalizeTextEncoding(cfg.TextEncoding),
+		"station_pt_name_size":   normalizeStationPtNameSize(cfg.StationPtNameSize),
+		"han_bitmap_font_px":     resolveHanBitmapFontPx(cfg.HanBitmapFontPx),
+		"station_name_one_line":  cfg.StationNameOneLine,
+		"station_note_one_line":  cfg.StationNoteOneLine,
+		"ui":                     uiBundleMap(loc),
+		"pair_path":              "/pair",
 	})
 }
 
@@ -118,9 +121,12 @@ func registerUILocaleRoute(mux *http.ServeMux, configPath string, cfg **config) 
 			return
 		}
 		var body struct {
-			Locale            string `json:"ui_locale"`
-			TextEncoding      string `json:"text_encoding"`
-			StationPtNameSize string `json:"station_pt_name_size"`
+			Locale               string `json:"ui_locale"`
+			TextEncoding         string `json:"text_encoding"`
+			StationPtNameSize    string `json:"station_pt_name_size"`
+			HanBitmapFontPx      *int   `json:"han_bitmap_font_px"`
+			StationNameOneLine   *bool  `json:"station_name_one_line"`
+			StationNoteOneLine   *bool  `json:"station_note_one_line"`
 		}
 		if err := json.NewDecoder(io.LimitReader(r.Body, 512)).Decode(&body); err != nil {
 			writePairJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
@@ -136,6 +142,15 @@ func registerUILocaleRoute(mux *http.ServeMux, configPath string, cfg **config) 
 		if strings.TrimSpace(body.StationPtNameSize) != "" {
 			c.StationPtNameSize = normalizeStationPtNameSize(body.StationPtNameSize)
 		}
+		if body.HanBitmapFontPx != nil {
+			c.HanBitmapFontPx = resolveHanBitmapFontPx(*body.HanBitmapFontPx)
+		}
+		if body.StationNameOneLine != nil {
+			c.StationNameOneLine = *body.StationNameOneLine
+		}
+		if body.StationNoteOneLine != nil {
+			c.StationNoteOneLine = *body.StationNoteOneLine
+		}
 		if err := saveConfig(configPath, c); err != nil {
 			writePairJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
@@ -144,11 +159,14 @@ func registerUILocaleRoute(mux *http.ServeMux, configPath string, cfg **config) 
 		*cfg = c
 		loc := c.uiLocale()
 		writePairJSON(w, http.StatusOK, map[string]any{
-			"status":               "ok",
-			"ui_locale":            loc,
-			"text_encoding":        normalizeTextEncoding(c.TextEncoding),
-			"station_pt_name_size": normalizeStationPtNameSize(c.StationPtNameSize),
-			"ui":                   uiBundleMap(loc),
+			"status":                "ok",
+			"ui_locale":             loc,
+			"text_encoding":         normalizeTextEncoding(c.TextEncoding),
+			"station_pt_name_size":  normalizeStationPtNameSize(c.StationPtNameSize),
+			"han_bitmap_font_px":    resolveHanBitmapFontPx(c.HanBitmapFontPx),
+			"station_name_one_line": c.StationNameOneLine,
+			"station_note_one_line": c.StationNoteOneLine,
+			"ui":                    uiBundleMap(loc),
 		})
 	})
 }

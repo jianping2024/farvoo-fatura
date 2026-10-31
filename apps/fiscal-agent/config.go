@@ -36,6 +36,12 @@ type config struct {
 	TextEncoding string `json:"text_encoding,omitempty"`
 	// StationPtNameSize: station_ticket first dish name (print_names[0]) Font A size — "1x2" (default) | "2x2".
 	StationPtNameSize string `json:"station_pt_name_size,omitempty"`
+	// HanBitmapFontPx: Mesa ticket Chinese bitmap base (1×1 cell); 16–40, default 22. Agent-local only.
+	HanBitmapFontPx int `json:"han_bitmap_font_px,omitempty"`
+	// StationNameOneLine: station_ticket — each print_names entry at most one paper line (hard discard).
+	StationNameOneLine bool `json:"station_name_one_line,omitempty"`
+	// StationNoteOneLine: station_ticket — note (» …) at most one paper line (hard discard).
+	StationNoteOneLine bool `json:"station_note_one_line,omitempty"`
 	// FiscalAllowLocalProvision: allow Admin activate with pasted product PEM (UAT only).
 	// nil / omitted → default false (Ops cloud provision). Explicit true enables.
 	// Env FISCAL_ALLOW_LOCAL_PROVISION wins when set (CI / forced override).

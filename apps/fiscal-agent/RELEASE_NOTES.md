@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.58
+
+**档口小票强制一行 + 中文位图字号迁本机**
+
+- 本机勾选 `station_name_one_line` / `station_note_one_line`（默认关）：开启后每个语种菜名 / 备注各自只打一行，超出硬丢弃（不加省略号）。闸门仅 `stationSlipKeepLines`。
+- 中文位图字号 `han_bitmap_font_px` 改本机配置（打印配置页，默认 **22**）；出纸只听 Agent，忽略云端 payload 旧字段。
+- 设置页 / 首次配对：热敏编码 → 中文位图字号 → 葡语菜名字号 → 菜名一行 → 备注一行。
+
 ## 0.5.57
 
 **档口小票：葡语菜名字号可调（1×2 / 2×2）**

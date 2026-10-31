@@ -82,12 +82,44 @@
         <p class="err" id="textEncodingErr"></p>
         <p class="ok-msg" id="textEncodingOk"></p>
       </div>
+      <div class="test-row" id="hanBitmapFontPxBlock">
+        <label for="hanBitmapFontPx" id="hanBitmapFontPxLabel">…</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="hanBitmapFontPx" min="16" max="40" step="1" style="width:5em" />
+          <span id="hanBitmapFontPxUnit">px</span>
+        </div>
+        <p class="hint" id="hanBitmapFontPxHint">…</p>
+        <p class="err" id="hanBitmapFontPxErr"></p>
+        <p class="ok-msg" id="hanBitmapFontPxOk"></p>
+      </div>
       <div class="test-row" id="stationPtNameSizeBlock">
         <label for="stationPtNameSize" id="stationPtNameSizeLabel">…</label>
         <select id="stationPtNameSize"></select>
         <p class="hint" id="stationPtNameSizeHint">…</p>
         <p class="err" id="stationPtNameSizeErr"></p>
         <p class="ok-msg" id="stationPtNameSizeOk"></p>
+      </div>
+      <div class="test-row" id="stationNameOneLineBlock">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+          <input type="checkbox" id="stationNameOneLine" style="margin-top:3px" />
+          <span>
+            <span id="stationNameOneLineLabel">…</span>
+            <p class="hint" id="stationNameOneLineHint" style="margin:4px 0 0">…</p>
+          </span>
+        </label>
+        <p class="err" id="stationNameOneLineErr"></p>
+        <p class="ok-msg" id="stationNameOneLineOk"></p>
+      </div>
+      <div class="test-row" id="stationNoteOneLineBlock">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+          <input type="checkbox" id="stationNoteOneLine" style="margin-top:3px" />
+          <span>
+            <span id="stationNoteOneLineLabel">…</span>
+            <p class="hint" id="stationNoteOneLineHint" style="margin:4px 0 0">…</p>
+          </span>
+        </label>
+        <p class="err" id="stationNoteOneLineErr"></p>
+        <p class="ok-msg" id="stationNoteOneLineOk"></p>
       </div>
       <div class="test-row">
         <p class="section-title" id="testOptionalTitle">…</p>
@@ -275,9 +307,21 @@
         document.getElementById('textEncodingLabel').textContent = t('text_encoding_label');
         document.getElementById('textEncodingHint').textContent = t('text_encoding_hint');
         MesaWizardUI.fillTextEncodingSelect(document.getElementById('textEncoding'), ui, state.text_encoding);
+        document.getElementById('hanBitmapFontPxLabel').textContent = t('han_bitmap_font_px_label');
+        document.getElementById('hanBitmapFontPxHint').textContent = t('han_bitmap_font_px_hint');
+        document.getElementById('hanBitmapFontPxUnit').textContent = t('han_bitmap_font_px_unit');
+        document.getElementById('hanBitmapFontPx').value = String(
+          MesaWizardUI.normalizeHanBitmapFontPxValue(state.han_bitmap_font_px)
+        );
         document.getElementById('stationPtNameSizeLabel').textContent = t('station_pt_name_size_label');
         document.getElementById('stationPtNameSizeHint').textContent = t('station_pt_name_size_hint');
         MesaWizardUI.fillStationPtNameSizeSelect(document.getElementById('stationPtNameSize'), ui, state.station_pt_name_size);
+        document.getElementById('stationNameOneLineLabel').textContent = t('station_name_one_line_label');
+        document.getElementById('stationNameOneLineHint').textContent = t('station_name_one_line_hint');
+        document.getElementById('stationNameOneLine').checked = !!state.station_name_one_line;
+        document.getElementById('stationNoteOneLineLabel').textContent = t('station_note_one_line_label');
+        document.getElementById('stationNoteOneLineHint').textContent = t('station_note_one_line_hint');
+        document.getElementById('stationNoteOneLine').checked = !!state.station_note_one_line;
         document.title = t('configure_page_title');
         updateScanHint();
       }
@@ -771,12 +815,36 @@
         okEl: document.getElementById('textEncodingOk'),
         log: dbg,
       });
+      MesaWizardUI.bindHanBitmapFontPxInput(document.getElementById('hanBitmapFontPx'), {
+        getUI: function () { return ui; },
+        getCurrent: function () { return MesaWizardUI.normalizeHanBitmapFontPxValue(state.han_bitmap_font_px); },
+        setCurrent: function (v) { state.han_bitmap_font_px = v; },
+        errEl: document.getElementById('hanBitmapFontPxErr'),
+        okEl: document.getElementById('hanBitmapFontPxOk'),
+        log: dbg,
+      });
       MesaWizardUI.bindStationPtNameSizeSelect(document.getElementById('stationPtNameSize'), {
         getUI: function () { return ui; },
         getCurrent: function () { return state.station_pt_name_size; },
         setCurrent: function (v) { state.station_pt_name_size = v; },
         errEl: document.getElementById('stationPtNameSizeErr'),
         okEl: document.getElementById('stationPtNameSizeOk'),
+        log: dbg,
+      });
+      MesaWizardUI.bindStationOneLineCheckbox(document.getElementById('stationNameOneLine'), 'station_name_one_line', {
+        getUI: function () { return ui; },
+        getCurrent: function () { return !!state.station_name_one_line; },
+        setCurrent: function (v) { state.station_name_one_line = !!v; },
+        errEl: document.getElementById('stationNameOneLineErr'),
+        okEl: document.getElementById('stationNameOneLineOk'),
+        log: dbg,
+      });
+      MesaWizardUI.bindStationOneLineCheckbox(document.getElementById('stationNoteOneLine'), 'station_note_one_line', {
+        getUI: function () { return ui; },
+        getCurrent: function () { return !!state.station_note_one_line; },
+        setCurrent: function (v) { state.station_note_one_line = !!v; },
+        errEl: document.getElementById('stationNoteOneLineErr'),
+        okEl: document.getElementById('stationNoteOneLineOk'),
         log: dbg,
       });
 

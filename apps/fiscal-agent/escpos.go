@@ -288,13 +288,16 @@ type escposWriter struct {
 	hanFontPx       int
 	// stationFirstName2x2 — station_ticket print_names[0] at Font A 2×2 (else 1×2). From agent config.
 	stationFirstName2x2 bool
-	hadDoubleHeight     bool
-	alignMode           byte
-	boldOn              bool
-	underlineOn         bool
-	doubleW             bool
-	doubleH             bool
-	lastTextBitmap      bool
+	// stationNameOneLine / stationNoteOneLine — agent config; gate via stationSlipKeepLines only.
+	stationNameOneLine bool
+	stationNoteOneLine bool
+	hadDoubleHeight    bool
+	alignMode          byte
+	boldOn             bool
+	underlineOn        bool
+	doubleW            bool
+	doubleH            bool
+	lastTextBitmap     bool
 }
 
 func writeMarginLines(b *bytes.Buffer, lines int) {
@@ -319,8 +322,10 @@ func newEscpos() *escposWriter {
 func newEscposForStationTicket(p jobPayload) *escposWriter {
 	w := newEscpos()
 	w.printLocale = normalizePrintLocale(p.Locale)
-	w.hanFontPx = resolveHanBitmapFontPx(p.HanBitmapFontPx)
+	w.hanFontPx = hanBitmapFontPxFromConfig()
 	w.stationFirstName2x2 = stationPtNameSizeIs2x2(stationPtNameSizeFromConfig())
+	w.stationNameOneLine = stationNameOneLineFromConfig()
+	w.stationNoteOneLine = stationNoteOneLineFromConfig()
 	w.applyTextMode(textModeForThermal(stationTicketNeedsBitmap(p)))
 	return w
 }
@@ -328,7 +333,7 @@ func newEscposForStationTicket(p jobPayload) *escposWriter {
 func newEscposForReceiptTicket(p jobPayload) *escposWriter {
 	w := newEscpos()
 	w.printLocale = normalizePrintLocale(p.Locale)
-	w.hanFontPx = resolveHanBitmapFontPx(p.HanBitmapFontPx)
+	w.hanFontPx = hanBitmapFontPxFromConfig()
 	w.applyTextMode(textModeForThermal(receiptTicketNeedsBitmap(p)))
 	return w
 }
@@ -336,7 +341,7 @@ func newEscposForReceiptTicket(p jobPayload) *escposWriter {
 func newEscposForConnectionTest(p jobPayload) *escposWriter {
 	w := newEscpos()
 	w.printLocale = normalizePrintLocale(p.Locale)
-	w.hanFontPx = resolveHanBitmapFontPx(p.HanBitmapFontPx)
+	w.hanFontPx = hanBitmapFontPxFromConfig()
 	w.applyTextMode(textModeForThermal(connectionTestNeedsBitmap(p)))
 	return w
 }
@@ -757,8 +762,8 @@ func escposFromJob(job printJob) []byte {
 	p := parseJobPayload(job)
 	lab := printTicketLabels(p.Locale)
 	// payload 0 = key missing (falls back to the default); used = what the Han raster renders at.
-	log.Printf("print job %s (%s): han_bitmap_font_px payload=%d used=%d",
-		job.ID, job.Type, p.HanBitmapFontPx, resolveHanBitmapFontPx(p.HanBitmapFontPx))
+	log.Printf("print job %s (%s): han_bitmap_font_px payload=%d used=%d (agent config)",
+		job.ID, job.Type, p.HanBitmapFontPx, hanBitmapFontPxFromConfig())
 
 	switch job.Type {
 	case "station_ticket":

@@ -745,7 +745,7 @@ Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `ser
 | `api_base`、`agentjwt`、档口 `station_printers`、Realtime | `config.json`（打印配对） |
 | 商家 NIF、系列、Hash 链、发票、税务打印队列 | **SQLite** |
 | 已签 FT/NC 云端副本 | **无**（§1.1；SAF-T 月导为唯一对外票证出口） |
-| `han_bitmap_font_px`（业务票） | Farvoo 功能设置 → 云端 job payload |
+| `han_bitmap_font_px`（业务票） | Agent `config.json`（打印配置页；默认 22）。云端 payload 旧字段忽略 |
 | 发票小票字号（未来） | 建议写入冻结 `print_payload` 或 `taxpayer_settings`，不依赖云端 job |
 
 ---

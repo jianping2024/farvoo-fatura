@@ -52,9 +52,9 @@ func TestScaleMirrorsFirmwareSizes(t *testing.T) {
 		dw, dh       bool
 		px, stretchY int
 	}{
-		{false, false, 24, 1}, // 1×1 = 24×24 Han cell
-		{false, true, 24, 2},  // 1×2 = dot rows doubled (GS ! 0x01)
-		{true, true, 48, 1},   // 2×2 = rendered at 2× base
+		{false, false, 22, 1}, // 1×1 = DefaultFontPx Han cell
+		{false, true, 22, 2},  // 1×2 = dot rows doubled (GS ! 0x01)
+		{true, true, 44, 1},   // 2×2 = rendered at 2× base
 	}
 	for _, c := range cases {
 		px, sy := Scale(DefaultFontPx, c.dw, c.dh)

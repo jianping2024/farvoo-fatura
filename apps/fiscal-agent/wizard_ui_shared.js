@@ -223,6 +223,95 @@
     });
   }
 
+  var HAN_BITMAP_FONT_PX_MIN = 16;
+  var HAN_BITMAP_FONT_PX_MAX = 40;
+  var HAN_BITMAP_FONT_PX_DEFAULT = 22;
+
+  function normalizeHanBitmapFontPxValue(v) {
+    var n = parseInt(v, 10);
+    if (!isFinite(n)) return HAN_BITMAP_FONT_PX_DEFAULT;
+    if (n < HAN_BITMAP_FONT_PX_MIN) return HAN_BITMAP_FONT_PX_MIN;
+    if (n > HAN_BITMAP_FONT_PX_MAX) return HAN_BITMAP_FONT_PX_MAX;
+    return n;
+  }
+
+  function postWizardPrintOpts(body) {
+    return fetch('/api/ui-locale', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        return { ok: r.ok, status: r.status, j: j };
+      });
+    });
+  }
+
+  function bindHanBitmapFontPxInput(inp, opts) {
+    if (!inp) return;
+    function save() {
+      var ui = opts.getUI();
+      var prev = opts.getCurrent();
+      var next = normalizeHanBitmapFontPxValue(inp.value);
+      inp.value = String(next);
+      if (opts.errEl) opts.errEl.textContent = '';
+      if (opts.okEl) opts.okEl.textContent = '';
+      if (next === prev) return;
+      inp.disabled = true;
+      if (opts.log) opts.log('phase han_bitmap_font_px save value=' + next);
+      postWizardPrintOpts({ han_bitmap_font_px: next })
+        .then(function (res) {
+          if (!res.ok) {
+            if (opts.errEl) opts.errEl.textContent = (res.j && res.j.error) || t(ui, 'save_failed');
+            inp.value = String(prev);
+            return;
+          }
+          opts.setCurrent(res.j.han_bitmap_font_px);
+          inp.value = String(res.j.han_bitmap_font_px);
+          if (opts.okEl) opts.okEl.textContent = t(ui, 'han_bitmap_font_px_saved');
+        })
+        .catch(function () {
+          if (opts.errEl) opts.errEl.textContent = t(ui, 'pair_service_unreachable');
+          inp.value = String(prev);
+        })
+        .finally(function () { inp.disabled = false; });
+    }
+    inp.addEventListener('change', save);
+    inp.addEventListener('blur', save);
+  }
+
+  function bindStationOneLineCheckbox(cb, field, opts) {
+    if (!cb) return;
+    cb.addEventListener('change', function () {
+      var ui = opts.getUI();
+      var prev = !!opts.getCurrent();
+      var next = !!cb.checked;
+      if (opts.errEl) opts.errEl.textContent = '';
+      if (opts.okEl) opts.okEl.textContent = '';
+      cb.disabled = true;
+      if (opts.log) opts.log('phase ' + field + ' save value=' + next);
+      var body = {};
+      body[field] = next;
+      postWizardPrintOpts(body)
+        .then(function (res) {
+          if (!res.ok) {
+            if (opts.errEl) opts.errEl.textContent = (res.j && res.j.error) || t(ui, 'save_failed');
+            cb.checked = prev;
+            return;
+          }
+          var saved = !!res.j[field];
+          opts.setCurrent(saved);
+          cb.checked = saved;
+          if (opts.okEl) opts.okEl.textContent = t(ui, field + '_saved');
+        })
+        .catch(function () {
+          if (opts.errEl) opts.errEl.textContent = t(ui, 'pair_service_unreachable');
+          cb.checked = prev;
+        })
+        .finally(function () { cb.disabled = false; });
+    });
+  }
+
   function setTakeoverVisible(btn, show) {
     if (!btn) return;
     btn.classList.toggle('hidden', !show);
@@ -376,5 +465,11 @@
     fillStationPtNameSizeSelect: fillStationPtNameSizeSelect,
     postStationPtNameSize: postStationPtNameSize,
     bindStationPtNameSizeSelect: bindStationPtNameSizeSelect,
+    HAN_BITMAP_FONT_PX_MIN: HAN_BITMAP_FONT_PX_MIN,
+    HAN_BITMAP_FONT_PX_MAX: HAN_BITMAP_FONT_PX_MAX,
+    HAN_BITMAP_FONT_PX_DEFAULT: HAN_BITMAP_FONT_PX_DEFAULT,
+    normalizeHanBitmapFontPxValue: normalizeHanBitmapFontPxValue,
+    bindHanBitmapFontPxInput: bindHanBitmapFontPxInput,
+    bindStationOneLineCheckbox: bindStationOneLineCheckbox,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
