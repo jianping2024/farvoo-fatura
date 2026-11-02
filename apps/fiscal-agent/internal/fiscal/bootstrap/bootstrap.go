@@ -74,8 +74,20 @@ func StartCore(opts Options) (*Runtime, error) {
 		return nil, err
 	}
 
+	atEnv, err := at.EnvFromProcess()
+	if err != nil {
+		return nil, err
+	}
+	if opts.Seed && atEnv != at.EnvMock {
+		return nil, fmt.Errorf("bootstrap: Seed (demo validation code) requires FISCAL_AT_ENV=mock, got %s", atEnv)
+	}
+
 	db, err := store.Open(opts.DBPath)
 	if err != nil {
+		return nil, err
+	}
+	if err := db.EnsureATEnvStamp(string(atEnv)); err != nil {
+		_ = db.Close()
 		return nil, err
 	}
 

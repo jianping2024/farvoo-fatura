@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 )
 
 // Env is AT connectivity mode.
@@ -39,11 +38,15 @@ type Client interface {
 	ConsultSeries(ctx context.Context, username, password, seriesCode string) (*RegisterResult, error)
 }
 
-// NewFromEnv builds client from FISCAL_AT_ENV (default mock).
+// NewFromEnv builds client from FISCAL_AT_ENV (empty → mock; invalid → every call fails).
 func NewFromEnv() Client {
-	switch Env(strings.ToLower(strings.TrimSpace(os.Getenv("FISCAL_AT_ENV")))) {
+	env, err := EnvFromProcess()
+	if err != nil {
+		return &misconfiguredClient{err: err}
+	}
+	switch env {
 	case EnvTest, EnvProd:
-		return &SOAPClient{Env: Env(strings.ToLower(os.Getenv("FISCAL_AT_ENV")))}
+		return &SOAPClient{Env: env}
 	default:
 		code := os.Getenv("FISCAL_MOCK_VALIDATION_CODE")
 		if code == "" {

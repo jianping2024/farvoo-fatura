@@ -12,6 +12,7 @@ import (
 	"sync"
 	"syscall"
 
+	"farvoo-fiscal-agent/internal/fiscal/at"
 	"farvoo-fiscal-agent/internal/fiscal/bootstrap"
 	"farvoo-fiscal-agent/internal/fiscal/billsync"
 	"farvoo-fiscal-agent/internal/fiscal/service"
@@ -22,6 +23,7 @@ var (
 	embeddedFiscalMu  sync.Mutex
 	embeddedFiscal    *bootstrap.Runtime
 	embeddedFiscalURL string // listen URL (may be http://0.0.0.0:17880); shell uses loopbackAdminURL
+	embeddedFiscalEnv at.Env // AT env the running DB is stamped with
 )
 
 // fiscalBillSyncPuller returns a Puller bound to the embedded fiscal DB, or nil.
@@ -49,7 +51,8 @@ func fiscalBillSyncPuller(cfg *config) *billsync.Puller {
 
 // applyFiscalRuntimeFromConfig installs process env used by fiscal packages
 // (local provision + AT env only). LAN listen is NOT via env — see resolveFiscalListenBind.
-// ONLY agent-side applicator.
+// AT env: config.json fiscal_at_env wins over a stale process FISCAL_AT_ENV; empty config
+// keeps process env (CI) or mock. ONLY agent-side applicator.
 func applyFiscalRuntimeFromConfig(cfg *config) {
 	applyThermalEncodingFromConfig(cfg)
 	if strings.TrimSpace(os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION")) == "" {
@@ -63,14 +66,32 @@ func applyFiscalRuntimeFromConfig(cfg *config) {
 			_ = os.Setenv("FISCAL_ALLOW_LOCAL_PROVISION", "0")
 		}
 	}
-	if strings.TrimSpace(os.Getenv("FISCAL_AT_ENV")) == "" {
-		at := "mock"
-		if cfg != nil {
-			if v := strings.TrimSpace(cfg.FiscalATEnv); v != "" {
-				at = v
-			}
+	cfgAT := ""
+	if cfg != nil {
+		cfgAT = strings.TrimSpace(cfg.FiscalATEnv)
+	}
+	prevAT := strings.TrimSpace(os.Getenv("FISCAL_AT_ENV"))
+	switch {
+	case cfgAT != "":
+		if prevAT != "" && !strings.EqualFold(prevAT, cfgAT) {
+			log.Printf("fiscal: config.json fiscal_at_env=%q overrides process FISCAL_AT_ENV=%q", cfgAT, prevAT)
 		}
-		_ = os.Setenv("FISCAL_AT_ENV", at)
+		_ = os.Setenv("FISCAL_AT_ENV", cfgAT)
+	case prevAT == "":
+		_ = os.Setenv("FISCAL_AT_ENV", "mock")
+	}
+}
+
+// fiscalDBFileName is the ONLY per-AT-env SQLite name under the Agent data dir.
+// mock keeps legacy fiscal.db; test/prod never share a file with mock data.
+func fiscalDBFileName(env at.Env) string {
+	switch env {
+	case at.EnvTest:
+		return "fiscal-test.db"
+	case at.EnvProd:
+		return "fiscal-prod.db"
+	default:
+		return "fiscal.db"
 	}
 }
 
@@ -101,11 +122,15 @@ func startEmbeddedFiscal(cfg *config) error {
 	defer embeddedFiscalMu.Unlock()
 
 	applyFiscalRuntimeFromConfig(cfg)
+	atEnv, err := at.EnvFromProcess()
+	if err != nil {
+		return err
+	}
 	allowLAN, bind := resolveFiscalListenBind()
 	wantURL := "http://" + bind
 
 	if embeddedFiscal != nil {
-		if embeddedFiscalURL == wantURL {
+		if embeddedFiscalURL == wantURL && embeddedFiscalEnv == atEnv {
 			if cfg != nil && embeddedFiscal.Service != nil {
 				embeddedFiscal.Service.SetCloudProvision(service.CloudProvision{
 					APIBase:  strings.TrimSpace(cfg.APIBase),
@@ -116,18 +141,19 @@ func startEmbeddedFiscal(cfg *config) error {
 			}
 			return nil
 		}
-		// Bind intent changed (e.g. cold shell started loopback before disk LAN applied).
-		log.Printf("fiscal: rebind %s → %s", embeddedFiscalURL, wantURL)
+		// Bind intent or AT env changed (e.g. cold shell started loopback before disk LAN applied).
+		log.Printf("fiscal: rebind %s (at_env=%s) → %s (at_env=%s)", embeddedFiscalURL, embeddedFiscalEnv, wantURL, atEnv)
 		_ = embeddedFiscal.Close()
 		embeddedFiscal = nil
 		embeddedFiscalURL = ""
+		embeddedFiscalEnv = ""
 	}
 
 	dataRoot := agentDataDir()
 	if dataRoot == "" {
 		dataRoot = filepath.Join(os.TempDir(), "farvoo-fiscal-agent")
 	}
-	dbPath := filepath.Join(dataRoot, "fiscal.db")
+	dbPath := filepath.Join(dataRoot, fiscalDBFileName(atEnv))
 	dataDir := filepath.Join(dataRoot, "fiscal-secure")
 	if v := strings.TrimSpace(os.Getenv("FISCAL_DB")); v != "" {
 		dbPath = v
@@ -202,7 +228,8 @@ func startEmbeddedFiscal(cfg *config) error {
 	}
 	embeddedFiscal = rt
 	embeddedFiscalURL = wantURL
-	log.Printf("fiscal: embedded on %s db=%s store=%s", embeddedFiscalURL, dbPath, storeID)
+	embeddedFiscalEnv = atEnv
+	log.Printf("fiscal: embedded on %s at_env=%s db=%s store=%s", embeddedFiscalURL, atEnv, dbPath, storeID)
 	return nil
 }
 
@@ -214,6 +241,7 @@ func stopEmbeddedFiscal() {
 		embeddedFiscal = nil
 	}
 	embeddedFiscalURL = ""
+	embeddedFiscalEnv = ""
 }
 
 func fiscalAdminBaseURL() string {

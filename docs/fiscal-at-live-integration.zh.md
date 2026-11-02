@@ -119,6 +119,9 @@ GR mock（G1–G6）与 GT mock（T1–T4）**已完成**；缺的只是 live AT
 | 凭证分离 | 子用户 → SQLite `at_credentials`（Admin）；pfx/cer **文件**随包或安装目录，路径/口令在 `config.json`，**不**进 SQLite 明文 |
 | 端点 | 代码内常量；可选 URL 覆盖也只写 `config.json`（运维/打包） |
 | 顺序 | **A0 → A1 → A2 → A3**（禁止跳刀先接运输再补加密） |
+| 非法 env | `at.ParseEnv` 唯一解析：空=mock；非 `mock\|test\|prod`（如 `production`）→ Fiscal 启动失败、客户端每次调用失败；**禁止**静默当 mock |
+| 优先级 | `config.json` 的 `fiscal_at_env` 非空 → **覆盖**进程 env（防门店机残留 env）；为空才用进程 env（CI）或 mock |
+| 环境隔离 | Agent 按 env 分库：mock=`fiscal.db`，test=`fiscal-test.db`，prod=`fiscal-prod.db`；每库首开写 `fiscal_meta.at_env` 印记，换 env 打开同一库 → 启动失败（含 `FISCAL_DB` 覆盖路径）。无印记但已有系列/发票的旧库视为 mock。`FISCAL_SEED=1` 仅 mock |
 
 ### 4.0 产品 vs CI（P0 硬门禁）
 
@@ -155,7 +158,7 @@ GR mock（G1–G6）与 GT mock（T1–T4）**已完成**；缺的只是 live AT
 | `fiscal_at_series_url` | `FISCAL_AT_SERIES_URL` |
 | `fiscal_at_transport_url` | `FISCAL_AT_TRANSPORT_URL` |
 
-若启动前进程 env **已有值**（CI 脚本）：保留 env，不覆盖（与现 `fiscal_at_env` 行为一致）。产品路径下客户机不应预置这些系统变量。
+`fiscal_at_env` 例外：config 非空即覆盖进程 env（见 §4 优先级）；其余字段若进程 env 已有值（CI 脚本）则保留。产品路径下客户机不应预置这些系统变量。
 
 A0 已有 `LiveMaterialsFromEnv`：A1 前须保证托盘路径经 `applyFiscalRuntimeFromConfig` 灌齐上表；缺字段时 test/prod 失败关闭并提示「检查 config.json」，**不**提示「请设置系统环境变量」。
 
@@ -349,4 +352,5 @@ at/soaputil.go
 | 2026-10-15 | 初稿：系列 + 运输统一 test/prod；A0–A3；配置命名拍板 |
 | 2026-11-02 | **执行计划落入本文**：§0 总览；材料/账号口径 §3；配置名 §4.1 定稿；A0–A3 步骤与关闭条件写全；下一刀 = A0 |
 | 2026-11-02 | **A0 落地**（0.5.59）：`EncryptATAuth` / `LoadClientTLS` / SOAP 公共件 / `LiveMaterialsFromEnv`；下一刀 = A1 |
+| 2026-11-02 | **P0 修复**：非法 `fiscal_at_env` 失败关闭；config 覆盖残留 env；按 env 分库 + `fiscal_meta.at_env` 印记 |
 | 2026-11-02 | **P0：产品只走打包/`config.json`**，禁止要求客户改系统环境变量；§4.0–§4.3 |

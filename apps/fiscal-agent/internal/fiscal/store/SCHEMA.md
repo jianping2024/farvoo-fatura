@@ -26,6 +26,7 @@ idempotency_keys, local_print_jobs, print_attempts, audit_log
 saft_exports
 sync_outbox（DDL 保留；P0 不写入，见 schema §1.1）
 bill_sync_drafts
+fiscal_meta（at_env 印记：一库只绑一个 AT 环境，见 at_env_stamp.go）
 ```
 
 ## 签发同事务

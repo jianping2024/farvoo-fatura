@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"farvoo-fiscal-agent/internal/fiscal/at"
 )
 
 func TestApplyFiscalRuntimeFromConfig_DefaultsDenyLocalProvision(t *testing.T) {
@@ -41,19 +43,36 @@ func TestApplyFiscalRuntimeFromConfig_ConfigCanEnable(t *testing.T) {
 	}
 }
 
-func TestApplyFiscalRuntimeFromConfig_EnvWins(t *testing.T) {
+func TestApplyFiscalRuntimeFromConfig_EnvWinsProvision_ConfigWinsATEnv(t *testing.T) {
 	t.Setenv("FISCAL_ALLOW_LOCAL_PROVISION", "0")
-	t.Setenv("FISCAL_AT_ENV", "prod")
+	t.Setenv("FISCAL_AT_ENV", "mock") // stale machine/dev env
 	on := true
 	applyFiscalRuntimeFromConfig(&config{
 		FiscalAllowLocalProvision: &on,
-		FiscalATEnv:               "mock",
+		FiscalATEnv:               "prod",
 	})
 	if os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION") != "0" {
 		t.Fatalf("env should win: %q", os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION"))
 	}
 	if got := strings.TrimSpace(os.Getenv("FISCAL_AT_ENV")); got != "prod" {
-		t.Fatalf("env at: %q", got)
+		t.Fatalf("config.json fiscal_at_env must win over stale env: %q", got)
+	}
+}
+
+func TestApplyFiscalRuntimeFromConfig_EmptyConfigKeepsCIEnv(t *testing.T) {
+	t.Setenv("FISCAL_AT_ENV", "test")
+	applyFiscalRuntimeFromConfig(&config{})
+	if got := os.Getenv("FISCAL_AT_ENV"); got != "test" {
+		t.Fatalf("empty config must keep process env: %q", got)
+	}
+}
+
+func TestFiscalDBFileName_PerATEnv(t *testing.T) {
+	want := map[at.Env]string{at.EnvMock: "fiscal.db", at.EnvTest: "fiscal-test.db", at.EnvProd: "fiscal-prod.db"}
+	for env, name := range want {
+		if got := fiscalDBFileName(env); got != name {
+			t.Fatalf("%s: got %q want %q", env, got, name)
+		}
 	}
 }
 

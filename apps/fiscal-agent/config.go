@@ -46,7 +46,8 @@ type config struct {
 	// nil / omitted → default false (Ops cloud provision). Explicit true enables.
 	// Env FISCAL_ALLOW_LOCAL_PROVISION wins when set (CI / forced override).
 	FiscalAllowLocalProvision *bool `json:"fiscal_allow_local_provision,omitempty"`
-	// FiscalATEnv: mock | test | prod. Empty → mock. Env FISCAL_AT_ENV wins when set.
+	// FiscalATEnv: mock | test | prod. Set → wins over process FISCAL_AT_ENV (product path).
+	// Empty → process FISCAL_AT_ENV (CI) or mock. Invalid → Fiscal start fails.
 	FiscalATEnv string `json:"fiscal_at_env,omitempty"`
 	// FiscalAllowLAN: allow Admin listen on LAN (0.0.0.0:17880). nil/false → loopback only.
 	// Product path: Admin → config.json only (no FISCAL_ALLOW_LAN / FISCAL_BIND).

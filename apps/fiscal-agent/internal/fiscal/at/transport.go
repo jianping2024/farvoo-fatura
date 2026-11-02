@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 )
@@ -38,11 +37,15 @@ type TransportClient interface {
 	RegisterDocument(ctx context.Context, doc TransportDocument) (*TransportResult, error)
 }
 
-// NewTransportFromEnv builds transport client from FISCAL_AT_ENV (default mock).
+// NewTransportFromEnv builds transport client from FISCAL_AT_ENV (empty → mock; invalid → every call fails).
 func NewTransportFromEnv() TransportClient {
-	switch Env(strings.ToLower(strings.TrimSpace(os.Getenv("FISCAL_AT_ENV")))) {
+	env, err := EnvFromProcess()
+	if err != nil {
+		return &misconfiguredClient{err: err}
+	}
+	switch env {
 	case EnvTest, EnvProd:
-		return &SOAPTransportClient{Env: Env(strings.ToLower(os.Getenv("FISCAL_AT_ENV")))}
+		return &SOAPTransportClient{Env: env}
 	default:
 		return &MockTransportClient{}
 	}
