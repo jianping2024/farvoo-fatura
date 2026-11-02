@@ -47,17 +47,17 @@ func LiveMaterialsFromEnv() LiveMaterials {
 	}
 }
 
-// MissingRequired reports empty critical paths (cert + pubkey). Passphrase may be empty only if pfx allows it (ours does not).
+// MissingRequired reports empty critical paths (cert + pubkey) as config.json field names. Passphrase may be empty only if pfx allows it (ours does not).
 func (m LiveMaterials) MissingRequired() []string {
 	var miss []string
 	if strings.TrimSpace(m.ClientCertPath) == "" {
-		miss = append(miss, "FISCAL_AT_CLIENT_CERT")
+		miss = append(miss, "fiscal_at_client_cert")
 	}
 	if strings.TrimSpace(m.ClientCertPass) == "" {
-		miss = append(miss, "FISCAL_AT_CLIENT_CERT_PASS")
+		miss = append(miss, "fiscal_at_client_cert_pass")
 	}
 	if strings.TrimSpace(m.PasswordPubKeyPath) == "" {
-		miss = append(miss, "FISCAL_AT_PASSWORD_PUBKEY")
+		miss = append(miss, "fiscal_at_password_pubkey")
 	}
 	return miss
 }

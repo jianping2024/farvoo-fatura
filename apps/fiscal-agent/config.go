@@ -49,6 +49,13 @@ type config struct {
 	// FiscalATEnv: mock | test | prod. Set → wins over process FISCAL_AT_ENV (product path).
 	// Empty → process FISCAL_AT_ENV (CI) or mock. Invalid → Fiscal start fails.
 	FiscalATEnv string `json:"fiscal_at_env,omitempty"`
+	// AT live (test/prod) materials — product path is config.json only (docs/fiscal-at-live-integration.zh.md §4.1).
+	// Relative paths resolve against the Agent install dir (exe dir).
+	FiscalATClientCert     string `json:"fiscal_at_client_cert,omitempty"`
+	FiscalATClientCertPass string `json:"fiscal_at_client_cert_pass,omitempty"`
+	FiscalATPasswordPubkey string `json:"fiscal_at_password_pubkey,omitempty"`
+	FiscalATSeriesURL      string `json:"fiscal_at_series_url,omitempty"`
+	FiscalATTransportURL   string `json:"fiscal_at_transport_url,omitempty"`
 	// FiscalAllowLAN: allow Admin listen on LAN (0.0.0.0:17880). nil/false → loopback only.
 	// Product path: Admin → config.json only (no FISCAL_ALLOW_LAN / FISCAL_BIND).
 	FiscalAllowLAN *bool `json:"fiscal_allow_lan,omitempty"`

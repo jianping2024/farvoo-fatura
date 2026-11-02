@@ -145,3 +145,31 @@ func TestLoopbackAdminURL(t *testing.T) {
 		t.Fatalf("specific IP: %q", got)
 	}
 }
+
+func TestApplyFiscalRuntimeFromConfig_BridgesATMaterials(t *testing.T) {
+	for _, k := range []string{"FISCAL_AT_CLIENT_CERT", "FISCAL_AT_CLIENT_CERT_PASS", "FISCAL_AT_PASSWORD_PUBKEY", "FISCAL_AT_SERIES_URL", "FISCAL_AT_TRANSPORT_URL"} {
+		t.Setenv(k, "")
+		_ = os.Unsetenv(k)
+	}
+	t.Setenv("FISCAL_AT_PASSWORD_PUBKEY", "/ci/override.cer") // pre-set env (CI) is kept
+	abs := filepath.Join(t.TempDir(), "TesteWebservices.pfx")
+	applyFiscalRuntimeFromConfig(&config{
+		FiscalATEnv:            "test",
+		FiscalATClientCert:     abs,
+		FiscalATClientCertPass: "pw",
+		FiscalATPasswordPubkey: "at-certs/ChavePublicaAT.cer",
+		FiscalATSeriesURL:      "https://example.test/series",
+	})
+	if got := os.Getenv("FISCAL_AT_CLIENT_CERT"); got != abs {
+		t.Fatalf("cert: %q", got)
+	}
+	if os.Getenv("FISCAL_AT_CLIENT_CERT_PASS") != "pw" || os.Getenv("FISCAL_AT_SERIES_URL") != "https://example.test/series" {
+		t.Fatal("pass/url not bridged")
+	}
+	if got := os.Getenv("FISCAL_AT_PASSWORD_PUBKEY"); got != "/ci/override.cer" {
+		t.Fatalf("pre-set env must win: %q", got)
+	}
+	if got := resolveInstallPath("at-certs/x.cer"); !filepath.IsAbs(got) || !strings.HasSuffix(got, filepath.Join("at-certs", "x.cer")) {
+		t.Fatalf("relative path not anchored to exe dir: %q", got)
+	}
+}

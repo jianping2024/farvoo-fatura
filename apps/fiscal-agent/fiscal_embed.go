@@ -80,6 +80,31 @@ func applyFiscalRuntimeFromConfig(cfg *config) {
 	case prevAT == "":
 		_ = os.Setenv("FISCAL_AT_ENV", "mock")
 	}
+	if cfg != nil {
+		for _, kv := range []struct{ env, val string }{
+			{"FISCAL_AT_CLIENT_CERT", resolveInstallPath(cfg.FiscalATClientCert)},
+			{"FISCAL_AT_CLIENT_CERT_PASS", cfg.FiscalATClientCertPass},
+			{"FISCAL_AT_PASSWORD_PUBKEY", resolveInstallPath(cfg.FiscalATPasswordPubkey)},
+			{"FISCAL_AT_SERIES_URL", cfg.FiscalATSeriesURL},
+			{"FISCAL_AT_TRANSPORT_URL", cfg.FiscalATTransportURL},
+		} {
+			if strings.TrimSpace(os.Getenv(kv.env)) == "" && strings.TrimSpace(kv.val) != "" {
+				_ = os.Setenv(kv.env, strings.TrimSpace(kv.val))
+			}
+		}
+	}
+}
+
+// resolveInstallPath makes a config.json material path absolute against the exe dir.
+func resolveInstallPath(p string) string {
+	p = strings.TrimSpace(p)
+	if p == "" || filepath.IsAbs(p) {
+		return p
+	}
+	if exe, err := os.Executable(); err == nil {
+		return filepath.Join(filepath.Dir(exe), p)
+	}
+	return p
 }
 
 // fiscalDBFileName is the ONLY per-AT-env SQLite name under the Agent data dir.

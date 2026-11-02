@@ -14,7 +14,7 @@
 | 刀 | 标题 | 状态 | 关闭条件（摘要） |
 |----|------|------|------------------|
 | **A0** | 共享底座（加密 + mTLS + SOAP 公共件） | **已完成**（2026-11-02；0.5.59） | 无网单测绿；mock 行为不变 |
-| **A1** | 系列 SOAP live（test） | **进行中**：A1.1 连通 ✅；下一步 A1.2 注册 | test 注册至少一种销售系列 + GR 系列，得真 `validation_code` |
+| **A1** | 系列 SOAP live（test） | **进行中**：A1.1 连通 ✅；A1.2 `SOAPClient` 已实现（fake-AT 单测绿），待 test 真注册 | test 注册至少一种销售系列 + GR 系列，得真 `validation_code` |
 | **A2** | 运输 SOAP live（test）= 原 G7 / GT T5 | 未开始 | test 返回真 `ATDocCodeID`；mock 回归仍绿 |
 | **A3** | prod 门禁 | 未开始 | 正式证；禁止测试 pfx 打 prod |
 | A4 | 观测 / Admin 只读 `at_env`（可选） | 未开始 | 非本阶段硬门槛 |
@@ -73,6 +73,7 @@ GR mock（G1–G6）与 GT mock（T1–T4）**已完成**；缺的只是 live AT
 | `519655290.pfx` → `:722` | TLS 被拒（`bad record MAC`） | `:722` 只收 AT/DGITA Issuing **CA1** |
 | `599999993/37` | 1199 | 手册示例账号，不可用 → 须本司 NIF 子用户（§3.2） |
 | **`519655290/1`（WSE+WFA）+ `TesteWebservices.pfx`** | **HTTP 200，`codResultOper=2002`**（查询成功，暂无系列） | **A1.1 连通 ✅**（2026-11-02） |
+| 注册 FT2026T01 / GR2026T01 | 2001；验证码 `AAJFJG8HRJ` / `AAJFJ48HR6`（10 位） | **A1.2 AT 侧注册 ✅**（2026-11-02） |
 
 修正：A0 `wss` 命名空间改为手册 `http://schemas.xmlsoap.org/ws/2002/12/secext`；`LoadClientTLS` 改用 `go-pkcs12`（OpenSSL 3 / SHA-256 pfx）。
 
@@ -262,6 +263,21 @@ apps/fiscal-agent/internal/fiscal/at/
 4. 错误可诊断：Auth / schema / 业务码映射进 `at_soap_failed` 摘要（无密码）。  
 5. 可选：`-tags=at_series_live` 集成测（默认 skip）；CI 仍 mock。  
 6. 手测清单写入本节关闭记录或 `docs/test-scenarios/`。
+
+### 6.2.1 实现口径（A1.2，`at/series_soap.go`）
+
+| 项 | 定法 |
+|----|------|
+| `registarSerie` 固定值 | `tipoSerie=N`、`numInicialSeq=1`、`meioProcessamento=PI`、`dataInicioPrevUtiliz`=当天（Europe/Lisbon） |
+| `classeDoc` | `SeriesDocClass` 唯一映射：FT/FS/FR/ND/NC→SI；GR/GT/GA/GC/GD→MG；PF 等→WD；RG/RC→PY |
+| 本地预检（不打 AT） | 系列号 ≤35、`[A-Za-z0-9]` + 单个内部 `[._-]`、禁 `AT` 前缀；`numCertSWFatur` 0..9999 |
+| 结果码 | 2001 → 取 `codValidacaoSerie`；**4001（AT 已有）→ `consultarSeries` 取回 ACTIVE 码**（本地库丢失可恢复）；其它 → `AT <码>: <消息>` |
+| SOAP Fault | 1199 提示「子用户/密码、WSE 权限、电脑时钟」；118 提示「公钥」；错误串不含密码 |
+| 材料 | 懒加载 `LiveMaterialsFromEnv`（托盘经 `applyFiscalRuntimeFromConfig` 从 `config.json` 灌入；相对路径按安装目录）；缺项报 config 字段名。非 test 环境未配 `fiscal_at_series_url` → 失败关闭 |
+| live 探针 | `-tags=at_series_live`：`TestLiveConsultSeries`（只读）/ `TestLiveRegisterSeries`（需显式 `AT_LIVE_SERIES_FT` / `_GR`） |
+| 验证码长度 | WSDL 写 `length=8`，**AT test 实际返回 10 位**（如 `AAJFJG8HRJ`）；按 Portaria 195/2020「≥8 位字母数字」校验，**禁止**写死 8 |
+| 查询结果码 | 有结果时 AT test 也返回 **2002**（非 2000）；两者都按成功处理 |
+| 注意 | AT 不可删系列，仅「当天或次日」可 `anularSerie`；test 系列号建议带 `T` 便于识别 |
 
 ### 6.3 关闭条件
 

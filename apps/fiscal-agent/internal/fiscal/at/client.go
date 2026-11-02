@@ -79,22 +79,3 @@ func (m *MockClient) RegisterSeries(ctx context.Context, req RegisterRequest) (*
 func (m *MockClient) ConsultSeries(ctx context.Context, username, password, seriesCode string) (*RegisterResult, error) {
 	return m.RegisterSeries(ctx, RegisterRequest{Username: username, Password: password, SeriesCode: seriesCode})
 }
-
-// SOAPClient is a stub for real AT endpoints (M1: returns clear error until certs wired).
-type SOAPClient struct {
-	Env Env
-}
-
-func (s *SOAPClient) RegisterSeries(ctx context.Context, req RegisterRequest) (*RegisterResult, error) {
-	_ = ctx
-	_ = req
-	return nil, fmt.Errorf("at: SOAP %s not configured (use FISCAL_AT_ENV=mock until certificates are available)", s.Env)
-}
-
-func (s *SOAPClient) ConsultSeries(ctx context.Context, username, password, seriesCode string) (*RegisterResult, error) {
-	_ = ctx
-	_ = username
-	_ = password
-	_ = seriesCode
-	return nil, fmt.Errorf("at: SOAP %s not configured (use FISCAL_AT_ENV=mock until certificates are available)", s.Env)
-}
