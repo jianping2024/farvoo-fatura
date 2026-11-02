@@ -1,0 +1,81 @@
+---
+description: AT test 联调测试法 — 真 Admin 走通、报文转储、失败分类、失败关闭核对、只读探针、测试报告
+globs: apps/fiscal-agent/internal/fiscal/at/**/*,apps/fiscal-agent/internal/fiscal/service/transport*.go,apps/fiscal-agent/internal/fiscal/service/delivery.go,docs/test-scenarios/**/*
+alwaysApply: false
+---
+
+# AT test 联调测试法
+
+**状态：** 定稿 · 适用 A1/A2（系列、GR/GT 运输）及以后接 AT live 的每一刀
+**范例：** `docs/test-scenarios/2026-11-02-a2-admin-gr-test.md`
+
+## P0 规矩
+
+1. **单测绿 ≠ 走通。** 改了 AT 路径，必须起 `FISCAL_AT_ENV=test` 的 Agent，**用 Admin 真界面**点到底（登录 → 开票 → 选票种 → 填表 → 签发），不只打 API。
+2. **先抓报文再猜原因。** 失败时读转储的原始响应，按来源分类后再下结论（见 §3）。
+3. **每次失败都核对失败关闭**：零单据行、不占号（见 §4）。
+4. **AT 侧不可逆操作先问用户**：注册系列（AT 永久留存）、真发运输单（耗号）。只读查询可随便跑。
+5. **密码永不进对话、文件、命令行参数或日志。** 要真凭证 → 让用户在**自己的终端**里静默输入（见 §5）。
+6. **结论带证据等级**：每项标【已验证】/【未验证】/【阻塞】；推断写明是推断。
+
+## 1. 起 test Agent（带报文转储）
+
+```sh
+cd apps/fiscal-agent && \
+FISCAL_AT_ENV=test \
+FISCAL_AT_SOAP_DUMP=$PWD/data/at-soap-dump \
+FISCAL_DB=$PWD/data/fiscal-test.db FISCAL_DATA_DIR=$PWD/data/fiscal-test-secure \
+FISCAL_BIND=127.0.0.1:17881 FISCAL_ALLOW_DEV_KEY=1 FISCAL_ALLOW_LOCAL_PROVISION=1 \
+FISCAL_AT_CLIENT_CERT=$PWD/internal/fiscal/at/testdata/transport/certificados/current/TesteWebservices.pfx \
+FISCAL_AT_CLIENT_CERT_PASS=TESTEwebservice \
+FISCAL_AT_PASSWORD_PUBKEY=$PWD/internal/fiscal/at/testdata/transport/certificados/current/ChavePublicaAT.cer \
+go run ./cmd/fiscal-local
+```
+
+- 启动日志须见 `at_env=test`、`db=…fiscal-test.db`。改了 Admin HTML/JS（`go:embed`）要**重启**才生效。
+- `data/` 已 gitignore；转储只含业务体与 AT 响应，不含 UsernameToken。
+
+## 2. Admin 真界面走通
+
+- 登录 `http://127.0.0.1:17881`（测试 PIN 见 `scripts/fiscal-session-helper.mjs` 的 `DEFAULT_PIN`）。
+- 用最小合法数据：散客、葡萄牙地址（`NNNN-NNN` 邮编）、开运时间 ≥ 现在。
+- 记下界面实际行为：提示文案是否本地化、焦点、按钮状态、默认值是否合理——**顺手发现的体验问题写进报告「风险」，不在本刀擅改**。
+
+## 3. 失败分类（读 `data/at-soap-dump/latest-*`）
+
+| 看到 | 归类 | 含义 |
+|------|------|------|
+| `latest-meta.txt` 无新文件 | 本地拦截 | 没出网；查 service 校验 / 前端校验 |
+| fault `<detail>` 命名空间 `autenticacao.portaldasfinancas.gov.pt/…` | `unavailable` | AT 认证层失败，未读单据（如 33「mismatched tag, expected hr」= 其凭证后端返回 HTML） |
+| `env:Server`「Erro - Resposta do Servidor」 | `unavailable` | AT 服务端内部错（未知 fault 一律 unavailable） |
+| fault 1199 / 118 | `unavailable` | 我方凭证/材料：子用户密码与 WSE/WDT 权限、电脑时钟 / `ChavePublicaAT` 过期 |
+| 服务层 fault 码（如 33 schema） | `rejected` | 我们的报文结构问题 → 对照 WSDL/手册改 |
+| `ReturnCode` ≠ 0 | `rejected` | 业务拒绝，按码查 `at/errors.go`（54=缺 WDT，-100=开运时间过去） |
+| `ReturnCode` 0 + `ATDocCodeID` | 成功 | 再核对本地落库 |
+
+请求体对照：与最近一次成功的探针/报文**逐字段比**，结构一致而 AT 报认证层错 → 优先怀疑 AT 侧。
+
+## 4. 失败关闭核对（每次失败必做）
+
+```sh
+sqlite3 apps/fiscal-agent/data/fiscal-test.db \
+  "select document_type,count(*) from invoices group by 1;" \
+  "select series_code,last_number from series;"
+```
+
+期望：失败后无新行、`last_number` 不变。成功后：单号连续、`ATCUD` = 验证码-序号。
+
+## 5. 区分「AT 故障」与「我方凭证/请求」：只读探针
+
+```sh
+sh scripts/at-live-consult.sh            # 默认 519655290/1
+```
+
+- **由用户在自己的终端运行**（脚本静默读密码）；agent 只读输出 / `$AT_CONSULT_LOG`。告诉用户终端在哪、输入时不回显。
+- 判读：`2002` 或列出系列 → 凭证正常，故障在运输侧或我方报文；同为 500 / 认证 fault → AT 整体故障，等恢复重试；明确认证失败 → 密码/权限（WSE/WDT）到门户核对。
+- 同一凭证早先成功过、现在系列与运输**同时** 500 → 判为 AT 侧故障（仍属推断，报告里写明）。
+
+## 6. 测试报告（`docs/test-scenarios/YYYY-MM-DD-<主题>.md`）
+
+固定结构：本次修改（内容/文件/唯一写法）→ 核心业务规则 → 详细场景（前置/操作/预期/结果）→ 实际结果表 → 风险与待确认。
+必须写：环境（env、DB、子用户、端口）、AT 原始 fault/ReturnCode 与时间（UTC）、失败关闭核对结果、未验证项及原因。阻塞在 AT 侧时，写清「代码侧已就绪 / 还差什么」。
