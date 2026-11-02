@@ -74,6 +74,8 @@ sh scripts/at-live-consult.sh            # 默认 519655290/1
 - **由用户在自己的终端运行**（脚本静默读密码）；agent 只读输出 / `$AT_CONSULT_LOG`。告诉用户终端在哪、输入时不回显。
 - 判读：`2002` 或列出系列 → 凭证正常，故障在运输侧或我方报文；同为 500 / 认证 fault → AT 整体故障，等恢复重试；明确认证失败 → 密码/权限（WSE/WDT）到门户核对。
 - 同一凭证早先成功过、现在系列与运输**同时** 500 → 判为 AT 侧故障（仍属推断，报告里写明）。
+- 手输密码得 1199 而 Admin 报认证层 fault → 先让用户到门户（acesso.gov.pt → Gestão de Utilizadores）看子用户「Situação / Operações / Último Acesso」：Último Acesso 对上 Admin 那次签发时刻 = 库存凭证有效，1199 是手输错。
+- **报文对照**（写 AT、耗号，先问用户）：`sh scripts/at-live-transport-probe.sh <seq>` 发曾经成功的已知好报文（系列 `GR2026T01`，仅 AT 侧，不入本地库）。它也失败 → AT 运输侧故障；它成功而 Admin 失败 → 逐字段比 Admin 报文。失败不耗号，下次沿用同一 seq。
 
 ## 6. 测试报告（`docs/test-scenarios/YYYY-MM-DD-<主题>.md`）
 

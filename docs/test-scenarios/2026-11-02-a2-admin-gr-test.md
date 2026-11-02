@@ -45,4 +45,7 @@
 ## 5. 风险与待确认
 
 - 只读 `TestLiveConsultSeries`（16:56 UTC，同子用户）也失败：HTTP 500 `env:Server`「Erro - Resposta do Servidor」。同一凭证当天上午查询返回 2002，系列与运输两个服务同时 500，判断为 AT test 后端故障，非本地请求问题；待恢复后重试场景 1。
+- 17:01 UTC 再跑只读查询（手输密码）：0.3s 返回 fault **1199**「Erro de Autenticação/Autorização - Pedido do Cliente」（本机时钟已核对无偏差）。17:02 Admin 再签 GR（库存凭证）仍为 fault 33。结论**未定**：1199 可能是手输密码有误，也可能该子用户密码/权限有变或被锁；需在 AT 门户核对 `519655290/1` 后再判。时间线：13:03 最后成功 → 16:08 系列 500 → 16:49–17:02 运输 33。
+- 门户核对（acesso.gov.pt → Gestão de Utilizadores）：`RestaurantPos 519655290/1` **Ativo**，权限 **WFA, WDT, WSE**，Último Acesso **2026-11-02 17:02:43**（与 17:02 Admin 签 GR 同刻）。→ 库存凭证有效、未锁、权限齐；17:01 的 1199 归因手输密码有误。运输 33 发生在认证通过之后的 AT 后端（推断：AT 运输侧故障，或对我方报文的异常处理），下一步用上午成功过的探针报文（`TestLiveTransportGR`）同时段对照。
+- **对照结果（17:06:28 UTC）：** `scripts/at-live-transport-probe.sh 3`（上午成功的报文，`GR GR2026T01/3`）同样 HTTP 500 fault 33，12.3s。→ **结论：AT test 运输服务侧故障，与 Admin 报文无关**；A2 代码侧无待改项，等 AT 恢复后重试场景 1。`GR2026T01/3` 未登记成功，下次探针仍用 3。
 - 观察到的 GR 表单体验问题（未改）：显示付款方式 / 实收金额；按钮仍写「签发发票并打印」；「收货方是 IVA 纳税人」默认勾选但 NIF 为空，散客必先手动取消。
