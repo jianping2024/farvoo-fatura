@@ -122,8 +122,7 @@ func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetai
 			return d, err
 		}
 		if extra != nil {
-			d.ShipFromAddress = extra.ShipFromAddress
-			d.ShipToAddress = extra.ShipToAddress
+			d.ShipFrom, d.ShipTo = &extra.ShipFrom, &extra.ShipTo
 			d.MovementStartAt = extra.MovementStartAt
 			d.ATDocCodeID = extra.ATDocCodeID
 			vat := extra.RecipientIsVATPayer
@@ -144,8 +143,7 @@ func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetai
 		}
 		if extra != nil {
 			d.MovementPurpose = extra.MovementPurpose
-			d.ShipFromAddress = extra.ShipFromAddress
-			d.ShipToAddress = extra.ShipToAddress
+			d.ShipFrom, d.ShipTo = &extra.ShipFrom, &extra.ShipTo
 			d.MovementStartAt = extra.MovementStartAt
 			d.ATDocCodeID = extra.ATDocCodeID
 			vat := extra.RecipientIsVATPayer

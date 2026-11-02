@@ -34,9 +34,9 @@ type IssueGTParams struct {
 	FiscalTerminalID    string
 	FiscalTerminalLabel string
 	InvoiceLocale       string
-	MovementPurpose     string // transfer | customer
-	ShipFromAddress     string
-	ShipToAddress       string
+	MovementPurpose     string         // transfer | customer
+	ShipFrom            domain.Address // load point (validated by service)
+	ShipTo              domain.Address // unload point
 	MovementStartAt     string
 	RecipientIsVATPayer bool
 	ATDocCodeID         string // required; from TransportClient
@@ -51,15 +51,14 @@ func (d *DB) IssueGT(ctx context.Context, signer Signer, p IssueGTParams) (*Issu
 	if p.NowUTC.IsZero() {
 		p.NowUTC = time.Now().UTC()
 	}
-	shipFrom := strings.TrimSpace(p.ShipFromAddress)
-	shipTo := strings.TrimSpace(p.ShipToAddress)
+	shipFrom, shipTo := p.ShipFrom.Normalize(), p.ShipTo.Normalize()
 	moveAt := strings.TrimSpace(p.MovementStartAt)
 	atCode := strings.TrimSpace(p.ATDocCodeID)
 	purpose := strings.TrimSpace(p.MovementPurpose)
 	if purpose != domain.MovementPurposeTransfer && purpose != domain.MovementPurposeCustomer {
 		return nil, fmt.Errorf("store: movement_purpose must be transfer or customer")
 	}
-	if shipFrom == "" || shipTo == "" || moveAt == "" {
+	if shipFrom.IsZero() || shipTo.IsZero() || moveAt == "" {
 		return nil, fmt.Errorf("store: ship_from, ship_to, and movement_start_at required")
 	}
 	if atCode == "" {
@@ -199,8 +198,8 @@ func (d *DB) IssueGT(ctx context.Context, signer Signer, p IssueGTParams) (*Issu
 		Hash:                      hashB64,
 		HashControl:               hashControl,
 		InvoiceLocale:             p.InvoiceLocale,
-		ShipFromAddress:           shipFrom,
-		ShipToAddress:             shipTo,
+		ShipFromAddress:           shipFrom.String(),
+		ShipToAddress:             shipTo.String(),
 		MovementStartAt:           moveAt,
 		ATDocCodeID:               atCode,
 		RecipientIsVATPayer:       p.RecipientIsVATPayer,
@@ -228,18 +227,7 @@ func (d *DB) IssueGT(ctx context.Context, signer Signer, p IssueGTParams) (*Issu
 		vatFlag = 1
 	}
 
-	_, err = tx.Exec(`INSERT INTO invoices (
-		id, store_id, document_type, series_id, series_code, sequence_number, invoice_no,
-		atcud, hash, hash_control, signing_key_version, previous_hash, qr_content,
-		invoice_date, system_entry_date, document_status, print_status,
-		gross_total, net_total, tax_payable, customer_id, source_id,
-		software_certificate_number, source_system, source_sale_id, scope_type, scope_id,
-		fiscal_purpose, external_bill_id, display_meta_json, credited_gross_total, received_gross_total, created_at,
-		fiscal_terminal_id, fiscal_terminal_label, status_reason, status_changed_at, valid_until,
-		ship_from_address, ship_to_address, movement_start_at, at_transport_doc_code, recipient_is_vat_payer, movement_purpose
-	) VALUES (?, ?, 'GT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'N', 'PENDING',
-		?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, '0.00', '0.00', ?, ?, ?, NULL, ?, NULL,
-		?, ?, ?, ?, ?, ?)`,
+	args := []any{
 		docID, p.StoreID, seriesID, seriesCode, seq, invoiceNo,
 		atcud, hashB64, hashControl, keyVersion, lastHash, qr,
 		invoiceDate, systemEntry,
@@ -248,7 +236,23 @@ func (d *DB) IssueGT(ctx context.Context, signer Signer, p IssueGTParams) (*Issu
 		nullStr(p.Snapshot.ScopeType), nullStr(p.Snapshot.ScopeID),
 		"transport_note", displayMetaJSON(p.Snapshot.DisplayMeta), nowRFC, termID, termLabel,
 		systemEntry,
-		shipFrom, shipTo, moveAt, atCode, vatFlag, purpose)
+	}
+	args = append(args, shipAddressArgs(shipFrom)...)
+	args = append(args, shipAddressArgs(shipTo)...)
+	args = append(args, moveAt, atCode, vatFlag, purpose)
+	_, err = tx.Exec(`INSERT INTO invoices (
+		id, store_id, document_type, series_id, series_code, sequence_number, invoice_no,
+		atcud, hash, hash_control, signing_key_version, previous_hash, qr_content,
+		invoice_date, system_entry_date, document_status, print_status,
+		gross_total, net_total, tax_payable, customer_id, source_id,
+		software_certificate_number, source_system, source_sale_id, scope_type, scope_id,
+		fiscal_purpose, external_bill_id, display_meta_json, credited_gross_total, received_gross_total, created_at,
+		fiscal_terminal_id, fiscal_terminal_label, status_reason, status_changed_at, valid_until,
+		ship_from_detail, ship_from_city, ship_from_postal_code, ship_from_country,
+		ship_to_detail, ship_to_city, ship_to_postal_code, ship_to_country, movement_start_at, at_transport_doc_code, recipient_is_vat_payer, movement_purpose
+	) VALUES (?, ?, 'GT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'N', 'PENDING',
+		?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, '0.00', '0.00', ?, ?, ?, NULL, ?, NULL,
+		?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("store: insert GT invoice: %w", err)
 	}
@@ -347,12 +351,12 @@ func gtPayloadHash(p IssueGTParams) string {
 	body := struct {
 		Snapshot            domain.SaleSnapshot `json:"snapshot"`
 		MovementPurpose     string              `json:"movement_purpose"`
-		ShipFrom            string              `json:"ship_from"`
-		ShipTo              string              `json:"ship_to"`
+		ShipFrom            domain.Address      `json:"ship_from"`
+		ShipTo              domain.Address      `json:"ship_to"`
 		MovementStartAt     string              `json:"movement_start_at"`
 		RecipientIsVATPayer bool                `json:"recipient_is_vat_payer"`
 		ATDocCodeID         string              `json:"at_doc_code_id"`
-	}{p.Snapshot, p.MovementPurpose, p.ShipFromAddress, p.ShipToAddress, p.MovementStartAt, p.RecipientIsVATPayer, p.ATDocCodeID}
+	}{p.Snapshot, p.MovementPurpose, p.ShipFrom.Normalize(), p.ShipTo.Normalize(), p.MovementStartAt, p.RecipientIsVATPayer, p.ATDocCodeID}
 	return hashJSON(body)
 }
 
@@ -465,12 +469,11 @@ func (d *DB) AnnulGT(ctx context.Context, p AnnulGTParams) (*IssueRecord, error)
 	}, nil
 }
 
-
 // TransportExtra is GT detail for Admin / API.
 type TransportExtra struct {
 	MovementPurpose     string
-	ShipFromAddress     string
-	ShipToAddress       string
+	ShipFrom            domain.Address
+	ShipTo              domain.Address
 	MovementStartAt     string
 	ATDocCodeID         string
 	RecipientIsVATPayer bool
@@ -480,12 +483,16 @@ type TransportExtra struct {
 
 // LoadTransportExtra loads GT movement fields (no FT links).
 func (d *DB) LoadTransportExtra(transportID string) (*TransportExtra, error) {
-	var purpose, shipFrom, shipTo, moveAt, atCode, reason, changedAt sql.NullString
+	var from, to shipAddressCols
+	var purpose, moveAt, atCode, reason, changedAt sql.NullString
 	var vatFlag sql.NullInt64
-	err := d.SQL.QueryRow(`SELECT movement_purpose, ship_from_address, ship_to_address, movement_start_at, at_transport_doc_code,
+	dest := append([]any{&purpose}, from.dest()...)
+	dest = append(dest, to.dest()...)
+	dest = append(dest, &moveAt, &atCode, &vatFlag, &reason, &changedAt)
+	err := d.SQL.QueryRow(`SELECT movement_purpose, `+shipAddressSelect("ship_from")+`, `+shipAddressSelect("ship_to")+`, movement_start_at, at_transport_doc_code,
 		recipient_is_vat_payer, status_reason, status_changed_at
 		FROM invoices WHERE id = ? AND document_type = 'GT'`, transportID).
-		Scan(&purpose, &shipFrom, &shipTo, &moveAt, &atCode, &vatFlag, &reason, &changedAt)
+		Scan(dest...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -494,8 +501,8 @@ func (d *DB) LoadTransportExtra(transportID string) (*TransportExtra, error) {
 	}
 	return &TransportExtra{
 		MovementPurpose:     purpose.String,
-		ShipFromAddress:     shipFrom.String,
-		ShipToAddress:       shipTo.String,
+		ShipFrom:            from.address(),
+		ShipTo:              to.address(),
 		MovementStartAt:     moveAt.String,
 		ATDocCodeID:         atCode.String,
 		RecipientIsVATPayer: vatFlag.Valid && vatFlag.Int64 != 0,

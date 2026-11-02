@@ -469,8 +469,9 @@ bill_sync_drafts ──(upsert by item_code)──► fiscal_products
 | status_reason | TEXT | 否 | PF/GR 作废等原因；→ SAF-T `Reason` |
 | status_changed_at | TEXT | 否 | PF/GR 最近状态变更；→ `WorkStatusDate` / `MovementStatusDate` |
 | valid_until | TEXT | 否 | PF 可选有效期 `YYYY-MM-DD` |
-| ship_from_address | TEXT | 否 | GR/GT 装货地全文；签发时应用层必填 |
-| ship_to_address | TEXT | 否 | GR/GT 卸货地全文；签发时应用层必填 |
+| ship_from_detail / _city / _postal_code / _country | TEXT | 否 | GR/GT 装货地（结构化，迁移 017）；签发时应用层必填完整葡萄牙地址 |
+| ship_to_detail / _city / _postal_code / _country | TEXT | 否 | GR/GT 卸货地（同上） |
+| ship_from_address / ship_to_address | TEXT | 否 | **仅 017 前旧单据**的全文地址；新单据不写（读回时作 Detail） |
 | movement_start_at | TEXT | 否 | 运输开始 ISO；签发时应用层必填 |
 | at_transport_doc_code | TEXT | 否 | AT 运输文档识别码；签发成功后必有 |
 | recipient_is_vat_payer | INTEGER | 否 | `1`=IVA 纳税人；`0`=非纳税人；仅 GR/GT |

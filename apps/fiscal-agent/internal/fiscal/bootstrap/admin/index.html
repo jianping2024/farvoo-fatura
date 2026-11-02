@@ -839,15 +839,28 @@
               </div>
               <div class="field">
                 <label data-i18n="gr.ship_from">装货地</label>
-                <input id="invShipFrom" />
+                <input id="invShipFrom" data-i18n="gr.ship_street_ph" data-i18n-attr="placeholder" placeholder="街道门牌" />
+                <span class="hint" data-i18n="gr.ship_from_hint"></span>
+              </div>
+              <div class="split">
+                <div class="field"><label data-i18n="gr.customer_postal">邮编</label><input id="invShipFromPostal" placeholder="1000-001" /></div>
+                <div class="field"><label data-i18n="gr.customer_city">城市</label><input id="invShipFromCity" /></div>
               </div>
               <div class="field">
                 <label data-i18n="gr.ship_to">卸货地</label>
-                <input id="invShipTo" />
+                <input id="invShipTo" data-i18n="gr.ship_street_ph" data-i18n-attr="placeholder" placeholder="街道门牌" />
+                <span class="hint" data-i18n="gr.ship_to_hint"></span>
+              </div>
+              <div class="split">
+                <div class="field"><label data-i18n="gr.customer_postal">邮编</label><input id="invShipToPostal" placeholder="1000-001" /></div>
+                <div class="field"><label data-i18n="gr.customer_city">城市</label><input id="invShipToCity" /></div>
               </div>
               <div class="field">
                 <label data-i18n="gr.movement_start">开运时间</label>
-                <input id="invMovementStart" type="datetime-local" />
+                <div class="split">
+                  <div id="invMovementDate"></div>
+                  <input id="invMovementTime" type="time" step="60" />
+                </div>
               </div>
               <div class="field" id="invRecipientVatWrap">
                 <label class="check-row" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
@@ -1885,7 +1898,7 @@
     if (setupStatusCache) applySettingsStatusUI(setupStatusCache);
     [billsListPaginationCtrl, productListPaginationCtrl,
       customerListPaginationCtrl, invoiceListPaginationCtrl, auditLogPaginationCtrl,
-      invoiceDateFilterCtrl]
+      invoiceDateFilterCtrl, movementDatePicker]
       .forEach(function (c) { if (c && c.relabel) c.relabel(); });
     if ($('#app-shell') && $('#app-shell').classList.contains('on')) {
       void refreshOperatorsPanel();
@@ -5110,6 +5123,7 @@
     const isGr = docType === 'GR';
     const isGt = docType === 'GT';
     let tender = { ok: true, tendered: '' };
+    let shipFrom = null, shipTo = null, movementStart = '';
     if (!isPf && !isGr && !isGt) {
       tender = readCashTenderedOrToast($('#invPay'), $('#invTendered'), orderCashTenderDue());
       if (!tender.ok) return;
@@ -5119,8 +5133,16 @@
         toast(FiscalAdminI18n.t(isGt ? 'gt.need_address' : 'gr.need_address'), 'error');
         return;
       }
-      if (!($('#invShipFrom').value || '').trim() || !($('#invShipTo').value || '').trim() || !($('#invMovementStart').value || '').trim()) {
+      shipFrom = readShipPoint('invShipFrom');
+      shipTo = readShipPoint('invShipTo');
+      movementStart = readMovementStart();
+      if (!movementStart) {
         toast(FiscalAdminI18n.t(isGt ? 'gt.need_transport' : 'gr.need_transport'), 'error');
+        return;
+      }
+      if (!PT_POSTAL_RE.test(($('#invGrPostal').value || '').trim()) ||
+          (shipFrom && !shipPointComplete(shipFrom)) || (shipTo && !shipPointComplete(shipTo))) {
+        toast(FiscalAdminI18n.t('gr.need_postal_pt'), 'error');
         return;
       }
       if (isGt) {
@@ -5135,9 +5157,7 @@
             toast(FiscalAdminI18n.t('gt.transfer_nif'), 'error');
             return;
           }
-          const fromA = ($('#invShipFrom').value || '').trim();
-          const toA = ($('#invShipTo').value || '').trim();
-          if (fromA && toA && fromA === toA) {
+          if (shipFrom && shipTo && JSON.stringify(shipFrom) === JSON.stringify(shipTo)) {
             toast(FiscalAdminI18n.t('gt.transfer_addr_hint'), 'info');
           }
         } else if ($('#invRecipientVat').checked && !nif) {
@@ -5179,10 +5199,9 @@
       body.customer_address = ($('#invGrAddress').value || '').trim();
       body.customer_city = ($('#invGrCity').value || '').trim();
       body.customer_postal_code = ($('#invGrPostal').value || '').trim();
-      body.ship_from_address = ($('#invShipFrom').value || '').trim();
-      body.ship_to_address = ($('#invShipTo').value || '').trim();
-      const ms = ($('#invMovementStart').value || '').trim();
-      body.movement_start_at = ms.length === 16 ? ms + ':00' : ms;
+      if (shipFrom) body.ship_from = shipFrom; // omitted → server uses store address
+      if (shipTo) body.ship_to = shipTo;       // omitted → server uses customer address
+      body.movement_start_at = movementStart;
       body.recipient_is_vat_payer = !!$('#invRecipientVat').checked;
     }
     if (isGt) {
@@ -6318,6 +6337,34 @@
     $('#docType').addEventListener('change', syncGrFieldsVisibility);
     syncGrFieldsVisibility();
   }
+  const PT_POSTAL_RE = /^\d{4}-\d{3}$/;
+  /** ONLY reader of a GR/GT load/unload point group (street / postal / city).
+   *  All three empty → null: the server defaults to the store (load) or customer (unload) address. */
+  function readShipPoint(prefix) {
+    const v = (sel) => (($(sel) && $(sel).value) || '').trim();
+    const a = { address_detail: v('#' + prefix), postal_code: v('#' + prefix + 'Postal'), city: v('#' + prefix + 'City'), country: 'PT' };
+    return (a.address_detail || a.postal_code || a.city) ? a : null;
+  }
+  function shipPointComplete(a) {
+    return !!(a.address_detail && a.city && PT_POSTAL_RE.test(a.postal_code));
+  }
+
+  // ONLY movement-start control: unified FiscalUI date picker (Lisbon today onward) + HH:MM.
+  const movementDatePicker = FiscalUI.createDatePicker('#invMovementDate', {
+    value: FiscalUI.ymdInTimezone(new Date(), INVOICE_TZ),
+    min: FiscalUI.ymdInTimezone(new Date(), INVOICE_TZ),
+    getLocale: function () {
+      return (typeof FiscalAdminI18n !== 'undefined' && FiscalAdminI18n.getLocale) ? FiscalAdminI18n.getLocale() : 'zh';
+    },
+    getPlaceholder: function () { return FiscalAdminI18n.t('gr.movement_date_ph'); },
+  });
+  /** "YYYY-MM-DDTHH:MM:00" (Lisbon wall time) or '' when date/time missing. */
+  function readMovementStart() {
+    const d = movementDatePicker.getValue();
+    const t = (($('#invMovementTime') && $('#invMovementTime').value) || '').trim();
+    return d && /^\d{2}:\d{2}$/.test(t) ? d + 'T' + t + ':00' : '';
+  }
+
   if ($('#invMovementPurpose')) {
     $('#invMovementPurpose').addEventListener('change', syncGtPurposeUI);
   }

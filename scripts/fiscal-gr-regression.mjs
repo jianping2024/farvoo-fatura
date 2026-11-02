@@ -90,8 +90,8 @@ async function issueGR(amount, requestId, extra = {}) {
     customer_postal_code: '1000-001',
     payment_method: 'CASH',
     lines: grLines(amount),
-    ship_from_address: 'Armazem Rua Demo 1, Lisboa',
-    ship_to_address: 'Rua Entrega 10, Lisboa',
+    ship_from: { address_detail: 'Armazem Rua Demo 1', postal_code: '1000-001', city: 'Lisboa' },
+    ship_to: { address_detail: 'Rua Entrega 10', postal_code: '1000-002', city: 'Lisboa' },
     movement_start_at: movementStart(),
     recipient_is_vat_payer: true,
     ...extra,
@@ -199,8 +199,8 @@ async function main() {
     record('GR print type', job.document_type === 'GR' || payloadStr.includes('"document_type":"GR"') || payloadStr.includes('GR'), job.document_type || 'payload');
     const hasTransport = payloadStr.includes('ship_from') || payloadStr.includes('ShipFrom')
       || payloadStr.includes('at_doc_code') || payloadStr.includes('ATDocCode')
-      || !!(gr1d.ship_from_address && gr1d.at_doc_code_id);
-    record('GR print transport', hasTransport, (gr1d.ship_from_address || '').slice(0, 40));
+      || !!(gr1d.ship_from && gr1d.ship_from.postal_code === '1000-001' && gr1d.at_doc_code_id);
+    record('GR print transport', hasTransport, JSON.stringify(gr1d.ship_from || {}).slice(0, 60));
 
     // GR-06 direct FT
     const ftDirect = await issueFT('10.00', 'gr-06-ft');

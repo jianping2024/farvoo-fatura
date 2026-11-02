@@ -36,14 +36,16 @@ func (s *FiscalService) IssueDeliveryNote(ctx context.Context, req domain.Delive
 	if req.StoreID == "" {
 		req.StoreID = s.storeID
 	}
-	shipFrom := strings.TrimSpace(req.ShipFromAddress)
-	shipTo := strings.TrimSpace(req.ShipToAddress)
 	moveAt := strings.TrimSpace(req.MovementStartAt)
-	if shipFrom == "" || shipTo == "" || moveAt == "" {
-		return nil, coded(ErrCodeValidationFailed, "ship_from_address, ship_to_address, movement_start_at required")
+	if moveAt == "" {
+		return nil, coded(ErrCodeValidationFailed, "movement_start_at required")
 	}
 	if err := validateGRCustomer(req.Snapshot.Customer, req.RecipientIsVATPayer); err != nil {
 		return nil, coded(ErrCodeValidationFailed, err.Error())
+	}
+	shipFrom, shipTo, err := s.resolveShipPoints(req.StoreID, req.Snapshot.Customer, req.ShipFrom, req.ShipTo)
+	if err != nil {
+		return nil, err
 	}
 
 	sig, err := s.ensureSigner()
@@ -74,8 +76,8 @@ func (s *FiscalService) IssueDeliveryNote(ctx context.Context, req domain.Delive
 		FiscalTerminalID:    req.FiscalTerminalID,
 		FiscalTerminalLabel: req.FiscalTerminalLabel,
 		InvoiceLocale:       s.invoiceLocale(),
-		ShipFromAddress:     shipFrom,
-		ShipToAddress:       shipTo,
+		ShipFrom:            shipFrom,
+		ShipTo:              shipTo,
 		MovementStartAt:     moveAt,
 		RecipientIsVATPayer: req.RecipientIsVATPayer,
 		ATDocCodeID:         comm.atRes.ATDocCodeID,
@@ -91,7 +93,7 @@ func (s *FiscalService) IssueDeliveryNote(ctx context.Context, req domain.Delive
 		if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "NIF") || strings.Contains(err.Error(), "address") {
 			return nil, coded(ErrCodeValidationFailed, err.Error())
 		}
-		return nil, transportCommitFailed(comm, err)
+		return nil, s.transportCommitFailed(req.OperatorID, comm, err)
 	}
 	return &domain.IssueResult{
 		DocumentID: rec.DocumentID, InvoiceNo: rec.InvoiceNo, ATCUD: rec.ATCUD,
@@ -161,8 +163,8 @@ func (s *FiscalService) IssueManualDeliveryNote(ctx context.Context, in catalog.
 		FiscalTerminalID:    fiscalTerminalID,
 		FiscalTerminalLabel: fiscalTerminalLabel,
 		Snapshot:            snap,
-		ShipFromAddress:     in.ShipFromAddress,
-		ShipToAddress:       in.ShipToAddress,
+		ShipFrom:            in.ShipFrom,
+		ShipTo:              in.ShipTo,
 		MovementStartAt:     in.MovementStartAt,
 		RecipientIsVATPayer: vat,
 	})

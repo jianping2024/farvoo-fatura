@@ -104,8 +104,10 @@ func TestLiveTransportGR(t *testing.T) {
 		DocumentNumber: "GR GR2026T01/" + seq, ATCUD: "AAJFJ48HR6-" + seq, // GR2026T01 validation code at AT
 		MovementType: "GR", MovementStartTime: start,
 		CustomerTaxID: "999999990", CustomerName: "Consumidor final teste",
-		ShipFromAddress: "Rua Teste 1, 1000-001 Lisboa", ShipToAddress: "Rua Destino 2, 4000-123 Porto",
-		Lines: []TransportLine{{Description: "Artigo de teste", Quantity: "1", UnitOfMeasure: "UN", UnitPrice: "10.00"}},
+		CustomerAddress: TransportAddress{Detail: "Rua Destino 2", City: "Porto", PostalCode: "4000-123"},
+		ShipFrom:        TransportAddress{Detail: "Rua Teste 1", City: "Lisboa", PostalCode: "1000-001"},
+		ShipTo:          TransportAddress{Detail: "Rua Destino 2", City: "Porto", PostalCode: "4000-123"},
+		Lines:           []TransportLine{{Description: "Artigo de teste", Quantity: "1", UnitOfMeasure: "UN", UnitPrice: "10.00"}},
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

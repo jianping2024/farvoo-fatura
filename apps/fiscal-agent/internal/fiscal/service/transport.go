@@ -38,11 +38,9 @@ func (s *FiscalService) IssueTransportNote(ctx context.Context, req domain.Trans
 	if purpose != domain.MovementPurposeTransfer && purpose != domain.MovementPurposeCustomer {
 		return nil, coded(ErrCodeValidationFailed, "movement_purpose must be transfer or customer")
 	}
-	shipFrom := strings.TrimSpace(req.ShipFromAddress)
-	shipTo := strings.TrimSpace(req.ShipToAddress)
 	moveAt := strings.TrimSpace(req.MovementStartAt)
-	if shipFrom == "" || shipTo == "" || moveAt == "" {
-		return nil, coded(ErrCodeValidationFailed, "ship_from_address, ship_to_address, movement_start_at required")
+	if moveAt == "" {
+		return nil, coded(ErrCodeValidationFailed, "movement_start_at required")
 	}
 
 	storeNIF, err := s.storeTaxpayerNIF(req.StoreID)
@@ -64,6 +62,10 @@ func (s *FiscalService) IssueTransportNote(ctx context.Context, req domain.Trans
 	}
 	if err := validateGRCustomer(req.Snapshot.Customer, vat); err != nil {
 		return nil, coded(ErrCodeValidationFailed, err.Error())
+	}
+	shipFrom, shipTo, err := s.resolveShipPoints(req.StoreID, req.Snapshot.Customer, req.ShipFrom, req.ShipTo)
+	if err != nil {
+		return nil, err
 	}
 
 	sig, err := s.ensureSigner()
@@ -95,8 +97,8 @@ func (s *FiscalService) IssueTransportNote(ctx context.Context, req domain.Trans
 		FiscalTerminalLabel: req.FiscalTerminalLabel,
 		InvoiceLocale:       s.invoiceLocale(),
 		MovementPurpose:     purpose,
-		ShipFromAddress:     shipFrom,
-		ShipToAddress:       shipTo,
+		ShipFrom:            shipFrom,
+		ShipTo:              shipTo,
 		MovementStartAt:     moveAt,
 		RecipientIsVATPayer: vat,
 		ATDocCodeID:         comm.atRes.ATDocCodeID,
@@ -112,7 +114,7 @@ func (s *FiscalService) IssueTransportNote(ctx context.Context, req domain.Trans
 		if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "NIF") || strings.Contains(err.Error(), "address") || strings.Contains(err.Error(), "movement_purpose") {
 			return nil, coded(ErrCodeValidationFailed, err.Error())
 		}
-		return nil, transportCommitFailed(comm, err)
+		return nil, s.transportCommitFailed(req.OperatorID, comm, err)
 	}
 	return &domain.IssueResult{
 		DocumentID: rec.DocumentID, InvoiceNo: rec.InvoiceNo, ATCUD: rec.ATCUD,
@@ -181,8 +183,8 @@ func (s *FiscalService) IssueManualTransportNote(ctx context.Context, in catalog
 		FiscalTerminalLabel: fiscalTerminalLabel,
 		Snapshot:            snap,
 		MovementPurpose:     purpose,
-		ShipFromAddress:     in.ShipFromAddress,
-		ShipToAddress:       in.ShipToAddress,
+		ShipFrom:            in.ShipFrom,
+		ShipTo:              in.ShipTo,
 		MovementStartAt:     in.MovementStartAt,
 		RecipientIsVATPayer: vat,
 	})

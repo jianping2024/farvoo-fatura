@@ -281,15 +281,3 @@ func parseSeriesEnvelope(status int, raw []byte) (*seriesResp, error) {
 	}
 	return &env.Body.Op.Resp, nil
 }
-
-// faultHint adds operator guidance for observed AT auth faults (2026-11-02 probes).
-func faultHint(code string) string {
-	switch code {
-	case "1199":
-		return " (check AT sub-user/password, WSE profile, and PC clock)"
-	case "118":
-		return " (check fiscal_at_password_pubkey is the current ChavePublicaAT)"
-	default:
-		return ""
-	}
-}

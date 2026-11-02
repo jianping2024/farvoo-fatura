@@ -9,7 +9,8 @@ import (
 	"time"
 )
 
-// TransportAddress is AT AddressStructurePT (Country is always PT).
+// TransportAddress is AT AddressStructurePT (Country is always PT). Callers pass
+// already-validated structured fields (domain.Address.ValidatePT); nothing is parsed here.
 type TransportAddress struct {
 	Detail     string
 	City       string
@@ -41,8 +42,8 @@ type TransportDocument struct {
 	CustomerTaxID         string
 	CustomerName          string
 	CustomerAddress       TransportAddress
-	ShipFromAddress       string // free text; parsed by ParseAddressPT
-	ShipToAddress         string
+	ShipFrom              TransportAddress // load point (AddressFrom)
+	ShipTo                TransportAddress // unload point (AddressTo)
 	Lines                 []TransportLine
 }
 

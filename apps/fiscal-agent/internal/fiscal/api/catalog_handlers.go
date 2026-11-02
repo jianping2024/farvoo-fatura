@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"farvoo-fiscal-agent/internal/fiscal/catalog"
+	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/store"
 )
 
@@ -160,14 +161,21 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		ProformaID          string                    `json:"proforma_id"`
 		DeliveryNoteIDs     []string                  `json:"delivery_note_ids"`
 		ValidUntil          string                    `json:"valid_until"`
-		ShipFromAddress     string                    `json:"ship_from_address"`
-		ShipToAddress       string                    `json:"ship_to_address"`
+		ShipFrom            domain.Address            `json:"ship_from"`
+		ShipTo              domain.Address            `json:"ship_to"`
+		LegacyShipFrom      string                    `json:"ship_from_address"` // pre-structured clients; rejected
+		LegacyShipTo        string                    `json:"ship_to_address"`
 		MovementStartAt     string                    `json:"movement_start_at"`
 		RecipientIsVATPayer *bool                     `json:"recipient_is_vat_payer"`
 		MovementPurpose     string                    `json:"movement_purpose"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
+		return
+	}
+	if body.LegacyShipFrom != "" || body.LegacyShipTo != "" {
+		writeErr(w, http.StatusBadRequest, "validation_failed",
+			"ship_from_address/ship_to_address are no longer accepted; send ship_from/ship_to {address_detail, postal_code, city}")
 		return
 	}
 	id, ok := RequireOperatorID(w, r)
@@ -189,7 +197,7 @@ func handleIssueManualFT(w http.ResponseWriter, r *http.Request, deps HandlerDep
 		TableDisplayName: body.TableDisplayName, Lines: body.Lines,
 		ProformaID: body.ProformaID, DeliveryNoteIDs: body.DeliveryNoteIDs,
 		ValidUntil: body.ValidUntil,
-		ShipFromAddress: body.ShipFromAddress, ShipToAddress: body.ShipToAddress,
+		ShipFrom: body.ShipFrom, ShipTo: body.ShipTo,
 		MovementStartAt: body.MovementStartAt, RecipientIsVATPayer: body.RecipientIsVATPayer,
 		MovementPurpose: body.MovementPurpose,
 	}, body.OperatorID, body.StationID, termID, termLabel)

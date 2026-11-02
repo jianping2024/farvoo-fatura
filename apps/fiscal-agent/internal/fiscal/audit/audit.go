@@ -46,6 +46,7 @@ var actionLabels = map[string]string{
 	"prepare_machine_swap":    "换机准备",
 	"series_integrity_failed": "系列校验失败",
 	"series_integrity_healed": "系列校验修复",
+	"at_transport_unsaved":    "运输单 AT 已登记但本地未保存",
 }
 
 // ActionLabel maps DB action to product UI text (design §5.1).

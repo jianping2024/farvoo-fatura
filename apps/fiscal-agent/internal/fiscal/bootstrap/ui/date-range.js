@@ -309,4 +309,6 @@
   global.FiscalUI = global.FiscalUI || {};
   global.FiscalUI.createDateRangeFilter = createDateRangeFilter;
   global.FiscalUI.dateRangePresetToDates = dateRangePresetToDates;
+  /** ONLY "today in timezone" (YYYY-MM-DD) for Admin date pickers. */
+  global.FiscalUI.ymdInTimezone = ymdInTZ;
 })(typeof window !== 'undefined' ? window : globalThis);

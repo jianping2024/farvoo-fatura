@@ -15,7 +15,7 @@
 |----|------|------|------------------|
 | **A0** | 共享底座（加密 + mTLS + SOAP 公共件） | **已完成**（2026-11-02；0.5.59） | 无网单测绿；mock 行为不变 |
 | **A1** | 系列 SOAP live（test） | **已完成**（2026-11-02）：Admin 经 test 港注册 FT/FS/GR，真验证码入 `fiscal-test.db` | test 注册至少一种销售系列 + GR 系列，得真 `validation_code` |
-| **A2** | 运输 SOAP live（test）= 原 G7 / GT T5 | 未开始 | test 返回真 `ATDocCodeID`；mock 回归仍绿 |
+| **A2** | 运输 SOAP live（test）= 原 G7 / GT T5 | **进行中**：探针真 ATDocCodeID ✅；待 Admin 开 GR 走通 | test 返回真 `ATDocCodeID`；mock 回归仍绿 |
 | **A3** | prod 门禁 | 未开始 | 正式证；禁止测试 pfx 打 prod |
 | A4 | 观测 / Admin 只读 `at_env`（可选） | 未开始 | 非本阶段硬门槛 |
 
@@ -328,6 +328,23 @@ apps/fiscal-agent/internal/fiscal/at/
 3. 脱敏请求/响应样例入 `testdata/transport/fixtures/`（无密码、无私钥）。  
 4. `-tags=at_transport_live`；手测最小 GR；GT 复用同一客户端（`MovementType=GT`）。  
 5. mock 回归（含 `fiscal-gt-regression.mjs` / GR 相关）仍绿。
+
+### 7.2.1 实现口径（A2，`at/transport_soap.go` + `service/transport_at.go`）
+
+| 项 | 定法 |
+|----|------|
+| 单据号 | **真实号**：`PrepareTransport` 读下一号（如 `GR GR2026T02/1`）+ ATCUD → AT → `IssueGR/IssueGT(ExpectedSeq)`；号变动 → `ErrTransportSeqMoved` 失败关闭。`transportMu` 串行（Agent 单进程独占 DB） |
+| 幂等 | 同 `request_id` 已签发 → 直接返回，**不再**通信 AT |
+| 地址 | `domain.Address` 结构化贯穿 API / DB（迁移 017）/ 打印 / SAF-T / AT；不做文本解析。省略装货地＝门店地址，省略卸货地＝客户地址；三者 `ValidatePT` 在 service 统一校验（mock 同 live） |
+| ATCUD | 报文带 `<ATCUD>`（现行 AT schema；镜像 WSDL 无此字段，缺则 AT 告警） |
+| 错误 | `at.ErrTransportInvalid`（本地拦截）/ `ErrTransportUnavailable`（网络、认证、配置，可重试）/ `ErrTransportRejected`（AT 拒绝）；SOAP fault 与 ReturnCode 统一在 `at/errors.go` 码表（1199、118 → unavailable；33 schema、54 缺 WDT → rejected） |
+| 对账 | AT 已登记但本地落库失败 → `audit_log` `at_transport_unsaved`（单号 + ATDocCodeID）并报错 |
+| 子用户权限 | 运输需 **WDT**（Webservice de comunicação de documentos de transporte）；系列需 WSE |
+| SAF-T | `ShipTo`/`ShipFrom` 按 XSD 置于 `MovementStartTime` 前，写完整 `<Address>`（旧单据缺项填 `Desconhecido`） |
+
+**live 记录（2026-11-02）：** 探针 `GR GR2026T01/2` → `ATDocCodeID 1108714649`（ReturnCode 0 / OK）。
+
+**遗留（另立）：** SAF-T `DocumentStatus` 缺 `SourceBilling`、发票 `DocumentStatus` 非结构 —— 全单据类型 SAF-T 合规问题，未在本刀处理。
 
 ### 7.3 关闭条件
 

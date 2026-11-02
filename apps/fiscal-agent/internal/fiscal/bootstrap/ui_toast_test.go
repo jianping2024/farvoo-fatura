@@ -1206,3 +1206,15 @@ func TestAdminStoreFormLoadsSavedNoDemoDefaults(t *testing.T) {
 		}
 	}
 }
+
+// GR/GT load/unload points are structured fields sent as ship_from/ship_to objects.
+func TestAdminGRShipPointsStructured(t *testing.T) {
+	for _, want := range []string{`id="invShipFromPostal"`, `id="invShipToCity"`, "function readShipPoint(prefix)", "body.ship_from = shipFrom"} {
+		if !strings.Contains(adminHTML, want) {
+			t.Fatalf("admin missing %q", want)
+		}
+	}
+	if strings.Contains(adminHTML, "ship_from_address") || strings.Contains(adminHTML, "ship_to_address") {
+		t.Fatal("admin must not send legacy free-text ship addresses")
+	}
+}

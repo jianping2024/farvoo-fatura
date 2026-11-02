@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -11,6 +13,48 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/protect"
 	"farvoo-fiscal-agent/internal/fiscal/store"
 )
+
+// ErrCodeTransportAddressIncomplete: GR/GT customer, load or unload address is not a
+// complete Portuguese address (AT rule, enforced in every env so mock matches live).
+const ErrCodeTransportAddressIncomplete = "transport_address_incomplete"
+
+// customerAddress is the customer snapshot's address as a structured value.
+func customerAddress(c domain.CustomerInput) domain.Address {
+	return domain.Address{Detail: c.AddressDetail, City: c.City, PostalCode: c.PostalCode, Country: c.Country}
+}
+
+// resolveShipPoints is the ONLY GR/GT address rule: an omitted load point is the store
+// address, an omitted unload point is the customer address; customer + both points must
+// then be complete PT addresses.
+func (s *FiscalService) resolveShipPoints(storeID string, cust domain.CustomerInput, from, to domain.Address) (domain.Address, domain.Address, error) {
+	if from.IsZero() {
+		t, err := s.db.GetTaxpayerSettings(storeID)
+		if errors.Is(err, store.ErrNotFound) {
+			return from, to, coded(ErrCodeTaxpayerMissing, "configure taxpayer first")
+		}
+		if err != nil {
+			return from, to, err
+		}
+		from = domain.Address{Detail: t.AddressDetail, City: t.City, PostalCode: t.PostalCode, Country: t.Country}
+	}
+	if to.IsZero() {
+		to = customerAddress(cust)
+	}
+	for _, p := range []struct {
+		field string
+		addr  domain.Address
+	}{{"customer address", customerAddress(cust)}, {"ship_from", from}, {"ship_to", to}} {
+		if err := p.addr.ValidatePT(p.field); err != nil {
+			return from, to, coded(ErrCodeTransportAddressIncomplete, err.Error())
+		}
+	}
+	return from.Normalize(), to.Normalize(), nil
+}
+
+func toATAddress(a domain.Address) at.TransportAddress {
+	n := a.Normalize()
+	return at.TransportAddress{Detail: n.Detail, City: n.City, PostalCode: n.PostalCode}
+}
 
 // transportComm is the AT result plus the number it was registered under.
 type transportComm struct {
@@ -49,7 +93,7 @@ func normalizeMovementStart(s string) string {
 // (PrepareTransport), then envioDocumentoTransporte with it. Caller must hold
 // s.transportMu until store.IssueGR/IssueGT (ExpectedSeq) commits.
 func (s *FiscalService) communicateTransport(ctx context.Context, storeID, docType string,
-	snap domain.SaleSnapshot, shipFrom, shipTo, moveAt string) (*transportComm, error) {
+	snap domain.SaleSnapshot, shipFrom, shipTo domain.Address, moveAt string) (*transportComm, error) {
 	prep, err := s.db.PrepareTransport(storeID, docType, snap)
 	if errors.Is(err, store.ErrGRSeriesMissing) || errors.Is(err, store.ErrGTSeriesMissing) {
 		return nil, coded(ErrCodeSeriesMissing, "no ACTIVE "+docType+" series with validation_code")
@@ -79,12 +123,9 @@ func (s *FiscalService) communicateTransport(ctx context.Context, storeID, docTy
 		MovementStartTime:     moveAt,
 		CustomerTaxID:         strings.TrimSpace(snap.Customer.TaxID),
 		CustomerName:          strings.TrimSpace(snap.Customer.CompanyName),
-		CustomerAddress: at.TransportAddress{
-			Detail: strings.TrimSpace(snap.Customer.AddressDetail), City: strings.TrimSpace(snap.Customer.City),
-			PostalCode: strings.TrimSpace(snap.Customer.PostalCode),
-		},
-		ShipFromAddress: shipFrom,
-		ShipToAddress:   shipTo,
+		CustomerAddress:       toATAddress(customerAddress(snap.Customer)),
+		ShipFrom:              toATAddress(shipFrom),
+		ShipTo:                toATAddress(shipTo),
 	}
 	if len(moveAt) >= 10 {
 		doc.MovementDate = moveAt[:10]
@@ -99,12 +140,14 @@ func (s *FiscalService) communicateTransport(ctx context.Context, storeID, docTy
 		tc = at.NewTransportFromEnv()
 	}
 	atRes, err := tc.RegisterDocument(ctx, doc)
-	if err != nil {
-		msg := err.Error()
-		if strings.Contains(msg, "not wired") || strings.Contains(msg, "unavailable") {
-			return nil, coded(ErrCodeATTransportUnavailable, msg)
-		}
-		return nil, coded(ErrCodeATTransportRejected, msg)
+	switch {
+	case err == nil:
+	case errors.Is(err, at.ErrTransportInvalid):
+		return nil, coded(ErrCodeValidationFailed, err.Error())
+	case errors.Is(err, at.ErrTransportUnavailable):
+		return nil, coded(ErrCodeATTransportUnavailable, err.Error())
+	default: // at.ErrTransportRejected and non-classified client errors (e.g. mock)
+		return nil, coded(ErrCodeATTransportRejected, err.Error())
 	}
 	if atRes == nil || strings.TrimSpace(atRes.ATDocCodeID) == "" {
 		return nil, coded(ErrCodeATTransportRejected, "empty ATDocCodeID")
@@ -112,9 +155,13 @@ func (s *FiscalService) communicateTransport(ctx context.Context, storeID, docTy
 	return &transportComm{prep: prep, atRes: atRes}, nil
 }
 
-// transportCommitFailed: AT already holds ATDocCodeID for invoiceNo but no local document
-// was written — surface both so the operator can reconcile (never silent).
-func transportCommitFailed(comm *transportComm, err error) error {
-	return coded("issue_failed", "AT registered "+comm.prep.InvoiceNo+" (ATDocCodeID "+
-		comm.atRes.ATDocCodeID+") but local save failed: "+err.Error())
+// transportCommitFailed: AT already holds ATDocCodeID for the number but no local document
+// was written. Recorded in audit_log (at_transport_unsaved) for reconciliation and surfaced.
+func (s *FiscalService) transportCommitFailed(operatorID string, comm *transportComm, err error) error {
+	detail, _ := json.Marshal(map[string]string{
+		"invoice_no": comm.prep.InvoiceNo, "at_doc_code_id": comm.atRes.ATDocCodeID, "error": err.Error(),
+	})
+	_ = s.db.InsertAuditLog(operatorID, "at_transport_unsaved", "invoice", comm.prep.InvoiceNo, string(detail))
+	return coded("issue_failed", fmt.Sprintf("AT registered %s (ATDocCodeID %s) but local save failed: %v",
+		comm.prep.InvoiceNo, comm.atRes.ATDocCodeID, err))
 }

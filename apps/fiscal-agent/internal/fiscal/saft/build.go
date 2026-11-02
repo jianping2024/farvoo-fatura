@@ -7,6 +7,7 @@ import (
 
 	"farvoo-fiscal-agent/internal/escposenc"
 	"farvoo-fiscal-agent/internal/fiscal/compliance"
+	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/store"
 
 	"github.com/shopspring/decimal"
@@ -445,6 +446,9 @@ func writeStockMovement(b *strings.Builder, m store.SAFTStockMovement, check fun
 	}
 	writeElem(b, "CustomerID", custID)
 	writeElem(b, "SourceID", m.SourceID)
+	// XSD order: … SourceID, ShipTo, ShipFrom, MovementStartTime, ATDocCodeID, Line, DocumentTotals.
+	writeShippingPoint(b, "ShipTo", m.ShipTo)
+	writeShippingPoint(b, "ShipFrom", m.ShipFrom)
 	if t := strings.TrimSpace(m.MovementStartAt); t != "" {
 		writeElem(b, "MovementStartTime", t)
 	}
@@ -459,17 +463,28 @@ func writeStockMovement(b *strings.Builder, m store.SAFTStockMovement, check fun
 	writeElem(b, "NetTotal", m.NetTotal)
 	writeElem(b, "GrossTotal", m.GrossTotal)
 	b.WriteString(`</DocumentTotals>`)
-	if a := strings.TrimSpace(m.ShipToAddress); a != "" {
-		b.WriteString(`<ShipTo>`)
-		writeElem(b, "AddressDetail", a)
-		b.WriteString(`</ShipTo>`)
-	}
-	if a := strings.TrimSpace(m.ShipFromAddress); a != "" {
-		b.WriteString(`<ShipFrom>`)
-		writeElem(b, "AddressDetail", a)
-		b.WriteString(`</ShipFrom>`)
-	}
 	b.WriteString(`</StockMovement>`)
+}
+
+// writeShippingPoint writes ShippingPointStructure with its AddressStructure (AddressDetail,
+// City, PostalCode, Country all mandatory). Pre-017 rows carry only free text → "Desconhecido".
+func writeShippingPoint(b *strings.Builder, tag string, a domain.Address) {
+	if a.IsZero() {
+		return
+	}
+	n := a.Normalize()
+	orUnknown := func(v string) string {
+		if v == "" {
+			return "Desconhecido"
+		}
+		return v
+	}
+	b.WriteString(`<` + tag + `><Address>`)
+	writeElem(b, "AddressDetail", orUnknown(n.Detail))
+	writeElem(b, "City", orUnknown(n.City))
+	writeElem(b, "PostalCode", orUnknown(n.PostalCode))
+	writeElem(b, "Country", n.Country)
+	b.WriteString(`</Address></` + tag + `>`)
 }
 
 func writeMovementLine(b *strings.Builder, m store.SAFTStockMovement, ln store.SAFTLine, check func(string, string)) {

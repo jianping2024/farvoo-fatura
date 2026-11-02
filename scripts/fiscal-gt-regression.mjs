@@ -92,8 +92,10 @@ async function issueGT(amount, requestId, extra = {}) {
     customer_postal_code: purpose === 'transfer' ? '4000-001' : '1000-001',
     payment_method: 'CASH',
     lines: gtLines(amount),
-    ship_from_address: 'Armazem Rua Demo 1, Lisboa',
-    ship_to_address: purpose === 'transfer' ? 'Loja B Rua 1, Porto' : 'Rua Entrega 10, Lisboa',
+    ship_from: { address_detail: 'Armazem Rua Demo 1', postal_code: '1000-001', city: 'Lisboa' },
+    ship_to: purpose === 'transfer'
+      ? { address_detail: 'Loja B Rua 1', postal_code: '4000-001', city: 'Porto' }
+      : { address_detail: 'Rua Entrega 10', postal_code: '1000-002', city: 'Lisboa' },
     movement_start_at: movementStart(),
     movement_purpose: purpose,
     recipient_is_vat_payer: purpose === 'transfer' ? true : true,
@@ -188,7 +190,7 @@ async function main() {
     const job = await uatJson('req', 'GET', `/local/v1/print-jobs/${gt1.print_job_id}`);
     const payloadStr = typeof job.payload_json === 'string' ? job.payload_json : JSON.stringify(job.payload_json || job.payload || {});
     record('GT print type', job.document_type === 'GT' || payloadStr.includes('"document_type":"GT"'), job.document_type || 'payload');
-    record('GT print transport', payloadStr.includes('ship_from') || !!(gt1d.ship_from_address && gt1d.at_doc_code_id));
+    record('GT print transport', payloadStr.includes('ship_from') || !!(gt1d.ship_from && gt1d.ship_from.city && gt1d.at_doc_code_id));
 
     // GT-02 customer
     const gt2 = await issueGT('80.00', 'gt-02', { movement_purpose: 'customer', customer_nif: '509442013', recipient_is_vat_payer: true });

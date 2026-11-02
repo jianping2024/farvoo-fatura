@@ -37,8 +37,8 @@ type ManualIssueInput struct {
 	ProformaID           string // optional; sale → PF link
 	DeliveryNoteIDs      []string // optional; FT → GR links
 	ValidUntil           string // optional; PF only YYYY-MM-DD
-	ShipFromAddress      string
-	ShipToAddress        string
+	ShipFrom             domain.Address // GR/GT load point; zero → store address
+	ShipTo               domain.Address // GR/GT unload point; zero → customer address
 	MovementStartAt      string
 	RecipientIsVATPayer  *bool  // GR/GT customer; nil → default true
 	MovementPurpose      string // GT: transfer | customer

@@ -53,7 +53,7 @@ func TestIssueGR_Annul_LinkFT(t *testing.T) {
 	grParams := store.IssueGRParams{
 		StoreID: "store-demo-001", RequestID: "gr-1", OperatorID: "op-demo-cashier",
 		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
-		ShipFromAddress: "From", ShipToAddress: "To", MovementStartAt: moveAt,
+		ShipFrom: testShipFrom, ShipTo: testShipTo, MovementStartAt: moveAt,
 		RecipientIsVATPayer: true, ATDocCodeID: "MOCKABCD1234",
 		NowUTC: time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC),
 		Snapshot: domain.SaleSnapshot{
@@ -130,7 +130,7 @@ func TestIssueGR_Annul_LinkFT(t *testing.T) {
 	gr2, err := db.IssueGR(context.Background(), sig, store.IssueGRParams{
 		StoreID: "store-demo-001", RequestID: "gr-2", OperatorID: "op-demo-cashier",
 		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
-		ShipFromAddress: "From", ShipToAddress: "To", MovementStartAt: moveAt,
+		ShipFrom: testShipFrom, ShipTo: testShipTo, MovementStartAt: moveAt,
 		RecipientIsVATPayer: true, ATDocCodeID: "MOCK2",
 		NowUTC: time.Date(2026, 10, 15, 12, 30, 0, 0, time.UTC),
 		Snapshot: domain.SaleSnapshot{

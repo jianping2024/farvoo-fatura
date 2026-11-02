@@ -22,25 +22,8 @@ const transportNS = "https://servicos.portaldasfinancas.gov.pt/sgdtws/documentos
 
 var (
 	transportDocNoPattern = regexp.MustCompile(`^[a-zA-Z0-9./_\-]+ [a-zA-Z0-9]*/[0-9]+$`)
-	postalPTPattern       = regexp.MustCompile(`\b(\d{4}-\d{3})\b`)
 	nifPattern            = regexp.MustCompile(`^\d{9}$`)
 )
-
-// ParseAddressPT splits a free-text PT address ("Rua X 1, 1000-001 Lisboa") into AT
-// AddressStructurePT. Without a postal code the whole text is the detail.
-func ParseAddressPT(s string) TransportAddress {
-	s = strings.Join(strings.Fields(s), " ")
-	loc := postalPTPattern.FindStringIndex(s)
-	if loc == nil {
-		return TransportAddress{Detail: truncRunes(s, 100)}
-	}
-	trim := func(v string) string { return strings.Trim(v, " ,;-") }
-	return TransportAddress{
-		Detail:     truncRunes(trim(s[:loc[0]]), 100),
-		PostalCode: s[loc[0]:loc[1]],
-		City:       truncRunes(trim(s[loc[1]:]), 50),
-	}
-}
 
 func truncRunes(s string, n int) string {
 	if utf8.RuneCountInString(s) <= n {
@@ -70,13 +53,13 @@ func (c *SOAPTransportClient) init() error {
 		}
 		if c.URL == "" {
 			if c.Env != EnvTest {
-				c.initErr = fmt.Errorf("at: transport unavailable: URL for env %s not configured (config.json fiscal_at_transport_url)", c.Env)
+				c.initErr = unavailable(fmt.Sprintf("URL for env %s not configured (config.json fiscal_at_transport_url)", c.Env))
 				return
 			}
 			c.URL = DefaultTransportTestURL
 		}
 		if err := loadLiveMaterials(c.Env, &c.HTTP, &c.PubKey); err != nil {
-			c.initErr = fmt.Errorf("at: transport unavailable: %w", err)
+			c.initErr = unavailable(err.Error())
 		}
 	})
 	return c.initErr
@@ -90,7 +73,12 @@ type xmlAddress struct {
 }
 
 func toXMLAddress(a TransportAddress) xmlAddress {
-	return xmlAddress{Detail: a.Detail, City: a.City, PostalCode: a.PostalCode, Country: "PT"}
+	return xmlAddress{
+		Detail:     truncRunes(strings.TrimSpace(a.Detail), 100),
+		City:       truncRunes(strings.TrimSpace(a.City), 50),
+		PostalCode: strings.TrimSpace(a.PostalCode),
+		Country:    "PT",
+	}
 }
 
 type xmlLine struct {
@@ -122,27 +110,32 @@ type xmlStockMovement struct {
 	Lines                 []xmlLine   `xml:"Line"`
 }
 
-// buildTransportBody validates locally (no AT call on bad input) and marshals the request.
+func invalid(format string, a ...any) error {
+	return fmt.Errorf("%w: "+format, append([]any{ErrTransportInvalid}, a...)...)
+}
+
+// buildTransportBody checks wire-level constraints (no AT call on bad input) and marshals
+// the request. Business rules (complete PT addresses, customer) are validated by the caller.
 func buildTransportBody(doc TransportDocument) (string, error) {
 	if !nifPattern.MatchString(doc.TaxRegistrationNumber) {
-		return "", fmt.Errorf("at: transport issuer NIF must be 9 digits")
+		return "", invalid("issuer NIF must be 9 digits")
 	}
 	if strings.TrimSpace(doc.CompanyName) == "" {
-		return "", fmt.Errorf("at: transport company name required")
+		return "", invalid("company name required")
 	}
 	if !transportDocNoPattern.MatchString(doc.DocumentNumber) || len(doc.DocumentNumber) > 60 {
-		return "", fmt.Errorf("at: transport document number %q must look like \"GR SERIE/N\"", doc.DocumentNumber)
+		return "", invalid("document number %q must look like \"GR SERIE/N\"", doc.DocumentNumber)
 	}
 	switch doc.MovementType {
 	case "GR", "GT", "GA", "GC", "GD":
 	default:
-		return "", fmt.Errorf("at: transport movement type %q", doc.MovementType)
+		return "", invalid("movement type %q", doc.MovementType)
 	}
 	if _, err := time.Parse("2006-01-02T15:04:05", doc.MovementStartTime); err != nil {
-		return "", fmt.Errorf("at: transport movement start %q must be YYYY-MM-DDTHH:MM:SS", doc.MovementStartTime)
+		return "", invalid("movement start %q must be YYYY-MM-DDTHH:MM:SS", doc.MovementStartTime)
 	}
 	if len(doc.Lines) == 0 {
-		return "", fmt.Errorf("at: transport lines required")
+		return "", invalid("lines required")
 	}
 	status := doc.MovementStatus
 	if status == "" {
@@ -168,8 +161,8 @@ func buildTransportBody(doc TransportDocument) (string, error) {
 		MovementType:          doc.MovementType,
 		CustomerTaxID:         cust,
 		CustomerName:          truncRunes(strings.TrimSpace(doc.CustomerName), 100),
-		AddressTo:             toXMLAddress(ParseAddressPT(doc.ShipToAddress)),
-		AddressFrom:           toXMLAddress(ParseAddressPT(doc.ShipFromAddress)),
+		AddressTo:             toXMLAddress(doc.ShipTo),
+		AddressFrom:           toXMLAddress(doc.ShipFrom),
 		MovementStartTime:     doc.MovementStartTime,
 	}
 	if ca := doc.CustomerAddress; ca.Detail != "" || ca.City != "" || ca.PostalCode != "" {
@@ -194,7 +187,7 @@ func buildTransportBody(doc TransportDocument) (string, error) {
 }
 
 // RegisterDocument calls envioDocumentoTransporte. ReturnCode 0 + ATDocCodeID = success.
-// Errors containing "unavailable" are connectivity/auth (retryable); others are AT rejections.
+// Failures are classified: ErrTransportInvalid | ErrTransportUnavailable | ErrTransportRejected.
 func (c *SOAPTransportClient) RegisterDocument(ctx context.Context, doc TransportDocument) (*TransportResult, error) {
 	body, err := buildTransportBody(doc)
 	if err != nil {
@@ -209,7 +202,7 @@ func (c *SOAPTransportClient) RegisterDocument(ctx context.Context, doc Transpor
 	}
 	status, raw, err := postSOAP(ctx, c.HTTP, c.URL, transportNS, c.PubKey, now, doc.Username, doc.Password, body, c.Trace)
 	if err != nil {
-		return nil, fmt.Errorf("at: transport unavailable: %w", err)
+		return nil, unavailable(err.Error())
 	}
 	return parseTransportEnvelope(status, raw)
 }
@@ -232,29 +225,24 @@ func parseTransportEnvelope(status int, raw []byte) (*TransportResult, error) {
 		} `xml:"Body"`
 	}
 	if err := xml.NewDecoder(bytes.NewReader(raw)).Decode(&env); err != nil {
-		return nil, fmt.Errorf("at: transport unavailable: HTTP %d unparseable response: %w", status, err)
+		return nil, unavailable(fmt.Sprintf("HTTP %d unparseable response: %v", status, err))
 	}
 	if f := env.Body.Fault; f != nil {
-		code := strings.TrimSpace(f.Code)
-		return nil, fmt.Errorf("at: transport unavailable: fault %s: %s%s", code, strings.TrimSpace(f.String), faultHint(code))
+		return nil, faultError(strings.TrimSpace(f.Code), strings.TrimSpace(f.String))
 	}
 	if status != http.StatusOK {
-		return nil, fmt.Errorf("at: transport unavailable: HTTP %d", status)
+		return nil, unavailable(fmt.Sprintf("HTTP %d", status))
 	}
 	r := env.Body.Resp
 	if len(r.Statuses) == 0 {
-		return nil, fmt.Errorf("at: transport unavailable: response missing ReturnCode")
+		return nil, unavailable("response missing ReturnCode")
 	}
 	var msgs []string
 	for _, st := range r.Statuses {
 		msgs = append(msgs, fmt.Sprintf("%d %s", st.Code, strings.TrimSpace(st.Msg)))
 	}
-	if r.Statuses[0].Code != 0 || strings.TrimSpace(r.ATDocCodeID) == "" {
-		hint := ""
-		if r.Statuses[0].Code == 54 { // observed 2026-11-02: sub-user without transport profile
-			hint = " (AT sub-user lacks the WDT transport-documents profile)"
-		}
-		return nil, fmt.Errorf("at: AT transport rejected: %s%s", strings.Join(msgs, "; "), hint)
+	if code := r.Statuses[0].Code; code != 0 || strings.TrimSpace(r.ATDocCodeID) == "" {
+		return nil, returnCodeError(code, strings.Join(msgs, "; "))
 	}
 	return &TransportResult{ATDocCodeID: strings.TrimSpace(r.ATDocCodeID), RawMessage: strings.Join(msgs, "; ")}, nil
 }

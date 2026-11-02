@@ -93,8 +93,9 @@
 
 | 列 | 类型 | 必填 | 说明 |
 |----|------|------|------|
-| ship_from_address | TEXT | 否 | GR/GT 装货地全文；GR 签发时必填（应用层） |
-| ship_to_address | TEXT | 否 | 卸货地全文；GR 签发时必填 |
+| ship_from_detail / _city / _postal_code / _country | TEXT | 否 | GR/GT 装货地（结构化，迁移 017）；签发时应用层必填完整葡萄牙地址 |
+| ship_to_detail / _city / _postal_code / _country | TEXT | 否 | GR/GT 卸货地（同上） |
+| ship_from_address / ship_to_address | TEXT | 否 | **仅 017 前旧单据**的全文地址；新单据不写（读回时作 Detail） |
 | movement_start_at | TEXT | 否 | 运输开始 ISO；GR 签发时必填；不得早于签发时刻（AT 规则） |
 | at_transport_doc_code | TEXT | 否 | AT 返回文档识别码；GR 签发成功后必有（mock 亦写伪码） |
 | recipient_is_vat_payer | INTEGER | 否 | `1`=IVA 纳税人（须 NIF）；`0`=非纳税人（须声明）；仅 GR/GT |
@@ -130,8 +131,9 @@
 | lines | 是 | 同行结构；金额可有 |
 | customer | 是 | 名称+地址必填；NIF 见 §3 |
 | recipient_is_vat_payer | 是 | bool |
-| ship_from_address | 是 | 非空 |
-| ship_to_address | 是 | 非空 |
+| ship_from | 否 | `{address_detail, postal_code, city, country?}`；省略＝门店地址 |
+| ship_to | 否 | 同上；省略＝客户（收货）地址 |
+| （规则） | — | 客户地址、装货地、卸货地须为完整葡萄牙地址（街道、城市、`NNNN-NNN`），否则 `transport_address_incomplete`；**所有环境一致**（mock 同 AT）。旧字段 `ship_from_address` / `ship_to_address` 返回 400 |
 | movement_start_at | 是 | 未来或「现在起允许的短窗」；禁止早于当前（对齐 AT） |
 | station_id | 否 | |
 

@@ -39,5 +39,5 @@ func (c *misconfiguredClient) ConsultSeries(ctx context.Context, username, passw
 }
 
 func (c *misconfiguredClient) RegisterDocument(ctx context.Context, doc TransportDocument) (*TransportResult, error) {
-	return nil, c.err
+	return nil, unavailable(c.err.Error())
 }

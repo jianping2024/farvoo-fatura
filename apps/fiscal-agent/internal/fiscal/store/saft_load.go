@@ -1,5 +1,7 @@
 package store
 
+import "farvoo-fiscal-agent/internal/fiscal/domain"
+
 // SAFTLine is one invoice line for SAF-T export.
 type SAFTLine struct {
 	LineNumber               int
@@ -24,13 +26,13 @@ type SAFTLine struct {
 
 // SAFTCustomer is customer snapshot for SAF-T.
 type SAFTCustomer struct {
-	CustomerTaxID       string
-	CompanyName         string
-	AddressDetail       string
-	City                string
-	PostalCode          string
-	Country             string
-	AccountID           string
+	CustomerTaxID        string
+	CompanyName          string
+	AddressDetail        string
+	City                 string
+	PostalCode           string
+	Country              string
+	AccountID            string
 	SelfBillingIndicator int
 }
 
@@ -215,27 +217,27 @@ type SAFTWorkingDocument struct {
 
 // SAFTStockMovement is one GR/GT for SAF-T MovementOfGoods.
 type SAFTStockMovement struct {
-	ID                  string
-	DocumentNumber      string
-	ATCUD               string
-	MovementType        string // GR | GT
-	MovementDate        string
-	SystemEntryDate     string
-	MovementStatus      string
-	MovementStatusDate  string
-	StatusReason        string
-	Hash                string
-	HashControl         int
-	SourceID            string
-	GrossTotal          string
-	NetTotal            string
-	TaxPayable          string
-	ShipFromAddress     string
-	ShipToAddress       string
-	MovementStartAt     string
-	ATDocCodeID         string
-	Customer            SAFTCustomer
-	Lines               []SAFTLine
+	ID                 string
+	DocumentNumber     string
+	ATCUD              string
+	MovementType       string // GR | GT
+	MovementDate       string
+	SystemEntryDate    string
+	MovementStatus     string
+	MovementStatusDate string
+	StatusReason       string
+	Hash               string
+	HashControl        int
+	SourceID           string
+	GrossTotal         string
+	NetTotal           string
+	TaxPayable         string
+	ShipFrom           domain.Address
+	ShipTo             domain.Address
+	MovementStartAt    string
+	ATDocCodeID        string
+	Customer           SAFTCustomer
+	Lines              []SAFTLine
 }
 
 // LoadSAFTWorkingDocumentsForPeriod is the ONLY reader for SAF-T WorkingDocuments (PF) in a month.
@@ -291,7 +293,7 @@ func (d *DB) LoadSAFTStockMovementsForPeriod(storeID, startDate, endDate string)
 		i.document_status, COALESCE(NULLIF(i.status_changed_at,''), i.system_entry_date),
 		COALESCE(i.status_reason,''), i.hash, i.hash_control, i.source_id,
 		i.gross_total, i.net_total, i.tax_payable,
-		COALESCE(i.ship_from_address,''), COALESCE(i.ship_to_address,''),
+		`+shipAddressSelect("ship_from")+`, `+shipAddressSelect("ship_to")+`,
 		COALESCE(i.movement_start_at,''), COALESCE(i.at_transport_doc_code,''),
 		cs.customer_tax_id, cs.company_name, cs.address_detail, cs.city, cs.postal_code, cs.country,
 		cs.account_id, cs.self_billing_indicator
@@ -308,17 +310,24 @@ func (d *DB) LoadSAFTStockMovementsForPeriod(storeID, startDate, endDate string)
 	var ids []string
 	for rows.Next() {
 		var m SAFTStockMovement
-		if err := rows.Scan(
+		var from, to shipAddressCols
+		dest := []any{
 			&m.ID, &m.DocumentNumber, &m.ATCUD, &m.MovementType, &m.MovementDate, &m.SystemEntryDate,
 			&m.MovementStatus, &m.MovementStatusDate, &m.StatusReason, &m.Hash, &m.HashControl, &m.SourceID,
 			&m.GrossTotal, &m.NetTotal, &m.TaxPayable,
-			&m.ShipFromAddress, &m.ShipToAddress, &m.MovementStartAt, &m.ATDocCodeID,
+		}
+		dest = append(dest, from.dest()...)
+		dest = append(dest, to.dest()...)
+		dest = append(dest,
+			&m.MovementStartAt, &m.ATDocCodeID,
 			&m.Customer.CustomerTaxID, &m.Customer.CompanyName, &m.Customer.AddressDetail,
 			&m.Customer.City, &m.Customer.PostalCode, &m.Customer.Country,
 			&m.Customer.AccountID, &m.Customer.SelfBillingIndicator,
-		); err != nil {
+		)
+		if err := rows.Scan(dest...); err != nil {
 			return nil, err
 		}
+		m.ShipFrom, m.ShipTo = from.address(), to.address()
 		out = append(out, m)
 		ids = append(ids, m.ID)
 	}

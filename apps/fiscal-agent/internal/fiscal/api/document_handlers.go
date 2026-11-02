@@ -166,11 +166,11 @@ func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps Handle
 	}
 	if detail.DocumentType == domain.DocumentGR || detail.DocumentType == domain.DocumentGT {
 		out["movement_status"] = detail.DocumentStatus
-		if detail.ShipFromAddress != "" {
-			out["ship_from_address"] = detail.ShipFromAddress
+		if detail.ShipFrom != nil {
+			out["ship_from"] = detail.ShipFrom
 		}
-		if detail.ShipToAddress != "" {
-			out["ship_to_address"] = detail.ShipToAddress
+		if detail.ShipTo != nil {
+			out["ship_to"] = detail.ShipTo
 		}
 		if detail.MovementStartAt != "" {
 			out["movement_start_at"] = detail.MovementStartAt

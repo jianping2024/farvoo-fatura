@@ -200,9 +200,9 @@ type DeliveryNoteRequest struct {
 	FiscalTerminalID     string
 	FiscalTerminalLabel  string
 	Snapshot             SaleSnapshot
-	ShipFromAddress      string
-	ShipToAddress        string
-	MovementStartAt      string // local wall YYYY-MM-DDTHH:MM:SS or RFC3339
+	ShipFrom             Address // load point; zero → store address
+	ShipTo               Address // unload point; zero → customer address
+	MovementStartAt      string  // local wall YYYY-MM-DDTHH:MM:SS or RFC3339
 	RecipientIsVATPayer  bool
 	ATDocCodeID          string // from TransportClient; required before store write
 }
@@ -225,9 +225,9 @@ type TransportNoteRequest struct {
 	FiscalTerminalID    string
 	FiscalTerminalLabel string
 	Snapshot            SaleSnapshot
-	MovementPurpose     string // transfer | customer
-	ShipFromAddress     string
-	ShipToAddress       string
+	MovementPurpose     string  // transfer | customer
+	ShipFrom            Address // load point; zero → store address
+	ShipTo              Address // unload point; zero → customer address
 	MovementStartAt     string
 	RecipientIsVATPayer bool
 }

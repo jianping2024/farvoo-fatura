@@ -54,7 +54,7 @@ func TestIssueGT_Annul(t *testing.T) {
 		StoreID: "store-demo-001", RequestID: "gt-1", OperatorID: "op-demo-cashier",
 		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
 		MovementPurpose: domain.MovementPurposeTransfer,
-		ShipFromAddress: "From", ShipToAddress: "To", MovementStartAt: moveAt,
+		ShipFrom:        testShipFrom, ShipTo: testShipTo, MovementStartAt: moveAt,
 		RecipientIsVATPayer: true, ATDocCodeID: "MOCKABCD1234",
 		NowUTC: time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC),
 		Snapshot: domain.SaleSnapshot{
@@ -106,7 +106,7 @@ func TestIssueGT_Annul(t *testing.T) {
 		StoreID: "store-demo-001", RequestID: "gt-2", OperatorID: "op-demo-cashier",
 		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
 		MovementPurpose: domain.MovementPurposeCustomer,
-		ShipFromAddress: "From", ShipToAddress: "To", MovementStartAt: moveAt,
+		ShipFrom:        testShipFrom, ShipTo: testShipTo, MovementStartAt: moveAt,
 		RecipientIsVATPayer: true, ATDocCodeID: "MOCK2",
 		NowUTC: time.Date(2026, 10, 15, 12, 30, 0, 0, time.UTC),
 		Snapshot: domain.SaleSnapshot{

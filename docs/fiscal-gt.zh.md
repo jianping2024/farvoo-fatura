@@ -124,8 +124,7 @@ Annul HTTP：复用 `POST …/fiscal-documents/{id}/annul`，按 `document_type`
 
 | 列 | 说明（GT） |
 |----|------------|
-| ship_from_address | 装货地；签发必填 |
-| ship_to_address | 卸货地；签发必填 |
+| ship_from_* / ship_to_* | 装货地 / 卸货地（结构化），见 [`fiscal-gr.zh.md`](fiscal-gr.zh.md) 表结构 |
 | movement_start_at | 开运时间；签发必填 |
 | at_transport_doc_code | AT 文档码；签发成功后必有 |
 | recipient_is_vat_payer | `customer` 场景用；`transfer` 固定按纳税人处理（存 `1`） |
@@ -158,8 +157,7 @@ Annul HTTP：复用 `POST …/fiscal-documents/{id}/annul`，按 `document_type`
 | lines | 是 | 同行结构 |
 | customer_nif / name / address… | 视场景 | `transfer`：NIF=本店；`customer`：同 GR |
 | recipient_is_vat_payer | `customer` 时是 | bool |
-| ship_from_address | 是 | |
-| ship_to_address | 是 | |
+| ship_from / ship_to | 否 | 结构化；规则同 [`fiscal-gr.zh.md`](fiscal-gr.zh.md)（省略＝门店 / 客户地址） |
 | movement_start_at | 是 | |
 
 **错误码：** `validation_failed`、`series_missing`、`at_transport_unavailable`、`at_transport_rejected`、`idempotency_conflict`。
