@@ -61,6 +61,10 @@ func (s *FiscalService) IssueTransportNote(ctx context.Context, req domain.Trans
 		}
 	}
 	if err := validateGRCustomer(req.Snapshot.Customer, vat); err != nil {
+		var ce *CodedError
+		if errors.As(err, &ce) {
+			return nil, err
+		}
 		return nil, coded(ErrCodeValidationFailed, err.Error())
 	}
 	shipFrom, shipTo, err := s.resolveShipPoints(req.StoreID, req.Snapshot.Customer, req.ShipFrom, req.ShipTo)

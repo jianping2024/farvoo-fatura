@@ -43,8 +43,12 @@ func (s *FiscalService) resolveShipPoints(storeID string, cust domain.CustomerIn
 	for _, p := range []struct {
 		field string
 		addr  domain.Address
-	}{{"customer address", customerAddress(cust)}, {"ship_from", from}, {"ship_to", to}} {
+	}{{"customer", customerAddress(cust)}, {"ship_from", from}, {"ship_to", to}} {
 		if err := p.addr.ValidatePT(p.field); err != nil {
+			var ia *domain.IncompleteAddressError
+			if errors.As(err, &ia) {
+				return from, to, codedField(ErrCodeTransportAddressIncomplete, err.Error(), ia.Field, ia.Part)
+			}
 			return from, to, coded(ErrCodeTransportAddressIncomplete, err.Error())
 		}
 	}

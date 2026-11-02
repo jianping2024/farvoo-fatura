@@ -6,6 +6,7 @@
   <title>Farvoo 开票</title>
   <link rel="stylesheet" href="/fiscal-ui/toast.css"/>
   <link rel="stylesheet" href="/fiscal-ui/date-picker.css"/>
+  <link rel="stylesheet" href="/fiscal-ui/time-picker.css"/>
   <link rel="stylesheet" href="/fiscal-ui/date-range.css"/>
   <link rel="stylesheet" href="/fiscal-ui/list-pagination.css"/>
   <style>
@@ -843,8 +844,8 @@
                 <span class="hint" data-i18n="gr.ship_from_hint"></span>
               </div>
               <div class="split">
-                <div class="field"><label data-i18n="gr.customer_postal">邮编</label><input id="invShipFromPostal" placeholder="1000-001" /></div>
                 <div class="field"><label data-i18n="gr.customer_city">城市</label><input id="invShipFromCity" /></div>
+                <div class="field"><label data-i18n="gr.customer_postal">邮编</label><input id="invShipFromPostal" placeholder="1000-001" /></div>
               </div>
               <div class="field">
                 <label data-i18n="gr.ship_to">卸货地</label>
@@ -852,14 +853,14 @@
                 <span class="hint" data-i18n="gr.ship_to_hint"></span>
               </div>
               <div class="split">
-                <div class="field"><label data-i18n="gr.customer_postal">邮编</label><input id="invShipToPostal" placeholder="1000-001" /></div>
                 <div class="field"><label data-i18n="gr.customer_city">城市</label><input id="invShipToCity" /></div>
+                <div class="field"><label data-i18n="gr.customer_postal">邮编</label><input id="invShipToPostal" placeholder="1000-001" /></div>
               </div>
               <div class="field">
                 <label data-i18n="gr.movement_start">开运时间</label>
                 <div class="split">
                   <div id="invMovementDate"></div>
-                  <input id="invMovementTime" type="time" step="60" />
+                  <div id="invMovementTime"></div>
                 </div>
               </div>
               <div class="field" id="invRecipientVatWrap">
@@ -1619,6 +1620,7 @@
 
   <script src="/fiscal-ui/toast.js"></script>
   <script src="/fiscal-ui/date-picker.js"></script>
+  <script src="/fiscal-ui/time-picker.js"></script>
   <script src="/fiscal-ui/date-range.js"></script>
   <script src="/fiscal-ui/list-pagination.js"></script>
   <script src="/fiscal-ui/printer-station.js"></script>
@@ -1898,7 +1900,7 @@
     if (setupStatusCache) applySettingsStatusUI(setupStatusCache);
     [billsListPaginationCtrl, productListPaginationCtrl,
       customerListPaginationCtrl, invoiceListPaginationCtrl, auditLogPaginationCtrl,
-      invoiceDateFilterCtrl, movementDatePicker]
+      invoiceDateFilterCtrl, movementDatePicker, movementTimePicker]
       .forEach(function (c) { if (c && c.relabel) c.relabel(); });
     if ($('#app-shell') && $('#app-shell').classList.contains('on')) {
       void refreshOperatorsPanel();
@@ -5129,20 +5131,49 @@
       if (!tender.ok) return;
     }
     if (isGr || isGt) {
-      if (!($('#invGrAddress').value || '').trim() || !($('#invGrCity').value || '').trim() || !($('#invGrPostal').value || '').trim()) {
-        toast(FiscalAdminI18n.t(isGt ? 'gt.need_address' : 'gr.need_address'), 'error');
+      clearTransportAddressInvalid();
+      const customerAddr = {
+        address_detail: ($('#invGrAddress').value || '').trim(),
+        city: ($('#invGrCity').value || '').trim(),
+        postal_code: ($('#invGrPostal').value || '').trim(),
+        country: 'PT'
+      };
+      const custPart = ptAddressDefect(customerAddr);
+      if (custPart) {
+        reportTransportAddressDefect('customer', custPart);
         return;
       }
       shipFrom = readShipPoint('invShipFrom');
       shipTo = readShipPoint('invShipTo');
+      if (shipFrom) {
+        const fromPart = ptAddressDefect(shipFrom);
+        if (fromPart) {
+          reportTransportAddressDefect('ship_from', fromPart);
+          return;
+        }
+      }
+      if (shipTo) {
+        const toPart = ptAddressDefect(shipTo);
+        if (toPart) {
+          reportTransportAddressDefect('ship_to', toPart);
+          return;
+        }
+      }
       movementStart = readMovementStart();
       if (!movementStart) {
+        const d = movementDatePicker.getValue();
+        const t = movementTimePicker.getValue();
+        if (!d) {
+          toast(FiscalAdminI18n.t('gr.need_movement_date'), 'error');
+          try { $('#invMovementDate')?.querySelector('button')?.focus(); } catch (_) { /* */ }
+          return;
+        }
+        if (!t) {
+          toast(FiscalAdminI18n.t('gr.need_movement_time'), 'error');
+          movementTimePicker.focus();
+          return;
+        }
         toast(FiscalAdminI18n.t('gr.need_movement_start'), 'error');
-        return;
-      }
-      if (!PT_POSTAL_RE.test(($('#invGrPostal').value || '').trim()) ||
-          (shipFrom && !shipPointComplete(shipFrom)) || (shipTo && !shipPointComplete(shipTo))) {
-        toast(FiscalAdminI18n.t('gr.need_postal_pt'), 'error');
         return;
       }
       if (isGt) {
@@ -5208,7 +5239,21 @@
       body.movement_purpose = ($('#invMovementPurpose').value || '').trim();
       if (body.movement_purpose === 'transfer') body.recipient_is_vat_payer = true;
     }
-    const res = await j('POST', '/local/v1/fiscal-documents/manual', body);
+    let res;
+    try {
+      res = await j('POST', '/local/v1/fiscal-documents/manual', body);
+    } catch (er) {
+      if (er && er.error === 'transport_address_incomplete' && er.field && er.part) {
+        clearTransportAddressInvalid();
+        const id = transportAddressInputId(String(er.field), String(er.part));
+        const el = id ? $('#' + id) : null;
+        if (el) {
+          el.classList.add('field-invalid');
+          try { el.focus(); el.select && el.select(); } catch (_) { /* */ }
+        }
+      }
+      throw er;
+    }
     const docId = res.document_id || '';
     const invNo = res.invoice_no || '';
     currentOrder = null;
@@ -6338,18 +6383,56 @@
     syncGrFieldsVisibility();
   }
   const PT_POSTAL_RE = /^\d{4}-\d{3}$/;
-  /** ONLY reader of a GR/GT load/unload point group (street / postal / city).
+  /** ONLY reader of a GR/GT load/unload point group (street / city / postal).
    *  All three empty → null: the server defaults to the store (load) or customer (unload) address. */
   function readShipPoint(prefix) {
     const v = (sel) => (($(sel) && $(sel).value) || '').trim();
     const a = { address_detail: v('#' + prefix), postal_code: v('#' + prefix + 'Postal'), city: v('#' + prefix + 'City'), country: 'PT' };
     return (a.address_detail || a.postal_code || a.city) ? a : null;
   }
-  function shipPointComplete(a) {
-    return !!(a.address_detail && a.city && PT_POSTAL_RE.test(a.postal_code));
+  /** ONLY PT-address defect detector for GR/GT (mirrors domain.Address.ValidatePT part order). */
+  function ptAddressDefect(a) {
+    if (!a || !(a.address_detail || '').trim()) return 'detail';
+    if (!(a.city || '').trim()) return 'city';
+    if (!PT_POSTAL_RE.test((a.postal_code || '').trim())) return 'postal_code';
+    return '';
+  }
+  function transportAddressInputId(role, part) {
+    if (role === 'customer') {
+      return ({ detail: 'invGrAddress', city: 'invGrCity', postal_code: 'invGrPostal' })[part] || '';
+    }
+    const prefix = role === 'ship_from' ? 'invShipFrom' : role === 'ship_to' ? 'invShipTo' : '';
+    if (!prefix) return '';
+    if (part === 'detail') return prefix;
+    if (part === 'city') return prefix + 'City';
+    if (part === 'postal_code') return prefix + 'Postal';
+    return '';
+  }
+  function clearTransportAddressInvalid() {
+    ['invGrAddress', 'invGrCity', 'invGrPostal',
+      'invShipFrom', 'invShipFromCity', 'invShipFromPostal',
+      'invShipTo', 'invShipToCity', 'invShipToPostal'].forEach((id) => {
+      const el = $('#' + id);
+      if (el) el.classList.remove('field-invalid');
+    });
+    if (movementTimePicker && movementTimePicker.clearInvalid) movementTimePicker.clearInvalid();
+  }
+  /** ONLY GR/GT address toast + focus path (role × part). */
+  function reportTransportAddressDefect(role, part) {
+    const msg = FiscalAdminI18n.fmt('gr.addr.incomplete', {
+      role: FiscalAdminI18n.t('gr.addr.role.' + role),
+      need: FiscalAdminI18n.t('gr.addr.part.' + part)
+    });
+    toast(msg, 'error');
+    const id = transportAddressInputId(role, part);
+    const el = id ? $('#' + id) : null;
+    if (el) {
+      el.classList.add('field-invalid');
+      try { el.focus(); el.select && el.select(); } catch (_) { /* */ }
+    }
   }
 
-  // ONLY movement-start control: unified FiscalUI date picker (Lisbon today onward) + HH:MM.
+  // ONLY movement-start control: FiscalUI date picker + FiscalUI time picker (24h Lisbon wall).
   const movementDatePicker = FiscalUI.createDatePicker('#invMovementDate', {
     value: FiscalUI.ymdInTimezone(new Date(), INVOICE_TZ),
     min: FiscalUI.ymdInTimezone(new Date(), INVOICE_TZ),
@@ -6358,11 +6441,15 @@
     },
     getPlaceholder: function () { return FiscalAdminI18n.t('gr.movement_date_ph'); },
   });
+  const movementTimePicker = FiscalUI.createTimePicker('#invMovementTime', {
+    value: FiscalUI.hmInTimezone(new Date(), INVOICE_TZ),
+    getPlaceholder: function () { return FiscalAdminI18n.t('gr.movement_time_ph'); },
+  });
   /** "YYYY-MM-DDTHH:MM:00" (Lisbon wall time) or '' when date/time missing. */
   function readMovementStart() {
     const d = movementDatePicker.getValue();
-    const t = (($('#invMovementTime') && $('#invMovementTime').value) || '').trim();
-    return d && /^\d{2}:\d{2}$/.test(t) ? d + 'T' + t + ':00' : '';
+    const t = movementTimePicker.getValue();
+    return d && t ? d + 'T' + t + ':00' : '';
   }
 
   if ($('#invMovementPurpose')) {

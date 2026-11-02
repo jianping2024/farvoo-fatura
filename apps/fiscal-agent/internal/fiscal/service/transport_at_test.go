@@ -126,21 +126,44 @@ func TestIssueDeliveryNote_RealNumberToAT_NoDoubleSend(t *testing.T) {
 // Incomplete PT addresses are refused before AT in every env (mock included).
 func TestIssueDeliveryNote_IncompleteAddressNeverReachesAT(t *testing.T) {
 	svc, _, ct := transportFixture(t)
-	for i, mut := range []func(*domain.DeliveryNoteRequest){
-		func(r *domain.DeliveryNoteRequest) {
-			r.ShipTo = domain.Address{Detail: "R. Almada Negreiros 456", City: "Lisboa"}
+	cases := []struct {
+		mut        func(*domain.DeliveryNoteRequest)
+		wantField  string
+		wantPart   string
+	}{
+		{
+			mut: func(r *domain.DeliveryNoteRequest) {
+				r.ShipTo = domain.Address{Detail: "R. Almada Negreiros 456", City: "Lisboa"}
+			},
+			wantField: "ship_to", wantPart: "postal_code",
 		},
-		func(r *domain.DeliveryNoteRequest) {
-			r.ShipFrom = domain.Address{Detail: "Room 401", City: "Hangzhou", PostalCode: "311258"}
+		{
+			mut: func(r *domain.DeliveryNoteRequest) {
+				r.ShipFrom = domain.Address{Detail: "Room 401", City: "Hangzhou", PostalCode: "311258"}
+			},
+			wantField: "ship_from", wantPart: "postal_code",
 		},
-		func(r *domain.DeliveryNoteRequest) { r.Snapshot.Customer.PostalCode = "311258" },
-	} {
+		{
+			mut:       func(r *domain.DeliveryNoteRequest) { r.Snapshot.Customer.PostalCode = "311258" },
+			wantField: "customer", wantPart: "postal_code",
+		},
+		{
+			mut: func(r *domain.DeliveryNoteRequest) {
+				r.ShipTo = domain.Address{Detail: "Rua A 1", PostalCode: "1000-001"}
+			},
+			wantField: "ship_to", wantPart: "city",
+		},
+	}
+	for i, tc := range cases {
 		req := grRequest("gr-bad-" + string(rune('a'+i)))
-		mut(&req)
+		tc.mut(&req)
 		_, err := svc.IssueDeliveryNote(context.Background(), req)
 		var ce *service.CodedError
 		if !errors.As(err, &ce) || ce.Code != service.ErrCodeTransportAddressIncomplete {
 			t.Fatalf("case %d: want %s, got %v", i, service.ErrCodeTransportAddressIncomplete, err)
+		}
+		if ce.Field != tc.wantField || ce.Part != tc.wantPart {
+			t.Fatalf("case %d: want field=%s part=%s, got field=%s part=%s", i, tc.wantField, tc.wantPart, ce.Field, ce.Part)
 		}
 	}
 	if len(ct.docs) != 0 {

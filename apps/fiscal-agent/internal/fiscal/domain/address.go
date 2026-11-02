@@ -20,6 +20,22 @@ type Address struct {
 // city and a Portuguese NNNN-NNN postal code are present.
 var ErrAddressIncomplete = errors.New("address incomplete")
 
+// IncompleteAddressError names which address role and which part failed ValidatePT.
+// Part is one of: detail | city | postal_code | country.
+type IncompleteAddressError struct {
+	Field string // customer | ship_from | ship_to (caller-chosen role key)
+	Part  string
+}
+
+func (e *IncompleteAddressError) Error() string {
+	if e == nil {
+		return ErrAddressIncomplete.Error()
+	}
+	return fmt.Sprintf("%s: %s incomplete (%s)", ErrAddressIncomplete.Error(), e.Field, e.Part)
+}
+
+func (e *IncompleteAddressError) Unwrap() error { return ErrAddressIncomplete }
+
 var ptPostalCode = regexp.MustCompile(`^\d{4}-\d{3}$`)
 
 // Normalize trims fields, collapses inner whitespace and defaults Country to PT.
@@ -38,16 +54,19 @@ func (a Address) IsZero() bool {
 	return strings.TrimSpace(a.Detail) == "" && strings.TrimSpace(a.City) == "" && strings.TrimSpace(a.PostalCode) == ""
 }
 
-// ValidatePT enforces the AT transport rule; field names the address in the error.
+// ValidatePT enforces the AT transport rule; field names the address role in the error.
+// Checks parts in order: street → city → country → postal code (first failure wins).
 func (a Address) ValidatePT(field string) error {
 	n := a.Normalize()
 	switch {
-	case n.Detail == "" || n.City == "":
-		return fmt.Errorf("%w: %s needs street and city", ErrAddressIncomplete, field)
+	case n.Detail == "":
+		return &IncompleteAddressError{Field: field, Part: "detail"}
+	case n.City == "":
+		return &IncompleteAddressError{Field: field, Part: "city"}
 	case n.Country != "PT":
-		return fmt.Errorf("%w: %s must be in Portugal (country %s)", ErrAddressIncomplete, field, n.Country)
+		return &IncompleteAddressError{Field: field, Part: "country"}
 	case !ptPostalCode.MatchString(n.PostalCode):
-		return fmt.Errorf("%w: %s postal code %q must be NNNN-NNN", ErrAddressIncomplete, field, n.PostalCode)
+		return &IncompleteAddressError{Field: field, Part: "postal_code"}
 	}
 	return nil
 }

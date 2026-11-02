@@ -19,6 +19,12 @@ var fiscalUIDatePickerJS []byte
 //go:embed ui/date-picker.css
 var fiscalUIDatePickerCSS []byte
 
+//go:embed ui/time-picker.js
+var fiscalUITimePickerJS []byte
+
+//go:embed ui/time-picker.css
+var fiscalUITimePickerCSS []byte
+
 //go:embed ui/date-range.js
 var fiscalUIDateRangeJS []byte
 
@@ -57,6 +63,16 @@ func registerFiscalUIRoutes(mux *http.ServeMux) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 		_, _ = w.Write(fiscalUIDatePickerCSS)
+	})
+	mux.HandleFunc("GET /fiscal-ui/time-picker.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		_, _ = w.Write(fiscalUITimePickerJS)
+	})
+	mux.HandleFunc("GET /fiscal-ui/time-picker.css", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		_, _ = w.Write(fiscalUITimePickerCSS)
 	})
 	mux.HandleFunc("GET /fiscal-ui/date-range.js", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")

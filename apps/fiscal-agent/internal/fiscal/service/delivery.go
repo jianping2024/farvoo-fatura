@@ -41,6 +41,10 @@ func (s *FiscalService) IssueDeliveryNote(ctx context.Context, req domain.Delive
 		return nil, coded(ErrCodeValidationFailed, "movement_start_at required")
 	}
 	if err := validateGRCustomer(req.Snapshot.Customer, req.RecipientIsVATPayer); err != nil {
+		var ce *CodedError
+		if errors.As(err, &ce) {
+			return nil, err
+		}
 		return nil, coded(ErrCodeValidationFailed, err.Error())
 	}
 	shipFrom, shipTo, err := s.resolveShipPoints(req.StoreID, req.Snapshot.Customer, req.ShipFrom, req.ShipTo)
@@ -105,15 +109,17 @@ func (s *FiscalService) IssueDeliveryNote(ctx context.Context, req domain.Delive
 
 func validateGRCustomer(c domain.CustomerInput, vatPayer bool) error {
 	name := strings.TrimSpace(c.CompanyName)
-	addr := strings.TrimSpace(c.AddressDetail)
-	city := strings.TrimSpace(c.City)
-	postal := strings.TrimSpace(c.PostalCode)
 	nif := strings.TrimSpace(c.TaxID)
 	if name == "" {
 		return fmt.Errorf("customer name required")
 	}
-	if addr == "" || city == "" || postal == "" {
-		return fmt.Errorf("customer address (detail/city/postal) required")
+	// Address shape: ONLY domain.Address.ValidatePT (same role/part as resolveShipPoints).
+	if err := customerAddress(c).ValidatePT("customer"); err != nil {
+		var ia *domain.IncompleteAddressError
+		if errors.As(err, &ia) {
+			return codedField(ErrCodeTransportAddressIncomplete, err.Error(), ia.Field, ia.Part)
+		}
+		return coded(ErrCodeTransportAddressIncomplete, err.Error())
 	}
 	if vatPayer {
 		if nif == "" || nif == "999999990" {

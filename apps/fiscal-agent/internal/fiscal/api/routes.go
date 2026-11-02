@@ -1006,7 +1006,14 @@ func writeCoded(w http.ResponseWriter, err error) {
 		case "validation_failed":
 			status = http.StatusBadRequest
 		}
-		writeErr(w, status, ce.Code, ce.Msg)
+		body := map[string]any{"error": ce.Code, "message": ce.Msg}
+		if ce.Field != "" {
+			body["field"] = ce.Field
+		}
+		if ce.Part != "" {
+			body["part"] = ce.Part
+		}
+		writeJSON(w, status, body)
 		return
 	}
 	writeErr(w, http.StatusBadRequest, "issue_failed", err.Error())

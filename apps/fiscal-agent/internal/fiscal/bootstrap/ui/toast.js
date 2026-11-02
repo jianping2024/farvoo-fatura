@@ -100,6 +100,25 @@
       return tOr('settings.printers.need', msg);
     }
 
+    // Structured transport address: prefer role×part over the generic code string.
+    if (code === 'transport_address_incomplete') {
+      var role = err.field != null ? String(err.field) : '';
+      var part = err.part != null ? String(err.part) : '';
+      if (role && part) {
+        try {
+          var i18n = global.FiscalAdminI18n;
+          if (i18n && typeof i18n.fmt === 'function' && typeof i18n.t === 'function') {
+            var roleLabel = i18n.t('gr.addr.role.' + role);
+            var needLabel = i18n.t('gr.addr.part.' + part);
+            if (roleLabel && roleLabel !== 'gr.addr.role.' + role &&
+                needLabel && needLabel !== 'gr.addr.part.' + part) {
+              return i18n.fmt('gr.addr.incomplete', { role: roleLabel, need: needLabel });
+            }
+          }
+        } catch (_) { /* */ }
+      }
+    }
+
     var fromCode = code ? tOr('errors.' + code, '') : '';
     // Already-localized client message (CJK / accented) wins over error code.
     if (msg && /[^\x00-\x7F]/.test(msg)) return msg;

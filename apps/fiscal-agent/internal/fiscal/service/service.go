@@ -39,14 +39,21 @@ const (
 )
 
 // CodedError carries a stable error code for HTTP.
+// Field/Part are optional machine hints (e.g. transport_address_incomplete → ship_to/city).
 type CodedError struct {
-	Code string
-	Msg  string
+	Code  string
+	Msg   string
+	Field string
+	Part  string
 }
 
 func (e *CodedError) Error() string { return e.Msg }
 
 func coded(code, msg string) error { return &CodedError{Code: code, Msg: msg} }
+
+func codedField(code, msg, field, part string) error {
+	return &CodedError{Code: code, Msg: msg, Field: field, Part: part}
+}
 
 // FiscalService orchestrates setup + issuance.
 type FiscalService struct {

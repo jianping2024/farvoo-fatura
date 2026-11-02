@@ -129,11 +129,14 @@ func TestAdminHTMLInvoiceFiltersUnique(t *testing.T) {
 	if !strings.Contains(adminHTML, "getLocale:") {
 		t.Fatal("invoice date filter must pass getLocale for DatePicker labels")
 	}
-	if !strings.Contains(adminHTML, "invoiceDateFilterCtrl, movementDatePicker]") {
-		t.Fatal("applyAdminLocale must include invoiceDateFilterCtrl + movementDatePicker in the shared relabel loop")
+	if !strings.Contains(adminHTML, "invoiceDateFilterCtrl, movementDatePicker, movementTimePicker]") {
+		t.Fatal("applyAdminLocale must include invoiceDateFilterCtrl + movementDatePicker + movementTimePicker in the shared relabel loop")
 	}
 	if strings.Contains(adminHTML, `type="datetime-local"`) || strings.Contains(adminHTML, `type="date"`) {
 		t.Fatal("admin dates must use FiscalUI.createDatePicker, not native date inputs")
+	}
+	if strings.Contains(adminHTML, `type="time"`) {
+		t.Fatal("admin movement time must use FiscalUI.createTimePicker, not native type=time")
 	}
 	if n := strings.Count(adminHTML, ".relabel()"); n != 1 {
 		t.Fatalf("relabel() must be invoked from exactly one locale loop, got %d", n)
