@@ -5,10 +5,9 @@ import (
 	"strings"
 )
 
-const (
-	wsseNS = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
-	wsuNS  = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
-)
+// wsseNS is the WS-Security namespace AT expects (Séries manual §4.1.1 sample header).
+// NOT the OASIS 2004 secext namespace — AT rejects that.
+const wsseNS = "http://schemas.xmlsoap.org/ws/2002/12/secext"
 
 // BuildUsernameTokenXML is the ONLY UsernameToken XML builder for AT SOAP headers.
 // Expects AuthMaterial from EncryptATAuth; does not encrypt.
@@ -34,12 +33,10 @@ func BuildUsernameTokenXML(username string, mat *AuthMaterial) (string, error) {
 	), nil
 }
 
-// BuildSecurityHeaderXML wraps a UsernameToken in wsse:Security.
+// BuildSecurityHeaderXML wraps a UsernameToken in wss:Security (declares the wss prefix
+// BuildUsernameTokenXML relies on).
 func BuildSecurityHeaderXML(usernameTokenXML string) string {
-	return fmt.Sprintf(
-		`<wss:Security xmlns:wss="%s" xmlns:wsu="%s">%s</wss:Security>`,
-		wsseNS, wsuNS, usernameTokenXML,
-	)
+	return fmt.Sprintf(`<wss:Security xmlns:wss="%s">%s</wss:Security>`, wsseNS, usernameTokenXML)
 }
 
 // WrapSOAPEnvelope builds a minimal SOAP 1.1 envelope. bodyInner is raw XML for S:Body.

@@ -16,5 +16,6 @@ openssl x509 -in apps/fiscal-agent/internal/fiscal/at/testdata/producer/51965529
 
 ## 注意
 
+- 签发 CA = **AT Issuing CA2**：实测 test `:722` 不收（只收 CA1）→ 测试联调用公共 `TesteWebservices.pfx`。
 - 本文件为 **PEM 公钥证书**（无私钥）。mTLS 若还要私钥，须另行保管，**禁止**把生产私钥提交进仓。
 - 与 `transport/` 下 AT 公开测试材料分开存放，避免混用。

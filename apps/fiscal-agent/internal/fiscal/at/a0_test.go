@@ -136,8 +136,8 @@ func TestBuildUsernameTokenAndEnvelope(t *testing.T) {
 	if !strings.Contains(env, "<S:Header>") || !strings.Contains(env, "<S:Body>") {
 		t.Fatalf("envelope: %s", env)
 	}
-	if !strings.Contains(env, "oasis-200401-wss-wssecurity-secext") {
-		t.Fatal("missing wsse ns")
+	if !strings.Contains(env, `<wss:Security xmlns:wss="http://schemas.xmlsoap.org/ws/2002/12/secext">`) {
+		t.Fatal("missing AT manual wss ns (2002/12 secext)")
 	}
 }
 

@@ -14,7 +14,7 @@
 | 刀 | 标题 | 状态 | 关闭条件（摘要） |
 |----|------|------|------------------|
 | **A0** | 共享底座（加密 + mTLS + SOAP 公共件） | **已完成**（2026-11-02；0.5.59） | 无网单测绿；mock 行为不变 |
-| **A1** | 系列 SOAP live（test） | **下一步** | test 注册至少一种销售系列 + GR 系列，得真 `validation_code` |
+| **A1** | 系列 SOAP live（test） | **进行中**：A1.1 连通 ✅；下一步 A1.2 注册 | test 注册至少一种销售系列 + GR 系列，得真 `validation_code` |
 | **A2** | 运输 SOAP live（test）= 原 G7 / GT T5 | 未开始 | test 返回真 `ATDocCodeID`；mock 回归仍绿 |
 | **A3** | prod 门禁 | 未开始 | 正式证；禁止测试 pfx 打 prod |
 | A4 | 观测 / Admin 只读 `at_env`（可选） | 未开始 | 非本阶段硬门槛 |
@@ -64,6 +64,18 @@ A0 共享底座（无网）
 
 GR mock（G1–G6）与 GT mock（T1–T4）**已完成**；缺的只是 live AT。
 
+**系列连通探测（2026-11-02，`go test -tags=at_series_live -run TestLiveConsultSeries`，只读 `consultarSeries`）：**
+
+| 试验 | 结果 | 结论 |
+|------|------|------|
+| `TesteWebservices.pfx` → `:722` | mTLS 通；SOAP Fault **1199** 认证/授权 | 证与加密链路 OK，账号不对 |
+| 同上 + 2020 旧 `ChavePublicaAT` | Fault **118** | 现行公钥正确（Nonce 能被 AT 解开） |
+| `519655290.pfx` → `:722` | TLS 被拒（`bad record MAC`） | `:722` 只收 AT/DGITA Issuing **CA1** |
+| `599999993/37` | 1199 | 手册示例账号，不可用 → 须本司 NIF 子用户（§3.2） |
+| **`519655290/1`（WSE+WFA）+ `TesteWebservices.pfx`** | **HTTP 200，`codResultOper=2002`**（查询成功，暂无系列） | **A1.1 连通 ✅**（2026-11-02） |
+
+修正：A0 `wss` 命名空间改为手册 `http://schemas.xmlsoap.org/ws/2002/12/secext`；`LoadClientTLS` 改用 `go-pkcs12`（OpenSSL 3 / SHA-256 pfx）。
+
 ---
 
 ## 3. 材料与账号口径（P0）
@@ -74,7 +86,7 @@ GR mock（G1–G6）与 GT mock（T1–T4）**已完成**；缺的只是 live AT
 |------|-------------|------|------------------------------|
 | 运输/mTLS 客户端 pfx | `apps/fiscal-agent/internal/fiscal/at/testdata/transport/certificados/current/TesteWebservices.pfx`（口令 `TESTEwebservice`） | HTTPS 客户端证（**有私钥**） | → 2027-01-06 |
 | AT 密码加密公钥 | 同目录 `ChavePublicaAT.cer` | SOAP 内加密子用户密码 | → 2027-04-15 |
-| 厂商 adesão 公开证 | `…/testdata/producer/519655290.cer` | 软件认证号 / 身份（**仅公钥**；**不是** mTLS、**不是**登录账号） | → 2028-10-28 |
+| 厂商 adesão 证 | `…/testdata/producer/519655290.cer`（私钥 + pfx 在仓外 `~/at-certificates/`，**禁止**入仓） | mTLS 客户端证（AT Issuing **CA2**）。实测：test `:722` 只收 CA1 → 测试联调**不用**本证，用公共 `TesteWebservices.pfx` | → 2028-10-28 |
 
 刷新运输公开包：`./scripts/fetch-at-transport-testdata.sh`。
 
@@ -82,11 +94,11 @@ GR mock（G1–G6）与 GT mock（T1–T4）**已完成**；缺的只是 live AT
 
 | 身份 | 谁提供 | 联调怎么用 |
 |------|--------|------------|
-| **AT 测试子用户** | AT 手册/测试港**给定例**（不由本司「创建」） | `FISCAL_AT_ENV=test` 时填 Admin「AT 凭证」 |
+| **AT 测试子用户** | **本司 NIF（519655290）下自建子用户**，并授予 “WSE - Comunicação e Gestão de Séries por webservice” 权限（手册 Genéricos §2.3：test 用该子用户**生产**口令校验） | `FISCAL_AT_ENV=test` 时填 Admin「AT 凭证」 |
 | **厂商 adesão** | 软件公司在门户申请（已有 `519655290`） | `taxpayer_settings.software_certificate_number`；系列注册字段 |
 | **门店真子用户** | 门店在自家 NIF 下开 utilizador | **仅** `prod` / A3；禁止拿真门店账号打 test |
 
-**P0 测试账号（以现行手册为准；失效则改本文）：**
+**⚠ 下表仅为手册示例，实测 test 港返回 1199（认证/授权失败），不可用；以本司 NIF 子用户替代：**
 
 | 项 | 值 |
 |----|-----|
@@ -245,7 +257,7 @@ apps/fiscal-agent/internal/fiscal/at/
 ### 6.2 步骤
 
 1. 实现 `SOAPClient.RegisterSeries` / `ConsultSeries`（复用 A0 加密 + mTLS + Token）。  
-2. Admin / 现有 setup：纳税人 NIF=`599999993`（或手册现行测试 NIF）；AT 凭证=`599999993/37` + `testes1234`；`software_certificate_number` 与厂商认证号对齐（本仓 `519655290`，以门户/合同为准）。  
+2. Admin / 现有 setup：纳税人 NIF=`599999993`（或手册现行测试 NIF）；AT 凭证=`599999993/37` + `testes1234`；`numCertSWFatur` = 软件认证号（≤4 位；未认证填 `0`）——**不是** NIF `519655290`。  
 3. `config.json`：`fiscal_at_env=test` + §4.1 证路径（经 `applyFiscalRuntimeFromConfig`）；注册至少 **一种销售系列（FT 或 FS）** + **GR 系列**。  
 4. 错误可诊断：Auth / schema / 业务码映射进 `at_soap_failed` 摘要（无密码）。  
 5. 可选：`-tags=at_series_live` 集成测（默认 skip）；CI 仍 mock。  
