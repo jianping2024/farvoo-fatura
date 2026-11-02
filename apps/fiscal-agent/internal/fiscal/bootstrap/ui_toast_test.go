@@ -1192,3 +1192,17 @@ func TestAdminWithBusyMarkSaveSuccessLabel(t *testing.T) {
 		}
 	}
 }
+
+// Store form must load saved data, never ship demo values that a save would write back.
+func TestAdminStoreFormLoadsSavedNoDemoDefaults(t *testing.T) {
+	for _, bad := range []string{`value="517535009"`, `value="517535009/37"`, `value="demo-pass"`, `value="Farvoo Demo Lda"`} {
+		if strings.Contains(adminHTML, bad) {
+			t.Fatalf("admin store form still prefilled with %s", bad)
+		}
+	}
+	for _, want := range []string{"async function loadSavedStoreForms()", "j('GET', '/local/v1/setup/taxpayer')", "j('GET', '/local/v1/setup/at-credentials')"} {
+		if !strings.Contains(adminHTML, want) {
+			t.Fatalf("admin missing %q", want)
+		}
+	}
+}

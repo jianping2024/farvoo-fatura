@@ -1169,19 +1169,19 @@
               <div class="settings-panel-body">
                 <h3 style="margin:0.75rem 0 0.5rem;font-size:0.95rem" data-i18n="settings.store.heading">门店</h3>
                 <div class="split">
-                  <div class="field"><label for="nif">NIF</label><input id="nif" value="517535009" autocomplete="off" /><span class="field-error" id="nifError"></span></div>
-                  <div class="field"><label for="legal" data-i18n="settings.store.name">店名</label><input id="legal" value="Farvoo Demo Lda" autocomplete="off" /><span class="field-error" id="legalError"></span></div>
+                  <div class="field"><label for="nif">NIF</label><input id="nif" autocomplete="off" /><span class="field-error" id="nifError"></span></div>
+                  <div class="field"><label for="legal" data-i18n="settings.store.name">店名</label><input id="legal" autocomplete="off" /><span class="field-error" id="legalError"></span></div>
                 </div>
-                <div class="field"><label for="addr" data-i18n="settings.store.addr">地址</label><input id="addr" value="Rua Demo 1" autocomplete="off" /></div>
+                <div class="field"><label for="addr" data-i18n="settings.store.addr">地址</label><input id="addr" autocomplete="off" /></div>
                 <div class="split">
-                  <div class="field"><label for="city" data-i18n="settings.store.city">城市</label><input id="city" value="Lisboa" autocomplete="off" /></div>
-                  <div class="field"><label for="postal" data-i18n="settings.store.postal">邮编</label><input id="postal" value="1000-001" autocomplete="off" /><span class="field-error" id="postalError"></span></div>
+                  <div class="field"><label for="city" data-i18n="settings.store.city">城市</label><input id="city" autocomplete="off" /></div>
+                  <div class="field"><label for="postal" data-i18n="settings.store.postal">邮编</label><input id="postal" placeholder="1000-001" autocomplete="off" /><span class="field-error" id="postalError"></span></div>
                 </div>
                 <div class="panel-footer"><button type="button" id="btnTax" data-i18n="settings.store.save">保存门店</button></div>
                 <div class="settings-admin-only">
                 <h3 style="margin:1rem 0 0.5rem;font-size:0.95rem" data-i18n="settings.store.at_heading">AT 凭证</h3>
-                <div class="field"><label for="atuser" data-i18n="settings.store.user">用户名</label><input id="atuser" value="517535009/37" autocomplete="off" /><span class="field-error" id="atuserError"></span></div>
-                <div class="field"><label for="atpass" data-i18n="settings.store.pass">密码</label><input id="atpass" type="password" value="demo-pass" autocomplete="off" /><span class="field-error" id="atpassError"></span></div>
+                <div class="field"><label for="atuser" data-i18n="settings.store.user">用户名</label><input id="atuser" placeholder="NIF/1" autocomplete="off" /><span class="field-error" id="atuserError"></span></div>
+                <div class="field"><label for="atpass" data-i18n="settings.store.pass">密码</label><input id="atpass" type="password" autocomplete="new-password" /><span class="field-error" id="atpassError"></span></div>
                 <div class="panel-footer"><button type="button" id="btnAT" data-i18n="settings.store.save_at">保存凭证</button></div>
                 </div>
               </div>
@@ -3219,8 +3219,32 @@
     applySettingsWizardUI(setupStatusCache);
   }
 
+  let storeFormsLoaded = false;
+  /** ONLY loader of saved taxpayer + AT username into the store form (password never returned).
+   *  Without it the form showed HTML demo values and saving overwrote the real store. */
+  async function loadSavedStoreForms() {
+    if (storeFormsLoaded) return;
+    storeFormsLoaded = true;
+    try {
+      const t = await j('GET', '/local/v1/setup/taxpayer');
+      if (t && t.tax_registration_number) {
+        $('#nif').value = t.tax_registration_number;
+        $('#legal').value = t.legal_name || '';
+        $('#addr').value = t.address_detail || '';
+        $('#city').value = t.city || '';
+        $('#postal').value = t.postal_code || '';
+      }
+    } catch (_) { storeFormsLoaded = false; }
+    try {
+      const c = await j('GET', '/local/v1/setup/at-credentials');
+      if (c && c.username) $('#atuser').value = c.username;
+      if (c && c.password_set) $('#atpass').placeholder = FiscalAdminI18n.t('settings.store.pass_saved');
+    } catch (_) { /* owner/cashier: admin-only */ }
+  }
+
   /** ONLY settings status UI path (dashboard + wizard + collapse + series form). */
   function applySettingsStatusUI(st) {
+    if (st) loadSavedStoreForms();
     renderSetupDashboard(st);
     applySeriesForm(st);
     applySettingsWizardUI(st);

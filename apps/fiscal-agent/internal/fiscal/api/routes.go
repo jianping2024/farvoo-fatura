@@ -110,6 +110,12 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("POST /local/v1/cash-drawer/open", g(func(w http.ResponseWriter, r *http.Request) {
 		handleOpenCashDrawer(w, r, deps)
 	}))
+	mux.HandleFunc("GET /local/v1/setup/taxpayer", g(func(w http.ResponseWriter, r *http.Request) {
+		handleGetTaxpayer(w, r, deps)
+	}))
+	mux.HandleFunc("GET /local/v1/setup/at-credentials", g(func(w http.ResponseWriter, r *http.Request) {
+		handleGetATCredentials(w, r, deps)
+	}))
 	mux.HandleFunc("PUT /local/v1/setup/taxpayer", g(func(w http.ResponseWriter, r *http.Request) {
 		handleUpsertTaxpayer(w, r, deps)
 	}))
@@ -460,6 +466,47 @@ func handleUpsertTaxpayer(w http.ResponseWriter, r *http.Request, deps HandlerDe
 	}
 	st, _ := deps.Fiscal.SetupStatus(storeID)
 	writeJSON(w, http.StatusOK, st)
+}
+
+// handleGetTaxpayer returns saved taxpayer_settings so Admin edits real data, not HTML demo
+// defaults (saving those would overwrite the store). Not configured → {}.
+func handleGetTaxpayer(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	storeID, ok := writeResolvedStoreID(w, deps, r.URL.Query().Get("store_id"))
+	if !ok {
+		return
+	}
+	t, err := deps.Fiscal.DB().GetTaxpayerSettings(storeID)
+	if errors.Is(err, store.ErrNotFound) {
+		writeJSON(w, http.StatusOK, map[string]any{})
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "internal", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, store.TaxpayerInput{
+		StoreID: t.StoreID, TaxRegistrationNumber: t.TaxRegistrationNumber, LegalName: t.LegalName,
+		BusinessName: t.BusinessName, AddressDetail: t.AddressDetail, City: t.City, PostalCode: t.PostalCode,
+		Country: t.Country, Timezone: t.Timezone, SoftwareCertificateNumber: t.SoftwareCertificateNumber,
+	})
+}
+
+// handleGetATCredentials returns the saved AT username only — the password is never returned.
+func handleGetATCredentials(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	storeID, ok := writeResolvedStoreID(w, deps, r.URL.Query().Get("store_id"))
+	if !ok {
+		return
+	}
+	c, err := deps.Fiscal.DB().GetATCredentials(storeID)
+	if errors.Is(err, store.ErrNotFound) {
+		writeJSON(w, http.StatusOK, map[string]any{"password_set": false})
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "internal", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"username": c.Username, "password_set": true})
 }
 
 func handleUpsertAT(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
