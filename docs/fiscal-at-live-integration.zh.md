@@ -1,6 +1,6 @@
 # AT 测试 / 正式环境统一接入规划
 
-> **状态：定稿**（规划已齐；**A0 已落地**；下一刀 = A1）  
+> **状态：定稿**（规划已齐；**A0、A1 已落地**；下一刀 = A2）  
 > **权威：是**（本仓接 AT **真实** test/prod SOAP 的分刀顺序与共享底座；**不**改现有 mock 行为）  
 > **对应实现：** A0：`at/crypto.go`、`at/tls.go`、`at/soaputil.go`、`at/live_config.go`；A1/A2 业务 SOAP 仍骨架  
 > **现状：** `FISCAL_AT_ENV=mock`（默认/CI）全绿；`test`/`prod` 业务 Client 仍失败关闭（待 A1/A2）  
@@ -14,7 +14,7 @@
 | 刀 | 标题 | 状态 | 关闭条件（摘要） |
 |----|------|------|------------------|
 | **A0** | 共享底座（加密 + mTLS + SOAP 公共件） | **已完成**（2026-11-02；0.5.59） | 无网单测绿；mock 行为不变 |
-| **A1** | 系列 SOAP live（test） | **进行中**：A1.1 连通 ✅；A1.2 `SOAPClient` 已实现（fake-AT 单测绿），待 test 真注册 | test 注册至少一种销售系列 + GR 系列，得真 `validation_code` |
+| **A1** | 系列 SOAP live（test） | **已完成**（2026-11-02）：Admin 经 test 港注册 FT/FS/GR，真验证码入 `fiscal-test.db` | test 注册至少一种销售系列 + GR 系列，得真 `validation_code` |
 | **A2** | 运输 SOAP live（test）= 原 G7 / GT T5 | 未开始 | test 返回真 `ATDocCodeID`；mock 回归仍绿 |
 | **A3** | prod 门禁 | 未开始 | 正式证；禁止测试 pfx 打 prod |
 | A4 | 观测 / Admin 只读 `at_env`（可选） | 未开始 | 非本阶段硬门槛 |
@@ -287,6 +287,24 @@ apps/fiscal-agent/internal/fiscal/at/
 | 2 | 同上，GR 系列真码 |
 | 3 | mock / CI 全绿 |
 | 4 | 失败路径不回落 mock |
+
+### 6.3.1 关闭记录（2026-11-02）
+
+环境：`fiscal-local`，`FISCAL_AT_ENV=test`，`fiscal-test.db`（`fiscal_meta.at_env=test`）；公共 `TesteWebservices.pfx`；子用户 `519655290/1`（WSE）；`numCertSWFatur=0`。
+
+| 类型 | 系列 | 验证码 | 路径 |
+|------|------|--------|------|
+| FT | FT2026DEMO01 | AAJFJK8HRN | Admin → 2001 |
+| FS | FS2026DEMO01 | AAJFJ28HRZ | Admin → 2001 |
+| GR | GR2026T02 | AAJFJB8H8B | Admin → 2001 |
+| GT | GR2026T01 | AAJFJW8H89 | Admin → 2001（误填入 GT 卡；test 数据，保留） |
+| — | FT2026T01 / GR2026T01(GR) | AAJFJG8HRJ / AAJFJ48HR6 | live 探针（2001 + 4001→consult 取回） |
+
+关闭条件 1–4 全过（FT + GR 真码；mock/CI 绿；失败不回落 mock）。
+
+**遗留（不挡 A2）：**
+1. 本地 `series` 为 `UNIQUE(store_id, series_code)` 且 `ActiveSeriesHasCode` 不看 `document_type`；AT 允许同一系列号跨类型 → 同号不同类型会被误判「已注册」且无法落库。
+2. Admin「保存门店 / 保存凭证」按钮请求已成功仍停在「保存中…」。
 
 ### 6.4 非目标
 
