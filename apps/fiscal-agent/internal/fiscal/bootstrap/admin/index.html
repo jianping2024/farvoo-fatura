@@ -3827,6 +3827,8 @@
     renderInvoiceSummary(order);
     syncOrderInvoicePanel(order);
     showView('order-invoice');
+    const dt = ($('#docType') && $('#docType').value) || '';
+    if (dt === 'GR' || dt === 'GT') refreshMovementStartDefaults();
   }
 
   /** ONLY sync for manual order-invoice panel: issued → link + reprint; else → issue CTA. */
@@ -5176,6 +5178,11 @@
         toast(FiscalAdminI18n.t('gr.need_movement_start'), 'error');
         return;
       }
+      if (movementStartIsPast(movementStart)) {
+        toast(FiscalAdminI18n.t('errors.movement_start_past'), 'error');
+        movementTimePicker.focus();
+        return;
+      }
       if (isGt) {
         const purpose = ($('#invMovementPurpose').value || '').trim();
         if (purpose !== 'transfer' && purpose !== 'customer') {
@@ -6368,6 +6375,7 @@
     }
   }
 
+  let grFieldsWereShown = false;
   function syncGrFieldsVisibility() {
     const wrap = $('#grFields');
     if (!wrap) return;
@@ -6377,6 +6385,9 @@
     const purposeWrap = $('#gtPurposeWrap');
     if (purposeWrap) purposeWrap.classList.toggle('hidden', dt !== 'GT');
     if (dt === 'GT') syncGtPurposeUI();
+    // Refresh defaults only when GR/GT fields first appear (not on every re-sync).
+    if (show && !grFieldsWereShown) refreshMovementStartDefaults();
+    grFieldsWereShown = show;
   }
   if ($('#docType')) {
     $('#docType').addEventListener('change', syncGrFieldsVisibility);
@@ -6442,9 +6453,29 @@
     getPlaceholder: function () { return FiscalAdminI18n.t('gr.movement_date_ph'); },
   });
   const movementTimePicker = FiscalUI.createTimePicker('#invMovementTime', {
-    value: FiscalUI.hmInTimezone(new Date(), INVOICE_TZ),
+    value: FiscalUI.hmInTimezone(new Date(Date.now() + 60 * 1000), INVOICE_TZ),
     getPlaceholder: function () { return FiscalAdminI18n.t('gr.movement_time_ph'); },
   });
+  /** Lisbon wall "YYYY-MM-DDTHH:MM:00" for "now" (same shape as movement_start_at). */
+  function lisbonMovementNow() {
+    return FiscalUI.ymdInTimezone(new Date(), INVOICE_TZ) + 'T' +
+      FiscalUI.hmInTimezone(new Date(), INVOICE_TZ) + ':00';
+  }
+  /** ONLY past check for GR/GT movement start (mirrors assertMovementStartNotPast). */
+  function movementStartIsPast(ms) {
+    return !!(ms && ms < lisbonMovementNow());
+  }
+  /** ONLY refresh of movement date/time defaults when GR/GT fields are shown. */
+  function refreshMovementStartDefaults() {
+    const now = new Date();
+    const inOneMin = new Date(now.getTime() + 60 * 1000);
+    const today = FiscalUI.ymdInTimezone(now, INVOICE_TZ);
+    if (movementDatePicker && movementDatePicker.setValue) movementDatePicker.setValue(today);
+    if (movementTimePicker && movementTimePicker.setValue) {
+      movementTimePicker.setValue(FiscalUI.hmInTimezone(inOneMin, INVOICE_TZ));
+      if (movementTimePicker.clearInvalid) movementTimePicker.clearInvalid();
+    }
+  }
   /** "YYYY-MM-DDTHH:MM:00" (Lisbon wall time) or '' when date/time missing. */
   function readMovementStart() {
     const d = movementDatePicker.getValue();

@@ -1,9 +1,9 @@
 # AT 测试 / 正式环境统一接入规划
 
-> **状态：定稿**（规划已齐；**A0、A1 已落地**；下一刀 = A2）  
+> **状态：定稿**（规划已齐；**A0、A1 已落地**；**A2 进行中**）  
 > **权威：是**（本仓接 AT **真实** test/prod SOAP 的分刀顺序与共享底座；**不**改现有 mock 行为）  
-> **对应实现：** A0：`at/crypto.go`、`at/tls.go`、`at/soaputil.go`、`at/live_config.go`；A1/A2 业务 SOAP 仍骨架  
-> **现状：** `FISCAL_AT_ENV=mock`（默认/CI）全绿；`test`/`prod` 业务 Client 仍失败关闭（待 A1/A2）  
+> **对应实现：** A0：`at/crypto.go`、`at/tls.go`、`at/soaputil.go`、`at/live_config.go`；A1：`at/series_soap.go`；A2：`at/transport_soap.go`、`service/transport_at.go`  
+> **现状：** `FISCAL_AT_ENV=mock`（默认/CI）全绿；`test` 系列已通、运输探针已通（A2 待 Admin 走通）；`prod` 仍失败关闭（待 A3）  
 > **拍板（2026-11-02）：** 材料齐 → AT test 联调；**严格一刀一刀**（A0 → A1 → A2 → A3）  
 > **相关：** [`fiscal-m1-identity-series.zh.md`](fiscal-m1-identity-series.zh.md)（系列）、[`fiscal-gr.zh.md`](fiscal-gr.zh.md) §7–8（运输）、[`fiscal-gt.zh.md`](fiscal-gt.zh.md)（T5=A2）、[`fiscal-config-boundary.zh.md`](fiscal-config-boundary.zh.md)、[`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) §P1
 
@@ -337,7 +337,7 @@ apps/fiscal-agent/internal/fiscal/at/
 | 幂等 | 同 `request_id` 已签发 → 直接返回，**不再**通信 AT |
 | 地址 | `domain.Address` 结构化贯穿 API / DB（迁移 017）/ 打印 / SAF-T / AT；不做文本解析。省略装货地＝门店地址，省略卸货地＝客户地址；三者 `ValidatePT` 在 service 统一校验（mock 同 live） |
 | ATCUD | 报文带 `<ATCUD>`（现行 AT schema；镜像 WSDL 无此字段，缺则 AT 告警） |
-| 错误 | `at.ErrTransportInvalid`（本地拦截）/ `ErrTransportUnavailable`（网络、认证、配置，可重试）/ `ErrTransportRejected`（AT 拒绝）；SOAP fault 与 ReturnCode 统一在 `at/errors.go` 码表（1199、118 → unavailable；33 schema、54 缺 WDT → rejected） |
+| 错误 | `at.ErrTransportInvalid`（本地拦截）/ `ErrTransportUnavailable`（网络、认证、配置，可重试）/ `ErrTransportRejected`（AT 拒绝）；SOAP fault 与 ReturnCode 统一在 `at/errors.go`：先按**来源**分类（fault `<detail>` 命名空间为 `http://autenticacao.portaldasfinancas.gov.pt/…` 的认证层 fault 一律 unavailable，如 2026-11-02 AT 凭证后端返回 HTML 时的 33「mismatched tag, expected hr」），服务层 fault 再查码表（1199、118 → unavailable；33 schema → rejected）；ReturnCode 54 缺 WDT → rejected |
 | 对账 | AT 已登记但本地落库失败 → `audit_log` `at_transport_unsaved`（单号 + ATDocCodeID）并报错 |
 | 子用户权限 | 运输需 **WDT**（Webservice de comunicação de documentos de transporte）；系列需 WSE |
 | SAF-T | `ShipTo`/`ShipFrom` 按 XSD 置于 `MovementStartTime` 前，写完整 `<Address>`（旧单据缺项填 `Desconhecido`） |

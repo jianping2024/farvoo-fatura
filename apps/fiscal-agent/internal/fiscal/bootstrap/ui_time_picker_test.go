@@ -48,9 +48,16 @@ func TestFiscalUITimePickerAssets(t *testing.T) {
 	for _, key := range []string{
 		"gr.addr.incomplete", "gr.addr.role.ship_to", "gr.addr.part.city",
 		"gr.need_movement_date", "gr.need_movement_time", "gr.movement_time_ph",
+		"errors.movement_start_past",
 	} {
 		if !strings.Contains(string(fiscalUIAdminI18nJS), "'"+key+"'") {
 			t.Fatalf("admin-i18n missing %s", key)
 		}
+	}
+	if n := strings.Count(adminHTML, "function movementStartIsPast"); n != 1 {
+		t.Fatalf("movementStartIsPast must be the ONLY client past-check, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function refreshMovementStartDefaults"); n != 1 {
+		t.Fatalf("refreshMovementStartDefaults must be defined once, got %d", n)
 	}
 }

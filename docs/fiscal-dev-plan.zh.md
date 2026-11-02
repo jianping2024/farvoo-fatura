@@ -3,7 +3,7 @@
 > **状态：定稿**（里程碑顺序与每步交付物；**P0 认证阶段已关闭**）  
 > **权威：是**（本仓工程推进顺序以本文为准）  
 > **对应实现：** **M0–M6 + M3.2（含 M3.2b/M3.2c）已完成**（权威制品 **0.4.55**）；**认证自动项 + 手测已通过**（2026-09-02）。GR/GT **mock 已完成**。  
-> **下一步（已拍板 2026-11-02）：** AT test 联调，权威分刀见 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) — **A0 已完成（0.5.59）**；**下一刀 = A1 系列 live** → A2 运输 live → A3 prod。  
+> **下一步（已拍板 2026-11-02）：** AT test 联调，权威分刀见 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) — **A0、A1 已完成**；**A2 运输 live 进行中**（探针已得真 `ATDocCodeID`，待 Admin 开 GR/GT 走通）→ A3 prod。  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 ## 依据（只读，不替代本文交付定义）
@@ -540,7 +540,7 @@ M1–M5 主路径稳定。
 | — | ~~NIF → 客户主档~~ | bill-draft P1 | **基本已有**（`ensureCustomerIDTx`） |
 | — | ~~客户地址字段~~ | — | **已否决**（餐馆占位 `Desconhecido` 够用） |
 | ★ | **P1-S 安全加固** | [`fiscal-p1-security-hardening.zh.md`](fiscal-p1-security-hardening.zh.md) | 登录 IP 限速、`FISCAL_SESSION_SECRET`、匿名 status 收紧 |
-| ★★ | **AT test/prod 真 SOAP** | [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) | **A0 已完成**（0.5.59）；下一刀 **A1**；材料/测试子用户口径见该文 §3；CI 仍 mock |
+| ★★ | **AT test/prod 真 SOAP** | [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) | **A0、A1 已完成**；**A2 进行中**；材料/测试子用户口径见该文 §3；CI 仍 mock |
 | — | ~~**P1-U 托盘/安装体验**~~ | [`print-agent-ux-packaging.zh.md`](print-agent-ux-packaging.zh.md) | **已否决**（2026-09-02）：无 checklist/进度/托盘开票就绪；托盘=厨打状态；Fiscal 见 Admin `17880` |
 
 **明确不在计划内（除非新开里程碑）：** 见下节。
@@ -600,3 +600,4 @@ M1–M5 主路径稳定。
 | 2026-10-15 | 增补 [`fiscal-gt.zh.md`](fiscal-gt.zh.md)：GT 定稿（与 GR 边界、T0–T5） |
 | 2026-11-02 | **AT live 执行计划定稿**：[`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) §0/§3–§8；下一步 **A0**；进度头与 §P1 同步 |
 | 2026-11-02 | **A0 完成**（0.5.59）：AT 共享底座；下一步 **A1** |
+| 2026-11-02 | **A1 完成**：test 注册 FT/GR 系列得真验证码；**A2 进行中**（探针真 `ATDocCodeID`）；进度头与 §P1 同步 |
