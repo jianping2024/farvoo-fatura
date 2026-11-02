@@ -250,16 +250,16 @@ apps/fiscal-agent/internal/fiscal/at/testdata/transport/
      -nodes -passin pass:TESTEwebservice -legacy
    ```
 
-3. **配置运行参数（建议）**  
-   | 变量 | 例 |
-   |------|-----|
-   | `FISCAL_AT_ENV` | `test` |
-   | `FISCAL_AT_TRANSPORT_CERT` | `.../testdata/transport/certificados/TesteWebservices.pfx` |
-   | `FISCAL_AT_TRANSPORT_CERT_PASS` | `TESTEwebservice` |
-   | `FISCAL_AT_TRANSPORT_PUBKEY` | `.../ChavePublicaAT.cer` |
-   | `FISCAL_AT_TRANSPORT_USER` | `599999993/37` |
-   | `FISCAL_AT_TRANSPORT_PASS` | `testes1234` |
-   | `FISCAL_AT_TRANSPORT_URL` | `https://servicos.portaldasfinancas.gov.pt:701/sgdtws/documentosTransporte` |
+3. **配置运行参数（产品 = `config.json`；下表 env 名仅 CI/进程内桥接）**  
+   权威与字段名见 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) §4：**禁止**要求客户设系统环境变量。  
+   | `config.json` | 例（开发可用同名进程 env） |
+   |--------------|---------------------------|
+   | `fiscal_at_env` | `test` |
+   | `fiscal_at_client_cert` | `.../TesteWebservices.pfx`（旧别名 `FISCAL_AT_TRANSPORT_CERT`） |
+   | `fiscal_at_client_cert_pass` | `TESTEwebservice` |
+   | `fiscal_at_password_pubkey` | `.../ChavePublicaAT.cer` |
+   | （子用户） | Admin → `at_credentials`，勿写 config；手册例 `599999993/37` |
+   | `fiscal_at_transport_url` | `https://servicos.portaldasfinancas.gov.pt:701/sgdtws/documentosTransporte` |
 
 4. **连通性**  
    - 门户自检：`https://faturas.portaldasfinancas.gov.pt/testarLigacaoWebService.action`  

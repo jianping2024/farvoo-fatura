@@ -108,7 +108,7 @@
 | `FISCAL_ALLOW_LOCAL_PROVISION` | **默认关**（未设 env 时由 `config.json` / 缺省 false） | 允许 activate 明文产品 PEM；生产走 Ops 云端激活 |
 | `FISCAL_MOCK_VALIDATION_CODE` | `CSDF7T5H` | mock 系列验证码 |
 
-**装机不用再设系统环境变量。** 托盘 Agent 启动时 `applyFiscalRuntimeFromConfig`：未设 env 则默认 `FISCAL_ALLOW_LOCAL_PROVISION=1`、`FISCAL_AT_ENV=mock`；也可在 `config.json` 写：
+**装机不用再设系统环境变量（P0）。** 托盘 Agent 启动时 `applyFiscalRuntimeFromConfig` 把 `config.json` 灌进**进程内** env；客户机持久系统变量**不在产品路径**。未设则默认 `fiscal_at_env=mock`。AT live 材料字段见 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) §4.1。
 
 ```json
 {

@@ -94,7 +94,7 @@ GR mock（G1–G6）与 GT mock（T1–T4）**已完成**；缺的只是 live AT
 | 密码 | `testes1234` |
 | 配套纳税人 NIF | `599999993`（测试纳税人；与门店真 NIF 分开） |
 
-存法：默认进 `at_credentials`（Seal）。可选 env 覆盖：`FISCAL_AT_CLIENT_USER` / `FISCAL_AT_CLIENT_PASS`（见 §4.1）。
+存法：默认进 `at_credentials`（Seal）。**产品不提供**第二套 config/env 账号字段；CI 进程 env 覆盖仅开发用（见 §4.0）。
 
 ### 3.3 与开票路径
 
@@ -110,28 +110,56 @@ GR mock（G1–G6）与 GT mock（T1–T4）**已完成**；缺的只是 live AT
 
 | 项 | 定法 |
 |----|------|
-| 环境开关 | **唯一** `FISCAL_AT_ENV` = `mock` \| `test` \| `prod`（`config.json` → `fiscal_at_env`）；系列与运输**同读** |
+| **产品配置面** | **仅** Agent `config.json`（+ 安装包内材料文件）。**禁止**要求客户改 Windows/系统环境变量 |
+| 环境开关 | `config.json` → `fiscal_at_env` = `mock` \| `test` \| `prod`（缺省 `mock`）；系列与运输**同读** |
+| 启动桥接 | 托盘 `applyFiscalRuntimeFromConfig`：把 `config.json` 写入**进程内** env，供 `at` 包读取；**不是**写客户机持久系统变量 |
 | 失败策略 | test/prod 缺证、加密失败、HTTP/SOAP 业务错 → **整单/整次注册失败**；禁止回落 mock |
-| CI | 永远 mock；`-tags=at_series_live` / `at_transport_live` 默认 skip |
+| CI / 开发脚本 | 可设进程 env（如 regression）；**不进**安装说明与门店交付清单 |
 | 共享底座 | mTLS 客户端证、密码用 AT 公钥加密、SOAP Envelope / UsernameToken、超时 |
-| 凭证分离 | 子用户 → `at_credentials`；pfx/cer 路径与口令 → env / `config.json`，**不**进 SQLite 明文 |
-| 端点 | 代码内常量 + 可选 URL override（仅运维） |
+| 凭证分离 | 子用户 → SQLite `at_credentials`（Admin）；pfx/cer **文件**随包或安装目录，路径/口令在 `config.json`，**不**进 SQLite 明文 |
+| 端点 | 代码内常量；可选 URL 覆盖也只写 `config.json`（运维/打包） |
 | 顺序 | **A0 → A1 → A2 → A3**（禁止跳刀先接运输再补加密） |
 
-### 4.1 配置命名（P0 已拍板）
+### 4.0 产品 vs CI（P0 硬门禁）
 
-| 名 | 适用范围 | 说明 |
-|----|----------|------|
-| `FISCAL_AT_ENV` | 共用 | mock / test / prod |
-| `FISCAL_AT_SERIES_URL` | 系列（可选） | 覆盖默认 registarSerie URL |
-| `FISCAL_AT_TRANSPORT_URL` | 运输（可选） | 覆盖默认 documentosTransporte URL |
-| `FISCAL_AT_CLIENT_CERT` | 共用 mTLS | 客户端 pfx/pem 路径 |
-| `FISCAL_AT_CLIENT_CERT_PASS` | 共用 mTLS | pfx 密码 |
-| `FISCAL_AT_PASSWORD_PUBKEY` | 共用加密 | `ChavePublicaAT.cer` 路径 |
-| `FISCAL_AT_CLIENT_USER` | 可选覆盖 | 默认仍用 `at_credentials.username` |
-| `FISCAL_AT_CLIENT_PASS` | 可选覆盖 | 默认仍用解封后的子用户密码 |
+| 场景 | 怎么配 | 禁止 |
+|------|--------|------|
+| 门店安装包 / 正式交付 | Setup 写入或预置 `config.json`；证文件放安装目录（或相对路径） | 说明书要求设 `FISCAL_AT_*` 系统变量；让店员改「环境变量」面板 |
+| 我方联调 / UAT 机 | 同上：改该机 `config.json`（或临时改进程 env 仅开发者本机） | 把开发者机器的系统 env 当成产品设计 |
+| CI / `scripts/*-regression.mjs` | spawn 子进程时注入 `FISCAL_AT_ENV=mock` 等 | 依赖开发者 shell profile |
 
-**别名（过渡一期）：** 旧文 [`fiscal-gr.zh.md`](fiscal-gr.zh.md) §8 中的 `FISCAL_AT_TRANSPORT_CERT*` / `FISCAL_AT_TRANSPORT_PUBKEY` / `FISCAL_AT_TRANSPORT_USER` / `_PASS` 实现时读作上表同义；新代码与新文档只用 §4.1 名。一期后删别名。
+**拍板（2026-11-02）：** AT live 全链路以 **打包配置** 为准；环境变量只作「进程内桥接 / CI」，不对客户暴露。
+
+### 4.1 `config.json` 字段（产品权威名）
+
+| 列（JSON） | 必填（test/prod） | 说明 |
+|------------|-------------------|------|
+| `fiscal_at_env` | 是（可省略=mock） | `mock` \| `test` \| `prod` |
+| `fiscal_at_client_cert` | test/prod 是 | 客户端 pfx 路径（建议相对安装目录或绝对路径） |
+| `fiscal_at_client_cert_pass` | test/prod 是 | pfx 口令（测试公开口令可随包；prod 正式口令由运维写入，勿提交公开仓） |
+| `fiscal_at_password_pubkey` | test/prod 是 | `ChavePublicaAT.cer` 路径 |
+| `fiscal_at_series_url` | 否 | 覆盖默认系列 SOAP URL |
+| `fiscal_at_transport_url` | 否 | 覆盖默认运输 SOAP URL |
+
+**不进 `config.json`：** 子用户用户名/密码（继续 Admin → `at_credentials`）。  
+**不设字段：** `fiscal_at_client_user` / `_pass` 作为产品配置（避免第二套账号源）；CI 若需覆盖仍可用进程 env，不写进安装模板。
+
+启动时 `applyFiscalRuntimeFromConfig` 映射（进程内，唯一桥接）：
+
+| `config.json` | 进程 env（仅内存） |
+|---------------|-------------------|
+| `fiscal_at_env` | `FISCAL_AT_ENV` |
+| `fiscal_at_client_cert` | `FISCAL_AT_CLIENT_CERT` |
+| `fiscal_at_client_cert_pass` | `FISCAL_AT_CLIENT_CERT_PASS` |
+| `fiscal_at_password_pubkey` | `FISCAL_AT_PASSWORD_PUBKEY` |
+| `fiscal_at_series_url` | `FISCAL_AT_SERIES_URL` |
+| `fiscal_at_transport_url` | `FISCAL_AT_TRANSPORT_URL` |
+
+若启动前进程 env **已有值**（CI 脚本）：保留 env，不覆盖（与现 `fiscal_at_env` 行为一致）。产品路径下客户机不应预置这些系统变量。
+
+A0 已有 `LiveMaterialsFromEnv`：A1 前须保证托盘路径经 `applyFiscalRuntimeFromConfig` 灌齐上表；缺字段时 test/prod 失败关闭并提示「检查 config.json」，**不**提示「请设置系统环境变量」。
+
+**遗留别名（仅代码读，不写进安装模板）：** 旧 `FISCAL_AT_TRANSPORT_*` 见 [`fiscal-gr.zh.md`](fiscal-gr.zh.md) §8；一期后删。
 
 ### 4.2 默认端点（落地前再核门户）
 
@@ -142,6 +170,16 @@ GR mock（G1–G6）与 GT mock（T1–T4）**已完成**；缺的只是 live AT
 | 门户自检 | — | `https://faturas.portaldasfinancas.gov.pt/testarLigacaoWebService.action` |
 
 prod URL 在 A3 写入；**禁止**用 `TesteWebservices.pfx` 打 prod。
+
+### 4.3 打包落点（设计口径）
+
+| 材料 | 建议位置 | 谁写路径 |
+|------|----------|----------|
+| `TesteWebservices.pfx` / 正式通信 pfx | 安装目录下固定子目录（如 `at-certs\`），或随 Setup 解压 | Setup / 内部装机清单写入 `config.json` |
+| `ChavePublicaAT.cer` | 同上 | 同上 |
+| `fiscal_at_env` | `config.json` | 测试包可预置 `test`；门店正式包预置 `prod` 或装机时改一次 |
+
+店员日常：**只开 Admin 配纳税人 + AT 子用户 + 注册系列**；不碰证书路径与 `fiscal_at_env`。
 
 ---
 
@@ -205,7 +243,7 @@ apps/fiscal-agent/internal/fiscal/at/
 
 1. 实现 `SOAPClient.RegisterSeries` / `ConsultSeries`（复用 A0 加密 + mTLS + Token）。  
 2. Admin / 现有 setup：纳税人 NIF=`599999993`（或手册现行测试 NIF）；AT 凭证=`599999993/37` + `testes1234`；`software_certificate_number` 与厂商认证号对齐（本仓 `519655290`，以门户/合同为准）。  
-3. `FISCAL_AT_ENV=test` + §4.1 证路径；注册至少 **一种销售系列（FT 或 FS）** + **GR 系列**。  
+3. `config.json`：`fiscal_at_env=test` + §4.1 证路径（经 `applyFiscalRuntimeFromConfig`）；注册至少 **一种销售系列（FT 或 FS）** + **GR 系列**。  
 4. 错误可诊断：Auth / schema / 业务码映射进 `at_soap_failed` 摘要（无密码）。  
 5. 可选：`-tags=at_series_live` 集成测（默认 skip）；CI 仍 mock。  
 6. 手测清单写入本节关闭记录或 `docs/test-scenarios/`。
@@ -311,3 +349,4 @@ at/soaputil.go
 | 2026-10-15 | 初稿：系列 + 运输统一 test/prod；A0–A3；配置命名拍板 |
 | 2026-11-02 | **执行计划落入本文**：§0 总览；材料/账号口径 §3；配置名 §4.1 定稿；A0–A3 步骤与关闭条件写全；下一刀 = A0 |
 | 2026-11-02 | **A0 落地**（0.5.59）：`EncryptATAuth` / `LoadClientTLS` / SOAP 公共件 / `LiveMaterialsFromEnv`；下一刀 = A1 |
+| 2026-11-02 | **P0：产品只走打包/`config.json`**，禁止要求客户改系统环境变量；§4.0–§4.3 |

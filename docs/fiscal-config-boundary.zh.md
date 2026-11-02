@@ -14,7 +14,9 @@
 | `default_printer` / legacy `printer_host` | `config.json` | 向导 / 参数 |
 | 纳税人、AT 凭证、系列、签名钥、发票、税务打印队列 | **SQLite** | Fiscal Local API / Core |
 | 开票员 PIN | SQLite `operators` | Admin 设置（本地创建 + 设 PIN） |
-| `fiscal_allow_local_provision` / `fiscal_at_env` | `config.json` | 本机开关（默认允许粘贴 PEM 激活；AT 默认 mock）。环境变量若已设则优先 |
+| `fiscal_allow_local_provision` / `fiscal_at_env` | `config.json` | 本机开关（AT 默认 mock）。**产品只改 config**；进程 env 仅 CI/已设时优先，**不**要求客户设系统变量 |
+| `fiscal_at_client_cert` / `fiscal_at_client_cert_pass` / `fiscal_at_password_pubkey` | `config.json` | AT live（test/prod）材料路径与 pfx 口令；证文件随安装包。权威见 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) §4 |
+| `fiscal_at_series_url` / `fiscal_at_transport_url` | `config.json` | 可选 SOAP URL 覆盖（运维/打包） |
 | `fiscal_allow_lan` | `config.json` | 店内其它电脑连接 Admin。true → `resolveFiscalListenBind` 绑 `0.0.0.0:17880`（**不**经 `FISCAL_ALLOW_LAN`/`FISCAL_BIND`；Agent 产品路径忽略这两项 env） |
 
 ## 税务打印机解析（唯一）
@@ -56,5 +58,13 @@
 ## 禁止
 
 - 把 NIF / 系列验证码 / Hash 写入 `config.json`  
+- 把 AT 子用户密码写入 `config.json`（走 SQLite `at_credentials`）  
+- **要求客户设置 `FISCAL_AT_*` 等系统环境变量**（产品路径只改 `config.json` + 安装包材料）  
 - 云端 `print_jobs` 作为正式税务出纸权威  
 - 第二套「解析财政打印机」函数  
+
+## 修订
+
+| 日期 | 说明 |
+|------|------|
+| 2026-11-02 | AT live：产品配置面钉死 `config.json`；补充 cert/pubkey 字段；禁止客户改系统 env | 
