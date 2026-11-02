@@ -29,6 +29,7 @@ const (
 	ErrCodeATCredsMissing       = "at_credentials_missing"
 	ErrCodeSeriesMissing        = "series_missing"
 	ErrCodeSeriesAlreadyActive  = "series_already_active"
+	ErrCodeSeriesCodeTaken      = "series_code_taken"
 	ErrCodeSignerNotReady       = "signer_not_ready"
 	ErrCodeOpsActivatePending   = "ops_activate_pending"
 	ErrCodeCloudNotPaired       = "cloud_not_paired"
@@ -199,7 +200,7 @@ func (s *FiscalService) RegisterSeries(ctx context.Context, storeID, seriesCode,
 		return nil, coded(ErrCodeTaxpayerMissing, "configure taxpayer first")
 	}
 
-	hasSame, err := s.db.ActiveSeriesHasCode(storeID, seriesCode)
+	hasSame, err := s.db.ActiveSeriesHasCode(storeID, docType, seriesCode)
 	if err != nil {
 		return nil, err
 	}
@@ -213,6 +214,15 @@ func (s *FiscalService) RegisterSeries(ctx context.Context, storeID, seriesCode,
 			fmt.Sprintf("%s series already active (%s); refuse registering %s", docType, existingCode, seriesCode))
 	}
 	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return nil, err
+	}
+
+	// Before AT: a code bound locally to another type cannot be stored (UNIQUE store+series_code),
+	// so registering it at AT would leave an orphan series there.
+	if boundType, err := s.db.SeriesDocTypeForCode(storeID, seriesCode); err == nil && boundType != docType {
+		return nil, coded(ErrCodeSeriesCodeTaken,
+			fmt.Sprintf("series code %s is already used by %s; choose another code for %s", seriesCode, boundType, docType))
+	} else if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return nil, err
 	}
 

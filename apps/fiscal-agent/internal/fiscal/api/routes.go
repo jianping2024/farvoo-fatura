@@ -949,7 +949,7 @@ func writeCoded(w http.ResponseWriter, err error) {
 		case service.ErrCodeATSOAPFailed:
 			status = http.StatusBadGateway
 		case service.ErrCodeSignerNotReady, service.ErrCodeOpsActivatePending, service.ErrCodeFiscalProfileMissing, service.ErrCodeSeriesMissing, service.ErrCodeTaxpayerMissing, service.ErrCodeATCredsMissing,
-			service.ErrCodeSeriesAlreadyActive,
+			service.ErrCodeSeriesAlreadyActive, service.ErrCodeSeriesCodeTaken,
 			service.ErrCodeCreditNotAllowed, service.ErrCodeCreditAmountExceeded, service.ErrCodeIdempotencyConflict,
 			service.ErrCodeReceiptNotAllowed, service.ErrCodeReceiptAmountExceeded,
 			service.ErrCodeNoInvoices, service.ErrCodeReprintNotAllowed:

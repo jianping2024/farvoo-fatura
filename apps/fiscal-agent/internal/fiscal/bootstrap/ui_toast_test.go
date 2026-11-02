@@ -1178,3 +1178,17 @@ func TestAdminWizardLanguageFirstUnique(t *testing.T) {
 		t.Fatalf("settings.nav.lang must appear once per locale (3), got %d", n)
 	}
 }
+
+// Save buttons stuck on "保存中…": markSaveSuccess captured the busy label as the original
+// and its 1.8s timer restored it after withBusy's finally. Guard the handshake.
+func TestAdminWithBusyMarkSaveSuccessLabel(t *testing.T) {
+	for _, want := range []string{
+		"btn.dataset.busyPrev = prev;",
+		"if (!btn.classList.contains('btn-saved')) btn.textContent = prev;",
+		"const orig = btn.dataset.labelOrig || btn.dataset.busyPrev || btn.textContent;",
+	} {
+		if !strings.Contains(adminHTML, want) {
+			t.Fatalf("admin missing %q", want)
+		}
+	}
+}

@@ -114,11 +114,26 @@ func (d *DB) MarkATCredentialsError(storeID, msg string) error {
 	return err
 }
 
+// ErrSeriesCodeOtherDocType: series_code is already bound to another document_type in this store
+// (series is UNIQUE(store_id, series_code); a row's document_type is never rewritten).
+var ErrSeriesCodeOtherDocType = errors.New("store: series code already used by another document type")
+
+// SeriesDocTypeForCode returns the document_type bound to store+series_code (any status), or ErrNotFound.
+func (d *DB) SeriesDocTypeForCode(storeID, seriesCode string) (string, error) {
+	var docType string
+	err := d.SQL.QueryRow(`SELECT document_type FROM series WHERE store_id=? AND series_code=?`, storeID, seriesCode).Scan(&docType)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	return docType, err
+}
+
 // UpsertActiveSeries writes/updates an ACTIVE series with validation_code (ONLY series registration write).
+// An existing row for the same series_code but another document_type → ErrSeriesCodeOtherDocType.
 func (d *DB) UpsertActiveSeries(storeID, docType, seriesCode, validationCode string, fiscalYear int) error {
 	now := time.Now().UTC().Format(time.RFC3339)
-	var id string
-	err := d.SQL.QueryRow(`SELECT id FROM series WHERE store_id=? AND series_code=?`, storeID, seriesCode).Scan(&id)
+	var id, boundType string
+	err := d.SQL.QueryRow(`SELECT id, document_type FROM series WHERE store_id=? AND series_code=?`, storeID, seriesCode).Scan(&id, &boundType)
 	if errors.Is(err, sql.ErrNoRows) {
 		_, err = d.SQL.Exec(`INSERT INTO series (
 			id, store_id, document_type, series_code, validation_code, fiscal_year,
@@ -130,9 +145,12 @@ func (d *DB) UpsertActiveSeries(storeID, docType, seriesCode, validationCode str
 	if err != nil {
 		return err
 	}
-	_, err = d.SQL.Exec(`UPDATE series SET validation_code=?, status='ACTIVE', document_type=?, fiscal_year=?,
+	if boundType != docType {
+		return fmt.Errorf("%w: %s is %s, not %s", ErrSeriesCodeOtherDocType, seriesCode, boundType, docType)
+	}
+	_, err = d.SQL.Exec(`UPDATE series SET validation_code=?, status='ACTIVE', fiscal_year=?,
 		registered_at=COALESCE(registered_at, ?), updated_at=? WHERE id=?`,
-		validationCode, docType, fiscalYear, now, now, id)
+		validationCode, fiscalYear, now, now, id)
 	return err
 }
 
@@ -149,13 +167,13 @@ func (d *DB) ActiveSeriesCodeForDocType(storeID, docType string) (seriesCode str
 	return seriesCode, err
 }
 
-// ActiveSeriesHasCode reports whether store+series_code is ACTIVE with a validation_code.
-func (d *DB) ActiveSeriesHasCode(storeID, seriesCode string) (bool, error) {
+// ActiveSeriesHasCode reports whether store+document_type+series_code is ACTIVE with a validation_code.
+func (d *DB) ActiveSeriesHasCode(storeID, docType, seriesCode string) (bool, error) {
 	var n int
 	err := d.SQL.QueryRow(`
 		SELECT COUNT(1) FROM series
-		WHERE store_id=? AND series_code=? AND status='ACTIVE'
-		  AND validation_code IS NOT NULL AND validation_code != ''`, storeID, seriesCode).Scan(&n)
+		WHERE store_id=? AND document_type=? AND series_code=? AND status='ACTIVE'
+		  AND validation_code IS NOT NULL AND validation_code != ''`, storeID, docType, seriesCode).Scan(&n)
 	return n > 0, err
 }
 

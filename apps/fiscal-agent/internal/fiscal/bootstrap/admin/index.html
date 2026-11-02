@@ -2105,14 +2105,20 @@
     return t;
   }
 
-  /** Busy wrapper: reportError once on failure (fn must throw, not toast the same error). */
+  /** Busy wrapper: reportError once on failure (fn must throw, not toast the same error).
+   *  data-busy-prev lets markSaveSuccess restore the real label, not the busy text. */
   async function withBusy(btn, labelBusy, fn) {
     const prev = btn.textContent;
+    btn.dataset.busyPrev = prev;
     btn.disabled = true;
     btn.textContent = labelBusy || FiscalAdminI18n.t('common.processing');
     try { await fn(); }
     catch (er) { reportError(er); }
-    finally { btn.disabled = false; btn.textContent = prev; }
+    finally {
+      btn.disabled = false;
+      delete btn.dataset.busyPrev;
+      if (!btn.classList.contains('btn-saved')) btn.textContent = prev;
+    }
   }
 
   function genOrderId() {
@@ -2961,7 +2967,7 @@
 
   function markSaveSuccess(btn) {
     if (!btn) return;
-    const orig = btn.dataset.labelOrig || btn.textContent;
+    const orig = btn.dataset.labelOrig || btn.dataset.busyPrev || btn.textContent;
     btn.dataset.labelOrig = orig;
     btn.textContent = FiscalAdminI18n.t('common.saved');
     btn.classList.add('btn-saved');

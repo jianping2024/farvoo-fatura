@@ -302,9 +302,9 @@ apps/fiscal-agent/internal/fiscal/at/
 
 关闭条件 1–4 全过（FT + GR 真码；mock/CI 绿；失败不回落 mock）。
 
-**遗留（不挡 A2）：**
-1. 本地 `series` 为 `UNIQUE(store_id, series_code)` 且 `ActiveSeriesHasCode` 不看 `document_type`；AT 允许同一系列号跨类型 → 同号不同类型会被误判「已注册」且无法落库。
-2. Admin「保存门店 / 保存凭证」按钮请求已成功仍停在「保存中…」。
+**遗留（已修，2026-11-02）：**
+1. ~~同号不同类型误判「已注册」~~：`ActiveSeriesHasCode` 带 `document_type`；系列号已被其它类型占用 → **调 AT 前**拒绝（`series_code_taken`，三语提示），避免 AT 侧孤儿系列；`UpsertActiveSeries` **永不改写**已有行的 `document_type`（`ErrSeriesCodeOtherDocType`）。表约束仍为 `UNIQUE(store_id, series_code)`（`invoices` 外键引用 `series.id`，不做重建）；若产品要「同号跨类型」（如统一 `2026A`）须另立迁移。
+2. ~~按钮停在「保存中…」~~：`markSaveSuccess` 把忙碌文案当原文、1.8s 后又写回；`withBusy` 以 `data-busy-prev` 交接原文。
 
 ### 6.4 非目标
 
