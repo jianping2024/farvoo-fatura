@@ -5137,7 +5137,7 @@
       shipTo = readShipPoint('invShipTo');
       movementStart = readMovementStart();
       if (!movementStart) {
-        toast(FiscalAdminI18n.t(isGt ? 'gt.need_transport' : 'gr.need_transport'), 'error');
+        toast(FiscalAdminI18n.t('gr.need_movement_start'), 'error');
         return;
       }
       if (!PT_POSTAL_RE.test(($('#invGrPostal').value || '').trim()) ||
