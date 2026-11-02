@@ -7,7 +7,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"farvoo-fiscal-agent/internal/fiscal/at"
 	"farvoo-fiscal-agent/internal/fiscal/catalog"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/store"
@@ -71,39 +70,19 @@ func (s *FiscalService) IssueTransportNote(ctx context.Context, req domain.Trans
 	if err != nil {
 		return nil, err
 	}
-	tc := s.transport
-	if tc == nil {
-		tc = at.NewTransportFromEnv()
-	}
+	moveAt = normalizeMovementStart(moveAt)
 
-	provisionalNo := "GT/" + req.RequestID
-	if len(provisionalNo) > 60 {
-		provisionalNo = provisionalNo[:60]
+	s.transportMu.Lock()
+	defer s.transportMu.Unlock()
+	// Retry of an issued request: return it, never communicate to AT twice.
+	if rec, hit, err := s.db.IssuedByRequestID(req.StoreID, req.RequestID); err != nil {
+		return nil, err
+	} else if hit {
+		return issueResultFromRecord(rec), nil
 	}
-	moveDate := moveAt
-	if len(moveDate) >= 10 {
-		moveDate = moveDate[:10]
-	}
-	atRes, err := tc.RegisterDocument(ctx, at.TransportDocument{
-		DocumentNumber:    provisionalNo,
-		MovementType:      "GT",
-		MovementStatus:    "N",
-		MovementDate:      moveDate,
-		MovementStartTime: moveAt,
-		CustomerTaxID:     strings.TrimSpace(req.Snapshot.Customer.TaxID),
-		CustomerName:      strings.TrimSpace(req.Snapshot.Customer.CompanyName),
-		ShipFromAddress:   shipFrom,
-		ShipToAddress:     shipTo,
-	})
+	comm, err := s.communicateTransport(ctx, req.StoreID, "GT", req.Snapshot, shipFrom, shipTo, moveAt)
 	if err != nil {
-		msg := err.Error()
-		if strings.Contains(msg, "not wired") || strings.Contains(msg, "unavailable") {
-			return nil, coded(ErrCodeATTransportUnavailable, msg)
-		}
-		return nil, coded(ErrCodeATTransportRejected, msg)
-	}
-	if atRes == nil || strings.TrimSpace(atRes.ATDocCodeID) == "" {
-		return nil, coded(ErrCodeATTransportRejected, "empty ATDocCodeID")
+		return nil, err
 	}
 
 	rec, err := s.db.IssueGT(ctx, sig, store.IssueGTParams{
@@ -120,7 +99,8 @@ func (s *FiscalService) IssueTransportNote(ctx context.Context, req domain.Trans
 		ShipToAddress:       shipTo,
 		MovementStartAt:     moveAt,
 		RecipientIsVATPayer: vat,
-		ATDocCodeID:         strings.TrimSpace(atRes.ATDocCodeID),
+		ATDocCodeID:         comm.atRes.ATDocCodeID,
+		ExpectedSeq:         comm.prep.Seq,
 	})
 	if errors.Is(err, store.ErrConflict) {
 		return nil, coded(ErrCodeIdempotencyConflict, err.Error())
@@ -132,7 +112,7 @@ func (s *FiscalService) IssueTransportNote(ctx context.Context, req domain.Trans
 		if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "NIF") || strings.Contains(err.Error(), "address") || strings.Contains(err.Error(), "movement_purpose") {
 			return nil, coded(ErrCodeValidationFailed, err.Error())
 		}
-		return nil, coded("issue_failed", err.Error())
+		return nil, transportCommitFailed(comm, err)
 	}
 	return &domain.IssueResult{
 		DocumentID: rec.DocumentID, InvoiceNo: rec.InvoiceNo, ATCUD: rec.ATCUD,

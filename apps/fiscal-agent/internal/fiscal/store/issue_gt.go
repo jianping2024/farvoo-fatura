@@ -40,6 +40,7 @@ type IssueGTParams struct {
 	MovementStartAt     string
 	RecipientIsVATPayer bool
 	ATDocCodeID         string // required; from TransportClient
+	ExpectedSeq         int64  // number communicated to AT (PrepareTransport); 0 = unchecked (tests)
 	NowUTC              time.Time
 }
 
@@ -116,6 +117,9 @@ func (d *DB) IssueGT(ctx context.Context, signer Signer, p IssueGTParams) (*Issu
 	}
 
 	seq := lastNumber + 1
+	if p.ExpectedSeq != 0 && seq != p.ExpectedSeq {
+		return nil, fmt.Errorf("%w: AT got %d, next is %d", ErrTransportSeqMoved, p.ExpectedSeq, seq)
+	}
 	invoiceNo := compliance.FormatInvoiceNo("GT", seriesCode, seq)
 	atcud := compliance.FormatATCUD(validationCode, seq)
 

@@ -82,3 +82,36 @@ func TestLiveRegisterSeries(t *testing.T) {
 		t.Skip("set AT_LIVE_SERIES_FT and/or AT_LIVE_SERIES_GR to register (irreversible at AT test)")
 	}
 }
+
+// A2 live: envioDocumentoTransporte on AT TEST. Uses series GR2026T01 (registered at AT as
+// GR by TestLiveRegisterSeries, never issued locally) so it cannot collide with app GR numbers.
+//
+//	AT_LIVE_USER=… AT_LIVE_PASS=… AT_LIVE_GR_SEQ=1 \
+//	  go test -count=1 -tags=at_series_live -run TestLiveTransportGR -v ./internal/fiscal/at
+func TestLiveTransportGR(t *testing.T) {
+	sc, user, pass := liveSeriesClient(t)
+	seq := envOr("AT_LIVE_GR_SEQ", "")
+	if seq == "" {
+		t.Skip("set AT_LIVE_GR_SEQ (next unused number of GR2026T01 at AT; each run consumes one)")
+	}
+	c := &SOAPTransportClient{Env: EnvTest, Trace: sc.Trace}
+	lisbon, _ := time.LoadLocation("Europe/Lisbon")
+	start := time.Now().Add(15 * time.Minute).In(lisbon).Format("2006-01-02T15:04:05")
+	doc := TransportDocument{
+		Username: user, Password: pass,
+		TaxRegistrationNumber: "519655290", CompanyName: "FAINA VAIDOSA LDA",
+		CompanyAddress: TransportAddress{Detail: "Rua Teste 1", City: "Lisboa", PostalCode: "1000-001"},
+		DocumentNumber: "GR GR2026T01/" + seq, ATCUD: "AAJFJ48HR6-" + seq, // GR2026T01 validation code at AT
+		MovementType: "GR", MovementStartTime: start,
+		CustomerTaxID: "999999990", CustomerName: "Consumidor final teste",
+		ShipFromAddress: "Rua Teste 1, 1000-001 Lisboa", ShipToAddress: "Rua Destino 2, 4000-123 Porto",
+		Lines: []TransportLine{{Description: "Artigo de teste", Quantity: "1", UnitOfMeasure: "UN", UnitPrice: "10.00"}},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	res, err := c.RegisterDocument(ctx, doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%s → ATDocCodeID=%s (%s)", doc.DocumentNumber, res.ATDocCodeID, res.RawMessage)
+}

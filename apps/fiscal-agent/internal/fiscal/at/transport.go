@@ -9,20 +9,41 @@ import (
 	"time"
 )
 
+// TransportAddress is AT AddressStructurePT (Country is always PT).
+type TransportAddress struct {
+	Detail     string
+	City       string
+	PostalCode string // NNNN-NNN
+}
+
+// TransportLine is one AT Line; UnitPrice is net of VAT.
+type TransportLine struct {
+	Description   string
+	Quantity      string
+	UnitOfMeasure string
+	UnitPrice     string
+}
+
 // TransportDocument is the payload sent to AT before a GR/GT is committed locally.
+// DocumentNumber must be the real number the document will keep ("GR SERIE/N").
 type TransportDocument struct {
+	Username              string // AT sub-user (NIF/n); never logged
+	Password              string
 	TaxRegistrationNumber string
 	CompanyName           string
+	CompanyAddress        TransportAddress
 	DocumentNumber        string
+	ATCUD                 string // validation_code-seq; AT warns "Erro na validação do ATCUD" without it
 	MovementType          string // GR | GT
 	MovementStatus        string // N
 	MovementDate          string // YYYY-MM-DD
 	MovementStartTime     string // YYYY-MM-DDTHH:MM:SS
 	CustomerTaxID         string
 	CustomerName          string
-	ShipFromAddress       string
+	CustomerAddress       TransportAddress
+	ShipFromAddress       string // free text; parsed by ParseAddressPT
 	ShipToAddress         string
-	LineDescriptions      []string
+	Lines                 []TransportLine
 }
 
 // TransportResult is AT's response after successful communication.
@@ -67,16 +88,4 @@ func (m *MockTransportClient) RegisterDocument(ctx context.Context, doc Transpor
 	sum := sha256.Sum256([]byte(doc.DocumentNumber + "|" + doc.MovementType + "|" + doc.MovementStartTime))
 	code := "MOCK" + strings.ToUpper(hex.EncodeToString(sum[:4]))
 	return &TransportResult{ATDocCodeID: code, RawMessage: "mock ok " + time.Now().UTC().Format(time.RFC3339)}, nil
-}
-
-// SOAPTransportClient is the real AT transport webservice stub until live auth is wired.
-// P0: returns a clear error so IssueGR fails closed when FISCAL_AT_ENV=test|prod without full SOAP.
-type SOAPTransportClient struct {
-	Env Env
-}
-
-func (c *SOAPTransportClient) RegisterDocument(ctx context.Context, doc TransportDocument) (*TransportResult, error) {
-	_ = ctx
-	_ = doc
-	return nil, fmt.Errorf("at: transport SOAP not wired for env %s (use mock or complete live client)", c.Env)
 }

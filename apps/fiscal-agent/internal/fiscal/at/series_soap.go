@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"encoding/xml"
 	"fmt"
-	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -96,28 +95,7 @@ func (s *SOAPClient) init() error {
 			}
 			s.URL = DefaultSeriesTestURL
 		}
-		if s.HTTP == nil || s.PubKey == nil {
-			if miss := m.MissingRequired(); len(miss) > 0 {
-				s.initErr = fmt.Errorf("at: AT %s materials missing in config.json: %s", s.Env, strings.Join(miss, ", "))
-				return
-			}
-		}
-		if s.HTTP == nil {
-			tlsCfg, err := LoadClientTLS(m.ClientCertPath, m.ClientCertPass)
-			if err != nil {
-				s.initErr = err
-				return
-			}
-			s.HTTP = &http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{TLSClientConfig: tlsCfg}}
-		}
-		if s.PubKey == nil {
-			pub, err := LoadPasswordPublicKey(m.PasswordPubKeyPath)
-			if err != nil {
-				s.initErr = err
-				return
-			}
-			s.PubKey = pub
-		}
+		s.initErr = loadLiveMaterials(s.Env, &s.HTTP, &s.PubKey)
 	})
 	return s.initErr
 }
@@ -225,42 +203,16 @@ func (s *SOAPClient) consult(ctx context.Context, username, password, seriesCode
 	return resp, nil
 }
 
-// call sends one SOAP request with a fresh UsernameToken. Errors never include the password.
+// call sends one Séries SOAP request via postSOAP (errors never include the password).
 func (s *SOAPClient) call(ctx context.Context, username, password, body string) (*seriesResp, error) {
 	if err := s.init(); err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(username) == "" || password == "" {
-		return nil, fmt.Errorf("at: credentials required")
-	}
-	mat, err := EncryptATAuth(password, s.PubKey, EncryptOptions{Now: s.now()})
+	status, raw, err := postSOAP(ctx, s.HTTP, s.URL, "", s.PubKey, s.now(), username, password, body, s.Trace)
 	if err != nil {
 		return nil, err
 	}
-	tok, err := BuildUsernameTokenXML(username, mat)
-	if err != nil {
-		return nil, err
-	}
-	envelope := WrapSOAPEnvelope(BuildSecurityHeaderXML(tok), body)
-	hreq, err := http.NewRequestWithContext(ctx, http.MethodPost, s.URL, strings.NewReader(envelope))
-	if err != nil {
-		return nil, err
-	}
-	hreq.Header.Set("Content-Type", "text/xml; charset=utf-8")
-	hreq.Header.Set("SOAPAction", `""`)
-	hresp, err := s.HTTP.Do(hreq)
-	if err != nil {
-		return nil, fmt.Errorf("at: series transport: %w", err)
-	}
-	defer hresp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(hresp.Body, 1<<20))
-	if err != nil {
-		return nil, fmt.Errorf("at: series read: %w", err)
-	}
-	if s.Trace != nil {
-		s.Trace(body[:strings.IndexAny(body, " >")], hresp.StatusCode, raw)
-	}
-	return parseSeriesEnvelope(hresp.StatusCode, raw)
+	return parseSeriesEnvelope(status, raw)
 }
 
 type seriesInfo struct {

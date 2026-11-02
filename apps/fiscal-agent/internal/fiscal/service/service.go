@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"farvoo-fiscal-agent/internal/fiscal/at"
@@ -53,6 +54,7 @@ type FiscalService struct {
 	signer      store.Signer
 	at          at.Client
 	transport   at.TransportClient // Documentos de Transporte (GR/GT); ONLY via IssueDeliveryNote / IssueTransportNote
+	transportMu sync.Mutex         // serializes PrepareTransport → AT → IssueGR/IssueGT (number must not move)
 	dataDir     string
 	storeID     string
 	cloud       CloudProvision
