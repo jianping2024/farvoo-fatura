@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.59
+
+**AT live A0：共享底座（加密 / mTLS / SOAP 公共件）**
+
+- 落地 `EncryptATAuth`（ChavePublicaAT：AES-128-ECB + RSA-PKCS1）、`LoadClientTLS`（TesteWebservices.pfx）、`BuildUsernameTokenXML` / `WrapSOAPEnvelope`、`LiveMaterialsFromEnv`（`FISCAL_AT_CLIENT_*` + 旧 TRANSPORT 别名）。
+- 默认仍 `FISCAL_AT_ENV=mock`；不联网；系列/运输业务 SOAP 仍骨架（下一刀 A1）。
+- 唯一写法各一份；单测无网回解 Password/Created、坏口令明确失败。
+
 ## 0.5.58
 
 **档口小票强制一行 + 中文位图字号迁本机**
