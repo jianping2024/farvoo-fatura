@@ -28,3 +28,13 @@ func Normalize(raw string) (string, error) {
 	}
 	return strconv.FormatFloat(f, 'f', 2, 64), nil
 }
+
+// FromDecimal is the ONLY converter from a stored decimal rate ("0.23", invoice_lines.vat_rate)
+// to canonical percent ("23.00"), the inverse of the percent → decimal step on issue.
+func FromDecimal(rate string) (string, error) {
+	f, err := strconv.ParseFloat(strings.TrimSpace(rate), 64)
+	if err != nil || f < 0 || f > 1 {
+		return "", fmt.Errorf("vatpercent: invalid decimal rate %q", rate)
+	}
+	return strconv.FormatFloat(f*100, 'f', 2, 64), nil
+}

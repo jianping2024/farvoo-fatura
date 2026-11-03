@@ -96,7 +96,13 @@
     }
     .gr-link-row:last-child { border-bottom: 0; }
     .gr-link-no { font-weight: 600; color: var(--ink); white-space: nowrap; }
-    .gr-link-meta { color: var(--muted); font-weight: 400; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .gr-link-meta { flex: 1; color: var(--muted); font-weight: 400; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .gr-link-chip {
+      display: inline-flex; align-items: center; gap: 0.35rem; margin: 0 0.4rem 0.4rem 0;
+      padding: 0.2rem 0.5rem; border: 1px solid var(--line); border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+    }
+    .gr-link-chip button { border: 0; background: none; padding: 0 0.15rem; color: var(--muted); cursor: pointer; font-size: 0.9rem; }
+    #invGrLinkPicker summary { cursor: pointer; font-size: 0.85rem; padding: 0.3rem 0; color: var(--ink); }
     label { display: block; font-size: 0.82rem; color: var(--muted); margin: 0 0 0.35rem; font-weight: 600; }
     .field { margin: 0 0 0.85rem; }
     .hint { color: var(--muted); font-size: 0.85rem; line-height: 1.5; }
@@ -872,8 +878,8 @@
               </div>
               <div class="field hidden" id="invGrLinkWrap">
                 <label data-i18n="ft.link_gr">挂发货单（可选）</label>
-                <div id="invGrLinkList"></div>
-                <span class="hint" data-i18n="ft.link_gr_hint">可多选；不选也可以开 FT</span>
+                <div id="invGrLinked"></div>
+                <div id="invGrLinkPicker"></div>
               </div>
               <div id="grFields" class="hidden">
                 <div class="field hidden" id="gtPurposeWrap">
@@ -1529,6 +1535,7 @@
           <button type="button" class="secondary hidden" id="btnInvoiceDetailDebit" data-i18n="action.debit">借记</button>
           <button type="button" class="secondary hidden" id="btnInvoiceDetailReceipt" data-i18n="action.receipt">登记收款</button>
           <button type="button" class="secondary hidden" id="btnInvoiceDetailIssueFromPf" data-i18n="action.issue_from_pf">开真票</button>
+          <button type="button" class="secondary hidden" id="btnInvoiceDetailIssueFromGr" data-i18n="action.issue_from_gr">开发票</button>
           <button type="button" class="secondary hidden" id="btnInvoiceDetailAnnulPf" data-i18n="action.annul_pf">作废</button>
           <button type="button" class="secondary" id="btnInvoiceDetailReprint" data-i18n="action.reprint">重打</button>
           <button type="button" class="secondary" id="btnCloseInvoiceDetail" data-i18n="common.close">关闭</button>
@@ -2595,14 +2602,14 @@
       delete receiptBtn._receiptDocId;
       delete receiptBtn._receiptDetail;
     }
-    const issueFromPfBtn = $('#btnInvoiceDetailIssueFromPf');
-    const canIssueFromPf = invoiceCanIssueFromPf(inv);
-    issueFromPfBtn.classList.toggle('hidden', !canIssueFromPf);
-    if (canIssueFromPf) {
-      issueFromPfBtn._pfDetail = inv;
-    } else {
-      delete issueFromPfBtn._pfDetail;
-    }
+    const canIssueSale = invoiceCanIssueSaleFrom(inv);
+    [['#btnInvoiceDetailIssueFromPf', 'PF'], ['#btnInvoiceDetailIssueFromGr', 'GR']].forEach(([id, type]) => {
+      const btn = $(id);
+      const show = canIssueSale && inv.document_type === type;
+      btn.classList.toggle('hidden', !show);
+      if (show) btn._sourceDetail = inv;
+      else delete btn._sourceDetail;
+    });
     const annulPfBtn = $('#btnInvoiceDetailAnnulPf');
     const canAnnulPf = invoiceCanAnnulPf(inv);
     annulPfBtn.classList.toggle('hidden', !canAnnulPf);
@@ -2636,10 +2643,9 @@
   }
 
   /** ONLY PF→sale button gate. */
-  function invoiceCanIssueFromPf(inv) {
-    return String(inv.document_type || '') === 'PF' &&
-      ['N', 'F'].includes(String(inv.document_status || '')) &&
-      !!(setupStatusCache && setupStatusCache.ready_to_issue);
+  /** ONLY "issue sale invoice from PF / GR" gate: server link rule (can_issue_sale_from) + ready to issue. */
+  function invoiceCanIssueSaleFrom(inv) {
+    return !!inv.can_issue_sale_from && !!(setupStatusCache && setupStatusCache.ready_to_issue);
   }
 
   /** ONLY PF/GR/GT annul button gate (N→A). */
@@ -5376,9 +5382,8 @@
       lines
     };
     if (currentOrder.proformaId) body.proforma_id = currentOrder.proformaId;
-    if (docType === 'FT') {
-      const grIds = selectedGrLinkIds();
-      if (grIds.length) body.delivery_note_ids = grIds;
+    if (docType === 'FT' && linkedDeliveryNotes().length) {
+      body.delivery_note_ids = linkedDeliveryNotes().map(n => n.document_id);
     }
     if (isPf && currentOrder.validUntil) body.valid_until = currentOrder.validUntil;
     if (isGr || isGt) {
@@ -6076,28 +6081,37 @@
     if (!btn._receiptDocId || !detail) return;
     openReceiptModal(detail);
   };
-  $('#btnInvoiceDetailIssueFromPf').onclick = async () => {
-    const inv = $('#btnInvoiceDetailIssueFromPf')._pfDetail;
-    if (!inv) return;
+  /** ONLY "issue FT from an issued PF / GR" builder: a new manual order with the source's original
+   *  lines (quantity, gross unit price, IVA from detail.item_lines), buyer prefilled, doc type FT;
+   *  link = { proformaId } or { deliveryNotes }. */
+  function startOrderFromDocument(inv, link) {
     closeInvoiceDetail();
-    const lines = (inv.lines || []).map((ln, i) => ({
-      name: ln.description || ('Line ' + (i + 1)),
-      saft_name: ln.description || ('Line ' + (i + 1)),
-      price: ln.line_gross || '0.00',
-      vat: '23.00',
-      qty: 1
+    newBlankOrder();
+    currentOrder.lines = (inv.item_lines || []).map(ln => ({
+      name: ln.display_name,
+      saft_name: ln.saft_name,
+      price: Number(ln.unit_price_gross),
+      vat: ln.vat_rate_percent,
+      qty: Number(ln.quantity)
     }));
-    currentOrder = {
-      id: 'from-pf-' + inv.document_id,
-      status: 'open',
-      requestId: 'req-from-pf-' + Date.now(),
-      tableNo: '',
-      lines: lines.length ? lines : [{ name: 'Item', saft_name: 'Item', price: inv.gross_total || '0.00', vat: '23.00', qty: 1 }],
-      proformaId: inv.document_id
-    };
+    Object.assign(currentOrder, link);
+    const c = inv.customer || {};
+    $('#invNif').value = isIdentifiedNif(c.tax_id) ? c.tax_id : '';
+    $('#invName').value = c.company_name && c.company_name !== 'Consumidor Final' ? c.company_name : '';
     setSelectValue($('#docType'), 'FT');
-    showView('order');
-    if (typeof renderOrder === 'function') renderOrder();
+    renderOrderLines();
+  }
+  $('#btnInvoiceDetailIssueFromPf').onclick = () => {
+    const inv = $('#btnInvoiceDetailIssueFromPf')._sourceDetail;
+    if (inv) startOrderFromDocument(inv, { proformaId: inv.document_id });
+  };
+  $('#btnInvoiceDetailIssueFromGr').onclick = () => {
+    const inv = $('#btnInvoiceDetailIssueFromGr')._sourceDetail;
+    if (!inv) return;
+    startOrderFromDocument(inv, { deliveryNotes: [{
+      document_id: inv.document_id, invoice_no: inv.invoice_no,
+      customer_tax_id: (inv.customer && inv.customer.tax_id) || ''
+    }] });
   };
   $('#btnInvoiceDetailAnnulPf').onclick = () => {
     const docId = $('#btnInvoiceDetailAnnulPf')._pfDocId;
@@ -6563,37 +6577,79 @@
     if (show && !grFieldsWereShown) refreshMovementStartDefaults();
     grFieldsWereShown = show;
   }
-  /** ONLY FT → GR link picker: server's linkable GR list as checkboxes; read by selectedGrLinkIds. */
+  /** FT → GR links live on currentOrder.deliveryNotes ([{ document_id, invoice_no, customer_tax_id }]);
+   *  rule: a linked GR belongs to the FT buyer (same NIF; walk-in GR ↔ empty NIF). */
+  function linkedDeliveryNotes() {
+    return (currentOrder && currentOrder.deliveryNotes) || [];
+  }
   let grLinkPickerSeq = 0; // last syncGrLinkPicker call; older responses are dropped
+  let grLinkCandidates = [];
+  /** ONLY FT → GR sync: shown for FT only; drops links of another buyer; loads that buyer's linkable GRs. */
   async function syncGrLinkPicker() {
     const seq = ++grLinkPickerSeq;
     const wrap = $('#invGrLinkWrap');
-    const list = $('#invGrLinkList');
-    if (!wrap || !list) return;
-    const show = ($('#docType').value || '') === 'FT';
+    if (!wrap) return;
+    const show = !!currentOrder && ($('#docType').value || '') === 'FT';
     wrap.classList.toggle('hidden', !show);
-    list.innerHTML = '';
-    if (!show) return;
-    let linkable;
-    try {
-      const res = await j('GET', '/local/v1/delivery-notes/linkable');
-      linkable = (res && res.delivery_notes) || [];
-    } catch (e) {
-      if (seq === grLinkPickerSeq) list.innerHTML = '<span class="hint">' + escHtml(FiscalUI.formatError(e)) + '</span>';
+    grLinkCandidates = [];
+    if (!show) {
+      $('#invGrLinked').innerHTML = '';
+      $('#invGrLinkPicker').innerHTML = '';
       return;
     }
-    if (seq !== grLinkPickerSeq) return;
-    list.innerHTML = linkable.length
-      ? linkable.map(r =>
-          '<label class="gr-link-row"><input type="checkbox" value="' + escHtml(r.document_id) + '" />' +
-          '<span class="gr-link-no">' + escHtml(r.invoice_no) + '</span>' +
-          '<span class="gr-link-meta">' + escHtml([r.customer_name, '€' + r.gross_total,
-            r.document_status === 'F' ? FiscalAdminI18n.t('ft.link_gr_invoiced') : ''].filter(Boolean).join(' · ')) +
-          '</span></label>').join('')
-      : '<span class="hint">' + escHtml(FiscalAdminI18n.t('ft.link_gr_none')) + '</span>';
+    const buyer = isIdentifiedNif($('#invNif').value) ? nifDigits($('#invNif').value) : '';
+    currentOrder.deliveryNotes = linkedDeliveryNotes().filter(n => (n.customer_tax_id || '') === buyer);
+    renderGrLinks(buyer, null);
+    if (!buyer) return;
+    try {
+      const res = await j('GET', '/local/v1/delivery-notes/linkable?customer_nif=' + encodeURIComponent(buyer));
+      if (seq !== grLinkPickerSeq) return;
+      grLinkCandidates = (res && res.delivery_notes) || [];
+      renderGrLinks(buyer, null);
+    } catch (e) {
+      if (seq === grLinkPickerSeq) renderGrLinks(buyer, FiscalUI.formatError(e));
+    }
   }
-  function selectedGrLinkIds() {
-    return [...document.querySelectorAll('#invGrLinkList input:checked')].map(i => i.value);
+  /** ONLY renderer of linked chips + the buyer's collapsible candidate list. */
+  function renderGrLinks(buyer, error) {
+    const linked = linkedDeliveryNotes();
+    $('#invGrLinked').innerHTML = linked.map(n =>
+      '<span class="gr-link-chip">' + escHtml(n.invoice_no) +
+      '<button type="button" data-gr-unlink="' + escHtml(n.document_id) + '" aria-label="' +
+      escHtml(FiscalAdminI18n.t('ft.link_gr_unlink')) + '">✕</button></span>').join('');
+    const picker = $('#invGrLinkPicker');
+    const hint = (key) => '<span class="hint">' + escHtml(error || FiscalAdminI18n.t(key)) + '</span>';
+    if (error) { picker.innerHTML = hint(''); return; }
+    if (!buyer) { picker.innerHTML = linked.length ? '' : hint('ft.link_gr_need_nif'); return; }
+    const rest = grLinkCandidates.filter(r => !linked.some(n => n.document_id === r.document_id));
+    if (!rest.length) { picker.innerHTML = linked.length ? '' : hint('ft.link_gr_none'); return; }
+    picker.innerHTML = '<details' + (linked.length ? '' : ' open') + '><summary>' +
+      escHtml(FiscalAdminI18n.fmt('ft.link_gr_count', { n: rest.length })) + '</summary>' +
+      rest.map(r =>
+        '<label class="gr-link-row"><input type="checkbox" data-gr-link="' + escHtml(r.document_id) + '" />' +
+        '<span class="gr-link-no">' + escHtml(r.invoice_no) + '</span>' +
+        '<span class="gr-link-meta">' + escHtml(formatInvoiceWhenCell(r) + ' · ' + fmtMoney(r.gross_total)) + '</span>' +
+        '<span class="status-pill' + (r.document_status === 'N' ? ' ok' : '') + '">' +
+        escHtml(FiscalAdminI18n.t(r.document_status === 'N' ? 'ft.link_gr_open' : 'ft.link_gr_invoiced')) +
+        '</span></label>').join('') + '</details>';
+  }
+  if ($('#invGrLinkWrap')) {
+    $('#invGrLinkWrap').addEventListener('change', (e) => {
+      const id = e.target && e.target.dataset && e.target.dataset.grLink;
+      const r = id && grLinkCandidates.find(x => x.document_id === id);
+      if (!r || !currentOrder) return;
+      currentOrder.deliveryNotes = linkedDeliveryNotes().concat([{
+        document_id: r.document_id, invoice_no: r.invoice_no, customer_tax_id: r.customer_tax_id || ''
+      }]);
+      renderGrLinks(nifDigits($('#invNif').value), null);
+    });
+    $('#invGrLinkWrap').addEventListener('click', (e) => {
+      const btn = e.target && e.target.closest && e.target.closest('[data-gr-unlink]');
+      if (!btn || !currentOrder) return;
+      currentOrder.deliveryNotes = linkedDeliveryNotes().filter(n => n.document_id !== btn.dataset.grUnlink);
+      renderGrLinks(nifDigits($('#invNif').value), null);
+    });
+    ['input', 'change'].forEach(ev => $('#invNif').addEventListener(ev, syncGrLinkPicker));
   }
   if ($('#docType')) {
     $('#docType').addEventListener('change', syncGrLinkPicker);

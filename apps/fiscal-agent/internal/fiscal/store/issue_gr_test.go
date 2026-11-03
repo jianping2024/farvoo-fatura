@@ -168,9 +168,14 @@ func TestIssueGR_Annul_LinkFT(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	linkable, err := db.ListLinkableDeliveryNotes("store-demo-001")
+	linkable, err := db.ListLinkableDeliveryNotes("store-demo-001", "509442013")
 	if err != nil {
 		t.Fatal(err)
+	}
+	for _, other := range []string{"", "123456789"} {
+		if got, err := db.ListLinkableDeliveryNotes("store-demo-001", other); err != nil || len(got) != 0 {
+			t.Fatalf("buyer %q must see no GR of 509442013: %+v %v", other, got, err)
+		}
 	}
 	got := map[string]string{}
 	for _, it := range linkable {
@@ -178,5 +183,19 @@ func TestIssueGR_Annul_LinkFT(t *testing.T) {
 	}
 	if len(got) != 2 || got[rec.DocumentID] != "F" || got[gr3.DocumentID] != "N" {
 		t.Fatalf("linkable GR %+v (want F %s + N %s, not annulled %s)", got, rec.DocumentID, gr3.DocumentID, gr2.DocumentID)
+	}
+
+	// "Issue FT from GR" source: original lines in manual-issue shape + buyer snapshot.
+	items, err := db.LoadInvoiceItemLines(gr3.DocumentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 || items[0] != (store.InvoiceItemLine{DisplayName: "Item", SaftName: "Item",
+		UnitPriceGross: "100.00", VATRatePercent: "23.00", Quantity: "1"}) {
+		t.Fatalf("item lines %+v", items)
+	}
+	cust, err := db.LoadInvoiceCustomer(gr3.DocumentID)
+	if err != nil || cust == nil || cust.TaxID != "509442013" || cust.CompanyName != "Cliente GR" || cust.PostalCode != "1000-001" {
+		t.Fatalf("customer %+v err=%v", cust, err)
 	}
 }

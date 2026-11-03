@@ -85,9 +85,9 @@ func handleListLinkableDeliveryNotes(w http.ResponseWriter, r *http.Request, dep
 		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
 		return
 	}
-	items, err := deps.Fiscal.ListLinkableDeliveryNotes()
+	items, err := deps.Fiscal.ListLinkableDeliveryNotes(r.URL.Query().Get("customer_nif"))
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "list_failed", err.Error())
+		writeCoded(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"delivery_notes": items})
@@ -210,6 +210,15 @@ func handleGetFiscalDocument(w http.ResponseWriter, r *http.Request, deps Handle
 		if len(detail.Lines) > 0 {
 			out["lines"] = detail.Lines
 		}
+	}
+	if detail.Customer != nil {
+		out["customer"] = detail.Customer
+	}
+	if len(detail.ItemLines) > 0 {
+		out["item_lines"] = detail.ItemLines
+	}
+	if detail.CanIssueSaleFrom {
+		out["can_issue_sale_from"] = true
 	}
 	if len(detail.LinkedDeliveryInvoiceNos) > 0 {
 		out["linked_delivery_invoice_nos"] = detail.LinkedDeliveryInvoiceNos

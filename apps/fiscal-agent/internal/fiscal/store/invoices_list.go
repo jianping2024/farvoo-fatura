@@ -87,6 +87,9 @@ type InvoiceDetail struct {
 	RecipientIsVATPayer      *bool                 `json:"recipient_is_vat_payer,omitempty"`
 	MovementPurpose          string                `json:"movement_purpose,omitempty"`
 	LinkedDeliveryInvoiceNos []string              `json:"linked_delivery_invoice_nos,omitempty"`
+	Customer                 *domain.CustomerInput `json:"customer,omitempty"`
+	ItemLines                []InvoiceItemLine     `json:"item_lines,omitempty"` // PF / GR: source of "issue FT from"
+	CanIssueSaleFrom         bool                  `json:"can_issue_sale_from,omitempty"`
 }
 
 var allowedInvoicePageSizes = map[int]bool{10: true, 20: true}
@@ -286,10 +289,16 @@ func scanInvoiceListItems(rows *sql.Rows) ([]InvoiceListItem, error) {
 	return items, rows.Err()
 }
 
-// ListLinkableDeliveryNotes returns every GR an FT may reference (domain.LinkableDeliveryNoteStatuses),
-// newest first, unpaginated. ONLY reader for the Admin FT → GR picker.
-func (d *DB) ListLinkableDeliveryNotes(storeID string) ([]InvoiceListItem, error) {
+// ListLinkableDeliveryNotes returns the GRs of one buyer (customer_tax_id) that an FT may reference
+// (domain.LinkableDeliveryNoteStatuses), newest first, unpaginated. ONLY reader for the Admin
+// FT → GR picker; an empty NIF returns none (walk-in GRs are linked only via "issue FT from GR").
+func (d *DB) ListLinkableDeliveryNotes(storeID, customerTaxID string) ([]InvoiceListItem, error) {
+	if customerTaxID == "" {
+		return []InvoiceListItem{}, nil
+	}
 	where, args := invoiceListWhere(InvoiceListQuery{StoreID: storeID, DocumentType: string(domain.DocumentGR)})
+	where += ` AND cs.customer_tax_id = ?`
+	args = append(args, customerTaxID)
 	marks := make([]string, len(domain.LinkableDeliveryNoteStatuses))
 	for i, st := range domain.LinkableDeliveryNoteStatuses {
 		marks[i] = "?"

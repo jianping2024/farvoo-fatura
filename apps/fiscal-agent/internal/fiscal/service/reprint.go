@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"farvoo-fiscal-agent/internal/fiscal/domain"
+	"farvoo-fiscal-agent/internal/fiscal/ptnif"
 	"farvoo-fiscal-agent/internal/fiscal/store"
 )
 
@@ -41,9 +42,17 @@ func (s *FiscalService) ListInvoices(q store.InvoiceListQuery) (*store.InvoiceLi
 	return s.db.ListInvoices(q)
 }
 
-// ListLinkableDeliveryNotes returns the GRs an FT may reference for this store.
-func (s *FiscalService) ListLinkableDeliveryNotes() ([]store.InvoiceListItem, error) {
-	return s.db.ListLinkableDeliveryNotes(s.storeID)
+// ListLinkableDeliveryNotes returns the GRs of buyer customerNIF that an FT may reference.
+// Empty NIF → none; an invalid NIF is a validation error.
+func (s *FiscalService) ListLinkableDeliveryNotes(customerNIF string) ([]store.InvoiceListItem, error) {
+	nif := ""
+	if ptnif.Digits(customerNIF) != "" {
+		var err error
+		if nif, err = ptnif.NormalizeBuyer(customerNIF); err != nil {
+			return nil, coded(ErrCodeValidationFailed, err.Error())
+		}
+	}
+	return s.db.ListLinkableDeliveryNotes(s.storeID, nif)
 }
 
 // GetInvoiceDetail returns one invoice with credit/debit remaining (FT/FS/FR),
@@ -55,6 +64,21 @@ func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetai
 	}
 	if err != nil {
 		return nil, err
+	}
+	if d.Customer, err = s.db.LoadInvoiceCustomer(documentID); err != nil {
+		return d, err
+	}
+	// PF / GR can seed a sale invoice (domain link rules); ItemLines are its prefill.
+	switch d.DocumentType {
+	case domain.DocumentPF:
+		d.CanIssueSaleFrom = domain.IsLinkableProformaWorkStatus(string(d.DocumentStatus))
+	case domain.DocumentGR:
+		d.CanIssueSaleFrom = domain.IsLinkableDeliveryNoteStatus(string(d.DocumentStatus))
+	}
+	if d.DocumentType == domain.DocumentPF || d.DocumentType == domain.DocumentGR {
+		if d.ItemLines, err = s.db.LoadInvoiceItemLines(documentID); err != nil {
+			return d, err
+		}
 	}
 	switch {
 	case store.IsCreditableOriginalDocumentType(d.DocumentType):
