@@ -660,23 +660,37 @@
       position: fixed; inset: 0; background: rgba(20,32,27,.45); z-index: 40;
       display: grid; place-items: center; padding: 1rem;
     }
-    /* Modal shell: head/foot pinned; only .modal-body scrolls (restaurant Modal pattern). */
+    /* ONLY pinned head/body/foot shell (Admin modal + order action panels; restaurant Modal pattern). */
+    .sheet-head {
+      flex-shrink: 0; padding: 1.1rem 1.25rem 0.75rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .sheet-head h2 { margin: 0; font-size: 1rem; font-weight: 700; }
+    .sheet-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0.85rem 1.25rem 1rem; }
+    .sheet-body .field { margin-bottom: 0.65rem; }
+    .sheet-body .field:last-child { margin-bottom: 0; }
+    .sheet-foot {
+      flex-shrink: 0; padding: 0.85rem 1.25rem 1.1rem;
+      border-top: 1px solid var(--line); background: var(--panel);
+    }
+    .sheet-foot .actions { margin-top: 0; }
     .modal {
       background: var(--panel); border-radius: 16px; max-width: 520px; width: 100%;
       max-height: 80vh; box-shadow: var(--shadow);
       display: flex; flex-direction: column; overflow: hidden; padding: 0;
     }
-    .modal-head {
-      flex-shrink: 0; padding: 1.15rem 1.25rem 0.85rem;
-      border-bottom: 1px solid var(--line);
+    .modal > .sheet-head { padding: 1.15rem 1.25rem 0.85rem; }
+    .modal > .sheet-head h2 { font-size: 1.15rem; }
+    .modal > .sheet-body { padding: 1rem 1.25rem; }
+    .modal > .sheet-foot { padding: 0.85rem 1.25rem 1.15rem; }
+    /* Order issue/confirm panels: same sheet shell, viewport-capped so foot stays visible. */
+    .panel.panel-sheet {
+      display: flex; flex-direction: column; overflow: hidden; padding: 0;
+      max-height: calc(100vh - 12.5rem); align-self: stretch;
     }
-    .modal-head h2 { margin: 0; font-size: 1.15rem; }
-    .modal-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 1rem 1.25rem; }
-    .modal-foot {
-      flex-shrink: 0; padding: 0.85rem 1.25rem 1.15rem;
-      border-top: 1px solid var(--line); background: var(--panel);
-    }
-    .modal-foot .actions { margin-top: 0; }
+    #view-order-new > .split,
+    #view-order-invoice > .split { align-items: stretch; }
+    #grFields .field { margin-bottom: 0.55rem; }
     .line-input { width: 4rem; padding: 0.35rem; }
     @media (max-width: 860px) {
       #app-shell.on { grid-template-columns: minmax(0, 1fr); }
@@ -783,16 +797,22 @@
               <button type="button" id="btnPickProduct" data-i18n="picker.title.add">添加商品</button>
             </div>
           </div>
-          <div class="panel">
-            <h2 data-i18n="order.total">本单合计</h2>
-            <dl class="order-money" id="orderMoneyBox" style="margin:0.5rem 0">
-              <div class="detail-row" style="border:0;padding:0.2rem 0"><dt data-i18n="order.net">净额</dt><dd id="orderNet">€0.00</dd></div>
-              <div class="detail-row" style="border:0;padding:0.2rem 0"><dt data-i18n="order.tax">IVA</dt><dd id="orderTax">€0.00</dd></div>
-              <div class="detail-row" style="border:0;padding:0.35rem 0 0.2rem;font-family:var(--display);font-size:1.35rem"><dt data-i18n="order.gross">含税合计</dt><dd id="orderTotal">€0.00</dd></div>
-            </dl>
-            <p class="hint" data-i18n="order.total_hint">含 IVA · 未开票</p>
-            <div class="actions" style="margin-top:1.5rem">
-              <button type="button" id="btnConfirmOrder" data-i18n="order.confirm_cta">确认，去开票</button>
+          <div class="panel panel-sheet">
+            <div class="sheet-head">
+              <h2 data-i18n="order.total">本单合计</h2>
+            </div>
+            <div class="sheet-body">
+              <dl class="order-money" id="orderMoneyBox" style="margin:0.25rem 0">
+                <div class="detail-row" style="border:0;padding:0.2rem 0"><dt data-i18n="order.net">净额</dt><dd id="orderNet">€0.00</dd></div>
+                <div class="detail-row" style="border:0;padding:0.2rem 0"><dt data-i18n="order.tax">IVA</dt><dd id="orderTax">€0.00</dd></div>
+                <div class="detail-row" style="border:0;padding:0.35rem 0 0.2rem;font-family:var(--display);font-size:1.35rem"><dt data-i18n="order.gross">含税合计</dt><dd id="orderTotal">€0.00</dd></div>
+              </dl>
+              <p class="hint" data-i18n="order.total_hint">含 IVA · 未开票</p>
+            </div>
+            <div class="sheet-foot">
+              <div class="actions">
+                <button type="button" id="btnConfirmOrder" data-i18n="order.confirm_cta">确认，去开票</button>
+              </div>
             </div>
           </div>
         </div>
@@ -818,91 +838,101 @@
               <tbody id="invSummaryLines"></tbody>
             </table>
           </div>
-          <div class="panel">
-            <h2 data-i18n="order.inv_info">发票信息</h2>
-            <div class="detail-row" id="invLinkedRow" style="display:none;margin-bottom:0.75rem">
-              <dt style="font-size:0.8rem;color:var(--muted, #666)" data-i18n="order.linked">已关联发票</dt>
-              <dd style="margin:0.25rem 0 0"><button type="button" class="secondary" id="btnInvLinkedOpen">—</button></dd>
+          <div class="panel panel-sheet">
+            <div class="sheet-head">
+              <h2 data-i18n="order.inv_info">发票信息</h2>
             </div>
-            <div class="field">
-              <label data-i18n="doc.type">发票类型</label>
-              <select id="docType"></select>
-            </div>
-            <div class="field">
-              <label data-i18n="buyer.nif">购方 NIF</label>
-              <input id="invNif" placeholder="空 = 散客 999999990" data-i18n="buyer.nif_ph" data-i18n-attr="placeholder" list="customerNifList" />
-              <datalist id="customerNifList"></datalist>
-            </div>
-            <div class="field">
-              <label data-i18n="buyer.name">购方名称</label>
-              <input id="invName" value="Consumidor Final" />
-            </div>
-            <div id="grFields" class="hidden">
-              <div class="field hidden" id="gtPurposeWrap">
-                <label data-i18n="gt.purpose">运输场景</label>
-                <select id="invMovementPurpose">
-                  <option value="transfer" data-i18n="gt.purpose.transfer">调拨</option>
-                  <option value="customer" data-i18n="gt.purpose.customer">外送客户</option>
-                </select>
-                <p class="hint" id="gtPurposeHint"></p>
+            <div class="sheet-body">
+              <div class="detail-row" id="invLinkedRow" style="display:none;margin-bottom:0.75rem">
+                <dt style="font-size:0.8rem;color:var(--muted, #666)" data-i18n="order.linked">已关联发票</dt>
+                <dd style="margin:0.25rem 0 0"><button type="button" class="secondary" id="btnInvLinkedOpen">—</button></dd>
               </div>
               <div class="field">
-                <label data-i18n="gr.customer_address">收货地址</label>
-                <input id="invGrAddress" data-i18n="gr.customer_address_ph" data-i18n-attr="placeholder" placeholder="街道门牌" />
+                <label data-i18n="doc.type">发票类型</label>
+                <select id="docType"></select>
               </div>
               <div class="split">
-                <div class="field"><label data-i18n="gr.customer_city">城市</label><input id="invGrCity" /></div>
-                <div class="field"><label data-i18n="gr.customer_postal">邮编</label><input id="invGrPostal" /></div>
-              </div>
-              <div class="field">
-                <label data-i18n="gr.ship_from">装货地</label>
-                <input id="invShipFrom" data-i18n="gr.ship_street_ph" data-i18n-attr="placeholder" placeholder="街道门牌" />
-                <span class="hint" data-i18n="gr.ship_from_hint"></span>
-              </div>
-              <div class="split">
-                <div class="field"><label data-i18n="gr.customer_city">城市</label><input id="invShipFromCity" /></div>
-                <div class="field"><label data-i18n="gr.customer_postal">邮编</label><input id="invShipFromPostal" placeholder="1000-001" /></div>
-              </div>
-              <div class="field">
-                <label data-i18n="gr.ship_to">卸货地</label>
-                <input id="invShipTo" data-i18n="gr.ship_street_ph" data-i18n-attr="placeholder" placeholder="街道门牌" />
-                <span class="hint" data-i18n="gr.ship_to_hint"></span>
-              </div>
-              <div class="split">
-                <div class="field"><label data-i18n="gr.customer_city">城市</label><input id="invShipToCity" /></div>
-                <div class="field"><label data-i18n="gr.customer_postal">邮编</label><input id="invShipToPostal" placeholder="1000-001" /></div>
-              </div>
-              <div class="field">
-                <label data-i18n="gr.movement_start">开运时间</label>
-                <div class="split">
-                  <div id="invMovementDate"></div>
-                  <div id="invMovementTime"></div>
+                <div class="field">
+                  <label data-i18n="buyer.nif">购方 NIF</label>
+                  <input id="invNif" placeholder="空 = 散客 999999990" data-i18n="buyer.nif_ph" data-i18n-attr="placeholder" list="customerNifList" />
+                  <datalist id="customerNifList"></datalist>
+                </div>
+                <div class="field">
+                  <label data-i18n="buyer.name">购方名称</label>
+                  <input id="invName" value="Consumidor Final" />
                 </div>
               </div>
-              <div class="field" id="invRecipientVatWrap">
-                <label class="check-row" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
-                  <input type="checkbox" id="invRecipientVat" checked />
-                  <span data-i18n="gr.recipient_vat">收货方是 IVA 纳税人</span>
-                </label>
+              <div id="grFields" class="hidden">
+                <div class="field hidden" id="gtPurposeWrap">
+                  <label data-i18n="gt.purpose">运输场景</label>
+                  <select id="invMovementPurpose">
+                    <option value="transfer" data-i18n="gt.purpose.transfer">调拨</option>
+                    <option value="customer" data-i18n="gt.purpose.customer">外送客户</option>
+                  </select>
+                  <p class="hint" id="gtPurposeHint"></p>
+                </div>
+                <div class="field">
+                  <label data-i18n="gr.customer_address">收货地址</label>
+                  <input id="invGrAddress" data-i18n="gr.customer_address_ph" data-i18n-attr="placeholder" placeholder="街道门牌" />
+                </div>
+                <div class="split">
+                  <div class="field"><label data-i18n="gr.customer_city">城市</label><input id="invGrCity" /></div>
+                  <div class="field"><label data-i18n="gr.customer_postal">邮编</label><input id="invGrPostal" /></div>
+                </div>
+                <div class="field">
+                  <label data-i18n="gr.ship_from">装货地</label>
+                  <input id="invShipFrom" data-i18n="gr.ship_street_ph" data-i18n-attr="placeholder" placeholder="街道门牌" />
+                  <span class="hint" data-i18n="gr.ship_from_hint"></span>
+                </div>
+                <div class="split">
+                  <div class="field"><label data-i18n="gr.customer_city">城市</label><input id="invShipFromCity" /></div>
+                  <div class="field"><label data-i18n="gr.customer_postal">邮编</label><input id="invShipFromPostal" placeholder="1000-001" /></div>
+                </div>
+                <div class="field">
+                  <label data-i18n="gr.ship_to">卸货地</label>
+                  <input id="invShipTo" data-i18n="gr.ship_street_ph" data-i18n-attr="placeholder" placeholder="街道门牌" />
+                  <span class="hint" data-i18n="gr.ship_to_hint"></span>
+                </div>
+                <div class="split">
+                  <div class="field"><label data-i18n="gr.customer_city">城市</label><input id="invShipToCity" /></div>
+                  <div class="field"><label data-i18n="gr.customer_postal">邮编</label><input id="invShipToPostal" placeholder="1000-001" /></div>
+                </div>
+                <div class="field">
+                  <label data-i18n="gr.movement_start">开运时间</label>
+                  <div class="split">
+                    <div id="invMovementDate"></div>
+                    <div id="invMovementTime"></div>
+                  </div>
+                </div>
+                <div class="field" id="invRecipientVatWrap">
+                  <label class="check-row" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+                    <input type="checkbox" id="invRecipientVat" />
+                    <span data-i18n="gr.recipient_vat">收货方是 IVA 纳税人</span>
+                  </label>
+                </div>
+              </div>
+              <div class="split">
+                <div class="field">
+                  <label data-i18n="pay.label">付款方式</label>
+                  <select id="invPay"></select>
+                </div>
+                <div class="field">
+                  <label data-i18n="settings.printers.title">打印机</label>
+                  <p class="hint" id="invStationHint" data-i18n="settings.printers.loading">（加载中…）</p>
+                </div>
+              </div>
+              <div class="field cash-tender-wrap hidden" id="invCashTenderWrap">
+                <label data-i18n="pay.tendered">实收金额</label>
+                <input id="invTendered" inputmode="decimal" autocomplete="off" placeholder="0.00" />
+                <p class="hint"><span data-i18n="pay.change">找零</span>: <strong id="invChange">—</strong></p>
               </div>
             </div>
-            <div class="field">
-              <label data-i18n="pay.label">付款方式</label>
-              <select id="invPay"></select>
-            </div>
-            <div class="field cash-tender-wrap hidden" id="invCashTenderWrap">
-              <label data-i18n="pay.tendered">实收金额</label>
-              <input id="invTendered" inputmode="decimal" autocomplete="off" placeholder="0.00" />
-              <p class="hint"><span data-i18n="pay.change">找零</span>: <strong id="invChange">—</strong></p>
-            </div>
-            <div class="field">
-              <label data-i18n="settings.printers.title">打印机</label>
-              <p class="hint" id="invStationHint" data-i18n="settings.printers.loading">（加载中…）</p>
-            </div>
-            <div class="actions">
-              <button type="button" id="btnIssueInvoice" data-i18n="order.issue_print">签发发票并打印</button>
-              <button type="button" class="secondary hidden" id="btnOrderReprint" data-i18n="action.reprint">重打</button>
-              <button type="button" class="secondary" id="btnOrderInvoiceCancel" data-i18n="common.cancel">取消</button>
+            <div class="sheet-foot">
+              <div class="actions">
+                <button type="button" id="btnIssueInvoice" data-i18n="order.issue_print">签发发票并打印</button>
+                <button type="button" class="secondary hidden" id="btnOrderReprint" data-i18n="action.reprint">重打</button>
+                <button type="button" class="secondary" id="btnOrderInvoiceCancel" data-i18n="common.cancel">取消</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1474,13 +1504,13 @@
 
   <div id="invoiceDetailModal" class="modal-backdrop hidden">
     <div class="modal invoice-detail-modal">
-      <div class="modal-head">
+      <div class="sheet-head">
         <h2 id="invoiceDetailTitle" data-i18n="invoice.detail.title">发票详情</h2>
       </div>
-      <div class="modal-body">
+      <div class="sheet-body">
         <dl class="detail-grid" id="invoiceDetailBody"></dl>
       </div>
-      <div class="modal-foot">
+      <div class="sheet-foot">
         <div class="actions">
           <button type="button" class="secondary hidden" id="btnInvoiceDetailCredit" data-i18n="action.credit">冲销</button>
           <button type="button" class="secondary hidden" id="btnInvoiceDetailDebit" data-i18n="action.debit">借记</button>
@@ -1496,10 +1526,10 @@
 
   <div id="adjustModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:560px">
-      <div class="modal-head">
+      <div class="sheet-head">
         <h2 id="adjustModalTitle" data-i18n="adjust.title">纠正发票</h2>
       </div>
-      <div class="modal-body">
+      <div class="sheet-body">
         <div class="credit-tabs">
           <button type="button" class="secondary" id="adjustTabFull" data-i18n="adjust.tab.full">全额</button>
           <button type="button" class="secondary active" id="adjustTabPartial" data-i18n="adjust.tab.lines">按行</button>
@@ -1515,7 +1545,7 @@
         </div>
         <div class="field"><label id="adjustReasonLabel" data-i18n="adjust.reason">原因</label><input id="adjustReason" placeholder="" maxlength="200" /></div>
       </div>
-      <div class="modal-foot">
+      <div class="sheet-foot">
         <div class="actions">
           <button type="button" id="btnAdjustNext" data-i18n="settings.wizard.next">下一步</button>
           <button type="button" class="secondary" id="btnAdjustCancel" data-i18n="common.cancel">取消</button>
@@ -1526,14 +1556,14 @@
 
   <div id="adjustConfirmModal" class="modal-backdrop hidden">
     <div class="modal">
-      <div class="modal-head">
+      <div class="sheet-head">
         <h2 id="adjustConfirmTitle" data-i18n="adjust.confirm_issue">确认签发</h2>
       </div>
-      <div class="modal-body">
+      <div class="sheet-body">
         <p class="hint" data-i18n="adjust.confirm_hint">签发后不可撤销。</p>
         <dl class="detail-grid" id="adjustConfirmBody"></dl>
       </div>
-      <div class="modal-foot">
+      <div class="sheet-foot">
         <div class="actions">
           <button type="button" id="btnAdjustSubmit" data-i18n="adjust.confirm_issue">确认签发</button>
           <button type="button" class="secondary" id="btnAdjustConfirmBack" data-i18n="adjust.back">返回</button>
@@ -1544,10 +1574,10 @@
 
   <div id="receiptModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:480px">
-      <div class="modal-head">
+      <div class="sheet-head">
         <h2 data-i18n="receipt.title">登记收款</h2>
       </div>
-      <div class="modal-body">
+      <div class="sheet-body">
         <p class="hint" id="receiptRemainHint">—</p>
         <div class="field">
           <label class="check-row"><input type="checkbox" id="receiptFull" checked /> <span data-i18n="receipt.full">收剩余全部</span></label>
@@ -1565,7 +1595,7 @@
           <input id="receiptReason" maxlength="200" />
         </div>
       </div>
-      <div class="modal-foot">
+      <div class="sheet-foot">
         <div class="actions">
           <button type="button" id="btnReceiptSubmit" data-i18n="receipt.submit">签发收据</button>
           <button type="button" class="secondary" id="btnReceiptCancel" data-i18n="common.cancel">取消</button>
@@ -1576,13 +1606,13 @@
 
   <div id="confirmActionModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:440px">
-      <div class="modal-head">
+      <div class="sheet-head">
         <h2 id="confirmActionTitle" data-i18n="common.confirm_title">确认操作</h2>
       </div>
-      <div class="modal-body">
+      <div class="sheet-body">
         <p class="hint" id="confirmActionBody"></p>
       </div>
-      <div class="modal-foot">
+      <div class="sheet-foot">
         <div class="actions">
           <button type="button" id="btnConfirmActionSubmit" data-i18n="common.confirm">确认</button>
           <button type="button" class="secondary" id="btnConfirmActionCancel" data-i18n="common.cancel">取消</button>
@@ -1593,15 +1623,15 @@
 
   <div id="changePinModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:400px">
-      <div class="modal-head">
+      <div class="sheet-head">
         <h2 data-i18n="settings.ops.change_pin">修改 PIN</h2>
       </div>
-      <div class="modal-body">
+      <div class="sheet-body">
         <div class="field"><label data-i18n="settings.ops.pin_old">当前 PIN</label><input id="changePinOld" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
         <div class="field"><label data-i18n="settings.ops.pin_new">新 PIN</label><input id="changePinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
         <div class="field"><label data-i18n="settings.ops.pin_confirm">确认新 PIN</label><input id="changePinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
       </div>
-      <div class="modal-foot">
+      <div class="sheet-foot">
         <div class="actions">
           <button type="button" id="btnChangePinSubmit" data-i18n="common.save">保存</button>
           <button type="button" class="secondary" id="btnChangePinCancel" data-i18n="common.cancel">取消</button>
@@ -1612,10 +1642,10 @@
 
   <div id="operatorFormModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:420px">
-      <div class="modal-head">
+      <div class="sheet-head">
         <h2 id="operatorFormTitle" data-i18n="settings.ops.add">添加开票员</h2>
       </div>
-      <div class="modal-body">
+      <div class="sheet-body">
         <input type="hidden" id="operatorFormId" value="" />
         <div class="field"><label data-i18n="settings.ops.display_name">显示名称</label><input id="operatorFormName" autocomplete="off" /></div>
         <div class="field settings-admin-only" id="operatorFormRoleBlock"><label data-i18n="common.role">角色</label>
@@ -1623,7 +1653,7 @@
         </div>
         <div class="field" id="operatorFormPinBlock"><label data-i18n="settings.ops.pin_init">初始 PIN（6 位）</label><input id="operatorFormPin" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
       </div>
-      <div class="modal-foot">
+      <div class="sheet-foot">
         <div class="actions">
           <button type="button" id="btnOperatorFormSubmit" data-i18n="common.save">保存</button>
           <button type="button" class="secondary" id="btnOperatorFormCancel" data-i18n="common.cancel">取消</button>
@@ -1634,15 +1664,15 @@
 
   <div id="operatorResetPinModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:400px">
-      <div class="modal-head">
+      <div class="sheet-head">
         <h2 data-i18n="settings.ops.reset_pin">重置 PIN</h2>
       </div>
-      <div class="modal-body">
+      <div class="sheet-body">
         <input type="hidden" id="operatorResetPinId" value="" />
         <div class="field"><label data-i18n="settings.ops.pin_new">新 PIN</label><input id="operatorResetPinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
         <div class="field"><label data-i18n="settings.ops.pin_confirm">确认新 PIN</label><input id="operatorResetPinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
       </div>
-      <div class="modal-foot">
+      <div class="sheet-foot">
         <div class="actions">
           <button type="button" id="btnOperatorResetPinSubmit" data-i18n="settings.ops.reset_pin">重置 PIN</button>
           <button type="button" class="secondary" id="btnOperatorResetPinCancel" data-i18n="common.cancel">取消</button>
@@ -1655,10 +1685,10 @@
 
   <div id="productPicker" class="modal-backdrop hidden">
     <div class="modal">
-      <div class="modal-head">
+      <div class="sheet-head">
         <h2 id="productPickerTitle" data-i18n="picker.title.add">添加商品</h2>
       </div>
-      <div class="modal-body">
+      <div class="sheet-body">
         <div id="pickerSearchBlock">
           <div class="field"><label data-i18n="picker.search">检索</label><input id="pickerSearch" placeholder="名称或编码" data-i18n="picker.search_ph" data-i18n-attr="placeholder" autocomplete="off" /></div>
           <div id="pickerList" style="max-height:12rem;overflow:auto;margin:0.75rem 0"></div>
@@ -1677,7 +1707,7 @@
           <div class="field"><label>IVA %</label><select id="pVat"></select></div>
         </div>
       </div>
-      <div class="modal-foot">
+      <div class="sheet-foot">
         <div class="actions">
           <button type="button" id="btnSaveProduct" data-i18n="common.save">保存</button>
           <button type="button" class="secondary" id="btnClosePicker" data-i18n="common.close">关闭</button>
@@ -2837,6 +2867,12 @@
     return Number(nif[8]) === expected;
   }
 
+  /** ONLY "identified buyer" test: valid 9-digit PT NIF other than the walk-in 999999990. */
+  function isIdentifiedNif(raw) {
+    const nif = nifDigits(raw);
+    return nif.length === 9 && nif !== '999999990' && validatePortugueseNif(nif);
+  }
+
   function customerNifInputError(nif) {
     const t = String(nif || '').trim();
     if (!t) return '';
@@ -2859,9 +2895,7 @@
   function suggestedSaleDocumentType(nifRaw, paymentRaw) {
     const pay = String(paymentRaw || '').trim().toUpperCase() || 'CASH';
     if (pay !== 'CASH') return 'FT';
-    const nif = nifDigits(nifRaw);
-    if (nif.length === 9 && nif !== '999999990' && validatePortugueseNif(nif)) return 'FT';
-    return DEFAULT_SALE_DOC;
+    return isIdentifiedNif(nifRaw) ? 'FT' : DEFAULT_SALE_DOC;
   }
 
   /** ONLY writer that applies suggestedSaleDocumentType onto a doc-type select.
@@ -6130,6 +6164,7 @@
   };
 
   bindCustomerNifAutofill($('#invNif'), $('#invName'));
+  ['input', 'change', 'blur'].forEach(ev => $('#invNif').addEventListener(ev, syncRecipientVatFromNif));
   bindCustomerNifAutofill($('#cNif'), $('#cName'));
   bindSaleDocTypeSuggestion($('#docType'), $('#invNif'), $('#invPay'));
   bindSaleDocTypeSuggestion($('#splitDocType'), $('#splitNif'), $('#splitPay'));
@@ -6449,6 +6484,13 @@
     } else {
       clearTransferPrefill();
     }
+    syncRecipientVatFromNif();
+  }
+
+  /** ONLY writer of #invRecipientVat: ticked iff the buyer NIF is identified (empty / invalid → unticked). */
+  function syncRecipientVatFromNif() {
+    const box = $('#invRecipientVat');
+    if (box) box.checked = isIdentifiedNif($('#invNif') ? $('#invNif').value : '');
   }
 
   /** Store buyer written by the GT transfer prefill; ONLY undone by clearTransferPrefill. */
@@ -6472,6 +6514,7 @@
     if (purposeWrap) purposeWrap.classList.toggle('hidden', dt !== 'GT');
     if (dt === 'GT') syncGtPurposeUI();
     else clearTransferPrefill();
+    syncRecipientVatFromNif();
     // Refresh defaults only when GR/GT fields first appear (not on every re-sync).
     if (show && !grFieldsWereShown) refreshMovementStartDefaults();
     grFieldsWereShown = show;
