@@ -387,22 +387,12 @@
       margin: 0 0 0.85rem; font-size: 0.75rem; color: var(--muted); font-weight: 600;
     }
     /* Peer hub CTAs: bills (rest) then #ctaNewOrder (primary) — same height. */
-    button.hub-bills-cta,
+    /* Bill sync UI paused: hub exposes ＋开票 only (no bills CTA). */
     .hub-entry-strip > #ctaNewOrder {
-      align-items: center; gap: 0.65rem;
+      display: inline-flex; align-items: center; gap: 0.65rem;
       min-height: 2.75rem; margin: 0; padding: 0.5rem 1rem;
       font-weight: 700;
     }
-    button.hub-bills-cta { display: none; }
-    body.mode-restaurant button.hub-bills-cta.rest-only { display: inline-flex; }
-    .hub-entry-strip > #ctaNewOrder { display: inline-flex; }
-    .hub-bills-count {
-      display: inline-flex; align-items: center; justify-content: center;
-      min-width: 1.5rem; height: 1.5rem; padding: 0 0.4rem;
-      border-radius: 999px; background: rgba(255,255,255,.22);
-      font-size: 0.9rem; font-weight: 800; font-variant-numeric: tabular-nums;
-    }
-    button.hub-bills-cta.has-open { box-shadow: 0 0 0 2px rgba(11,61,46,.28); }
     .invoice-empty { padding: 1.1rem 1.25rem !important; color: var(--ink); }
     .invoice-empty > div + div { margin-top: 0.35rem; font-size: 0.8rem; color: var(--muted); }
     /* ONLY clerk invoice list table:
@@ -763,7 +753,6 @@
         <div class="mode-tag" id="sidebarMode" data-i18n="mode.restaurant">餐馆模式</div>
       </div>
       <button type="button" class="nav-btn active" data-nav="invoices"><span class="nav-icon" aria-hidden="true">◫</span><span data-i18n="nav.invoices">发票</span></button>
-      <button type="button" class="nav-btn rest-only" data-nav="bills" id="navBills"><span class="nav-icon" aria-hidden="true">☰</span><span data-i18n="nav.bills">账单</span><span class="nav-badge" id="navBillsBadge" aria-hidden="true">0</span></button>
       <button type="button" class="nav-btn" data-nav="products"><span class="nav-icon" aria-hidden="true">▦</span><span data-i18n="nav.products">商品</span></button>
       <button type="button" class="nav-btn" data-nav="customers"><span class="nav-icon" aria-hidden="true">◉</span><span data-i18n="nav.customers">客户</span></button>
       <button type="button" class="nav-btn settings-access-only" data-nav="settings" id="navSettings"><span class="nav-icon" aria-hidden="true">⚙</span><span data-i18n="nav.settings">设置</span></button>
@@ -1074,10 +1063,6 @@
               </select>
             </div>
             <span class="hub-strip-spacer" aria-hidden="true"></span>
-            <button type="button" class="hub-bills-cta rest-only" id="ctaPendingBills" data-nav="bills">
-              <span data-i18n="home.stat.bills_cta">账单</span>
-              <span class="hub-bills-count" id="statPendingBills">0</span>
-            </button>
             <button type="button" id="ctaNewOrder" data-goto="order-new" data-i18n="home.cta.new_order">＋ 开票</button>
           </div>
           <p class="hub-stat-hint" id="hubStatHint" data-i18n="home.stat.hint">统计按开票日 · 全店（不受票种 / 搜索影响）</p>
@@ -3727,13 +3712,9 @@
     return data;
   }
 
-  /** ONLY writer for #statPendingBills + hub bills CTA has-open. */
-  function renderPendingBillsStat(openCount) {
-    const n = Number(openCount) || 0;
-    const el = $('#statPendingBills');
-    const cta = $('#ctaPendingBills');
-    if (el) el.textContent = String(n);
-    if (cta) cta.classList.toggle('has-open', n > 0);
+  /** ONLY pending-bills hub stat writer (no-op while bill-sync UI paused; kept for dormant view-bills). */
+  function renderPendingBillsStat(_openCount) {
+    /* bill sync entry paused — no #statPendingBills / #ctaPendingBills */
   }
 
   function buildProductsQueryPath(q, page, pageSize) {
@@ -4718,28 +4699,18 @@
     return !!( $('#app-shell') && $('#app-shell').classList.contains('on') );
   }
 
-  /** ONLY home CTA focus: pending bills when open drafts exist; else new order. No-op until shell is on. */
-  function focusHomePrimaryCta(openBillCount) {
+  /** ONLY home CTA focus: ＋开票 (bill sync entry paused). No-op until shell is on. */
+  function focusHomePrimaryCta(_openBillCount) {
     if (!appShellIsOn()) return;
-    const bills = $('#ctaPendingBills');
     const neu = $('#ctaNewOrder');
-    if (mode === 'restaurant' && openBillCount > 0 && bills) {
-      try { bills.focus(); } catch (_) { /* ignore */ }
-      return;
-    }
     if (neu) {
       try { neu.focus(); } catch (_) { /* ignore */ }
     }
   }
 
-  /** ONLY sidebar badge writer for open bill drafts (restaurant). */
-  function updateBillsNavBadge(openCount) {
-    const el = $('#navBillsBadge');
-    if (!el) return;
-    const n = Number(openCount) || 0;
-    el.textContent = String(n);
-    el.classList.toggle('on', mode === 'restaurant' && n > 0);
-    el.setAttribute('aria-hidden', n > 0 ? 'false' : 'true');
+  /** ONLY sidebar badge writer for open bill drafts (no-op: nav bills removed while sync paused). */
+  function updateBillsNavBadge(_openCount) {
+    /* bill sync entry paused — no #navBillsBadge */
   }
 
   function renderBillsTable() {
@@ -4791,24 +4762,10 @@
     lastOpenBillCount = n;
   }
 
-  /** ONLY Admin listener for Agent SSE bill_drafts_changed. */
+  /** ONLY Admin listener for Agent SSE bill_drafts_changed (muted while bill-sync UI paused). */
   function startBillDraftEvents() {
-    if (billEventsSource) {
-      try { billEventsSource.close(); } catch (_) { /* ignore */ }
-      billEventsSource = null;
-    }
-    if (mode !== 'restaurant' || typeof EventSource === 'undefined') return;
-    try {
-      billEventsSource = new EventSource('/local/v1/events');
-      billEventsSource.addEventListener('bill_drafts_changed', ev => {
-        let tableHint = '';
-        try {
-          const p = JSON.parse(ev.data || '{}');
-          tableHint = p.table_display_name || '';
-        } catch (_) { /* ignore */ }
-        refreshBills({ fromEvent: true, tableHint: tableHint }).catch(() => {});
-      });
-    } catch (_) { /* ignore */ }
+    stopBillDraftEvents();
+    /* bill sync entry paused — no EventSource / toast / badge updates */
   }
 
   function stopBillDraftEvents() {
@@ -5583,15 +5540,8 @@
         renderHomeGreeting(loggedInOperator.display_name || FiscalAdminI18n.t('home.greet.operator_fallback'));
       }
       initInvoiceFilters();
-      const loads = [
-        refreshInvoices().catch(reportError),
-      ];
-      if (mode === 'restaurant') {
-        loads.push(refreshBills().catch(() => focusHomePrimaryCta(0)));
-      } else {
-        focusHomePrimaryCta(0);
-      }
-      await Promise.all(loads);
+      await refreshInvoices().catch(reportError);
+      focusHomePrimaryCta(0);
       return;
     }
     if (name === 'products') {
@@ -6434,7 +6384,6 @@
 
   $('#btnRefreshInvoices').onclick = () => withBusy($('#btnRefreshInvoices'), FiscalAdminI18n.t('common.refreshing'), async () => {
     await refreshInvoiceHubStats();
-    if (mode === 'restaurant') await refreshBills();
     await refreshInvoices();
     toast(FiscalAdminI18n.t('common.refreshed'), 'success');
   });
