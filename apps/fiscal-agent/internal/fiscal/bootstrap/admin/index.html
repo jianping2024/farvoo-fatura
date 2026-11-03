@@ -859,7 +859,7 @@
                 </div>
                 <div class="field">
                   <label data-i18n="buyer.name">购方名称</label>
-                  <input id="invName" value="Consumidor Final" />
+                  <input id="invName" placeholder="Consumidor Final（票面购方）" data-i18n="buyer.name_ph" data-i18n-attr="placeholder" />
                 </div>
               </div>
               <div id="grFields" class="hidden">
@@ -6484,7 +6484,7 @@
         $('#invNif').value = storeNif;
         transferPrefill.nif = storeNif;
       }
-      if (legal && $('#invName') && (!($('#invName').value || '').trim() || $('#invName').value === 'Consumidor Final')) {
+      if (legal && $('#invName') && !($('#invName').value || '').trim()) {
         $('#invName').value = legal;
         transferPrefill.name = legal;
       }
@@ -6502,10 +6502,10 @@
 
   /** Store buyer written by the GT transfer prefill; ONLY undone by clearTransferPrefill. */
   const transferPrefill = { nif: '', name: '' };
-  /** Leaving transfer (other doc type or purpose): restore walk-in defaults unless the user edited them. */
+  /** Leaving transfer (other doc type or purpose): back to the empty walk-in buyer unless the user edited it. */
   function clearTransferPrefill() {
     if (transferPrefill.nif && $('#invNif') && $('#invNif').value.trim() === transferPrefill.nif) $('#invNif').value = '';
-    if (transferPrefill.name && $('#invName') && $('#invName').value.trim() === transferPrefill.name) $('#invName').value = 'Consumidor Final';
+    if (transferPrefill.name && $('#invName') && $('#invName').value.trim() === transferPrefill.name) $('#invName').value = '';
     transferPrefill.nif = '';
     transferPrefill.name = '';
   }
