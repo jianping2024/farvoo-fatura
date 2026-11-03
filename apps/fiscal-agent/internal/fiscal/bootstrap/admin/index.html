@@ -2918,15 +2918,15 @@
   }
 
   /** ONLY writer that applies suggestedSaleDocumentType onto a doc-type select.
-   *  Only flips between FT and FS: a chosen FR / PF / GR / GT is never overwritten. */
+   *  Upgrade only: FS → FT when the buyer is identified or payment is not cash. Never downgrades
+   *  (an FT for a walk-in is valid and may be a deliberate choice) and never touches FR / PF / GR / GT. */
   function syncSaleDocTypeSuggestion(docSel, nifEl, payEl) {
-    if (!docSel || docSel.disabled) return;
-    if (docSel.value !== 'FT' && docSel.value !== DEFAULT_SALE_DOC) return;
+    if (!docSel || docSel.disabled || docSel.value !== DEFAULT_SALE_DOC) return;
     const next = suggestedSaleDocumentType(
       nifEl ? nifEl.value : '',
       payEl ? payEl.value : 'CASH'
     );
-    setSelectValue(docSel, next);
+    if (next === 'FT') setSelectValue(docSel, next);
   }
 
   /** ONLY programmatic select writer: sets the value and notifies change listeners like a user pick. */
