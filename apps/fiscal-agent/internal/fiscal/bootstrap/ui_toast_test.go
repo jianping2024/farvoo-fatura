@@ -295,14 +295,10 @@ func TestAdminHTMLSchemeACopyUnique(t *testing.T) {
 	}
 	requiredOnce := []string{
 		`data-i18n="nav.invoices">发票</span>`,
-		`data-i18n="nav.bills">账单</span>`,
-		`data-i18n="home.stat.bills_cta">账单</span>`,
 		`data-i18n="home.cta.new_order">＋ 开票</button>`,
 		`data-i18n="orders.new">开票</h1>`,
 		`id="homeGreeting"`,
 		`id="operatorName"`,
-		`FiscalAdminI18n.t('bills.toast.new')`,
-		`FiscalAdminI18n.t('bills.empty')`,
 		`id="uiLocaleSelect"`,
 		`/fiscal-ui/admin-i18n.js`,
 	}
@@ -312,6 +308,8 @@ func TestAdminHTMLSchemeACopyUnique(t *testing.T) {
 		"statPendingOrders", "homeRecentInvoicesTbody", "btnOrderInvoiceBack",
 		"renderOrdersList", "loadOrders", "data-nav=\"home\"", "data-nav=\"orders\"",
 		"showView('home')", "手工待开", "稍后开票",
+		`id="navBills"`, `id="navBillsBadge"`, `id="ctaPendingBills"`, `id="statPendingBills"`,
+		`data-nav="bills"`, `home.stat.bills_cta`,
 	}
 	for _, s := range forbiddenLeftovers {
 		if strings.Contains(adminHTML, s) {
@@ -371,15 +369,18 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 		`id="homeDateChip"`,
 		`id="homeGreeting"`,
 		`id="ctaNewOrder"`,
-		`id="ctaPendingBills"`,
 		`id="statGrossNet"`,
-		`id="statPendingBills"`,
 		`id="statCashSum"`,
 		`id="btnOrderNewCancel"`,
 		`id="btnOrderInvoiceCancel"`,
 	} {
 		if n := strings.Count(adminHTML, id); n != 1 {
 			t.Fatalf("%s must appear exactly once, got %d", id, n)
+		}
+	}
+	for _, id := range []string{`id="ctaPendingBills"`, `id="statPendingBills"`, `id="navBills"`, `id="navBillsBadge"`} {
+		if strings.Contains(adminHTML, id) {
+			t.Fatalf("bill sync UI paused: must not expose %s", id)
 		}
 	}
 	if n := strings.Count(adminHTML, `id="homeGreeting"`); n != 1 {
@@ -391,7 +392,7 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	if strings.Contains(adminHTML, "#view-invoices { margin: -1.5rem -1.75rem 0; }") {
 		t.Fatal("invoice view must not use negative-margin bleed (topbar wider than list)")
 	}
-	if strings.Contains(adminHTML, `class="cta-big" id="ctaNewOrder"`) || strings.Contains(adminHTML, `class="cta-big rest-only" id="ctaPendingBills"`) {
+	if strings.Contains(adminHTML, `class="cta-big" id="ctaNewOrder"`) {
 		t.Fatal("home CTAs must not use leftover cta-big")
 	}
 	if strings.Count(adminHTML, `data-row-kind="invoice"`) != 1 {
@@ -442,8 +443,8 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	if strings.Contains(adminHTML, "inv.invoice_no || inv.document_type") {
 		t.Fatal("do not fall back invoice_no to document_type in list cells")
 	}
-	if strings.Contains(adminHTML, "$('#statPendingBills').textContent") {
-		t.Fatal("do not write pending bills count outside renderPendingBillsStat")
+	if strings.Contains(adminHTML, "$('#statPendingBills')") || strings.Contains(adminHTML, "$('#ctaPendingBills')") {
+		t.Fatal("bill sync UI paused: do not reference removed hub bills elements")
 	}
 	if strings.Count(adminHTML, "invoiceListEmptyCellHtml(") != 2 {
 		t.Fatal("invoiceListEmptyCellHtml must appear only in def and refreshInvoices")
@@ -475,13 +476,11 @@ func TestAdminHTMLInvoiceHubLayout(t *testing.T) {
 	if !strings.Contains(section, `class="hub-entry-strip"`) {
 		t.Fatal("invoice hub must use compact hub-entry-strip")
 	}
-	if !strings.Contains(section, `class="hub-bills-cta rest-only"`) {
-		t.Fatal("pending bills CTA must be hub-bills-cta (peer primary), not tall stat card")
+	if strings.Contains(section, `hub-bills-cta`) || strings.Contains(section, `id="ctaPendingBills"`) {
+		t.Fatal("bill sync UI paused: hub must not expose bills CTA")
 	}
-	billsIdx := strings.Index(section, `id="ctaPendingBills"`)
-	newIdx := strings.Index(section, `id="ctaNewOrder"`)
-	if billsIdx < 0 || newIdx < 0 || newIdx < billsIdx {
-		t.Fatal("ctaNewOrder must sit in hub-entry-strip to the right of ctaPendingBills")
+	if !strings.Contains(section, `id="ctaNewOrder"`) {
+		t.Fatal("hub must expose ctaNewOrder")
 	}
 	if strings.Contains(section, `home-topbar-right`) && strings.Contains(section[strings.Index(section, `home-topbar-right`):strings.Index(section, `hub-entry-strip`)], `id="ctaNewOrder"`) {
 		t.Fatal("ctaNewOrder must not remain in home-topbar")
@@ -565,8 +564,11 @@ func TestAdminHTMLInvoiceHubLayout(t *testing.T) {
 }
 
 func TestAdminHTMLHomeCtaPeerAndFocus(t *testing.T) {
-	if !strings.Contains(adminHTML, `id="ctaNewOrder"`) || !strings.Contains(adminHTML, `id="ctaPendingBills"`) {
-		t.Fatal("home must expose ctaNewOrder and ctaPendingBills")
+	if !strings.Contains(adminHTML, `id="ctaNewOrder"`) {
+		t.Fatal("home must expose ctaNewOrder")
+	}
+	if strings.Contains(adminHTML, `id="ctaPendingBills"`) {
+		t.Fatal("bill sync UI paused: must not expose ctaPendingBills")
 	}
 	if n := strings.Count(adminHTML, "function focusHomePrimaryCta"); n != 1 {
 		t.Fatalf("focusHomePrimaryCta must appear exactly once, got %d", n)
@@ -579,6 +581,14 @@ func TestAdminHTMLHomeCtaPeerAndFocus(t *testing.T) {
 	}
 	if strings.Contains(adminHTML, "suppressHomeCtaFocus") {
 		t.Fatal("remove suppressHomeCtaFocus; use appShellIsOn in focusHomePrimaryCta")
+	}
+	focusIdx := strings.Index(adminHTML, "function focusHomePrimaryCta")
+	if focusIdx < 0 {
+		t.Fatal("missing focusHomePrimaryCta")
+	}
+	focusBody := adminHTML[focusIdx : focusIdx+400]
+	if strings.Contains(focusBody, "ctaPendingBills") || strings.Contains(focusBody, "openBillCount > 0") {
+		t.Fatal("focusHomePrimaryCta must only focus ＋开票 while bill sync UI paused")
 	}
 	if n := strings.Count(adminHTML, "function loadViewData"); n != 1 {
 		t.Fatalf("loadViewData must be the ONLY view data loader, got %d", n)
@@ -613,22 +623,6 @@ func TestAdminHTMLHomeCtaPeerAndFocus(t *testing.T) {
 	reveal := strings.Index(enterBody, "revealAppShell()")
 	if awaitView < 0 || reveal < 0 || awaitView > reveal {
 		t.Fatal("enterApp must await landing showView before revealAppShell")
-	}
-	idx := strings.Index(adminHTML, `id="ctaPendingBills"`)
-	if idx < 0 {
-		t.Fatal("missing ctaPendingBills")
-	}
-	start := idx - 80
-	if start < 0 {
-		start = 0
-	}
-	end := idx + 120
-	if end > len(adminHTML) {
-		end = len(adminHTML)
-	}
-	snippet := adminHTML[start:end]
-	if strings.Contains(snippet, "secondary") || strings.Contains(snippet, "border-color:var(--line)") {
-		t.Fatalf("pending bills CTA must not be demoted: %s", snippet)
 	}
 }
 
@@ -700,17 +694,17 @@ func TestAdminHTMLBillDraftEventsUnique(t *testing.T) {
 	if strings.Contains(adminHTML, "cur.shares.push({ line_key: key") {
 		t.Fatal("pool add must not push duplicate shares; use upsertPersonShare only")
 	}
-	if strings.Count(adminHTML, "new EventSource('/local/v1/events')") != 1 {
-		t.Fatal("Admin must open EventSource /local/v1/events exactly once")
+	if strings.Contains(adminHTML, "new EventSource('/local/v1/events')") {
+		t.Fatal("bill sync UI paused: Admin must not open EventSource for bill drafts")
 	}
 	if strings.Contains(adminHTML, "setInterval(() =>") || strings.Contains(adminHTML, "setInterval(function") {
-		t.Fatal("do not poll refreshBills via setInterval; SSE is the primary path")
+		t.Fatal("do not poll refreshBills via setInterval")
 	}
-	if !strings.Contains(adminHTML, `id="navBillsBadge"`) {
-		t.Fatal("sidebar must include navBillsBadge")
+	if strings.Contains(adminHTML, `id="navBillsBadge"`) || strings.Contains(adminHTML, `id="navBills"`) {
+		t.Fatal("bill sync UI paused: sidebar must not include bills nav/badge")
 	}
-	if strings.Count(adminHTML, "addEventListener('bill_drafts_changed'") != 1 {
-		t.Fatal("must listen for bill_drafts_changed exactly once")
+	if strings.Contains(adminHTML, "addEventListener('bill_drafts_changed'") {
+		t.Fatal("bill sync UI paused: must not listen for bill_drafts_changed")
 	}
 	if strings.Contains(adminHTML, "function isNineDigitNif") {
 		t.Fatal("replace isNineDigitNif with validatePortugueseNif Mod-11")
