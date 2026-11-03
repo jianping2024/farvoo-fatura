@@ -18,6 +18,6 @@ alwaysApply: true
 - [`release-and-ci.mdc`](./release-and-ci.mdc) — fiscal-agent push/tag 前必须 `./scripts/check-fiscal-agent.sh`（含 Windows 交叉编译）
 - [`fiscal-admin-error-toast.mdc`](./fiscal-admin-error-toast.mdc) — Admin：业务只 throw；`FiscalUI.reportError` / `withBusy` 唯一 error toast
 - [`fiscal-at-live-testing.mdc`](./fiscal-at-live-testing.mdc) — AT test 联调：Admin 真界面走通、报文转储分类、失败关闭核对、只读探针（密码只在用户终端）、测试报告
-- `.claude/skills/interactive-scenario-test/SKILL.md` — A0 方案门 → 「按方案改」编码交付 + 全场景互动测 + 业务场景报告落盘 + 合进 main（终点形状/权威依据/唯一写法自检 / 清冗余；mesa-local-product-test 本仓适配）
+- `.claude/skills/interactive-scenario-test/SKILL.md` — A0 方案门 → 「按方案改」只改代码/测/报告（不合 main）→ 用户说 merge 再合进 main（终点形状/权威依据/唯一写法自检 / 清冗余；mesa-local-product-test 本仓适配）
 
 Product / release truth under `docs/`（尤其 `docs/ci-and-release.zh.md`、`docs/fiscal-sqlite-schema.zh.md`）。

@@ -5,15 +5,16 @@ description: >-
   Use when the user asks to analyze first ("先分析", "先方案"), confirms a plan
   ("按方案改", "确认，开始改", "go ahead", "implement it"), wants interactive
   Admin testing ("我来测你验证", "继续 GT 测试", "全场景测一下", "AT 恢复了接着测",
-  "做完了，帮我验证"), or asks to land after tests (commit / merge main). Covers
+  "做完了，帮我验证"), or asks to land (commit / merge / push). Covers
   best-practice end-state, unique-write-path self-check, redundancy cleanup,
   Chinese business-scenario report, fiscal regressions (mesa-local-product-test
-  adapted), then commit and merge to local main.
+  adapted). "按方案改" stops on the feature branch; merge to main only when the
+  user says merge.
 ---
 
-# 税务改动：方案门 → 按方案改 → 全场景测 → 合进 main
+# 税务改动：方案门 → 按方案改 → 全场景测 →（另说）合进 main
 
-本 skill = **A0 方案门** + **编码交付环** + **全场景互动测试环**。后两者共用自检、报告、合入收尾。
+本 skill = **A0 方案门** + **编码交付环** + **全场景互动测试环** + **C 合入（另授权）**。
 
 权威来源：场景口径 `docs/fiscal-doc-type-test-scenarios.zh.md`、用途 `docs/fiscal-doc-types-usage.zh.md`、各票种设计文；方案质量 `.cursor/rules/best-practice-not-patches.mdc` + `.cursor/rules/analysis-before-code.mdc`；AT live `.cursor/rules/fiscal-at-live-testing.mdc`；合入 `.cursor/rules/git-local-merge-push.mdc`；开分支 `.cursor/rules/feature-branch-before-code.mdc`。范例报告：`docs/test-scenarios/2026-11-03-a2-admin-gt-test.md`、`docs/test-scenarios/2026-11-02-at-a0-shared-base.md`。
 
@@ -24,19 +25,21 @@ description: >-
 | 用户说法 | 走哪条 |
 |----------|--------|
 | 「先分析」/「先方案」/ 非平凡缺陷尚无确认方案 | **A0. 方案门**（停等确认） |
-| 「按方案改」/ 确认方案后改 | **A. 编码交付环**（可内嵌互动测） |
+| 「按方案改」/ 确认方案后改 | **A. 编码交付环**（可内嵌互动测；**不合 main**） |
 | 「我来测你验证」/ 继续测某票种 | **B. 互动测试环**（代码已在或边测边修） |
 | 「做完了，帮我验证」 | B 验证；缺陷先 A0 分析再等同意 |
-| 测通后要交 / 提示词含 commit·merge | **C. 收尾合入**（两环共用） |
+| 「commit」/「提交」 | feature 分支上 commit（仍**不合** main） |
+| 「merge」/「合进 main」 | **C. 收尾合入** |
+| 「push」/ ship | 推 `origin/main`（另遵 release-and-ci） |
 
-用户确认方案后：**不要逐步请示**，自动跑完 A→测→C（除非遇到 §停问）。
+用户确认方案后：**不要逐步请示**，自动跑完 **A（+ 需要时的 B）**；**停在 feature 分支**，汇报「待 merge」。除非用户本线程说了 commit / merge / push。
 
 ## 停问（硬）
 
 先问用户再动手：
 
 - AT 注册系列、真发运输单耗号、改/清测试库、`db reset`、硬删生产数据
-- `git push` / force push / `reset --hard` / 删非临时目录
+- `git commit` / `git merge` 进 main / `git push` / force push / `reset --hard` / 删非临时目录（「按方案改」**不**授权 commit 或 merge）
 - 缺陷：**先走 A0**（根因 + 终点形状方案），等用户同意再改（提问只答，不顺手修）
 
 密码永不进对话、文件、命令行参数或日志。
@@ -44,7 +47,7 @@ description: >-
 ## 分工（互动测 P0）
 
 - **用户**在自己的浏览器操作 Admin（登录、开票、选票种、填表、签发、注册系列、作废……）。
-- **Agent** 不替用户点 Admin；负责：列场景、起环境、发任务卡、核对 DB/SOAP/日志、修缺陷（同意后）、记覆盖、写报告、合入。
+- **Agent** 不替用户点 Admin；负责：列场景、起环境、发任务卡、核对 DB/SOAP/日志、修缺陷（同意后）、记覆盖、写报告；合入仅在用户说 merge 之后。
 
 ---
 
@@ -53,10 +56,14 @@ description: >-
 适用：本轮尚无「已确认终点形状」；或用户说先分析 / 发现缺陷要改。完整硬门见 `.cursor/rules/analysis-before-code.mdc`；终点形状口径见 `.cursor/rules/best-practice-not-patches.mdc`。
 
 1. **禁止**改产品代码、开实现分支、mutating 修复。
-2. 按五段回复（标题一字不差）：当前业务流程 → 问题根因（【已证实】/【未证实】）→ 推荐方案（**终点形状** + **唯一写法** + **权威核对清单**）→ 文件/组件 → 风险与验证。
-3. 权威核对清单须点名或标【待核实】并停问：设计文/schema、法规或 SAF-T 上限、AT vs 仅本地、Admin 门禁是否误绑。
-4. 只推一种最佳实践终点；不并列「小补丁 vs 最佳」。
-5. **停等 Will 确认**。确认后才进 **A**。
+2. 按五段回复（标题一字不差）：当前业务流程 → 问题根因（【已证实】/【未证实】）→ 推荐方案 → 文件/组件 → 风险与验证。
+3. **Heading 3 第一行**必须写最佳实践标记（一眼可见，禁止省略）：
+   - `**最佳实践标记：** ✅ 已是最佳实践终点`
+   - 或 `**最佳实践标记：** ⚠️ 待 Will 在最佳方案中选择`（仅当 ≥2 个最佳实践备选；禁止把补丁当选项）
+   随后才是 **终点形状** + **唯一写法** + **权威核对清单**。
+4. 权威核对清单须点名或标【待核实】并停问：设计文/schema、法规或 SAF-T 上限、AT vs 仅本地、Admin 门禁是否误绑。
+5. 只推一种最佳实践终点；不并列「小补丁 vs 最佳」。
+6. **停等 Will 确认**。确认后才进 **A**。
 
 「按方案改」仅在方案已含 **终点形状 + 唯一写法**（本轮或刚确认的分析里）时生效；缺则先补 A0。
 
@@ -67,7 +74,7 @@ description: >-
 按方案改。
 自检：方案里的「唯一写法」在 diff 里只有一份；清冗余后再测。
 按 business-scenario-testing：写中文《本次改动业务场景测试报告》，落盘 docs/test-scenarios/YYYY-MM-DD-<功能>.md；再跑 mesa-local-product-test。报告测了什么 + pass/fail，场景标【已验证】/【未验证】。
-通过后 commit，并 merge 进 main。
+**只改代码（+ 测 + 报告）。不要 commit、不要 merge 进 main**——等用户说 commit / merge。
 
 展开为固定顺序（不得跳步、不得「先合再测」）：
 
@@ -78,7 +85,7 @@ description: >-
 4. **清冗余**：删死代码、重复分支、废弃平行实现、无用注释/开关；清完再测（不要带着重复实现去 UAT）。
 5. **自动测**：相关 `go test`、触及的 `scripts/fiscal-*-regression.mjs`；改 AT/签发路径时按需 `./scripts/check-fiscal-agent.sh`（push/tag 前必跑，见 `release-and-ci`）。
 6. **真界面**：UI/签发/AT 路径 → 转 **B**（或 mock Agent + 浏览器自测）；纯库内无网改动可标互动项【未验证】并说明原因。
-7. **写报告**（§报告）→ **mesa-local-product-test 适配**（§产品验收）→ 全绿或残余风险写清后 → **C. 收尾合入**。
+7. **写报告**（§报告）→ **mesa-local-product-test 适配**（§产品验收）→ 汇报：分支名、测通/残余风险、**待用户说 commit / merge**。**禁止**自动进入 C。
 
 ---
 
@@ -187,11 +194,11 @@ AT live 报告另须：环境（env、DB、子用户、端口）、UTC、`Return
 
 ---
 
-# C. 收尾合入（通过后）
+# C. 收尾合入（仅当用户说 merge / 合进 main）
 
-覆盖表/场景均有结论且门禁绿（或残余风险已写进报告）后：
+**触发：** 本线程明确说 `merge` / `合进 main` / `land`（可同时说先 commit）。「按方案改」**不够**。
 
-1. **commit**（用户提示词或「按方案改」全文已要求时视为已授权；否则先问）。信息说清为什么。`data/`、`.claude/launch.json` 不入库。
+1. 若尚未 commit：先在本任务 feature 分支 commit（信息说清为什么）。`data/`、`.claude/launch.json` 不入库。
 2. **merge 进本地 `main`**，然后按 `git-local-merge-push.mdc`：删本任务 feature 分支/worktree，主工作区回到 `main`；done-gate 全过再汇报。
 3. **push `origin/main`** 仅当用户本线程明确说 push / ship / `./scripts/push-to-main.sh`；动了 `apps/fiscal-agent/` 先 `./scripts/check-fiscal-agent.sh`。
 4. 同步进度文（`fiscal-at-live-integration` / `fiscal-dev-plan`）仅在关闭条件确实满足时写「完成」；mock 回归未跑、fixtures 未入库 → 不标 A2 完成。
