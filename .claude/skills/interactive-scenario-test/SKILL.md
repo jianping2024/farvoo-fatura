@@ -93,3 +93,6 @@ sqlite3 fiscal-test.db "select document_type,invoice_no,atcud,at_transport_doc_c
 - 每票种只有一个 ACTIVE 系列、无换系列入口：GT 卡变灰时只能在测试库把旧行（0 张单）标 `RETIRED` 再注册新系列。
 - GT「调拨」自动带出本店为购方；切走调拨必须撤回（2026-11-03 修复，属「状态残留」维度）。
 - 地址只有「收货地址」必填；报文里装 / 卸 / 收三者齐全。
+- `scripts/fiscal-*-regression.mjs` 启动前会 `pkill -f fiscal-local`，会把用户正在用的 test Agent 一起杀掉：**先跑回归，再起环境**；跑完回归要重启 Agent 并告诉用户刷新。
+- **验证前先确认 Agent 跑的是哪份代码**：`git branch --show-current` + 关键改动 `grep` 在源码里；别的窗口切过分支时，Agent 重启会编译到别的分支。
+- 「用户签的不是目标票种」先当缺陷查，别先怪操作：2026-11-03 三张误签 FT 的根因是 FT/FS 推荐在输入 NIF 时覆盖了已选的 GR/GT。
