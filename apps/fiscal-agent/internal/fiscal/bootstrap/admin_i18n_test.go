@@ -237,6 +237,7 @@ func TestAdminI18nResidualGapsClosed(t *testing.T) {
 	for _, key := range []string{
 		"orders.source.table", "orders.source.table_person", "orders.source.sale",
 		"invoice.doc_status.SIGNED", "invoice.print_status.PRINTED",
+		"invoice.doc_status.N", "invoice.doc_status.A", "invoice.doc_status.F",
 	} {
 		if !strings.Contains(i18n, "'"+key+"'") {
 			t.Fatalf("dictionary missing %s", key)
@@ -245,8 +246,11 @@ func TestAdminI18nResidualGapsClosed(t *testing.T) {
 	if n := strings.Count(html, "function formatInvoiceOrderCell"); n != 1 {
 		t.Fatalf("formatInvoiceOrderCell once, got %d", n)
 	}
-	if n := strings.Count(html, "function formatInvoiceDocStatus"); n != 1 {
+	if n := strings.Count(html, "function formatInvoiceDocStatus("); n != 1 {
 		t.Fatalf("formatInvoiceDocStatus once, got %d", n)
+	}
+	if n := strings.Count(html, "function formatInvoiceDocStatusDetailHtml("); n != 1 {
+		t.Fatalf("formatInvoiceDocStatusDetailHtml once, got %d", n)
 	}
 	if n := strings.Count(html, "function formatInvoicePrintStatus"); n != 1 {
 		t.Fatalf("formatInvoicePrintStatus once, got %d", n)
