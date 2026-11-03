@@ -3,7 +3,7 @@
 > **状态：定稿**（里程碑顺序与每步交付物；**P0 认证阶段已关闭**）  
 > **权威：是**（本仓工程推进顺序以本文为准）  
 > **对应实现：** **M0–M6 + M3.2（含 M3.2b/M3.2c）已完成**（权威制品 **0.4.55**）；**认证自动项 + 手测已通过**（2026-09-02）。GR/GT **mock 已完成**。  
-> **下一步（已拍板 2026-11-02）：** AT test 联调，权威分刀见 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) — **A0、A1 已完成**；**A2 运输 live 进行中**（探针已得真 `ATDocCodeID`，待 Admin 开 GR/GT 走通）→ A3 prod。  
+> **下一步（已拍板 2026-11-02）：** AT test 联调，权威分刀见 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) — **A0、A1 已完成**；**A2 运输 live 进行中**（Admin 开 GR/GT 已得真 `ATDocCodeID`，2026-11-03；待 mock 回归后关闭）→ A3 prod。  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 ## 依据（只读，不替代本文交付定义）

@@ -6368,11 +6368,27 @@
     if (purpose === 'transfer') {
       const storeNif = ($('#nif') && $('#nif').value || '').trim();
       const legal = ($('#legal') && $('#legal').value || '').trim();
-      if (storeNif && $('#invNif') && !($('#invNif').value || '').trim()) $('#invNif').value = storeNif;
+      if (storeNif && $('#invNif') && !($('#invNif').value || '').trim()) {
+        $('#invNif').value = storeNif;
+        transferPrefill.nif = storeNif;
+      }
       if (legal && $('#invName') && (!($('#invName').value || '').trim() || $('#invName').value === 'Consumidor Final')) {
         $('#invName').value = legal;
+        transferPrefill.name = legal;
       }
+    } else {
+      clearTransferPrefill();
     }
+  }
+
+  /** Store buyer written by the GT transfer prefill; ONLY undone by clearTransferPrefill. */
+  const transferPrefill = { nif: '', name: '' };
+  /** Leaving transfer (other doc type or purpose): restore walk-in defaults unless the user edited them. */
+  function clearTransferPrefill() {
+    if (transferPrefill.nif && $('#invNif') && $('#invNif').value.trim() === transferPrefill.nif) $('#invNif').value = '';
+    if (transferPrefill.name && $('#invName') && $('#invName').value.trim() === transferPrefill.name) $('#invName').value = 'Consumidor Final';
+    transferPrefill.nif = '';
+    transferPrefill.name = '';
   }
 
   let grFieldsWereShown = false;
@@ -6385,6 +6401,7 @@
     const purposeWrap = $('#gtPurposeWrap');
     if (purposeWrap) purposeWrap.classList.toggle('hidden', dt !== 'GT');
     if (dt === 'GT') syncGtPurposeUI();
+    else clearTransferPrefill();
     // Refresh defaults only when GR/GT fields first appear (not on every re-sync).
     if (show && !grFieldsWereShown) refreshMovementStartDefaults();
     grFieldsWereShown = show;

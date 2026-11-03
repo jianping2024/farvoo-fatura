@@ -15,7 +15,7 @@
 |----|------|------|------------------|
 | **A0** | 共享底座（加密 + mTLS + SOAP 公共件） | **已完成**（2026-11-02；0.5.59） | 无网单测绿；mock 行为不变 |
 | **A1** | 系列 SOAP live（test） | **已完成**（2026-11-02）：Admin 经 test 港注册 FT/FS/GR，真验证码入 `fiscal-test.db` | test 注册至少一种销售系列 + GR 系列，得真 `validation_code` |
-| **A2** | 运输 SOAP live（test）= 原 G7 / GT T5 | **进行中**：探针真 ATDocCodeID ✅；待 Admin 开 GR 走通 | test 返回真 `ATDocCodeID`；mock 回归仍绿 |
+| **A2** | 运输 SOAP live（test）= 原 G7 / GT T5 | **进行中**：探针真 ATDocCodeID ✅；Admin 开 GR / GT 真 `ATDocCodeID` ✅（2026-11-03）；待 mock 回归确认后关闭 | test 返回真 `ATDocCodeID`；mock 回归仍绿 |
 | **A3** | prod 门禁 | 未开始 | 正式证；禁止测试 pfx 打 prod |
 | A4 | 观测 / Admin 只读 `at_env`（可选） | 未开始 | 非本阶段硬门槛 |
 
@@ -342,7 +342,8 @@ apps/fiscal-agent/internal/fiscal/at/
 | 子用户权限 | 运输需 **WDT**（Webservice de comunicação de documentos de transporte）；系列需 WSE |
 | SAF-T | `ShipTo`/`ShipFrom` 按 XSD 置于 `MovementStartTime` 前，写完整 `<Address>`（旧单据缺项填 `Desconhecido`） |
 
-**live 记录（2026-11-02）：** 探针 `GR GR2026T01/2` → `ATDocCodeID 1108714649`（ReturnCode 0 / OK）。
+**live 记录（2026-11-02）：** 探针 `GR GR2026T01/2` → `ATDocCodeID 1108714649`（ReturnCode 0 / OK）。  
+**live 记录（2026-11-03，Admin）：** `GR GR2026T02/1` → `1108720320`；`GT GT2026T01/1`（新 GT 系列，验证码 `AAJFJP8X9D`）→ `1108720347`。旧 GT 系列 `GR2026T01` 与探针同码 GR 撞号（ReturnCode -3），测试库标 `RETIRED`。见 [`2026-11-03-a2-admin-gt-test.md`](test-scenarios/2026-11-03-a2-admin-gt-test.md)。
 
 **遗留（另立）：** SAF-T `DocumentStatus` 缺 `SourceBilling`、发票 `DocumentStatus` 非结构 —— 全单据类型 SAF-T 合规问题，未在本刀处理。
 
