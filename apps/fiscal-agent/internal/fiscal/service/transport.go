@@ -77,6 +77,9 @@ func (s *FiscalService) IssueTransportNote(ctx context.Context, req domain.Trans
 		return nil, err
 	}
 	moveAt = normalizeMovementStart(moveAt)
+	if err := assertMovementStartNotPast(moveAt); err != nil {
+		return nil, err
+	}
 
 	s.transportMu.Lock()
 	defer s.transportMu.Unlock()

@@ -185,3 +185,11 @@ func TestSOAPRegisterSeries_RealATResponses(t *testing.T) {
 		t.Fatalf("FT 4001→consult: %+v %v", res, err)
 	}
 }
+
+// Series shares classifyFault: an auth-gateway fault gets the auth-layer hint, not "schema".
+func TestSeriesFault_AuthLayerHint(t *testing.T) {
+	_, err := parseSeriesEnvelope(500, []byte(`<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://autenticacao.portaldasfinancas.gov.pt/services/ValidateCredencialService/2012/11"><SOAP-ENV:Body><SOAP-ENV:Fault><faultcode>33</faultcode><faultstring>mismatched tag, expected hr at offset 241 of </faultstring><detail><ns:transactionID>x</ns:transactionID></detail></SOAP-ENV:Fault></SOAP-ENV:Body></SOAP-ENV:Envelope>`))
+	if err == nil || !strings.Contains(err.Error(), authLayerHint) || strings.Contains(err.Error(), "schema") {
+		t.Fatalf("got %v", err)
+	}
+}

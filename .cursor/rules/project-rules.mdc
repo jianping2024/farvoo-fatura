@@ -15,5 +15,6 @@ alwaysApply: true
 
 - [`release-and-ci.mdc`](./release-and-ci.mdc) — fiscal-agent push/tag 前必须 `./scripts/check-fiscal-agent.sh`（含 Windows 交叉编译）
 - [`fiscal-admin-error-toast.mdc`](./fiscal-admin-error-toast.mdc) — Admin：业务只 throw；`FiscalUI.reportError` / `withBusy` 唯一 error toast
+- [`fiscal-at-live-testing.mdc`](./fiscal-at-live-testing.mdc) — AT test 联调：Admin 真界面走通、报文转储分类、失败关闭核对、只读探针（密码只在用户终端）、测试报告
 
 Product / release truth under `docs/`（尤其 `docs/ci-and-release.zh.md`、`docs/fiscal-sqlite-schema.zh.md`）。

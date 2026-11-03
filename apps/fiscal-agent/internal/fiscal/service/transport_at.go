@@ -93,6 +93,48 @@ func normalizeMovementStart(s string) string {
 	return s
 }
 
+func lisbonLocation() *time.Location {
+	loc, err := time.LoadLocation("Europe/Lisbon")
+	if err != nil {
+		return time.UTC
+	}
+	return loc
+}
+
+// assertMovementStartNotPast is the ONLY GR/GT rule that movement_start_at must not be
+// earlier than the current Lisbon minute (AT ReturnCode -100). Call after normalizeMovementStart.
+func assertMovementStartNotPast(moveAt string) error {
+	loc := lisbonLocation()
+	t, err := time.ParseInLocation("2006-01-02T15:04:05", strings.TrimSpace(moveAt), loc)
+	if err != nil {
+		return coded(ErrCodeValidationFailed, "movement_start_at must be YYYY-MM-DDTHH:MM:SS")
+	}
+	now := time.Now().In(loc).Truncate(time.Minute)
+	if t.Before(now) {
+		return coded(ErrCodeMovementStartPast, "movement start is before current Lisbon time")
+	}
+	return nil
+}
+
+// mapTransportRegisterError maps AT RegisterDocument failures to stable service codes.
+// ReturnCode -100 / hint movement_start_past → ErrCodeMovementStartPast (same as local assert).
+func mapTransportRegisterError(err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, at.ErrTransportInvalid):
+		return coded(ErrCodeValidationFailed, err.Error())
+	case errors.Is(err, at.ErrTransportUnavailable):
+		return coded(ErrCodeATTransportUnavailable, err.Error())
+	default:
+		var te *at.TransportError
+		if errors.As(err, &te) && (te.Code == "-100" || te.Hint == "movement_start_past") {
+			return coded(ErrCodeMovementStartPast, te.Message)
+		}
+		return coded(ErrCodeATTransportRejected, err.Error())
+	}
+}
+
 // communicateTransport is the ONLY GR/GT → AT step: reserve the real next number
 // (PrepareTransport), then envioDocumentoTransporte with it. Caller must hold
 // s.transportMu until store.IssueGR/IssueGT (ExpectedSeq) commits.
@@ -144,14 +186,8 @@ func (s *FiscalService) communicateTransport(ctx context.Context, storeID, docTy
 		tc = at.NewTransportFromEnv()
 	}
 	atRes, err := tc.RegisterDocument(ctx, doc)
-	switch {
-	case err == nil:
-	case errors.Is(err, at.ErrTransportInvalid):
-		return nil, coded(ErrCodeValidationFailed, err.Error())
-	case errors.Is(err, at.ErrTransportUnavailable):
-		return nil, coded(ErrCodeATTransportUnavailable, err.Error())
-	default: // at.ErrTransportRejected and non-classified client errors (e.g. mock)
-		return nil, coded(ErrCodeATTransportRejected, err.Error())
+	if err != nil {
+		return nil, mapTransportRegisterError(err)
 	}
 	if atRes == nil || strings.TrimSpace(atRes.ATDocCodeID) == "" {
 		return nil, coded(ErrCodeATTransportRejected, "empty ATDocCodeID")

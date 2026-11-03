@@ -210,11 +210,8 @@ func (c *SOAPTransportClient) RegisterDocument(ctx context.Context, doc Transpor
 func parseTransportEnvelope(status int, raw []byte) (*TransportResult, error) {
 	var env struct {
 		Body struct {
-			Fault *struct {
-				Code   string `xml:"faultcode"`
-				String string `xml:"faultstring"`
-			} `xml:"Fault"`
-			Resp struct {
+			Fault *soapFault `xml:"Fault"`
+			Resp  struct {
 				Statuses []struct {
 					Code int    `xml:"ReturnCode"`
 					Msg  string `xml:"ReturnMessage"`
@@ -228,7 +225,7 @@ func parseTransportEnvelope(status int, raw []byte) (*TransportResult, error) {
 		return nil, unavailable(fmt.Sprintf("HTTP %d unparseable response: %v", status, err))
 	}
 	if f := env.Body.Fault; f != nil {
-		return nil, faultError(strings.TrimSpace(f.Code), strings.TrimSpace(f.String))
+		return nil, faultError(f)
 	}
 	if status != http.StatusOK {
 		return nil, unavailable(fmt.Sprintf("HTTP %d", status))

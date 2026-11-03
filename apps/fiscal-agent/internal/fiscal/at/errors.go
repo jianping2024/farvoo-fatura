@@ -1,6 +1,7 @@
 package at
 
 import (
+	"encoding/xml"
 	"errors"
 	"strconv"
 	"strings"
@@ -46,8 +47,9 @@ type codeInfo struct {
 	hint string
 }
 
-// soapFaults is the ONLY table of AT SOAP faultcodes (series + transport), as observed on
-// the AT test endpoints 2026-11-02. Unknown faults are treated as unavailable.
+// soapFaults is the ONLY table of AT SOAP faultcodes raised by the called service (series +
+// transport), as observed on the AT test endpoints 2026-11-02. Unknown faults are
+// unavailable. Faults from the authentication layer bypass this table (see classifyFault).
 var soapFaults = map[string]codeInfo{
 	"1199": {ErrTransportUnavailable, "check AT sub-user/password, its WSE/WDT profile, and the PC clock"},
 	"118":  {ErrTransportUnavailable, "check fiscal_at_password_pubkey is the current ChavePublicaAT"},
@@ -56,16 +58,62 @@ var soapFaults = map[string]codeInfo{
 
 // transportReturnCodes is the ONLY table of non-zero envioDocumentoTransporte ReturnCodes
 // with known meaning. Unknown non-zero codes are rejections without a hint.
+// Hint "movement_start_past" is the sole machine key for ReturnCode -100 (start before now).
 var transportReturnCodes = map[int]codeInfo{
-	54: {ErrTransportRejected, "AT sub-user lacks the WDT transport-documents profile"},
+	54:   {ErrTransportRejected, "AT sub-user lacks the WDT transport-documents profile"},
+	-100: {ErrTransportRejected, "movement_start_past"},
 }
 
-func faultError(code, msg string) *TransportError {
-	info, ok := soapFaults[code]
-	if !ok {
+// atAuthNSPrefix qualifies <detail> children of faults raised by AT's credential gateway
+// (ValidateCredencialService), e.g. "http://autenticacao.portaldasfinancas.gov.pt/services/…".
+const atAuthNSPrefix = "http://autenticacao.portaldasfinancas.gov.pt/"
+
+const authLayerHint = "AT authentication service failed before reading the document; retry later"
+
+// soapFault is the ONLY decoded SOAP 1.1 Fault (series + transport envelopes).
+type soapFault struct {
+	Code   string `xml:"faultcode"`
+	String string `xml:"faultstring"`
+	Detail struct {
+		Items []struct {
+			XMLName xml.Name
+		} `xml:",any"`
+	} `xml:"detail"`
+}
+
+// fromAuthLayer reports a fault raised by the AT authentication gateway, identified by the
+// namespace of its <detail> elements (structure, not message text).
+func (f *soapFault) fromAuthLayer() bool {
+	for _, it := range f.Detail.Items {
+		if strings.HasPrefix(it.XMLName.Space, atAuthNSPrefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// classifyFault is the ONLY SOAP fault classifier. The authentication layer never judges the
+// business payload, so any fault it raises is unavailable (2026-11-02: code 33 "mismatched
+// tag, expected hr" when its credential backend answered with an HTML page). Service faults
+// use soapFaults.
+func classifyFault(f *soapFault) codeInfo {
+	info, known := soapFaults[strings.TrimSpace(f.Code)]
+	if f.fromAuthLayer() {
+		if !known || info.kind != ErrTransportUnavailable {
+			info.hint = authLayerHint
+		}
+		info.kind = ErrTransportUnavailable
+		return info
+	}
+	if !known {
 		info.kind = ErrTransportUnavailable
 	}
-	return &TransportError{Kind: info.kind, Code: code, Message: msg, Hint: info.hint}
+	return info
+}
+
+func faultError(f *soapFault) *TransportError {
+	info := classifyFault(f)
+	return &TransportError{Kind: info.kind, Code: strings.TrimSpace(f.Code), Message: strings.TrimSpace(f.String), Hint: info.hint}
 }
 
 func returnCodeError(code int, msg string) *TransportError {
@@ -80,9 +128,9 @@ func unavailable(msg string) *TransportError {
 	return &TransportError{Kind: ErrTransportUnavailable, Message: msg}
 }
 
-// faultHint is the series client's view of soapFaults (" (hint)" or "").
-func faultHint(code string) string {
-	if h := soapFaults[code].hint; h != "" {
+// faultHint is the series client's view of classifyFault (" (hint)" or "").
+func faultHint(f *soapFault) string {
+	if h := classifyFault(f).hint; h != "" {
 		return " (" + h + ")"
 	}
 	return ""

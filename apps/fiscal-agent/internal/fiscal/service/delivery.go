@@ -16,6 +16,8 @@ const (
 	ErrCodeDeliveryNotAllowed     = "delivery_not_allowed"
 	ErrCodeATTransportUnavailable = "at_transport_unavailable"
 	ErrCodeATTransportRejected    = "at_transport_rejected"
+	// ErrCodeMovementStartPast: GR/GT movement_start_at is before Lisbon "now" (AT -100).
+	ErrCodeMovementStartPast = "movement_start_past"
 )
 
 // IssueDeliveryNote is the ONLY orchestration entry for GR issuance.
@@ -57,6 +59,9 @@ func (s *FiscalService) IssueDeliveryNote(ctx context.Context, req domain.Delive
 		return nil, err
 	}
 	moveAt = normalizeMovementStart(moveAt)
+	if err := assertMovementStartNotPast(moveAt); err != nil {
+		return nil, err
+	}
 
 	s.transportMu.Lock()
 	defer s.transportMu.Unlock()

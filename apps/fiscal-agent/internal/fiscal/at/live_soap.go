@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -68,6 +70,7 @@ func postSOAP(ctx context.Context, hc *http.Client, url, soapAction string, pub 
 	if err != nil {
 		return 0, nil, fmt.Errorf("at: read response: %w", err)
 	}
+	dumpSOAPExchange(url, soapAction, hresp.StatusCode, body, raw)
 	if trace != nil {
 		op := body
 		if i := strings.IndexAny(body, " >"); i > 0 {
@@ -76,4 +79,27 @@ func postSOAP(ctx context.Context, hc *http.Client, url, soapAction string, pub 
 		trace(op, hresp.StatusCode, raw)
 	}
 	return hresp.StatusCode, raw, nil
+}
+
+// dumpSOAPExchange writes the business body + AT raw response when FISCAL_AT_SOAP_DUMP
+// is a directory. Never writes the UsernameToken / password. Diagnosis only.
+func dumpSOAPExchange(url, soapAction string, status int, body string, raw []byte) {
+	dir := strings.TrimSpace(os.Getenv("FISCAL_AT_SOAP_DUMP"))
+	if dir == "" {
+		return
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return
+	}
+	stamp := time.Now().UTC().Format("20060102T150405Z")
+	base := filepath.Join(dir, stamp)
+	_ = os.WriteFile(base+"-request-body.xml", []byte(body), 0o600)
+	_ = os.WriteFile(base+"-response.xml", raw, 0o600)
+	meta := fmt.Sprintf("url=%s\nsoap_action=%s\nhttp_status=%d\nrequest_body_bytes=%d\nresponse_bytes=%d\n",
+		url, soapAction, status, len(body), len(raw))
+	_ = os.WriteFile(base+"-meta.txt", []byte(meta), 0o600)
+	// also latest aliases for quick open
+	_ = os.WriteFile(filepath.Join(dir, "latest-request-body.xml"), []byte(body), 0o600)
+	_ = os.WriteFile(filepath.Join(dir, "latest-response.xml"), raw, 0o600)
+	_ = os.WriteFile(filepath.Join(dir, "latest-meta.txt"), []byte(meta), 0o600)
 }

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- launchd job template for scripts/at-recovery-watch.sh (every 30 min). Do not copy by hand:
+     scripts/at-recovery-watch-install.sh rewrites the script path to the installed copy. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.farvoo.at-recovery-watch</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/sh</string>
+		<string>/Users/chenjianping/Documents/farvoo-fatura/scripts/at-recovery-watch.sh</string>
+	</array>
+	<key>StartInterval</key>
+	<integer>1800</integer>
+	<!-- keep the alert (a child osascript) alive after the script exits -->
+	<key>AbandonProcessGroup</key>
+	<true/>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/tmp/farvoo-at-watch.err</string>
+</dict>
+</plist>

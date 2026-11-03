@@ -258,11 +258,8 @@ func (r *seriesResp) activeCode(serie, docType string) string {
 func parseSeriesEnvelope(status int, raw []byte) (*seriesResp, error) {
 	var env struct {
 		Body struct {
-			Fault *struct {
-				Code   string `xml:"faultcode"`
-				String string `xml:"faultstring"`
-			} `xml:"Fault"`
-			Op struct {
+			Fault *soapFault `xml:"Fault"`
+			Op    struct {
 				Resp seriesResp `xml:",any"`
 			} `xml:",any"`
 		} `xml:"Body"`
@@ -271,7 +268,7 @@ func parseSeriesEnvelope(status int, raw []byte) (*seriesResp, error) {
 		return nil, fmt.Errorf("at: series HTTP %d: unparseable response: %w", status, err)
 	}
 	if f := env.Body.Fault; f != nil {
-		return nil, fmt.Errorf("at: series fault %s: %s%s", strings.TrimSpace(f.Code), strings.TrimSpace(f.String), faultHint(strings.TrimSpace(f.Code)))
+		return nil, fmt.Errorf("at: series fault %s: %s%s", strings.TrimSpace(f.Code), strings.TrimSpace(f.String), faultHint(f))
 	}
 	if status != http.StatusOK {
 		return nil, fmt.Errorf("at: series HTTP %d", status)

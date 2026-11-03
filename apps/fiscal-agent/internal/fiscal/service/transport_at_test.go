@@ -123,6 +123,21 @@ func TestIssueDeliveryNote_RealNumberToAT_NoDoubleSend(t *testing.T) {
 	}
 }
 
+// Past movement start is refused before AT (same code as AT ReturnCode -100).
+func TestIssueDeliveryNote_PastMovementStartNeverReachesAT(t *testing.T) {
+	svc, _, ct := transportFixture(t)
+	req := grRequest("gr-past-1")
+	req.MovementStartAt = time.Now().Add(-2 * time.Minute).UTC().Format(time.RFC3339)
+	_, err := svc.IssueDeliveryNote(context.Background(), req)
+	var ce *service.CodedError
+	if !errors.As(err, &ce) || ce.Code != service.ErrCodeMovementStartPast {
+		t.Fatalf("want %s, got %v", service.ErrCodeMovementStartPast, err)
+	}
+	if len(ct.docs) != 0 {
+		t.Fatalf("AT must not be called (%d calls)", len(ct.docs))
+	}
+}
+
 // Incomplete PT addresses are refused before AT in every env (mock included).
 func TestIssueDeliveryNote_IncompleteAddressNeverReachesAT(t *testing.T) {
 	svc, _, ct := transportFixture(t)
