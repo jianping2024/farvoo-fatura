@@ -169,18 +169,7 @@ func (s *FiscalService) IssueManualTransportNote(ctx context.Context, in catalog
 	if err != nil {
 		return nil, coded(ErrCodeValidationFailed, err.Error())
 	}
-	if a := strings.TrimSpace(in.CustomerAddress); a != "" {
-		snap.Customer.AddressDetail = a
-	}
-	if c := strings.TrimSpace(in.CustomerCity); c != "" {
-		snap.Customer.City = c
-	}
-	if p := strings.TrimSpace(in.CustomerPostalCode); p != "" {
-		snap.Customer.PostalCode = p
-	}
-	if purpose == domain.MovementPurposeCustomer && !vat {
-		snap.Customer.TaxID = ""
-	}
+	applyManualRecipient(&snap, in, vat)
 	return s.IssueTransportNote(ctx, domain.TransportNoteRequest{
 		StoreID:             s.storeID,
 		RequestID:           in.RequestID,

@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	defaultCustomerTaxID = "999999990"
-	defaultCustomerName  = "Consumidor Final"
+	defaultCustomerTaxID = ptnif.FinalConsumer
+	defaultCustomerName  = ptnif.FinalConsumerName
 )
 
 // DraftToSaleSnapshot maps a whole_table sync Snapshot → SaleSnapshot.

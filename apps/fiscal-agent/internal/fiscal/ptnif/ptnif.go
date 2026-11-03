@@ -10,6 +10,9 @@ import (
 // FinalConsumer is the AT Consumidor Final tax id (always accepted).
 const FinalConsumer = "999999990"
 
+// FinalConsumerName is the walk-in buyer name paired with FinalConsumer on sales invoices.
+const FinalConsumerName = "Consumidor Final"
+
 // Digits keeps at most 9 decimal digits.
 func Digits(raw string) string {
 	var b strings.Builder

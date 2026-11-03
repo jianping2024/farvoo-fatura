@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"farvoo-fiscal-agent/internal/fiscal/at"
+	"farvoo-fiscal-agent/internal/fiscal/catalog"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/service"
 	"farvoo-fiscal-agent/internal/fiscal/signer"
@@ -202,5 +203,57 @@ func TestIssueDeliveryNote_SeqMovedAfterATIsAudited(t *testing.T) {
 	var n int
 	if err := db.SQL.QueryRow(`SELECT COUNT(1) FROM audit_log WHERE action = 'at_transport_unsaved' AND entity_id = 'GR GR2026T02/1'`).Scan(&n); err != nil || n != 1 {
 		t.Fatalf("audit rows %d %v", n, err)
+	}
+}
+
+func manualTransportInput(id, docType, name string) catalog.ManualIssueInput {
+	vat := false
+	return catalog.ManualIssueInput{
+		RequestID: id, DocumentType: docType, CustomerName: name,
+		CustomerAddress: "Rua do Carmo 10", CustomerCity: "Lisboa", CustomerPostalCode: "1200-093",
+		Lines: []catalog.ManualLineInput{{DisplayName: "Item", SaftName: "Item", UnitPriceGross: "12.30",
+			VATRatePercent: "23", Quantity: "1"}},
+		MovementStartAt:     time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+		RecipientIsVATPayer: &vat,
+		MovementPurpose:     domain.MovementPurposeCustomer,
+	}
+}
+
+// Non-VAT GR/GT recipient keeps the typed name (no walk-in "Consumidor Final" from the sales
+// override); an empty or placeholder name is refused before AT.
+func TestManualTransport_NonVATRecipientName(t *testing.T) {
+	svc, db, ct := transportFixture(t)
+	if err := db.UpsertActiveSeries("store-demo-001", "GT", "GT2026T01", "AAJFJP8X9D", 2026); err != nil {
+		t.Fatal(err)
+	}
+	issue := func(id, docType, name string) error {
+		in := manualTransportInput(id, docType, name)
+		var err error
+		if docType == "GR" {
+			_, err = svc.IssueManualDeliveryNote(context.Background(), in, "op-demo-cashier", "", domain.LoopbackFiscalTerminalID, "127.0.0.1")
+		} else {
+			_, err = svc.IssueManualTransportNote(context.Background(), in, "op-demo-cashier", "", domain.LoopbackFiscalTerminalID, "127.0.0.1")
+		}
+		return err
+	}
+	for _, docType := range []string{"GR", "GT"} {
+		for _, bad := range []string{"", "Consumidor Final", "consumidor final"} {
+			err := issue("bad-"+docType+"-"+bad, docType, bad)
+			var ce *service.CodedError
+			if !errors.As(err, &ce) || ce.Code != service.ErrCodeRecipientNameRequired {
+				t.Fatalf("%s name %q: want %s, got %v", docType, bad, service.ErrCodeRecipientNameRequired, err)
+			}
+		}
+		if len(ct.docs) != 0 {
+			t.Fatalf("%s: AT must not be called (%d calls)", docType, len(ct.docs))
+		}
+		if err := issue("ok-"+docType, docType, "Maria Costa"); err != nil {
+			t.Fatal(err)
+		}
+		d := ct.docs[len(ct.docs)-1]
+		if d.CustomerName != "Maria Costa" || d.CustomerTaxID != "" {
+			t.Fatalf("%s to AT: name %q taxid %q", docType, d.CustomerName, d.CustomerTaxID)
+		}
+		ct.docs = nil
 	}
 }

@@ -5238,6 +5238,13 @@
     }
     if (isGr || isGt) {
       clearTransportAddressInvalid();
+      // Same rule as service validateGRCustomer: named recipient; the walk-in placeholder is not a name.
+      const rawName = $('#invName').value.trim();
+      if (!rawName || rawName.toLowerCase() === 'consumidor final') {
+        toast(FiscalAdminI18n.t('errors.recipient_name_required'), 'error');
+        $('#invName').focus();
+        return;
+      }
       const customerAddr = {
         address_detail: ($('#invGrAddress').value || '').trim(),
         city: ($('#invGrCity').value || '').trim(),

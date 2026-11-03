@@ -9,6 +9,7 @@ import (
 
 	"farvoo-fiscal-agent/internal/fiscal/catalog"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
+	"farvoo-fiscal-agent/internal/fiscal/ptnif"
 	"farvoo-fiscal-agent/internal/fiscal/store"
 )
 
@@ -18,6 +19,8 @@ const (
 	ErrCodeATTransportRejected    = "at_transport_rejected"
 	// ErrCodeMovementStartPast: GR/GT movement_start_at is before Lisbon "now" (AT -100).
 	ErrCodeMovementStartPast = "movement_start_past"
+	// ErrCodeRecipientNameRequired: GR/GT recipient name empty or the walk-in placeholder.
+	ErrCodeRecipientNameRequired = "recipient_name_required"
 )
 
 // IssueDeliveryNote is the ONLY orchestration entry for GR issuance.
@@ -115,8 +118,13 @@ func (s *FiscalService) IssueDeliveryNote(ctx context.Context, req domain.Delive
 func validateGRCustomer(c domain.CustomerInput, vatPayer bool) error {
 	name := strings.TrimSpace(c.CompanyName)
 	nif := strings.TrimSpace(c.TaxID)
-	if name == "" {
-		return fmt.Errorf("customer name required")
+	// NIF first: with an empty NIF the sales override already replaced the name with the placeholder.
+	if vatPayer && (nif == "" || nif == ptnif.FinalConsumer) {
+		return fmt.Errorf("VAT payer requires real NIF")
+	}
+	// GR/GT recipient must be named; "Consumidor Final" is a sales-invoice placeholder, not a name.
+	if name == "" || strings.EqualFold(name, ptnif.FinalConsumerName) {
+		return coded(ErrCodeRecipientNameRequired, "recipient name required")
 	}
 	// Address shape: ONLY domain.Address.ValidatePT (same role/part as resolveShipPoints).
 	if err := customerAddress(c).ValidatePT("customer"); err != nil {
@@ -126,12 +134,27 @@ func validateGRCustomer(c domain.CustomerInput, vatPayer bool) error {
 		}
 		return coded(ErrCodeTransportAddressIncomplete, err.Error())
 	}
-	if vatPayer {
-		if nif == "" || nif == "999999990" {
-			return fmt.Errorf("VAT payer requires real NIF")
-		}
-	}
 	return nil
+}
+
+// applyManualRecipient is the ONLY manual GR/GT recipient step after BuildManualSaleSnapshot:
+// form address onto the snapshot; a non-VAT recipient keeps the typed name with an empty TaxID.
+// BuildManualSaleSnapshot (via ApplyCustomerOverride) turns an empty NIF into the sales-invoice
+// walk-in buyer (999999990 / Consumidor Final), which GR/GT must not inherit.
+func applyManualRecipient(snap *domain.SaleSnapshot, in catalog.ManualIssueInput, vatPayer bool) {
+	if a := strings.TrimSpace(in.CustomerAddress); a != "" {
+		snap.Customer.AddressDetail = a
+	}
+	if c := strings.TrimSpace(in.CustomerCity); c != "" {
+		snap.Customer.City = c
+	}
+	if p := strings.TrimSpace(in.CustomerPostalCode); p != "" {
+		snap.Customer.PostalCode = p
+	}
+	if !vatPayer {
+		snap.Customer.TaxID = ""
+		snap.Customer.CompanyName = strings.TrimSpace(in.CustomerName)
+	}
 }
 
 // IssueManualDeliveryNote builds a manual snapshot then IssueDeliveryNote — ONLY manual GR entry.
@@ -153,19 +176,7 @@ func (s *FiscalService) IssueManualDeliveryNote(ctx context.Context, in catalog.
 	if err != nil {
 		return nil, coded(ErrCodeValidationFailed, err.Error())
 	}
-	if a := strings.TrimSpace(in.CustomerAddress); a != "" {
-		snap.Customer.AddressDetail = a
-	}
-	if c := strings.TrimSpace(in.CustomerCity); c != "" {
-		snap.Customer.City = c
-	}
-	if p := strings.TrimSpace(in.CustomerPostalCode); p != "" {
-		snap.Customer.PostalCode = p
-	}
-	if !vat {
-		// Do not keep ApplyCustomerOverride's consumidor-final promotion for non-VAT GR.
-		snap.Customer.TaxID = ""
-	}
+	applyManualRecipient(&snap, in, vat)
 	return s.IssueDeliveryNote(ctx, domain.DeliveryNoteRequest{
 		StoreID:             s.storeID,
 		RequestID:           in.RequestID,
