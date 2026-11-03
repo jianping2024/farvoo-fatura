@@ -1,0 +1,25 @@
+---
+description: Will standing order — propose and ship best-practice end-state only; never lead with patch/workaround options.
+alwaysApply: true
+---
+
+# Best practice only (no patch-first)
+
+**Will standing order.** Do not open with a patch, workaround, or “先堵一下” option when a cleaner end-state exists.
+
+## Required
+
+1. **Recommend one best-practice end-state** — how the concept should be represented after the change (one source of truth, one write path; no contradictory UI / status / SAF-T fields).
+2. **Analyze / plan headings:** Heading 3（推荐方案）is that end-state only. Do not present “低风险补丁 vs 最佳实践” as equal choices unless Will explicitly asks for a stopgap.
+3. **Reject as the plan:** hard-coded reasons while showing an empty “作废原因” shell; hide/disable buttons to paper over wrong gates; extra if/else beside the real rule; second validator / soft-suggest path; “先改文案再说口径”; copy-nearby then dedupe later.
+4. **If unsure which design is best:** ask Will to pick among **best-practice** alternatives — never default to the smallest patch.
+
+## Allowed narrow fixes (not “patches”)
+
+- Typo / one-line apply Will already ordered
+- Pure lint/format/docs
+- Implementing an **already approved** end-state plan
+
+## Conflicts
+
+Wins over “minimal diff”, “ship a small gate first”, and “patch then harden later”. Aligns with [`analysis-before-code.mdc`](./analysis-before-code.mdc) and `.claude/skills/interactive-scenario-test/SKILL.md` A0.

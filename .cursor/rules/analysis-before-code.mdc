@@ -1,0 +1,40 @@
+---
+description: Hard gates for analyze-before-code on fiscal changes. Triggers on 先分析/plan first and multi-layer behavior changes. Delivery loop in interactive-scenario-test skill.
+alwaysApply: true
+---
+
+# Analysis before code (hard gates)
+
+For non-trivial bugs, behavior changes, or multi-file fiscal logic: **do not edit product code first**. After Will confirms the end-state plan, follow `.claude/skills/interactive-scenario-test/SKILL.md`（A → 测 → C）.
+
+## When it applies
+
+**Phrase gate (any one):** `先分析` / `先方案` / `不要直接改` / `先别改` / `等确认再改` / `analyze first` / `plan first` / `don't change code yet` / `do not edit yet` — always analyze; ignore “does NOT apply” exceptions.
+
+**Also (no phrase):** ticket-type / series / AT transport / Admin issue-annul-link behavior; changes across UI+API+DB or multiple modules.
+
+**Does NOT apply** (no trigger phrase): typos/one-line fixes user asked to apply; pure format/lint/docs-only; user already approved a plan (“按方案改” / “确认，开始改” / `go ahead` / `implement it`).
+
+## On an analyze turn
+
+1. Do **not** edit product code, create implementation branches, or run mutating fixes.
+2. Reply with **exact** headings in order:  
+   `### 1. 当前业务流程和状态流转` → `### 2. 问题根因` → `### 3. 推荐方案和理由` → `### 4. 需要修改的文件/组件` → `### 5. 风险点和验证方式`
+3. Heading 2: **【已证实】** vs **【未证实/待查】** only; no 多半/应该是 as root cause.
+4. Heading 3 must include **终点形状**（one–two sentences）+ **唯一写法** name(s). **Best-practice end-state only** — do not lead with补丁/workaround or offer “小补丁 vs 最佳” as equal options (see [`best-practice-not-patches.mdc`](./best-practice-not-patches.mdc)).
+5. Heading 3 **权威核对清单**（each must be named or marked 【待核实】and stop to ask Will）:
+   - 设计文：`docs/fiscal-*.zh.md` / `docs/fiscal-sqlite-schema.zh.md`（列名与 DDL 一致）
+   - 法规或 SAF-T 字段上限（例：作废 `DocumentStatus/Reason` ≤50）
+   - AT 行为 vs 仅本地（例：GR/GT 作废是否报 AT）
+   - Admin 门禁是否误绑无关条件（例：`ready_to_issue` / `fiscal_profile` 挡住本该可用的作废或「开发票」）
+6. Ask for confirmation before implementing.
+
+## After confirmation (summary)
+
+- Branch from `main` per [`feature-branch-before-code.mdc`](./feature-branch-before-code.mdc); worktree if foreign dirty WIP. **Never stash foreign WIP.**
+- Implement via interactive-scenario-test **A**（唯一写法自检 → 清冗余 → 报告 → 回归/互动测 → 合入 **C**）。
+- Diff must match approved end-state; rejected patch shapes must not reappear.
+
+## Never without explicit in-thread permission
+
+Hard DB wipe / destructive test-DB reset; `git push` / force push; AT series register or live transport that burns numbers (also [`fiscal-at-live-testing.mdc`](./fiscal-at-live-testing.mdc)).
