@@ -52,12 +52,12 @@ func (s *FiscalService) IssueTransportNote(ctx context.Context, req domain.Trans
 		vat = true
 		nif := strings.TrimSpace(req.Snapshot.Customer.TaxID)
 		if nif != storeNIF {
-			return nil, coded(ErrCodeValidationFailed, "transfer requires customer NIF equal to store tax_registration_number")
+			return nil, coded(ErrCodeTransferNIFNotStore, "transfer requires customer NIF equal to store tax_registration_number")
 		}
 	} else {
 		custNIF := strings.TrimSpace(req.Snapshot.Customer.TaxID)
 		if custNIF == storeNIF {
-			return nil, coded(ErrCodeValidationFailed, "customer purpose must not use store NIF")
+			return nil, coded(ErrCodeCustomerNIFIsStore, "customer purpose must not use store NIF")
 		}
 	}
 	if err := validateGRCustomer(req.Snapshot.Customer, vat); err != nil {

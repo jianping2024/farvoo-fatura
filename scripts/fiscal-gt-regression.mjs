@@ -200,13 +200,13 @@ async function main() {
     // GT-03 transfer wrong NIF
     record('GT-03 transfer rejects guest NIF', await expectErr(
       () => issueGT('10.00', 'gt-03', { movement_purpose: 'transfer', customer_nif: '509442013' }),
-      'validation_failed',
+      'transfer_nif_not_store',
     ));
 
     // GT-04 customer with store NIF
     record('GT-04 customer rejects store NIF', await expectErr(
       () => issueGT('10.00', 'gt-04', { movement_purpose: 'customer', customer_nif: STORE_NIF }),
-      'validation_failed',
+      'customer_nif_is_store',
     ));
 
     // GT-05 VAT payer needs NIF

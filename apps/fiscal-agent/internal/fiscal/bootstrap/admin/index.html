@@ -5303,15 +5303,24 @@
         if (purpose === 'transfer') {
           const storeNif = ($('#nif').value || '').trim();
           if (!nif || (storeNif && nif !== storeNif)) {
-            toast(FiscalAdminI18n.t('gt.transfer_nif'), 'error');
+            toast(FiscalAdminI18n.t('errors.transfer_nif_not_store'), 'error');
+            $('#invNif').focus();
             return;
           }
           if (shipFrom && shipTo && JSON.stringify(shipFrom) === JSON.stringify(shipTo)) {
             toast(FiscalAdminI18n.t('gt.transfer_addr_hint'), 'info');
           }
-        } else if ($('#invRecipientVat').checked && !nif) {
-          toast(FiscalAdminI18n.t('gr.need_nif'), 'error');
-          return;
+        } else {
+          const storeNif = ($('#nif').value || '').trim();
+          if (storeNif && nif === storeNif) {
+            toast(FiscalAdminI18n.t('errors.customer_nif_is_store'), 'error');
+            $('#invNif').focus();
+            return;
+          }
+          if ($('#invRecipientVat').checked && !nif) {
+            toast(FiscalAdminI18n.t('gr.need_nif'), 'error');
+            return;
+          }
         }
       } else if ($('#invRecipientVat').checked && !nif) {
         toast(FiscalAdminI18n.t('gr.need_nif'), 'error');

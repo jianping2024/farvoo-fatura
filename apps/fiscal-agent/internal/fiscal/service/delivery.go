@@ -21,6 +21,10 @@ const (
 	ErrCodeMovementStartPast = "movement_start_past"
 	// ErrCodeRecipientNameRequired: GR/GT recipient name empty or the walk-in placeholder.
 	ErrCodeRecipientNameRequired = "recipient_name_required"
+	// ErrCodeTransferNIFNotStore: GT transfer recipient NIF is not the store's own NIF.
+	ErrCodeTransferNIFNotStore = "transfer_nif_not_store"
+	// ErrCodeCustomerNIFIsStore: GT customer delivery uses the store's own NIF.
+	ErrCodeCustomerNIFIsStore = "customer_nif_is_store"
 )
 
 // IssueDeliveryNote is the ONLY orchestration entry for GR issuance.
