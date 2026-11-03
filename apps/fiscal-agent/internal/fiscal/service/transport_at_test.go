@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -271,5 +272,37 @@ func TestManualTransport_ExplicitShipPointsReachAT(t *testing.T) {
 	if d.ShipFrom != (at.TransportAddress{Detail: "Rua do Armazém 5", City: "Loures", PostalCode: "2670-001"}) ||
 		d.ShipTo != (at.TransportAddress{Detail: "Rua Augusta 100", City: "Lisboa", PostalCode: "1100-053"}) {
 		t.Fatalf("points to AT: from %+v to %+v", d.ShipFrom, d.ShipTo)
+	}
+}
+
+type rejectTransport struct{ err error }
+
+func (r rejectTransport) RegisterDocument(context.Context, at.TransportDocument) (*at.TransportResult, error) {
+	return nil, r.err
+}
+
+// AT business rejections reach the API with a stable code and AT's own message only
+// (no "at: transport rejected: -1: -1" prefix); -3 has its own code.
+func TestIssueDeliveryNote_ATRejectionCodes(t *testing.T) {
+	cases := []struct {
+		te       *at.TransportError
+		wantCode string
+	}{
+		{&at.TransportError{Kind: at.ErrTransportRejected, Code: "-3", Message: "Já foi inserido um Documento de Transporte com o número fornecido.", Hint: "number_taken"}, service.ErrCodeATNumberTaken},
+		{&at.TransportError{Kind: at.ErrTransportRejected, Code: "-1", Message: "O NIF do destinatário (123456789) não é válido."}, service.ErrCodeATTransportRejected},
+		{&at.TransportError{Kind: at.ErrTransportRejected, Code: "-100", Message: "Data de inicio invalida", Hint: "movement_start_past"}, service.ErrCodeMovementStartPast},
+	}
+	for i, c := range cases {
+		svc, db, _ := transportFixture(t)
+		svc.SetTransportClient(rejectTransport{err: c.te})
+		_, err := svc.IssueDeliveryNote(context.Background(), grRequest(fmt.Sprintf("gr-rej-%d", i)))
+		var ce *service.CodedError
+		if !errors.As(err, &ce) || ce.Code != c.wantCode || ce.Msg != c.te.Message {
+			t.Fatalf("%s: want %s %q, got %v", c.te.Code, c.wantCode, c.te.Message, err)
+		}
+		var n int
+		if err := db.SQL.QueryRow(`SELECT last_number FROM series WHERE document_type = 'GR'`).Scan(&n); err != nil || n != 0 {
+			t.Fatalf("%s: number used after rejection (%d)", c.te.Code, n)
+		}
 	}
 }

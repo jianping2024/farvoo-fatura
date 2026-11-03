@@ -17,6 +17,9 @@ const (
 	ErrCodeDeliveryNotAllowed     = "delivery_not_allowed"
 	ErrCodeATTransportUnavailable = "at_transport_unavailable"
 	ErrCodeATTransportRejected    = "at_transport_rejected"
+	// ErrCodeATNumberTaken: AT already holds a transport document with this number (ReturnCode -3);
+	// the local series is behind AT and must be reconciled before issuing again.
+	ErrCodeATNumberTaken = "at_number_taken"
 	// ErrCodeMovementStartPast: GR/GT movement_start_at is before Lisbon "now" (AT -100).
 	ErrCodeMovementStartPast = "movement_start_past"
 	// ErrCodeRecipientNameRequired: GR/GT recipient name empty or the walk-in placeholder.

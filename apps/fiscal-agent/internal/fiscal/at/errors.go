@@ -58,10 +58,12 @@ var soapFaults = map[string]codeInfo{
 
 // transportReturnCodes is the ONLY table of non-zero envioDocumentoTransporte ReturnCodes
 // with known meaning. Unknown non-zero codes are rejections without a hint.
-// Hint "movement_start_past" is the sole machine key for ReturnCode -100 (start before now).
+// Hints are the sole machine keys: "movement_start_past" = -100 (start before now),
+// "number_taken" = -3 (AT already holds this document number).
 var transportReturnCodes = map[int]codeInfo{
 	54:   {ErrTransportRejected, "AT sub-user lacks the WDT transport-documents profile"},
 	-100: {ErrTransportRejected, "movement_start_past"},
+	-3:   {ErrTransportRejected, "number_taken"},
 }
 
 // atAuthNSPrefix qualifies <detail> children of faults raised by AT's credential gateway

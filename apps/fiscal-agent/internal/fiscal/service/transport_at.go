@@ -128,10 +128,17 @@ func mapTransportRegisterError(err error) error {
 		return coded(ErrCodeATTransportUnavailable, err.Error())
 	default:
 		var te *at.TransportError
-		if errors.As(err, &te) && (te.Code == "-100" || te.Hint == "movement_start_past") {
-			return coded(ErrCodeMovementStartPast, te.Message)
+		if !errors.As(err, &te) {
+			return coded(ErrCodeATTransportRejected, err.Error())
 		}
-		return coded(ErrCodeATTransportRejected, err.Error())
+		switch te.Hint {
+		case "movement_start_past":
+			return coded(ErrCodeMovementStartPast, te.Message)
+		case "number_taken":
+			return coded(ErrCodeATNumberTaken, te.Message)
+		}
+		// AT's own ReturnMessage (e.g. -1 "O NIF do destinatário … não é válido"); Admin prefixes it.
+		return coded(ErrCodeATTransportRejected, te.Message)
 	}
 }
 

@@ -84,6 +84,9 @@
     }, ms);
   }
 
+  /** ONLY list of API codes that carry AT's own (Portuguese) message rather than a localized one. */
+  var AT_TEXT_CODES = { at_number_taken: true, movement_start_past: true };
+
   /** Map API / thrown objects to a short user-facing string (for toast). */
   function formatError(err) {
     if (err == null) return tOr('errors.unknown', 'unknown error');
@@ -119,7 +122,20 @@
       }
     }
 
+    // AT business rejection: localized prefix + AT's own message (Portuguese, the only precise reason).
+    if (code === 'at_transport_rejected' && msg) {
+      try {
+        var i18nR = global.FiscalAdminI18n;
+        if (i18nR && typeof i18nR.fmt === 'function') {
+          var r = i18nR.fmt('errors.at_transport_rejected', { msg: msg });
+          if (r && r !== 'errors.at_transport_rejected') return r;
+        }
+      } catch (_) { /* */ }
+    }
+
     var fromCode = code ? tOr('errors.' + code, '') : '';
+    // Codes whose message is AT's raw Portuguese text: the localized code text wins.
+    if (fromCode && AT_TEXT_CODES[code]) return fromCode;
     // Already-localized client message (CJK / accented) wins over error code.
     if (msg && /[^\x00-\x7F]/.test(msg)) return msg;
     if (fromCode) return fromCode;
