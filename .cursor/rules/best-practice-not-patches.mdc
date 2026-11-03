@@ -10,7 +10,7 @@ alwaysApply: true
 ## Required
 
 1. **Recommend one best-practice end-state** — how the concept should be represented after the change (one source of truth, one write path; no contradictory UI / status / SAF-T fields).
-2. **Analyze / plan headings:** Heading 3（推荐方案）is that end-state only. Do not present “低风险补丁 vs 最佳实践” as equal choices unless Will explicitly asks for a stopgap.
+2. **Analyze / plan headings:** Heading 3（推荐方案）is that end-state only. Do not present “低风险补丁 vs 最佳实践” as equal choices unless Will explicitly asks for a stopgap. **First line of Heading 3** must be the at-a-glance marker from [`analysis-before-code.mdc`](./analysis-before-code.mdc)（`✅ 已是最佳实践终点` or `⚠️ 待 Will 在最佳方案中选择`）so Will does not have to re-ask.
 3. **Reject as the plan:** hard-coded reasons while showing an empty “作废原因” shell; hide/disable buttons to paper over wrong gates; extra if/else beside the real rule; second validator / soft-suggest path; “先改文案再说口径”; copy-nearby then dedupe later.
 4. **If unsure which design is best:** ask Will to pick among **best-practice** alternatives — never default to the smallest patch.
 
