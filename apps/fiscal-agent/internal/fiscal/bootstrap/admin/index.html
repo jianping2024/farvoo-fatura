@@ -2864,9 +2864,11 @@
     return DEFAULT_SALE_DOC;
   }
 
-  /** ONLY writer that applies suggestedSaleDocumentType onto a doc-type select. */
+  /** ONLY writer that applies suggestedSaleDocumentType onto a doc-type select.
+   *  Only flips between FT and FS: a chosen FR / PF / GR / GT is never overwritten. */
   function syncSaleDocTypeSuggestion(docSel, nifEl, payEl) {
     if (!docSel || docSel.disabled) return;
+    if (docSel.value !== 'FT' && docSel.value !== DEFAULT_SALE_DOC) return;
     docSel.value = suggestedSaleDocumentType(
       nifEl ? nifEl.value : '',
       payEl ? payEl.value : 'CASH'
