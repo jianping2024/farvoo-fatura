@@ -830,6 +830,30 @@ func TestAdminHTMLInvoiceListColumnsUnique(t *testing.T) {
 	if strings.Count(adminHTML, `id="invoiceDetailModal"`) != 1 {
 		t.Fatal("invoiceDetailModal must exist exactly once")
 	}
+	if n := strings.Count(adminHTML, "ONLY pinned head/body/foot shell"); n != 1 {
+		t.Fatalf("sheet shell ONLY marker must appear once, got %d", n)
+	}
+	for _, legacy := range []string{"modal-head", "modal-body", "modal-foot", "panel-head", `class="panel-body"`, `class="panel-foot"`} {
+		if strings.Contains(adminHTML, legacy) {
+			t.Fatalf("legacy shell class %q must not appear; use sheet-head/body/foot only", legacy)
+		}
+	}
+	if strings.Count(adminHTML, `class="panel panel-sheet"`) != 2 {
+		t.Fatal("order-new confirm + order-invoice info must use panel-sheet exactly twice")
+	}
+	if !strings.Contains(adminHTML, `id="btnIssueInvoice"`) || !strings.Contains(adminHTML, `id="btnConfirmOrder"`) {
+		t.Fatal("issue/confirm CTAs must remain")
+	}
+	issueIdx := strings.Index(adminHTML, `id="btnIssueInvoice"`)
+	footBeforeIssue := strings.LastIndex(adminHTML[:issueIdx], `class="sheet-foot"`)
+	if footBeforeIssue < 0 {
+		t.Fatal("btnIssueInvoice must sit inside sheet-foot")
+	}
+	confirmIdx := strings.Index(adminHTML, `id="btnConfirmOrder"`)
+	footBeforeConfirm := strings.LastIndex(adminHTML[:confirmIdx], `class="sheet-foot"`)
+	if footBeforeConfirm < 0 {
+		t.Fatal("btnConfirmOrder must sit inside sheet-foot")
+	}
 	if !strings.Contains(adminHTML, "formatInvoiceBuyerCell(inv)") {
 		t.Fatal("invoice list must render buyer via formatInvoiceBuyerCell only")
 	}
