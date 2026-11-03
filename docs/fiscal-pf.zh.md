@@ -38,7 +38,7 @@
 | 关联方向 | 1 张 PF → **多张** 真票；1 张真票 → **最多 1** 张 PF |
 | 标 `F` | FT / FS / **FR** 任一签发时挂上该 PF → PF `WorkStatus=F`（含部分开票） |
 | 金额 | 真票与 PF **不必**相等 |
-| 带入 | 主路径：PF 详情「开真票」→ 带入客户/行/金额（可改）并自动挂 PF；辅路径：手工开真票时可选挂一张 PF |
+| 带入 | 主路径：PF 详情「开真票」→ 按 PF **原明细**（数量、含税单价、税率）与购方 NIF / 名称预填（可改；票种默认 FT）并自动挂 PF；辅路径：手工开真票时可选挂一张 PF。与 GR「开发票」共用 Admin `startOrderFromDocument`（详情 API `item_lines` / `customer`；按钮门禁读 `can_issue_sale_from`） |
 | 补挂 / 解挂 | 真票 **签后禁止** 补挂或解挂 PF |
 | 客户 / NIF | **与现网手工 FT 同规则** |
 | 有效期 | 可选 `valid_until`（日历日）；**不**因过期自动作废或禁转真票 |
@@ -190,3 +190,4 @@
 |------|------|
 | 2026-09-30 | 定稿：会话拍板 P0（关联、状态、合规、仅手工、FR→F、列表/营收等） |
 | 2026-09-30 | 落地：migration 013、IssuePF/AnnulPF、IssueFT 挂引用、SAF-T WorkingDocuments、Admin、regression |
+| 2026-11-03 | 修「开真票」：原实现跳到不存在的视图（白屏）、不渲染明细、每行强制数量 1 / 税率 23%；改为共用 `startOrderFromDocument`，按原明细预填 |

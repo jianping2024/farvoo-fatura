@@ -1,10 +1,10 @@
 # 葡萄牙单据类型：开票场景与测试方案
 
-> **状态：草稿**（已有类型对齐现网；未落地类型为顺序开发前的场景/验收口径）  
+> **状态：草稿**（九种均已落地，场景对齐现网）  
 > **权威：否**（**用途/当事人/开具方法**以 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) 为准；实现规则以各里程碑设计文为准；本文是场景/测试对照；库列以 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/*.sql` 为准）  
 > **对应实现：**  
-> - 已落地：`FT` / `FS` / `FR` / `NC` / `ND` / `RG` / `PF`  
-> - 行为已写入用途总览、实现未落地：`GR`（权威 [`fiscal-gr.zh.md`](fiscal-gr.zh.md)）/ `GT`（见用途文 §9）  
+> - 已落地：`FT` / `FS` / `FR` / `NC` / `ND` / `RG` / `PF` / `GR`（[`fiscal-gr.zh.md`](fiscal-gr.zh.md)）/ `GT`（[`fiscal-gt.zh.md`](fiscal-gt.zh.md)）；GR/GT 于 AT test 已真通信（2026-11-03）  
+> - 互动实测记录：[`test-scenarios/2026-11-03-a2-admin-gt-test.md`](test-scenarios/2026-11-03-a2-admin-gt-test.md)  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 本文把 **9 种**单据的**可执行测试场景**写在一处。用途、谁开给谁、开具步骤见 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md)。
@@ -24,8 +24,8 @@
 | 5 | ND | Nota de débito | 借记/补收 | **已有** | 4.1 |
 | 6 | RG | Recibo | 收款收据 | **已有**（0.5.18） | 4.4 Payments |
 | 7 | PF | Fatura pró-forma | 形式发票 | **已有**（[`fiscal-pf.zh.md`](fiscal-pf.zh.md)） | 4.3 WorkingDocuments |
-| 8 | GR | Guia de remessa | 发货/交货单 | **已有**（[`fiscal-gr.zh.md`](fiscal-gr.zh.md) + 用途文 §8；mock AT） | 4.2 MovementOfGoods |
-| 9 | GT | Guia de transporte | 运输单 | **未做**（用途见 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) §9） | 4.2 |
+| 8 | GR | Guia de remessa | 发货/交货单 | **已有**（[`fiscal-gr.zh.md`](fiscal-gr.zh.md) + 用途文 §8；AT test 已通） | 4.2 MovementOfGoods |
+| 9 | GT | Guia de transporte | 运输单 | **已有**（[`fiscal-gt.zh.md`](fiscal-gt.zh.md) + 用途文 §9；AT test 已通） | 4.2 |
 
 ### 1.2 P0 总原则（拍板）
 
@@ -59,7 +59,7 @@ GT ──(通常无)──► （可无销售票）
 | **期望** | 状态、金额、错误码、票面/SAF-T |
 | **类型** | 正路径 / 负路径 / 边界 |
 
-自动化优先挂现有脚本风格（`scripts/fiscal-*-regression.mjs` + `go test ./internal/fiscal/...`）；未落地类型以本文为验收清单，落地时再补脚本名。
+自动化优先挂现有脚本风格（`scripts/fiscal-*-regression.mjs` + `go test ./internal/fiscal/...`）；九种均有回归脚本（`fiscal-{rg,pf,gr,gt}-regression.mjs` 等）。需真界面 / 真 AT 的场景按 `.claude/skills/interactive-scenario-test` 互动执行。
 
 ---
 
@@ -88,8 +88,10 @@ GT ──(通常无)──► （可无销售票）
 | FT-03 | 正 | 已签 FT | 重打 | 新打印任务；Hash/ATCUD **不变** |
 | FT-04 | 负 | 无 FT 系列 | 尝试签发 | 失败，稳定错误（系列缺失） |
 | FT-05 | 正 | 同 request_id | 重复提交签发 | 幂等，不双开 |
-| FT-06 | 边界 | 未来有 PF | 开 FT 时引用 PF | 可选成功；金额可与 PF 不等（见 PF-05） |
-| FT-07 | 边界 | 未来有 GR | 开 FT 引用 1..N 张 GR | 可选成功；金额不必轧平（见 GR-04） |
+| FT-06 | 边界 | 有 PF | 开 FT 时引用 PF | 可选成功；金额可与 PF 不等（见 PF-05） |
+| FT-07 | 边界 | 有同一购方 GR | 开 FT 引用 1..N 张 GR | 可选成功；金额不必轧平（见 GR-04、GR-11） |
+| FT-08 | 正 | — | 散客开 FT（NIF 空） | **允许**（消费者 NIF 可选，CIVA art. 36）；SAF-T 用 `999999990` |
+| FT-09 | UI | FS 已选 | 填有效 NIF 或改非现金 | 自动升 FT；已选 FT 时清空 NIF / 改现金**不**降回 FS；FR/PF/GR/GT 不受影响 |
 
 **回归锚点（已有）：** `fiscal-local-regression.mjs`、`fiscal-manual-ft-regression.mjs`、`fiscal-bill-sync-regression.mjs`、`fiscal-reprint-regression.mjs`。
 
@@ -220,7 +222,7 @@ GT ──(通常无)──► （可无销售票）
 
 ---
 
-## 7. RG — Recibo（收款收据）【未做 · 建议 M-A】
+## 7. RG — Recibo（收款收据）【已有 · 权威 [`fiscal-rg.zh.md`](fiscal-rg.zh.md)】
 
 ### 7.1 使用场景
 
@@ -259,7 +261,7 @@ GT ──(通常无)──► （可无销售票）
 
 ---
 
-## 8. PF — Fatura pró-forma（形式发票）【定稿未做 · 权威 [`fiscal-pf.zh.md`](fiscal-pf.zh.md)】
+## 8. PF — Fatura pró-forma（形式发票）【已有 · 权威 [`fiscal-pf.zh.md`](fiscal-pf.zh.md)】
 
 ### 8.1 使用场景
 
@@ -290,6 +292,7 @@ GT ──(通常无)──► （可无销售票）
 | PF-06 | 负 | 无 PF 系列 | 开 PF | series_missing |
 | PF-07 | 负 | 误把 PF 当税票申报唯一依据 | （流程/培训） | 产品不提供「仅用 PF 完成结账报税」路径 |
 | PF-08 | UI | 开真票 | 可选挂 PF | 不选也能签发 |
+| PF-11 | UI | PF 含 13% / 6% 行 | PF 详情「开真票」 | 进入新单页，按原明细（数量、含税单价、税率）与购方预填，自动挂 PF（2026-11-03 前为白屏且税率固定 23%） |
 | PF-09 | SAF-T | 仅 PF、未转 | 月导 | WorkingDocuments 有 PF；SalesInvoices 无对应假发票 |
 | PF-10 | 打印 | PF-01 | 出纸 | 含「Pró-forma」；无误导为 Fatura 的主标题 |
 
@@ -297,7 +300,7 @@ GT ──(通常无)──► （可无销售票）
 
 ---
 
-## 9. GR — Guia de remessa（发货单）【已有 · mock AT】
+## 9. GR — Guia de remessa（发货单）【已有 · AT test 已通】
 
 ### 9.1 使用场景
 
@@ -333,8 +336,13 @@ GT ──(通常无)──► （可无销售票）
 | GR-06 | 正 | 无 GR | 直接开 FT | 成功 |
 | GR-07 | 负 | 无 GR 系列 | 开 GR | series_missing |
 | GR-08 | UI | 堂食结账 | — | **无**强制选 GR 步骤 |
-| GR-09 | UI | 开 FT | 可选挂 GR | 多选 1..N；可不选 |
-| GR-10 | 混用 | GR 交货后退货 | 已开 FT 则 NC；未开 FT | 未挂真票可作废 GR；已挂则禁作废、退货走 NC |
+| GR-09 | UI | 开 FT，购方 NIF 有效 | 展开「该客户有 N 张可挂发货单」 | 只列该 NIF 的 `N`/`F` GR；多选 1..N；可不选；无 NIF 时只提示不列 |
+| GR-10 | 混用 | GR 交货后退货 | 已开 FT 则 NC；未开 FT | 未挂真票可作废 GR；已挂则禁作废（`annul_not_allowed`）、退货走 NC |
+| GR-11 | 负 | 开 FT | 改购方 NIF | 已挂的他人 GR 被移除；列表换成新购方的 GR |
+| GR-12 | 正 | GR `N`/`F` | GR 详情「开发票」 | 新单按 GR 原明细与收货方预填，票种 FT，默认挂本 GR（可移除）；散客 GR 只能经此挂 |
+| GR-13 | 负 | 非纳税人收货方 | 名称空或 `Consumidor Final` | `recipient_name_required`，签发前拦截，不通信 AT |
+| GR-14 | 负 | AT 拒绝 | 签发（如收货方 NIF 在 AT 不存在） | 「税务局（AT）拒绝，单据未签发：<AT 原文>」；零单据行、不占号 |
+| GR-15 | 正 | 装 / 卸货地手填 | 签发 | 报文 `AddressFrom` / `AddressTo` 为手填值；省略时 = 门店 / 收货地址 |
 
 **GR-04 / GR-10：** 已于用途文 §8.4 拍板。
 
@@ -342,7 +350,7 @@ GT ──(通常无)──► （可无销售票）
 
 ---
 
-## 10. GT — Guia de transporte（运输单）【未做 · 设计已定】
+## 10. GT — Guia de transporte（运输单）【已有 · AT test 已通】
 
 > **权威设计：** [`fiscal-gt.zh.md`](fiscal-gt.zh.md)
 
@@ -358,10 +366,10 @@ GT ──(通常无)──► （可无销售票）
 | 项 | 定法 |
 |----|------|
 | 与销售票 | **无强制关联** |
-| 必填 | 品名/数量、装货地、卸货地、开始运输时间、`movement_purpose` |
+| 必填 | 品名/数量、收货地址、开始运输时间、`movement_purpose`；装货地 / 卸货地可省略（= 门店 / 收货地址，报文三者齐全） |
 | 金额 | 非验收重点 |
 | 时点 | **上路前**签发；默认禁止「已上路补开」 |
-| AT 通信 | mock 可开发；live 见 A2；签发前必须成功（失败整单失败） |
+| AT 通信 | mock / AT test 均已实现；签发前必须成功（失败整单失败、不占号） |
 | 全局运输单 | **P0 不做** |
 | 系列 | 独立 `GT` |
 | 状态 | 仅 `N` / `A`（无 `F`） |
@@ -377,13 +385,16 @@ GT ──(通常无)──► （可无销售票）
 | GT-01 | 正 | GT 系列 + AT 通信可用 | 上路前开 GT | 签发；获 AT 文档码（或约定成功回执）；可打印 |
 | GT-02 | 正 | 店间调拨 | 仅 GT，不开 FT | **允许**；无销售票 |
 | GT-03 | 正 | 外送 | GT + 另开 FS | 两张独立；无强制父子引用 |
-| GT-04 | 负 | AT 通信失败 | 开 GT | 按设计失败或降级策略（须在 GT 文拍板）；不得静默假成功 |
-| GT-05 | 负 | 无装货/卸货地 | 开 GT | 校验失败 |
-| GT-06 | 负 | UI「补开已上路」 | 默认路径 | 拦截或强确认（定法在 GT 文） |
+| GT-04 | 负 | AT 通信失败 / 拒绝 | 开 GT | 整单失败、零单据行、不占号；不可用 → `at_transport_unavailable`，拒绝 → `at_transport_rejected` / `at_number_taken` |
+| GT-05 | 负 | 收货地址不完整 / 邮编非 `NNNN-NNN` | 开 GT | `transport_address_incomplete`，定位到出错字段；装 / 卸货地全空 = 默认，不报错 |
+| GT-06 | 负 | 开运时间早于现在 | 签发 | `movement_start_past`；用户未改过的默认时间在签发时自动顺延到现在 + 1 分钟 |
+| GT-09 | 负 | 调拨 | NIF ≠ 本店 | `transfer_nif_not_store`，签发前拦截 |
+| GT-10 | 负 | 外送 | NIF = 本店 | `customer_nif_is_store`（提示改选调拨），签发前拦截 |
+| GT-11 | UI | 调拨已预填本店 | 切票种或改外送 | 购方回到空（散客）；用户改过的值保留 |
 | GT-07 | 负 | 试图用 FS 当 GT | — | 产品无此能力 |
 | GT-08 | SAF-T | 仅调拨 GT | 月导 | MovementOfGoods 有 GT；无对应假 FT |
 
-**落地门槛：** 设计已定（[`fiscal-gt.zh.md`](fiscal-gt.zh.md)）；mock 可开 T1–T4；live 随 A2。
+**落地状态：** mock T1–T4 完成；live（A2）2026-11-03 在 AT test 走通。
 
 **落地后回归（建议名）：** `scripts/fiscal-gt-regression.mjs`（含通信 mock）。
 
@@ -432,7 +443,8 @@ GT ──(通常无)──► （可无销售票）
 | [`fiscal-m6-fs-fr-nd.zh.md`](fiscal-m6-fs-fr-nd.zh.md) | FS/FR/ND 实现权威 |
 | [`fiscal-rg.zh.md`](fiscal-rg.zh.md) | RG 实现权威 |
 | [`fiscal-pf.zh.md`](fiscal-pf.zh.md) | PF 实现权威 |
-| [`fiscal-gr.zh.md`](fiscal-gr.zh.md) | GR 实现权威（未落地） |
+| [`fiscal-gr.zh.md`](fiscal-gr.zh.md) | GR 实现权威 |
+| [`fiscal-gt.zh.md`](fiscal-gt.zh.md) | GT 实现权威 |
 | [`fiscal-m5-saft.zh.md`](fiscal-m5-saft.zh.md) | SAF-T；新类型落地须扩展导出范围 |
 | [`fiscal-m6-manual-uat.zh.md`](fiscal-m6-manual-uat.zh.md) | 已有类型手测 |
 | [`fiscal-certification-checklist.zh.md`](fiscal-certification-checklist.zh.md) | 认证项；新类型不自动纳入除非认证范围变更 |
@@ -447,3 +459,4 @@ GT ──(通常无)──► （可无销售票）
 | 2026-09-30 | PF 权威改挂 [`fiscal-pf.zh.md`](fiscal-pf.zh.md)；抬头更正 RG 已落地 / PF 定稿未做 |
 | 2026-10-15 | 用途/开具改挂 [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md)；PF 标已有；GR-04/10 与全局单 P0 对齐用途文 |
 | 2026-10-15 | GR 实现挂 [`fiscal-gr.zh.md`](fiscal-gr.zh.md)；通信改「签发前必须」 |
+| 2026-11-03 | GR/GT 标已有（AT test 已通）；FT-08/09、PF-11、GR-11…15、GT-09…11 新增；GR-09 改同一购方；GT-04…06 按现行为定稿 |

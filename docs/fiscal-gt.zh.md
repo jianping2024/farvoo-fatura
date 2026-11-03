@@ -1,6 +1,6 @@
 # GT：运输单（Guia de transporte）
 
-> **状态：定稿**（T1–T4 mock 已落地）  
+> **状态：定稿**（T1–T4 mock 已落地；T5 = A2 live：2026-11-03 Admin 在 AT test 签发调拨与外送 GT 拿到真 `ATDocCodeID`）  
 > **权威：是**（GT 行为、实现分刀、与 GR 边界；库列见 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md)；迁移 `015_gt_transport.sql`）  
 > **对应实现：** `store.IssueGT` / `AnnulGT`、`service.IssueTransportNote` / `AnnulTransportNote`；复用 `at.TransportClient`（`MovementType=GT`）  
 > **用途/当事人：** [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) §9  
@@ -160,7 +160,7 @@ Annul HTTP：复用 `POST …/fiscal-documents/{id}/annul`，按 `document_type`
 | ship_from / ship_to | 否 | 结构化；规则同 [`fiscal-gr.zh.md`](fiscal-gr.zh.md)（省略＝门店 / 客户地址） |
 | movement_start_at | 是 | |
 
-**错误码：** `validation_failed`、`series_missing`、`at_transport_unavailable`、`at_transport_rejected`、`idempotency_conflict`。
+**错误码：** `validation_failed`、`series_missing`、`transfer_nif_not_store`（调拨 NIF ≠ 本店）、`customer_nif_is_store`（外送用本店 NIF）、`recipient_name_required`、`transport_address_incomplete`、`movement_start_past`、`at_transport_unavailable`、`at_transport_rejected`（AT 原文 + Admin 前缀）、`at_number_taken`（AT `-3`）、`idempotency_conflict`。两条 NIF 规则与名称规则 Admin 签发前同码预检（不发请求），服务端为最终校验。
 
 ### 7.2 作废
 
@@ -229,5 +229,6 @@ Annul HTTP：复用 `POST …/fiscal-documents/{id}/annul`，按 `document_type`
 
 | 日期 | 说明 |
 |------|------|
+| 2026-11-03 | T5 live（AT test）走通：调拨 GT /1–/2、外送 GT /3（纳税人）/4（非纳税人）；NIF 场景错误码独立；Admin 调拨预填离开即撤回；收货方名称规则；作废仍只改本地（待定是否报 AT） |
 | 2026-10-15 | 定稿：与 GR 边界、transfer/customer、状态仅 N/A、唯一路径、分刀 T0–T5 |
 | 2026-10-15 | 钉死：`ready_to_gt`；装卸不硬拦+提示；调拨允许别名；外送轻提示另开票；作废=N→A 与 GR 同权限；先 mock T1–T4 |

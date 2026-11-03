@@ -1,64 +1,99 @@
-# 本次改动业务场景测试报告：A2 从 Admin 签发 GR / GT（AT test）
+# 本次改动业务场景测试报告：A2 GR / GT 全场景互动测试（AT test）
 
 日期：2026-11-03  
-分支：`fix/gr-gt-movement-start-not-past`  
+分支：`main`（`fix/gr-gt-movement-start-not-past` 已合入，`a7c13cc`）  
 仓库：`farvoo-fatura`  
 本机：`http://127.0.0.1:17881`（`FISCAL_AT_ENV=test`，`fiscal-test.db`，子用户 `519655290/1`）  
-方式：Agent 起环境，用户在 Admin 真界面操作，Agent 读报文转储与本地库核对。
+方式：全场景互动任务式（`.claude/skills/interactive-scenario-test`）——Agent 列矩阵、起环境、发任务卡；用户在 Admin 真界面操作；Agent 读 SOAP 转储 / 本地库 / 日志核对；发现缺陷先分析、用户同意后当场修，再复测。
 
 ## 1. 本次修改
 
-- **内容：** GT「调拨」会把本店 NIF / 名称预填进购方；离开调拨（票种切走 GT，或场景改「外送客户」）时原样保留，导致 GR 购方变成本店自己。现在离开调拨时撤回预填，回到散客（空 NIF、`Consumidor Final`）；用户改过的值不动。
-- **文件：** `internal/fiscal/bootstrap/admin/index.html`、本报告。
-- **唯一写法：** 预填记在 `transferPrefill`，只由 `clearTransferPrefill` 撤回（`syncGtPurposeUI` 非调拨分支 + `syncGrFieldsVisibility` 非 GT 分支）。
+| 提交 | 内容 |
+|------|------|
+| `2eef4b1` | GT 调拨预填本店购方，离开调拨即撤回 |
+| `cfe1e01` → `e83f5df` | FT/FS 软推荐：先不再覆盖 FR/PF/GR/GT，最终定为**只升不降**（FS→FT；从不降回 FS） |
+| `0a6142a` | 「收货方是 IVA 纳税人」由 NIF 决定（`syncRecipientVatFromNif`；共用 `isIdentifiedNif`） |
+| `917c45a` | GR/GT 非纳税人收货方保留所填名称（`applyManualRecipient`）；空 / `Consumidor Final` → `recipient_name_required` |
+| `214ce6d` | 购方名称 `Consumidor Final` 改为占位提示，不再预填 |
+| `f3ceaff` | GT 两条 NIF 规则独立错误码（`transfer_nif_not_store` / `customer_nif_is_store`）+ 签发前预检 |
+| `54fb78e` | AT 拒绝可读：`at_transport_rejected` 只带 AT 原文，Admin 前缀「税务局（AT）拒绝」；`-3` → `at_number_taken` |
+| `bc82832` | 用户未改过的开运时间签发时顺延到现在 + 1 分钟 |
+| `2e882d4` → `f8aba76` | FT 挂 GR：GR 详情「开发票」+ FT 只挂同一购方 GR（折叠列表）；详情 API `customer` / `item_lines` / `can_issue_sale_from`；顺带修好「从 PF 开真票」（白屏、明细不渲染、税率固定 23%） |
+| `9173f17` | 单测：手填装 / 卸货地发到 AT |
+
+唯一写法：收货方 `applyManualRecipient`；名称 / NIF 校验 `validateGRCustomer`；可挂 GR `domain.LinkableDeliveryNoteStatuses` + `ListLinkableDeliveryNotes`；从单据开票 `startOrderFromDocument`；票种程序改值 `setSelectValue`；软推荐 `syncSaleDocTypeSuggestion`。
 
 ## 2. 核心业务规则
 
-1. 【已实现】先通信 AT，后写库；AT 失败 → 零单据行、不占号。
-2. 【已实现】三个地址只有「收货地址」必填：装货地留空 = 门店地址，卸货地留空 = 收货地址（AT 报文三者齐全）。
-3. 【已实现】GT 调拨：购方 = 本店，`recipient_is_vat_payer = 1`。
-4. 【本次新增】离开调拨即撤回本店购方预填。
+1. 【已实现】GR/GT 先通信 AT，后写库；失败 → 零单据行、不占号。
+2. 【已实现】地址只有收货地址必填；装货地省略 = 门店地址，卸货地省略 = 收货地址（报文三者齐全）。
+3. 【本次】GR/GT 收货方须有名称（`Consumidor Final` 不算）；非纳税人 NIF 留空。
+4. 【本次】FT 只挂同一购方的 GR；散客 GR 只能经 GR 详情「开发票」挂。
+5. 【本次】FT/FS 软推荐只升不降。
+6. 【已查法规】FT 不必有 NIF：消费者 NIF 可选、要求时须打印；纳税人购方须名称 / 地址 / NIF（CIVA art. 36.º n.º 5 a)，DL 28/2019；AT 信息 10376）。
+7. 【已确认】实时报 AT 的只有 GR/GT；其余七种仅系列注册（ATCUD）。
 
-## 3. 详细测试场景
+## 3. 详细测试场景（覆盖表）
 
-### 场景 0：AT test 是否恢复
+### 3.1 自动化（mock）
 
-- **结果：【已验证】** `at-recovery-watch` 16:31 UTC 起返回 2002（13:31 仍 HTTP 500）。
+| ID | 场景 | 结果 |
+|----|------|------|
+| A1 | GR-07 / GT-07 无系列 `series_missing` | pass |
+| A2 | GR-02/03/04/06 FT 挂多张、金额不等、部分开票、无 GR 开 FT | pass |
+| A3 | GR 作废 N→A；已挂 FT 禁作废 | pass |
+| A4 | GT 调拨填客人 NIF、外送填本店 NIF 拒绝（新错误码） | pass |
+| A5 | 纳税人无 NIF 拒绝（GR/GT） | pass |
+| A6 | GT 作废与重复作废幂等 | pass |
+| A7 | 独立 Tab、不计营收 | pass |
+| A8 | SAF-T MovementOfGoods 含 GR/GT | pass |
+| A9 | 打印类型与运输块 | pass |
+| A10 | 开运时间已过 / AT `-100` 同码 | pass |
+| A11 | AT `-3` / `-1` 映射且不占号；手填装卸地到 AT；可挂 GR 按 NIF；原明细 / 收货方快照；`FromDecimal` | pass（单测） |
 
-### 场景 1：GT 首签撞号（旧 GT 系列 `GR2026T01`）
+### 3.2 AT test 真界面（用户操作，Agent 核对）
 
-- **结果：** 17:08:49 UTC，HTTP 200，`ReturnCode -3`「Já foi inserido um Documento de Transporte com o número fornecido」。`GT GR2026T01/1` 撞上探针在同码 GR 系列发过的 `GR GR2026T01/1`（推断：AT 按「系列码 + 号」判重，不看类型）。失败关闭【已验证】：GT 0 行，`last_number` 0。
-- **处理：** 产品无「换系列」入口（每票种仅一个 ACTIVE 系列，GT 卡变灰）；测试库备份为 `fiscal-test.db.bak-20261103-before-gt-retire` 后把该行（0 张单）标 `RETIRED`；用户在 Admin 注册 `GT2026T01` → 验证码 `AAJFJP8X9D`（17:15:31 UTC）。
-
-### 场景 2：Admin 开 GR（重跑 2026-11-02 场景 1）
-
-- **操作：** 发货单 → 只填收货地址 `Rua São José Nº9 Ribafria Alenquer / Lisboa / 2580-557` → 装/卸留空 → 签发。
-- **结果：【已验证】pass** 17:17:19 UTC：`ReturnCode 0 OK`，`ATDocCodeID 1108720320`；本地 `GR GR2026T02/1`，`ATCUD AAJFJB8H8B-1`，`N`，已打印；`last_number` 0 → 1，`previous_hash` 空。`AddressFrom` = 门店 `Rua Demo 1`，`AddressTo` = 收货地址。
-- **发现：** 购方是本店 `519655290 / Farvoo Demo Lda`（此前切过 GT 调拨留下，用户确认非本意）→ 本次修复。
-
-### 场景 3：Admin 开 GT（调拨）
-
-- **操作：** 运输单 → 调拨（购方自动 = 本店）→ 只填收货地址 → 签发。
-- **结果：【已验证】pass** 17:23:56 UTC：`ReturnCode 0 OK`，`ATDocCodeID 1108720347`；本地 `GT GT2026T01/1`，`ATCUD AAJFJP8X9D-1`，`N`，`movement_purpose=transfer`，`recipient_is_vat_payer=1`；`last_number` 0 → 1。开运时间 `2026-11-03T18:18:00`。
-
-### 场景 4：离开调拨撤回本店购方
-
-- **结果：** `go test ./internal/fiscal/bootstrap/...` pass；Admin 手测【未单独记录】（修复后用户直接签了 GT，GR 未再签）。
+| 卡 | 场景 | 结果 | 证据 |
+|----|------|------|------|
+| L1 | AT 不可用失败关闭（11-02） | pass | 见 [`2026-11-02-a2-admin-gr-test.md`](2026-11-02-a2-admin-gr-test.md) |
+| L2 | 旧 GT 系列撞号 `-3` 失败关闭 | pass | 17:08:49 UTC |
+| L3 | GR 只填收货地址 | pass | `GR GR2026T02/1` → `1108720320` |
+| L4 | GT 调拨 | pass | `GT GT2026T01/1` → `1108720347`、`/2` → `1108720452` |
+| 1 | 切票种 / 场景购方撤回 + GT 外送纳税人 | pass（首签 `-1` NIF 无效，换真实 NIF） | `GT GT2026T01/3` → `1108720495` |
+| 2 | GT 外送非纳税人 | pass（名称缺陷已修） | `GT GT2026T01/4` → `1108720517` |
+| 3 | GR 散客 + 名称拦截 | pass | `GR GR2026T02/3` → `1108720797`，名称 `Maria Costa` |
+| 4 | GR 手填装 / 卸货地 | pass | `GR GR2026T02/6` → `1108721190`（Loures / Rua Augusta） |
+| 5a–e | 本地拦截：调拨他人 NIF、外送本店 NIF、缺收货地址、邮编格式、开运时间已过 | pass（5b 提示缺陷已修） | 期间无报文、不占号 |
+| 6 | FT 挂 GR + 作废（GR-10/12、GT 作废） | **待测** | 页面已按新设计重做，待用户真界面执行 |
+| — | 列表 Tab / 重打票面抬头 | **未测** | 未发卡 |
 
 ## 4. 实际测试结果
 
 | 项 | 结果 |
-|---|---|
-| AT test 系列 / 运输服务恢复 | pass |
-| Admin GR → 真 `ATDocCodeID` | **pass**（1108720320） |
-| Admin GT → 真 `ATDocCodeID` | **pass**（1108720347） |
-| 撞号时失败关闭 | pass |
-| 切票种撤回本店购方 | 单测 pass；界面待手测 |
+|----|------|
+| Admin GR → 真 `ATDocCodeID` | pass（/1–/7） |
+| Admin GT → 真 `ATDocCodeID` | pass（/1–/4） |
+| AT 拒绝 / 不可用失败关闭 | pass |
+| 本地拦截 5 项 | pass |
+| 本轮发现并修复缺陷 | 10 项（§1） |
+| `go test ./internal/fiscal/...` | pass |
+| 回归 GR / GT / PF / 手工 FT / FT-FS 推荐 / 界面语言 | pass；其余回归脚本未跑 |
+| FT 挂 GR 真界面 | 未验证（页面走查以调试方式触发，见 §5） |
 
 ## 5. 风险与待确认
 
-- `ReturnCode -3` 未在 `transportReturnCodes` 映射，界面显示葡语原文；生产出现即说明本地号与 AT 已登记号脱节，宜单独给三语提示（未改）。
-- 无停用 / 更换系列入口：系列一旦出问题只能改库。生产前需定产品方案（AT 侧 `finalizarSerie` + 本地新系列）。
-- 城市与邮编不校验一致（`Lisboa` + `2580-557` Alenquer，AT 照收）。
-- 测试中误签两张 FT（`FT FT2026DEMO01/2`、`/3`，17:21 / 17:22 UTC），票种下拉未切到「运输单」——test 数据，保留。
-- 遗留：`fiscal-gt-regression.mjs` / GR mock 回归本次未跑（A2 关闭条件之一）。
+**待产品定：**
+- 纳税人购方 FT 的名称 / 地址：有 NIF 时未强制（缺名称以 NIF 代填、地址 `Desconhecido`）；系统分不清「公司」与「要求印 NIF 的消费者」，需定是否加「公司客户」标记。FT 表单无地址栏，从 GR 开发票时收货地址不带入。
+- 详情页动作门禁 `ready_to_issue` 含云端 `fiscal_profile`：本测试 Agent 未配对云端 → 「开发票」「开真票」「冲销」「借记」「登记收款」在此环境都不显示（签发本身不受影响）。可选：测试库设门店类型，或改按钮门禁。
+- GR 收货方用本店 NIF 目前允许（GT 外送已禁）。
+- 无停用 / 更换系列入口（本次改库 `RETIRED`，备份 `fiscal-test.db.bak-20261103-before-gt-retire`）。
+- 已知 NIF 自动带名称会覆盖已填名称。
+- 城市与邮编不校验一致性。
+- GR/GT 作废只改本地，不报 AT。
+
+**已知实现缺口：**
+- 「只挂同一购方 GR」仅由列表接口与 Admin 保证，`linkDeliveryNotesInTx` 未校验。
+- 非纳税人收货方 AT 报文 `CustomerTaxID=999999990`（AT test 接受），待与运输 WS 手册核对。
+- A2 关闭：剩其余回归脚本与 §7.2 脱敏 fixtures。
+
+**测试数据：** 误签 FT `FT2026DEMO01/2`、`/3`、`/4`（FT/FS 推荐覆盖 GR/GT 所致，已修）、意外 GR `/7`（本店 NIF，用户有意）；GR `/2`、GT `/4` 收货方名称为 `Consumidor Final`（修复前签出）。均为 test 数据，保留。

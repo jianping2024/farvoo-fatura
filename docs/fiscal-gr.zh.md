@@ -1,8 +1,8 @@
 # GR：发货 / 交货单（Guia de remessa）
 
-> **状态：定稿**（G1–G6 已落地；G7 live AT 仍 blocked）  
+> **状态：定稿**（G1–G6 已落地；G7 = A2 live：2026-11-03 Admin 在 AT test 签发 GR 拿到真 `ATDocCodeID`，A2 待 mock 回归后关闭）  
 > **权威：是**（GR 行为、实现步骤、AT 运输通信与测试接入；库列与 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/014_gr_delivery.sql` 对齐）  
-> **对应实现：** `store.IssueGR` / `AnnulGR`、`store.linkDeliveryNotesInTx`、`service.IssueDeliveryNote`、`at.TransportClient`（默认 mock）  
+> **对应实现：** `store.IssueGR` / `AnnulGR`、`store.linkDeliveryNotesInTx`、`store.ListLinkableDeliveryNotes`、`service.IssueDeliveryNote`、`service.applyManualRecipient`、`at.TransportClient`（默认 mock；`FISCAL_AT_ENV=test` 走 SOAP）  
 > **test/prod 统一接入：** 见 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md)（A2 = 原 G7）  
 > **用途/当事人：** [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) §8  
 > **测试场景：** [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) §9  
@@ -38,11 +38,11 @@
 | AT 通信 | **签发前必须成功**（与销售票「本机签」不同）；失败整单失败 |
 | 通信豁免 | 收货方勾选「非 IVA 纳税人」时 **P0 仍通信**（简化；备选：豁免且不取文档码——非 P0） |
 | 合规要素 | ATCUD、Hash、QR、装货地、卸货地、`movement_start_at`、AT 文档码 |
-| 收货方 | 名称+地址 **必填**；IVA 纳税人 → 真实 NIF；非纳税人 → 无 NIF + 声明文案 |
-| 禁止散客默认 | 禁止空 NIF 静默变 `999999990`（与 FS 不同） |
-| 与 FT | 开 **FT** 时可选挂 1..N 张 GR；金额不轧平 |
+| 收货方 | 名称+地址 **必填**（空名称或 `Consumidor Final` → `recipient_name_required`）；IVA 纳税人 → 真实 NIF；非纳税人 → 无 NIF + 声明文案。Admin「收货方是 IVA 纳税人」由 NIF 决定（有效即勾选） |
+| 禁止散客默认 | 本地快照禁止空 NIF 静默变 `999999990`（与 FS 不同）；手工路径由 `applyManualRecipient` 撤销销售票散客改写并保留所填名称。AT 报文 `CustomerTaxID` 为必填字段，非纳税人现填 `999999990`（AT test 接受）——待与运输 WS 手册核对 |
+| 与 FT | 开 **FT** 时可选挂**同一购方**的 1..N 张 GR；金额不轧平；入口见 §6.3 |
 | 一张 GR 多张 FT | **允许**；首挂 → `F`，其后保持 `F` |
-| 作废 | 仅 `N`→`A`（须 reason）；`F`/`A` 禁止 |
+| 作废 | 仅 `N`→`A`（须 reason）；`F`/`A` 禁止（`annul_not_allowed`）。**只改本地状态，不通知 AT**——live 下是否须向 AT 报作废待定 |
 | 签后补挂/解挂 | **禁止** |
 | 权限 | 已登录可开票操作员（不要求 `can_issue_nc`） |
 | 列表 / 营收 | GR 独立 Tab；**不计入**销售营收 |
@@ -137,7 +137,7 @@
 | movement_start_at | 是 | 未来或「现在起允许的短窗」；禁止早于当前（对齐 AT） |
 | station_id | 否 | |
 
-**错误码：** `validation_failed`、`series_missing`、`at_transport_unavailable`、`at_transport_rejected`、`idempotency_conflict`。
+**错误码：** `validation_failed`、`series_missing`、`recipient_name_required`、`transport_address_incomplete`、`movement_start_past`（本地或 AT `-100`）、`at_transport_unavailable`、`at_transport_rejected`（AT 业务拒绝，`message` 为 AT 原文，Admin 前缀「税务局（AT）拒绝」）、`at_number_taken`（AT `-3`：号已登记，本地系列落后于 AT）、`idempotency_conflict`。
 
 ### 6.2 作废
 
@@ -149,7 +149,16 @@
 |------|------|------|
 | delivery_note_ids | 否 | `string[]`；仅当签发 **FT** 时合法 |
 
-校验：每张存在、`document_type=GR`、`status∈{N,F}`、未作废；FS/FR 带该字段 → `validation_failed`。
+校验：每张存在、`document_type=GR`、`status∈{N,F}`（`domain.LinkableDeliveryNoteStatuses`）、未作废；FS/FR 带该字段 → `validation_failed`；不可挂 → `delivery_not_allowed`。
+
+| 接口 | 用途 |
+|------|------|
+| `GET /local/v1/delivery-notes/linkable?customer_nif=` | 该购方可挂的 GR（`N`/`F`，新→旧，不分页）；空 NIF → `[]`；NIF 无效 → `validation_failed` |
+| `GET /local/v1/fiscal-documents/{id}`（GR / PF） | 另含 `customer`（收货方快照）、`item_lines`（原明细，手工开票行结构）、`can_issue_sale_from`（可否作为开 FT 来源） |
+
+Admin 两个入口（权威说明见用途文 §8.5）：GR 详情「开发票」预填原明细并默认挂本 GR；签发 FT 时按购方 NIF 折叠列出该客户可挂 GR。
+
+**已知缺口：**「只挂同一购方」目前由列表接口与 Admin 保证；签发时的 `linkDeliveryNotesInTx` **尚未**校验 GR 收货方 NIF = FT 购方 NIF（直接调 API 仍可挂他人 GR），待补服务端校验。
 
 ---
 
@@ -345,6 +354,8 @@ apps/fiscal-agent/internal/fiscal/at/testdata/transport/
 
 **关闭条件：** G1–G6 全绿；G7/A2 有证则必须绿，无证则文档标明 blocked + mock 覆盖。
 
+**进展（2026-11-03）：** Admin 签发 `GR GR2026T02/1`…`/7` 均拿到真 `ATDocCodeID`（含散客、纳税人、手填装/卸货地）；见 [`test-scenarios/2026-11-03-a2-admin-gt-test.md`](test-scenarios/2026-11-03-a2-admin-gt-test.md)。
+
 ---
 
 ## 10. Admin / 打印 / SAF-T（摘要）
@@ -362,7 +373,7 @@ apps/fiscal-agent/internal/fiscal/at/testdata/transport/
 
 | 脚本 / 测试 | 覆盖 |
 |-------------|------|
-| `go test ./internal/fiscal/...` | IssueGR、Annul、link、NIF、mock AT |
+| `go test ./internal/fiscal/...` | IssueGR、Annul、link、可挂列表按 NIF、原明细 / 收货方快照、NIF、收货方名称、AT 拒绝码映射、mock AT |
 | `node scripts/fiscal-gr-regression.mjs` | 场景 GR-01…10（对齐场景文） |
 | `-tags=at_transport_live` | 真实测试港（可选） |
 
@@ -372,6 +383,7 @@ apps/fiscal-agent/internal/fiscal/at/testdata/transport/
 
 | 日期 | 说明 |
 |------|------|
+| 2026-11-03 | AT test live 走通；收货方名称规则（`recipient_name_required`）；FT 只挂同一购方 GR + GR 详情「开发票」+ 可挂列表接口；错误码表补全；标注服务端同购方校验与作废报 AT 两处缺口 |
 | 2026-10-15 | G7 并入 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) A2 |
 | 2026-10-15 | 定稿：行为 + 实现分刀 + AT 通信 P0；下载公开 zip 并记录证书已过期；测试接入步骤与刷新脚本 |
 | 2026-10-15 | 从 elsif 镜像取得现行 `TesteWebservices`（至 2027-01-06）与 `ChaveCifraPublicaAT`（至 2027-04-15）；更新 §8 |

@@ -15,7 +15,7 @@
 |----|------|------|------------------|
 | **A0** | 共享底座（加密 + mTLS + SOAP 公共件） | **已完成**（2026-11-02；0.5.59） | 无网单测绿；mock 行为不变 |
 | **A1** | 系列 SOAP live（test） | **已完成**（2026-11-02）：Admin 经 test 港注册 FT/FS/GR，真验证码入 `fiscal-test.db` | test 注册至少一种销售系列 + GR 系列，得真 `validation_code` |
-| **A2** | 运输 SOAP live（test）= 原 G7 / GT T5 | **进行中**：探针真 ATDocCodeID ✅；Admin 开 GR / GT 真 `ATDocCodeID` ✅（2026-11-03）；待 mock 回归确认后关闭 | test 返回真 `ATDocCodeID`；mock 回归仍绿 |
+| **A2** | 运输 SOAP live（test）= 原 G7 / GT T5 | **进行中**：关闭条件 1 ✅（Admin GR /1–/7、GT /1–/4 真 `ATDocCodeID`）、2 ✅（AT `-3` / `-1` 拒绝均零行不占号）；3 部分：`go test ./internal/fiscal/...` + GR/GT/PF/手工 FT/FT-FS 推荐/界面语言 6 套回归绿，**其余回归脚本未跑**；§7.2 第 3 步脱敏 fixtures 未入库 | test 返回真 `ATDocCodeID`；mock 回归仍绿 |
 | **A3** | prod 门禁 | 未开始 | 正式证；禁止测试 pfx 打 prod |
 | A4 | 观测 / Admin 只读 `at_env`（可选） | 未开始 | 非本阶段硬门槛 |
 
@@ -337,13 +337,13 @@ apps/fiscal-agent/internal/fiscal/at/
 | 幂等 | 同 `request_id` 已签发 → 直接返回，**不再**通信 AT |
 | 地址 | `domain.Address` 结构化贯穿 API / DB（迁移 017）/ 打印 / SAF-T / AT；不做文本解析。省略装货地＝门店地址，省略卸货地＝客户地址；三者 `ValidatePT` 在 service 统一校验（mock 同 live） |
 | ATCUD | 报文带 `<ATCUD>`（现行 AT schema；镜像 WSDL 无此字段，缺则 AT 告警） |
-| 错误 | `at.ErrTransportInvalid`（本地拦截）/ `ErrTransportUnavailable`（网络、认证、配置，可重试）/ `ErrTransportRejected`（AT 拒绝）；SOAP fault 与 ReturnCode 统一在 `at/errors.go`：先按**来源**分类（fault `<detail>` 命名空间为 `http://autenticacao.portaldasfinancas.gov.pt/…` 的认证层 fault 一律 unavailable，如 2026-11-02 AT 凭证后端返回 HTML 时的 33「mismatched tag, expected hr」），服务层 fault 再查码表（1199、118 → unavailable；33 schema → rejected）；ReturnCode 54 缺 WDT → rejected |
+| 错误 | `at.ErrTransportInvalid`（本地拦截）/ `ErrTransportUnavailable`（网络、认证、配置，可重试）/ `ErrTransportRejected`（AT 拒绝；服务码 `at_transport_rejected`，`message` 仅为 AT `ReturnMessage`，Admin 显示「税务局（AT）拒绝，单据未签发：<原文>」；ReturnCode `-3` → `at_number_taken`，`-100` → `movement_start_past`）；SOAP fault 与 ReturnCode 统一在 `at/errors.go`：先按**来源**分类（fault `<detail>` 命名空间为 `http://autenticacao.portaldasfinancas.gov.pt/…` 的认证层 fault 一律 unavailable，如 2026-11-02 AT 凭证后端返回 HTML 时的 33「mismatched tag, expected hr」），服务层 fault 再查码表（1199、118 → unavailable；33 schema → rejected）；ReturnCode 54 缺 WDT → rejected |
 | 对账 | AT 已登记但本地落库失败 → `audit_log` `at_transport_unsaved`（单号 + ATDocCodeID）并报错 |
 | 子用户权限 | 运输需 **WDT**（Webservice de comunicação de documentos de transporte）；系列需 WSE |
 | SAF-T | `ShipTo`/`ShipFrom` 按 XSD 置于 `MovementStartTime` 前，写完整 `<Address>`（旧单据缺项填 `Desconhecido`） |
 
 **live 记录（2026-11-02）：** 探针 `GR GR2026T01/2` → `ATDocCodeID 1108714649`（ReturnCode 0 / OK）。  
-**live 记录（2026-11-03，Admin）：** `GR GR2026T02/1` → `1108720320`；`GT GT2026T01/1`（新 GT 系列，验证码 `AAJFJP8X9D`）→ `1108720347`。旧 GT 系列 `GR2026T01` 与探针同码 GR 撞号（ReturnCode -3），测试库标 `RETIRED`。见 [`2026-11-03-a2-admin-gt-test.md`](test-scenarios/2026-11-03-a2-admin-gt-test.md)。
+**live 记录（2026-11-03，Admin）：** GR `GR2026T02/1`…`/7`（含散客、纳税人、手填装 / 卸货地）与 GT `GT2026T01/1`…`/4`（调拨、外送纳税人、外送非纳税人；新 GT 系列验证码 `AAJFJP8X9D`）均得真 `ATDocCodeID`（如 GR /1 → `1108720320`、GT /1 → `1108720347`）。AT 拒绝实例：`-3`「号已登记」（旧 GT 系列 `GR2026T01` 与探针同码 GR 撞号，测试库标 `RETIRED`）、`-1`「收货方 NIF 无效」（`123456789` 校验位合法但 AT 无此号）。非纳税人收货方报文 `CustomerTaxID=999999990`（AT 接受；待与手册核对）。见 [`2026-11-03-a2-admin-gt-test.md`](test-scenarios/2026-11-03-a2-admin-gt-test.md)。
 
 **遗留（另立）：** SAF-T `DocumentStatus` 缺 `SourceBilling`、发票 `DocumentStatus` 非结构 —— 全单据类型 SAF-T 合规问题，未在本刀处理。
 
@@ -418,3 +418,4 @@ at/soaputil.go
 | 2026-11-02 | **A0 落地**（0.5.59）：`EncryptATAuth` / `LoadClientTLS` / SOAP 公共件 / `LiveMaterialsFromEnv`；下一刀 = A1 |
 | 2026-11-02 | **P0 修复**：非法 `fiscal_at_env` 失败关闭；config 覆盖残留 env；按 env 分库 + `fiscal_meta.at_env` 印记 |
 | 2026-11-02 | **P0：产品只走打包/`config.json`**，禁止要求客户改系统环境变量；§4.0–§4.3 |
+| 2026-11-03 | **A2 Admin live**：GR /1–/7、GT /1–/4 真 `ATDocCodeID`；AT 拒绝 `-3`/`-1` 失败关闭；拒绝码映射与 Admin 提示；A2 剩全量回归 + 脱敏 fixtures |

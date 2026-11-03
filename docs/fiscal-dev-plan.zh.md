@@ -3,7 +3,7 @@
 > **状态：定稿**（里程碑顺序与每步交付物；**P0 认证阶段已关闭**）  
 > **权威：是**（本仓工程推进顺序以本文为准）  
 > **对应实现：** **M0–M6 + M3.2（含 M3.2b/M3.2c）已完成**（权威制品 **0.4.55**）；**认证自动项 + 手测已通过**（2026-09-02）。GR/GT **mock 已完成**。  
-> **下一步（已拍板 2026-11-02）：** AT test 联调，权威分刀见 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) — **A0、A1 已完成**；**A2 运输 live 进行中**（Admin 开 GR/GT 已得真 `ATDocCodeID`，2026-11-03；待 mock 回归后关闭）→ A3 prod。  
+> **下一步（已拍板 2026-11-02）：** AT test 联调，权威分刀见 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) — **A0、A1 已完成**；**A2 运输 live 进行中**（Admin 开 GR/GT 已得真 `ATDocCodeID`，2026-11-03；剩全量回归与脱敏 fixtures 后关闭）→ A3 prod。  
 > **写作规范：** [`design-doc-standards.zh.md`](design-doc-standards.zh.md)
 
 ## 依据（只读，不替代本文交付定义）
@@ -21,8 +21,8 @@
 | [`print-agent-lessons.zh.md`](print-agent-lessons.zh.md) | 打印/安装器踩坑 |
 | [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) | 九种单据**用途 / 当事人 / 开具方法**合订（含 GR/GT 行为口径） |
 | [`fiscal-doc-type-test-scenarios.zh.md`](fiscal-doc-type-test-scenarios.zh.md) | 九种单据开票场景与测试方案 |
-| [`fiscal-gr.zh.md`](fiscal-gr.zh.md) | **GR 发货单**行为、实现分刀（G1–G6 已落地；G7 = live 运输） |
-| [`fiscal-gt.zh.md`](fiscal-gt.zh.md) | **GT 运输单**行为与实现分刀（定稿未落地；复用 TransportClient） |
+| [`fiscal-gr.zh.md`](fiscal-gr.zh.md) | **GR 发货单**行为、实现分刀（G1–G6 已落地；G7 = A2 live，AT test 已通） |
+| [`fiscal-gt.zh.md`](fiscal-gt.zh.md) | **GT 运输单**行为与实现分刀（T1–T4 mock 已落地；T5 live 随 A2，AT test 已通） |
 | [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md) | **AT test/prod 统一接入**（系列 SOAP + 运输 SOAP；A0–A3） |
 | [`fiscal-rg.zh.md`](fiscal-rg.zh.md) | **RG 收款收据**行为与唯一写路径（已落地） |
 
