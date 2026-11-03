@@ -660,7 +660,23 @@
       position: fixed; inset: 0; background: rgba(20,32,27,.45); z-index: 40;
       display: grid; place-items: center; padding: 1rem;
     }
-    .modal { background: var(--panel); border-radius: 16px; max-width: 520px; width: 100%; max-height: 80vh; overflow: auto; padding: 1.25rem; box-shadow: var(--shadow); }
+    /* Modal shell: head/foot pinned; only .modal-body scrolls (restaurant Modal pattern). */
+    .modal {
+      background: var(--panel); border-radius: 16px; max-width: 520px; width: 100%;
+      max-height: 80vh; box-shadow: var(--shadow);
+      display: flex; flex-direction: column; overflow: hidden; padding: 0;
+    }
+    .modal-head {
+      flex-shrink: 0; padding: 1.15rem 1.25rem 0.85rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .modal-head h2 { margin: 0; font-size: 1.15rem; }
+    .modal-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 1rem 1.25rem; }
+    .modal-foot {
+      flex-shrink: 0; padding: 0.85rem 1.25rem 1.15rem;
+      border-top: 1px solid var(--line); background: var(--panel);
+    }
+    .modal-foot .actions { margin-top: 0; }
     .line-input { width: 4rem; padding: 0.35rem; }
     @media (max-width: 860px) {
       #app-shell.on { grid-template-columns: minmax(0, 1fr); }
@@ -1458,133 +1474,179 @@
 
   <div id="invoiceDetailModal" class="modal-backdrop hidden">
     <div class="modal invoice-detail-modal">
-      <div class="topbar" style="margin-bottom:0.5rem">
-        <h2 id="invoiceDetailTitle" style="margin:0;font-size:1.15rem" data-i18n="invoice.detail.title">发票详情</h2>
-        <button type="button" class="secondary" id="btnCloseInvoiceDetail" data-i18n="common.close">关闭</button>
+      <div class="modal-head">
+        <h2 id="invoiceDetailTitle" data-i18n="invoice.detail.title">发票详情</h2>
       </div>
-      <dl class="detail-grid" id="invoiceDetailBody"></dl>
-      <div class="actions">
-        <button type="button" class="secondary hidden" id="btnInvoiceDetailCredit" data-i18n="action.credit">冲销</button>
-        <button type="button" class="secondary hidden" id="btnInvoiceDetailDebit" data-i18n="action.debit">借记</button>
-        <button type="button" class="secondary hidden" id="btnInvoiceDetailReceipt" data-i18n="action.receipt">登记收款</button>
-        <button type="button" class="secondary hidden" id="btnInvoiceDetailIssueFromPf" data-i18n="action.issue_from_pf">开真票</button>
-        <button type="button" class="secondary hidden" id="btnInvoiceDetailAnnulPf" data-i18n="action.annul_pf">作废</button>
-        <button type="button" class="secondary" id="btnInvoiceDetailReprint" data-i18n="action.reprint">重打</button>
+      <div class="modal-body">
+        <dl class="detail-grid" id="invoiceDetailBody"></dl>
+      </div>
+      <div class="modal-foot">
+        <div class="actions">
+          <button type="button" class="secondary hidden" id="btnInvoiceDetailCredit" data-i18n="action.credit">冲销</button>
+          <button type="button" class="secondary hidden" id="btnInvoiceDetailDebit" data-i18n="action.debit">借记</button>
+          <button type="button" class="secondary hidden" id="btnInvoiceDetailReceipt" data-i18n="action.receipt">登记收款</button>
+          <button type="button" class="secondary hidden" id="btnInvoiceDetailIssueFromPf" data-i18n="action.issue_from_pf">开真票</button>
+          <button type="button" class="secondary hidden" id="btnInvoiceDetailAnnulPf" data-i18n="action.annul_pf">作废</button>
+          <button type="button" class="secondary" id="btnInvoiceDetailReprint" data-i18n="action.reprint">重打</button>
+          <button type="button" class="secondary" id="btnCloseInvoiceDetail" data-i18n="common.close">关闭</button>
+        </div>
       </div>
     </div>
   </div>
 
   <div id="adjustModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:560px">
-      <h2 id="adjustModalTitle" data-i18n="adjust.title">纠正发票</h2>
-      <div class="credit-tabs">
-        <button type="button" class="secondary" id="adjustTabFull" data-i18n="adjust.tab.full">全额</button>
-        <button type="button" class="secondary active" id="adjustTabPartial" data-i18n="adjust.tab.lines">按行</button>
+      <div class="modal-head">
+        <h2 id="adjustModalTitle" data-i18n="adjust.title">纠正发票</h2>
       </div>
-      <div id="adjustFullPane" class="hidden">
-        <p class="hint" id="adjustFullHint" data-i18n="adjust.full_hint">将对整张发票剩余金额全额处理。</p>
+      <div class="modal-body">
+        <div class="credit-tabs">
+          <button type="button" class="secondary" id="adjustTabFull" data-i18n="adjust.tab.full">全额</button>
+          <button type="button" class="secondary active" id="adjustTabPartial" data-i18n="adjust.tab.lines">按行</button>
+        </div>
+        <div id="adjustFullPane" class="hidden">
+          <p class="hint" id="adjustFullHint" data-i18n="adjust.full_hint">将对整张发票剩余金额全额处理。</p>
+        </div>
+        <div id="adjustPartialPane">
+          <table class="credit-lines-table">
+            <thead><tr><th></th><th data-i18n="adjust.col.line">行</th><th data-i18n="adjust.col.desc">描述</th><th data-i18n="adjust.col.orig">原额</th><th data-i18n="adjust.col.left">剩余</th><th id="adjustAmtColHead" data-i18n="adjust.col.amt">本次金额</th></tr></thead>
+            <tbody id="adjustLinesTbody"></tbody>
+          </table>
+        </div>
+        <div class="field"><label id="adjustReasonLabel" data-i18n="adjust.reason">原因</label><input id="adjustReason" placeholder="" maxlength="200" /></div>
       </div>
-      <div id="adjustPartialPane">
-        <table class="credit-lines-table">
-          <thead><tr><th></th><th data-i18n="adjust.col.line">行</th><th data-i18n="adjust.col.desc">描述</th><th data-i18n="adjust.col.orig">原额</th><th data-i18n="adjust.col.left">剩余</th><th id="adjustAmtColHead" data-i18n="adjust.col.amt">本次金额</th></tr></thead>
-          <tbody id="adjustLinesTbody"></tbody>
-        </table>
-      </div>
-      <div class="field"><label id="adjustReasonLabel" data-i18n="adjust.reason">原因</label><input id="adjustReason" placeholder="" maxlength="200" /></div>
-      <div class="actions">
-        <button type="button" id="btnAdjustNext" data-i18n="settings.wizard.next">下一步</button>
-        <button type="button" class="secondary" id="btnAdjustCancel" data-i18n="common.cancel">取消</button>
+      <div class="modal-foot">
+        <div class="actions">
+          <button type="button" id="btnAdjustNext" data-i18n="settings.wizard.next">下一步</button>
+          <button type="button" class="secondary" id="btnAdjustCancel" data-i18n="common.cancel">取消</button>
+        </div>
       </div>
     </div>
   </div>
 
   <div id="adjustConfirmModal" class="modal-backdrop hidden">
     <div class="modal">
-      <h2 id="adjustConfirmTitle" data-i18n="adjust.confirm_issue">确认签发</h2>
-      <p class="hint" data-i18n="adjust.confirm_hint">签发后不可撤销。</p>
-      <dl class="detail-grid" id="adjustConfirmBody"></dl>
-      <div class="actions">
-        <button type="button" id="btnAdjustSubmit" data-i18n="adjust.confirm_issue">确认签发</button>
-        <button type="button" class="secondary" id="btnAdjustConfirmBack" data-i18n="adjust.back">返回</button>
+      <div class="modal-head">
+        <h2 id="adjustConfirmTitle" data-i18n="adjust.confirm_issue">确认签发</h2>
+      </div>
+      <div class="modal-body">
+        <p class="hint" data-i18n="adjust.confirm_hint">签发后不可撤销。</p>
+        <dl class="detail-grid" id="adjustConfirmBody"></dl>
+      </div>
+      <div class="modal-foot">
+        <div class="actions">
+          <button type="button" id="btnAdjustSubmit" data-i18n="adjust.confirm_issue">确认签发</button>
+          <button type="button" class="secondary" id="btnAdjustConfirmBack" data-i18n="adjust.back">返回</button>
+        </div>
       </div>
     </div>
   </div>
 
   <div id="receiptModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:480px">
-      <h2 data-i18n="receipt.title">登记收款</h2>
-      <p class="hint" id="receiptRemainHint">—</p>
-      <div class="field">
-        <label class="check-row"><input type="checkbox" id="receiptFull" checked /> <span data-i18n="receipt.full">收剩余全部</span></label>
+      <div class="modal-head">
+        <h2 data-i18n="receipt.title">登记收款</h2>
       </div>
-      <div class="field" id="receiptAmountWrap">
-        <label for="receiptAmount" data-i18n="receipt.amount">本次收款</label>
-        <input id="receiptAmount" inputmode="decimal" autocomplete="off" />
+      <div class="modal-body">
+        <p class="hint" id="receiptRemainHint">—</p>
+        <div class="field">
+          <label class="check-row"><input type="checkbox" id="receiptFull" checked /> <span data-i18n="receipt.full">收剩余全部</span></label>
+        </div>
+        <div class="field" id="receiptAmountWrap">
+          <label for="receiptAmount" data-i18n="receipt.amount">本次收款</label>
+          <input id="receiptAmount" inputmode="decimal" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="receiptPay" data-i18n="pay.label">付款方式</label>
+          <select id="receiptPay"></select>
+        </div>
+        <div class="field">
+          <label for="receiptReason" data-i18n="receipt.reason">备注</label>
+          <input id="receiptReason" maxlength="200" />
+        </div>
       </div>
-      <div class="field">
-        <label for="receiptPay" data-i18n="pay.label">付款方式</label>
-        <select id="receiptPay"></select>
-      </div>
-      <div class="field">
-        <label for="receiptReason" data-i18n="receipt.reason">备注</label>
-        <input id="receiptReason" maxlength="200" />
-      </div>
-      <div class="actions">
-        <button type="button" id="btnReceiptSubmit" data-i18n="receipt.submit">签发收据</button>
-        <button type="button" class="secondary" id="btnReceiptCancel" data-i18n="common.cancel">取消</button>
+      <div class="modal-foot">
+        <div class="actions">
+          <button type="button" id="btnReceiptSubmit" data-i18n="receipt.submit">签发收据</button>
+          <button type="button" class="secondary" id="btnReceiptCancel" data-i18n="common.cancel">取消</button>
+        </div>
       </div>
     </div>
   </div>
 
   <div id="confirmActionModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:440px">
-      <h2 id="confirmActionTitle" data-i18n="common.confirm_title">确认操作</h2>
-      <p class="hint" id="confirmActionBody"></p>
-      <div class="actions">
-        <button type="button" id="btnConfirmActionSubmit" data-i18n="common.confirm">确认</button>
-        <button type="button" class="secondary" id="btnConfirmActionCancel" data-i18n="common.cancel">取消</button>
+      <div class="modal-head">
+        <h2 id="confirmActionTitle" data-i18n="common.confirm_title">确认操作</h2>
+      </div>
+      <div class="modal-body">
+        <p class="hint" id="confirmActionBody"></p>
+      </div>
+      <div class="modal-foot">
+        <div class="actions">
+          <button type="button" id="btnConfirmActionSubmit" data-i18n="common.confirm">确认</button>
+          <button type="button" class="secondary" id="btnConfirmActionCancel" data-i18n="common.cancel">取消</button>
+        </div>
       </div>
     </div>
   </div>
 
   <div id="changePinModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:400px">
-      <h2 data-i18n="settings.ops.change_pin">修改 PIN</h2>
-      <div class="field"><label data-i18n="settings.ops.pin_old">当前 PIN</label><input id="changePinOld" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
-      <div class="field"><label data-i18n="settings.ops.pin_new">新 PIN</label><input id="changePinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
-      <div class="field"><label data-i18n="settings.ops.pin_confirm">确认新 PIN</label><input id="changePinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
-      <div class="actions">
-        <button type="button" id="btnChangePinSubmit" data-i18n="common.save">保存</button>
-        <button type="button" class="secondary" id="btnChangePinCancel" data-i18n="common.cancel">取消</button>
+      <div class="modal-head">
+        <h2 data-i18n="settings.ops.change_pin">修改 PIN</h2>
+      </div>
+      <div class="modal-body">
+        <div class="field"><label data-i18n="settings.ops.pin_old">当前 PIN</label><input id="changePinOld" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+        <div class="field"><label data-i18n="settings.ops.pin_new">新 PIN</label><input id="changePinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+        <div class="field"><label data-i18n="settings.ops.pin_confirm">确认新 PIN</label><input id="changePinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      </div>
+      <div class="modal-foot">
+        <div class="actions">
+          <button type="button" id="btnChangePinSubmit" data-i18n="common.save">保存</button>
+          <button type="button" class="secondary" id="btnChangePinCancel" data-i18n="common.cancel">取消</button>
+        </div>
       </div>
     </div>
   </div>
 
   <div id="operatorFormModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:420px">
-      <h2 id="operatorFormTitle" data-i18n="settings.ops.add">添加开票员</h2>
-      <input type="hidden" id="operatorFormId" value="" />
-      <div class="field"><label data-i18n="settings.ops.display_name">显示名称</label><input id="operatorFormName" autocomplete="off" /></div>
-      <div class="field settings-admin-only" id="operatorFormRoleBlock"><label data-i18n="common.role">角色</label>
-        <select id="operatorFormRole"><option value="cashier" data-i18n="settings.ops.cashier">店员</option><option value="owner" data-i18n="settings.ops.owner">店长</option></select>
+      <div class="modal-head">
+        <h2 id="operatorFormTitle" data-i18n="settings.ops.add">添加开票员</h2>
       </div>
-      <div class="field" id="operatorFormPinBlock"><label data-i18n="settings.ops.pin_init">初始 PIN（6 位）</label><input id="operatorFormPin" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
-      <div class="actions">
-        <button type="button" id="btnOperatorFormSubmit" data-i18n="common.save">保存</button>
-        <button type="button" class="secondary" id="btnOperatorFormCancel" data-i18n="common.cancel">取消</button>
+      <div class="modal-body">
+        <input type="hidden" id="operatorFormId" value="" />
+        <div class="field"><label data-i18n="settings.ops.display_name">显示名称</label><input id="operatorFormName" autocomplete="off" /></div>
+        <div class="field settings-admin-only" id="operatorFormRoleBlock"><label data-i18n="common.role">角色</label>
+          <select id="operatorFormRole"><option value="cashier" data-i18n="settings.ops.cashier">店员</option><option value="owner" data-i18n="settings.ops.owner">店长</option></select>
+        </div>
+        <div class="field" id="operatorFormPinBlock"><label data-i18n="settings.ops.pin_init">初始 PIN（6 位）</label><input id="operatorFormPin" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      </div>
+      <div class="modal-foot">
+        <div class="actions">
+          <button type="button" id="btnOperatorFormSubmit" data-i18n="common.save">保存</button>
+          <button type="button" class="secondary" id="btnOperatorFormCancel" data-i18n="common.cancel">取消</button>
+        </div>
       </div>
     </div>
   </div>
 
   <div id="operatorResetPinModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:400px">
-      <h2 data-i18n="settings.ops.reset_pin">重置 PIN</h2>
-      <input type="hidden" id="operatorResetPinId" value="" />
-      <div class="field"><label data-i18n="settings.ops.pin_new">新 PIN</label><input id="operatorResetPinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
-      <div class="field"><label data-i18n="settings.ops.pin_confirm">确认新 PIN</label><input id="operatorResetPinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
-      <div class="actions">
-        <button type="button" id="btnOperatorResetPinSubmit" data-i18n="settings.ops.reset_pin">重置 PIN</button>
-        <button type="button" class="secondary" id="btnOperatorResetPinCancel" data-i18n="common.cancel">取消</button>
+      <div class="modal-head">
+        <h2 data-i18n="settings.ops.reset_pin">重置 PIN</h2>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="operatorResetPinId" value="" />
+        <div class="field"><label data-i18n="settings.ops.pin_new">新 PIN</label><input id="operatorResetPinNew" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+        <div class="field"><label data-i18n="settings.ops.pin_confirm">确认新 PIN</label><input id="operatorResetPinConfirm" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
+      </div>
+      <div class="modal-foot">
+        <div class="actions">
+          <button type="button" id="btnOperatorResetPinSubmit" data-i18n="settings.ops.reset_pin">重置 PIN</button>
+          <button type="button" class="secondary" id="btnOperatorResetPinCancel" data-i18n="common.cancel">取消</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1593,27 +1655,33 @@
 
   <div id="productPicker" class="modal-backdrop hidden">
     <div class="modal">
-      <h2 id="productPickerTitle" data-i18n="picker.title.add">添加商品</h2>
-      <div id="pickerSearchBlock">
-        <div class="field"><label data-i18n="picker.search">检索</label><input id="pickerSearch" placeholder="名称或编码" data-i18n="picker.search_ph" data-i18n-attr="placeholder" autocomplete="off" /></div>
-        <div id="pickerList" style="max-height:12rem;overflow:auto;margin:0.75rem 0"></div>
-        <button type="button" class="secondary" id="btnShowProductCreate" style="margin-bottom:0.75rem" data-i18n="picker.create_link">没有？新建商品</button>
+      <div class="modal-head">
+        <h2 id="productPickerTitle" data-i18n="picker.title.add">添加商品</h2>
       </div>
-      <div id="productFormFields" class="hidden">
-        <p class="hint" id="productFormHint"></p>
-        <div class="row split">
-          <div class="field"><label data-i18n="product.field.code">编码</label><input id="pCode" placeholder="TEA-01" /></div>
-          <div class="field"><label data-i18n="product.field.name">名称</label><input id="pName" placeholder="花茶套餐" data-i18n="product.name_ph" data-i18n-attr="placeholder" /></div>
+      <div class="modal-body">
+        <div id="pickerSearchBlock">
+          <div class="field"><label data-i18n="picker.search">检索</label><input id="pickerSearch" placeholder="名称或编码" data-i18n="picker.search_ph" data-i18n-attr="placeholder" autocomplete="off" /></div>
+          <div id="pickerList" style="max-height:12rem;overflow:auto;margin:0.75rem 0"></div>
+          <button type="button" class="secondary" id="btnShowProductCreate" style="margin-bottom:0.75rem" data-i18n="picker.create_link">没有？新建商品</button>
         </div>
-        <div class="row split">
-          <div class="field"><label data-i18n="product.field.fiscal_name">税票名称</label><input id="pSaft" placeholder="Cha sortido" /></div>
-          <div class="field"><label data-i18n="product.field.price">售价（含税）</label><input id="pPrice" placeholder="4.50" /></div>
+        <div id="productFormFields" class="hidden">
+          <p class="hint" id="productFormHint"></p>
+          <div class="row split">
+            <div class="field"><label data-i18n="product.field.code">编码</label><input id="pCode" placeholder="TEA-01" /></div>
+            <div class="field"><label data-i18n="product.field.name">名称</label><input id="pName" placeholder="花茶套餐" data-i18n="product.name_ph" data-i18n-attr="placeholder" /></div>
+          </div>
+          <div class="row split">
+            <div class="field"><label data-i18n="product.field.fiscal_name">税票名称</label><input id="pSaft" placeholder="Cha sortido" /></div>
+            <div class="field"><label data-i18n="product.field.price">售价（含税）</label><input id="pPrice" placeholder="4.50" /></div>
+          </div>
+          <div class="field"><label>IVA %</label><select id="pVat"></select></div>
         </div>
-        <div class="field"><label>IVA %</label><select id="pVat"></select></div>
       </div>
-      <div class="actions">
-        <button type="button" id="btnSaveProduct" data-i18n="common.save">保存</button>
-        <button type="button" class="secondary" id="btnClosePicker" data-i18n="common.close">关闭</button>
+      <div class="modal-foot">
+        <div class="actions">
+          <button type="button" id="btnSaveProduct" data-i18n="common.save">保存</button>
+          <button type="button" class="secondary" id="btnClosePicker" data-i18n="common.close">关闭</button>
+        </div>
       </div>
     </div>
   </div>
