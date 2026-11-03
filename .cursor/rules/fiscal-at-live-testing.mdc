@@ -8,7 +8,7 @@ alwaysApply: false
 
 **状态：** 定稿 · 适用 A1/A2（系列、GR/GT 运输）及以后接 AT live 的每一刀
 **范例：** `docs/test-scenarios/2026-11-02-a2-admin-gr-test.md`
-**互动式分工（agent 起环境 → 用户点 Admin → agent 验证）：** `.claude/skills/at-live-interactive-test/SKILL.md`
+**全场景互动任务式测试（agent 列场景、起环境、发任务卡 → 用户点 Admin → agent 验证、记覆盖）：** `.claude/skills/interactive-scenario-test/SKILL.md`
 
 ## P0 规矩
 
