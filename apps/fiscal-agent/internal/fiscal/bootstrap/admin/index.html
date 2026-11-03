@@ -881,7 +881,7 @@
               </div>
               <div class="field" id="invRecipientVatWrap">
                 <label class="check-row" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
-                  <input type="checkbox" id="invRecipientVat" checked />
+                  <input type="checkbox" id="invRecipientVat" />
                   <span data-i18n="gr.recipient_vat">收货方是 IVA 纳税人</span>
                 </label>
               </div>
@@ -2837,6 +2837,12 @@
     return Number(nif[8]) === expected;
   }
 
+  /** ONLY "identified buyer" test: valid 9-digit PT NIF other than the walk-in 999999990. */
+  function isIdentifiedNif(raw) {
+    const nif = nifDigits(raw);
+    return nif.length === 9 && nif !== '999999990' && validatePortugueseNif(nif);
+  }
+
   function customerNifInputError(nif) {
     const t = String(nif || '').trim();
     if (!t) return '';
@@ -2859,9 +2865,7 @@
   function suggestedSaleDocumentType(nifRaw, paymentRaw) {
     const pay = String(paymentRaw || '').trim().toUpperCase() || 'CASH';
     if (pay !== 'CASH') return 'FT';
-    const nif = nifDigits(nifRaw);
-    if (nif.length === 9 && nif !== '999999990' && validatePortugueseNif(nif)) return 'FT';
-    return DEFAULT_SALE_DOC;
+    return isIdentifiedNif(nifRaw) ? 'FT' : DEFAULT_SALE_DOC;
   }
 
   /** ONLY writer that applies suggestedSaleDocumentType onto a doc-type select.
@@ -6130,6 +6134,7 @@
   };
 
   bindCustomerNifAutofill($('#invNif'), $('#invName'));
+  ['input', 'change', 'blur'].forEach(ev => $('#invNif').addEventListener(ev, syncRecipientVatFromNif));
   bindCustomerNifAutofill($('#cNif'), $('#cName'));
   bindSaleDocTypeSuggestion($('#docType'), $('#invNif'), $('#invPay'));
   bindSaleDocTypeSuggestion($('#splitDocType'), $('#splitNif'), $('#splitPay'));
@@ -6449,6 +6454,13 @@
     } else {
       clearTransferPrefill();
     }
+    syncRecipientVatFromNif();
+  }
+
+  /** ONLY writer of #invRecipientVat: ticked iff the buyer NIF is identified (empty / invalid → unticked). */
+  function syncRecipientVatFromNif() {
+    const box = $('#invRecipientVat');
+    if (box) box.checked = isIdentifiedNif($('#invNif') ? $('#invNif').value : '');
   }
 
   /** Store buyer written by the GT transfer prefill; ONLY undone by clearTransferPrefill. */
@@ -6472,6 +6484,7 @@
     if (purposeWrap) purposeWrap.classList.toggle('hidden', dt !== 'GT');
     if (dt === 'GT') syncGtPurposeUI();
     else clearTransferPrefill();
+    syncRecipientVatFromNif();
     // Refresh defaults only when GR/GT fields first appear (not on every re-sync).
     if (show && !grFieldsWereShown) refreshMovementStartDefaults();
     grFieldsWereShown = show;
