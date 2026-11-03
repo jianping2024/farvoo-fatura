@@ -79,6 +79,20 @@ func handleListFiscalDocuments(w http.ResponseWriter, r *http.Request, deps Hand
 	})
 }
 
+// handleListLinkableDeliveryNotes serves the GRs an FT may link (delivery_note_ids candidates).
+func handleListLinkableDeliveryNotes(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
+	if deps.Fiscal == nil {
+		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
+		return
+	}
+	items, err := deps.Fiscal.ListLinkableDeliveryNotes()
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "list_failed", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"delivery_notes": items})
+}
+
 func validDateYMD(s string) bool {
 	_, err := time.Parse("2006-01-02", s)
 	return err == nil

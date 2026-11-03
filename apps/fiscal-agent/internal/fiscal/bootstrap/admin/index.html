@@ -89,6 +89,14 @@
       color: var(--ink); cursor: pointer; user-select: none;
     }
     .check-row span { font-weight: 600; color: var(--ink); }
+    /* FT → GR picker: one row per GR (number never wraps; customer / total muted, truncated). */
+    .gr-link-row {
+      display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0;
+      border-bottom: 1px solid var(--line); font-size: 0.88rem; cursor: pointer; margin: 0;
+    }
+    .gr-link-row:last-child { border-bottom: 0; }
+    .gr-link-no { font-weight: 600; color: var(--ink); white-space: nowrap; }
+    .gr-link-meta { color: var(--muted); font-weight: 400; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     label { display: block; font-size: 0.82rem; color: var(--muted); margin: 0 0 0.35rem; font-weight: 600; }
     .field { margin: 0 0 0.85rem; }
     .hint { color: var(--muted); font-size: 0.85rem; line-height: 1.5; }
@@ -861,6 +869,11 @@
                   <label data-i18n="buyer.name">购方名称</label>
                   <input id="invName" placeholder="Consumidor Final（票面购方）" data-i18n="buyer.name_ph" data-i18n-attr="placeholder" />
                 </div>
+              </div>
+              <div class="field hidden" id="invGrLinkWrap">
+                <label data-i18n="ft.link_gr">挂发货单（可选）</label>
+                <div id="invGrLinkList"></div>
+                <span class="hint" data-i18n="ft.link_gr_hint">可多选；不选也可以开 FT</span>
               </div>
               <div id="grFields" class="hidden">
                 <div class="field hidden" id="gtPurposeWrap">
@@ -2903,10 +2916,18 @@
   function syncSaleDocTypeSuggestion(docSel, nifEl, payEl) {
     if (!docSel || docSel.disabled) return;
     if (docSel.value !== 'FT' && docSel.value !== DEFAULT_SALE_DOC) return;
-    docSel.value = suggestedSaleDocumentType(
+    const next = suggestedSaleDocumentType(
       nifEl ? nifEl.value : '',
       payEl ? payEl.value : 'CASH'
     );
+    setSelectValue(docSel, next);
+  }
+
+  /** ONLY programmatic select writer: sets the value and notifies change listeners like a user pick. */
+  function setSelectValue(sel, value) {
+    if (!sel || sel.value === value) return;
+    sel.value = value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   /** ONLY binder for soft bidirectional FT/FS suggestion (order + split). */
@@ -3933,6 +3954,7 @@
     showView('order-invoice');
     const dt = ($('#docType') && $('#docType').value) || '';
     if (dt === 'GR' || dt === 'GT') refreshMovementStartDefaults();
+    syncGrLinkPicker();
   }
 
   /** ONLY sync for manual order-invoice panel: issued → link + reprint; else → issue CTA. */
@@ -5354,6 +5376,10 @@
       lines
     };
     if (currentOrder.proformaId) body.proforma_id = currentOrder.proformaId;
+    if (docType === 'FT') {
+      const grIds = selectedGrLinkIds();
+      if (grIds.length) body.delivery_note_ids = grIds;
+    }
     if (isPf && currentOrder.validUntil) body.valid_until = currentOrder.validUntil;
     if (isGr || isGt) {
       body.customer_address = ($('#invGrAddress').value || '').trim();
@@ -6069,7 +6095,7 @@
       lines: lines.length ? lines : [{ name: 'Item', saft_name: 'Item', price: inv.gross_total || '0.00', vat: '23.00', qty: 1 }],
       proformaId: inv.document_id
     };
-    $('#docType').value = 'FT';
+    setSelectValue($('#docType'), 'FT');
     showView('order');
     if (typeof renderOrder === 'function') renderOrder();
   };
@@ -6537,7 +6563,40 @@
     if (show && !grFieldsWereShown) refreshMovementStartDefaults();
     grFieldsWereShown = show;
   }
+  /** ONLY FT → GR link picker: server's linkable GR list as checkboxes; read by selectedGrLinkIds. */
+  let grLinkPickerSeq = 0; // last syncGrLinkPicker call; older responses are dropped
+  async function syncGrLinkPicker() {
+    const seq = ++grLinkPickerSeq;
+    const wrap = $('#invGrLinkWrap');
+    const list = $('#invGrLinkList');
+    if (!wrap || !list) return;
+    const show = ($('#docType').value || '') === 'FT';
+    wrap.classList.toggle('hidden', !show);
+    list.innerHTML = '';
+    if (!show) return;
+    let linkable;
+    try {
+      const res = await j('GET', '/local/v1/delivery-notes/linkable');
+      linkable = (res && res.delivery_notes) || [];
+    } catch (e) {
+      if (seq === grLinkPickerSeq) list.innerHTML = '<span class="hint">' + escHtml(FiscalUI.formatError(e)) + '</span>';
+      return;
+    }
+    if (seq !== grLinkPickerSeq) return;
+    list.innerHTML = linkable.length
+      ? linkable.map(r =>
+          '<label class="gr-link-row"><input type="checkbox" value="' + escHtml(r.document_id) + '" />' +
+          '<span class="gr-link-no">' + escHtml(r.invoice_no) + '</span>' +
+          '<span class="gr-link-meta">' + escHtml([r.customer_name, '€' + r.gross_total,
+            r.document_status === 'F' ? FiscalAdminI18n.t('ft.link_gr_invoiced') : ''].filter(Boolean).join(' · ')) +
+          '</span></label>').join('')
+      : '<span class="hint">' + escHtml(FiscalAdminI18n.t('ft.link_gr_none')) + '</span>';
+  }
+  function selectedGrLinkIds() {
+    return [...document.querySelectorAll('#invGrLinkList input:checked')].map(i => i.value);
+  }
   if ($('#docType')) {
+    $('#docType').addEventListener('change', syncGrLinkPicker);
     $('#docType').addEventListener('change', syncGrFieldsVisibility);
     syncGrFieldsVisibility();
   }

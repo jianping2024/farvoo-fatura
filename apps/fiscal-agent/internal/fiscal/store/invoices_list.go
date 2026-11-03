@@ -1,6 +1,7 @@
 package store
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -163,38 +164,9 @@ func (d *DB) ListInvoices(q InvoiceListQuery) (*InvoiceListResult, error) {
 	}
 	offset := (page - 1) * pageSize
 
-	selectQuery := `
-		SELECT i.id, i.invoice_no, i.atcud, i.document_type, i.document_status, i.print_status,
-			i.gross_total, i.system_entry_date, i.hash, IFNULL(i.previous_hash,''),
-			IFNULL(cs.customer_tax_id,''), IFNULL(cs.company_name,''),
-			IFNULL(i.source_sale_id,''), IFNULL(i.display_meta_json,''),
-			IFNULL(` + primaryPaymentMethodSubquery + `, '')` + where +
-		` ORDER BY i.created_at DESC LIMIT ? OFFSET ?`
 	selectArgs := append(append([]any{}, args...), pageSize, offset)
-
-	rows, err := d.SQL.Query(selectQuery, selectArgs...)
+	items, err := d.queryInvoiceListItems(invoiceListSelect+where+` ORDER BY i.created_at DESC LIMIT ? OFFSET ?`, selectArgs...)
 	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	items := []InvoiceListItem{}
-	for rows.Next() {
-		var it InvoiceListItem
-		var displayMeta string
-		if err := rows.Scan(
-			&it.DocumentID, &it.InvoiceNo, &it.ATCUD, &it.DocumentType, &it.DocumentStatus, &it.PrintStatus,
-			&it.GrossTotal, &it.SystemEntryDate, &it.Hash, &it.PreviousHash,
-			&it.CustomerTaxID, &it.CustomerName,
-			&it.SourceSaleID, &displayMeta, &it.PaymentMethod,
-		); err != nil {
-			return nil, err
-		}
-		it.IssuedAt = it.SystemEntryDate
-		it.TableDisplayName, it.SplitName = orderSourceFromMeta(displayMeta)
-		items = append(items, it)
-	}
-	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -274,4 +246,55 @@ func escapeLike(s string) string {
 	s = strings.ReplaceAll(s, `%`, `\%`)
 	s = strings.ReplaceAll(s, `_`, `\_`)
 	return s
+}
+
+// invoiceListSelect is the ONLY column list for InvoiceListItem rows (pair with invoiceListWhere's FROM).
+const invoiceListSelect = `
+		SELECT i.id, i.invoice_no, i.atcud, i.document_type, i.document_status, i.print_status,
+			i.gross_total, i.system_entry_date, i.hash, IFNULL(i.previous_hash,''),
+			IFNULL(cs.customer_tax_id,''), IFNULL(cs.company_name,''),
+			IFNULL(i.source_sale_id,''), IFNULL(i.display_meta_json,''),
+			IFNULL(` + primaryPaymentMethodSubquery + `, '')`
+
+// queryInvoiceListItems is the ONLY scanner for invoiceListSelect rows.
+func (d *DB) queryInvoiceListItems(query string, args ...any) ([]InvoiceListItem, error) {
+	rows, err := d.SQL.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanInvoiceListItems(rows)
+}
+
+func scanInvoiceListItems(rows *sql.Rows) ([]InvoiceListItem, error) {
+	items := []InvoiceListItem{}
+	for rows.Next() {
+		var it InvoiceListItem
+		var displayMeta string
+		if err := rows.Scan(
+			&it.DocumentID, &it.InvoiceNo, &it.ATCUD, &it.DocumentType, &it.DocumentStatus, &it.PrintStatus,
+			&it.GrossTotal, &it.SystemEntryDate, &it.Hash, &it.PreviousHash,
+			&it.CustomerTaxID, &it.CustomerName,
+			&it.SourceSaleID, &displayMeta, &it.PaymentMethod,
+		); err != nil {
+			return nil, err
+		}
+		it.IssuedAt = it.SystemEntryDate
+		it.TableDisplayName, it.SplitName = orderSourceFromMeta(displayMeta)
+		items = append(items, it)
+	}
+	return items, rows.Err()
+}
+
+// ListLinkableDeliveryNotes returns every GR an FT may reference (domain.LinkableDeliveryNoteStatuses),
+// newest first, unpaginated. ONLY reader for the Admin FT → GR picker.
+func (d *DB) ListLinkableDeliveryNotes(storeID string) ([]InvoiceListItem, error) {
+	where, args := invoiceListWhere(InvoiceListQuery{StoreID: storeID, DocumentType: string(domain.DocumentGR)})
+	marks := make([]string, len(domain.LinkableDeliveryNoteStatuses))
+	for i, st := range domain.LinkableDeliveryNoteStatuses {
+		marks[i] = "?"
+		args = append(args, string(st))
+	}
+	where += ` AND i.document_status IN (` + strings.Join(marks, ",") + `)`
+	return d.queryInvoiceListItems(invoiceListSelect+where+` ORDER BY i.created_at DESC`, args...)
 }

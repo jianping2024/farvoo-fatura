@@ -85,14 +85,18 @@ func IsLinkableProformaWorkStatus(s string) bool {
 	}
 }
 
+// LinkableDeliveryNoteStatuses is the ONLY set of GR statuses an FT may reference
+// (normal or already partly invoiced; never annulled).
+var LinkableDeliveryNoteStatuses = []DocumentStatus{WorkStatusNormal, WorkStatusInvoiced}
+
 // IsLinkableDeliveryNoteStatus reports GR statuses that may be referenced by an FT.
 func IsLinkableDeliveryNoteStatus(s string) bool {
-	switch DocumentStatus(s) {
-	case WorkStatusNormal, WorkStatusInvoiced:
-		return true
-	default:
-		return false
+	for _, st := range LinkableDeliveryNoteStatuses {
+		if DocumentStatus(s) == st {
+			return true
+		}
 	}
+	return false
 }
 
 // ParseSaleDocumentType resolves product sale document type; empty → DefaultSaleDocumentType.

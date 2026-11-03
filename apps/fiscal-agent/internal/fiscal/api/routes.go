@@ -221,6 +221,9 @@ func registerFiscalRoutes(mux *http.ServeMux, deps HandlerDeps) {
 	mux.HandleFunc("GET /local/v1/fiscal-documents", g(func(w http.ResponseWriter, r *http.Request) {
 		handleListFiscalDocuments(w, r, deps)
 	}))
+	mux.HandleFunc("GET /local/v1/delivery-notes/linkable", g(func(w http.ResponseWriter, r *http.Request) {
+		handleListLinkableDeliveryNotes(w, r, deps)
+	}))
 	mux.HandleFunc("GET /local/v1/fiscal-documents/revenue-summary", g(func(w http.ResponseWriter, r *http.Request) {
 		handleFiscalDocumentRevenueSummary(w, r, deps)
 	}))

@@ -150,4 +150,33 @@ func TestIssueGR_Annul_LinkFT(t *testing.T) {
 	if err != nil || ann.DocumentStatus != domain.WorkStatusAnnulled {
 		t.Fatalf("annul %+v err=%v", ann, err)
 	}
+
+	// FT → GR picker: linked (F) and normal (N) are offered, annulled (A) is not.
+	gr3, err := db.IssueGR(context.Background(), sig, store.IssueGRParams{
+		StoreID: "store-demo-001", RequestID: "gr-3", OperatorID: "op-demo-cashier",
+		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
+		ShipFrom: testShipFrom, ShipTo: testShipTo, MovementStartAt: moveAt,
+		RecipientIsVATPayer: true, ATDocCodeID: "MOCK3",
+		NowUTC: time.Date(2026, 10, 15, 12, 45, 0, 0, time.UTC),
+		Snapshot: domain.SaleSnapshot{
+			SourceSystem: "manual", SourceSaleID: "gr-sale-3", ScopeType: "manual", ScopeID: "gr-sale-3",
+			FiscalPurpose: "delivery_note",
+			Customer:      grParams.Snapshot.Customer,
+			Lines:         grParams.Snapshot.Lines,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	linkable, err := db.ListLinkableDeliveryNotes("store-demo-001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, it := range linkable {
+		got[it.DocumentID] = it.DocumentStatus
+	}
+	if len(got) != 2 || got[rec.DocumentID] != "F" || got[gr3.DocumentID] != "N" {
+		t.Fatalf("linkable GR %+v (want F %s + N %s, not annulled %s)", got, rec.DocumentID, gr3.DocumentID, gr2.DocumentID)
+	}
 }

@@ -41,6 +41,11 @@ func (s *FiscalService) ListInvoices(q store.InvoiceListQuery) (*store.InvoiceLi
 	return s.db.ListInvoices(q)
 }
 
+// ListLinkableDeliveryNotes returns the GRs an FT may reference for this store.
+func (s *FiscalService) ListLinkableDeliveryNotes() ([]store.InvoiceListItem, error) {
+	return s.db.ListLinkableDeliveryNotes(s.storeID)
+}
+
 // GetInvoiceDetail returns one invoice with credit/debit remaining (FT/FS/FR),
 // receivable (FT), or NC/ND/RG original ref.
 func (s *FiscalService) GetInvoiceDetail(documentID string) (*store.InvoiceDetail, error) {
