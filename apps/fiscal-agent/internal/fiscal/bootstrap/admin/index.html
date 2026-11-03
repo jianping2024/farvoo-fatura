@@ -1068,16 +1068,8 @@
           <p class="hub-stat-hint" id="hubStatHint" data-i18n="home.stat.hint">统计按开票日 · 全店（不受票种 / 搜索影响）</p>
           <div class="panel admin-list-panel invoice-list-panel">
             <div class="invoice-type-tabs" id="invoiceTypeTabs" role="tablist">
+              <!-- Tabs rebuilt by renderInvoiceTypeTabs from ACTIVE series (*_series_ok). -->
               <button type="button" class="secondary active" data-invoice-type="" role="tab"><span data-i18n="common.all">全部</span></button>
-              <button type="button" class="secondary" data-invoice-type="FT" role="tab"><span data-i18n="doc.tab.FT">完整发票</span></button>
-              <button type="button" class="secondary" data-invoice-type="FS" role="tab"><span data-i18n="doc.tab.FS">简式发票</span></button>
-              <button type="button" class="secondary" data-invoice-type="FR" role="tab"><span data-i18n="doc.tab.FR">发票收据</span></button>
-              <button type="button" class="secondary" data-invoice-type="NC" role="tab"><span data-i18n="doc.tab.NC">冲销单</span></button>
-              <button type="button" class="secondary" data-invoice-type="ND" role="tab"><span data-i18n="doc.tab.ND">借记单</span></button>
-              <button type="button" class="secondary" data-invoice-type="RG" role="tab"><span data-i18n="doc.tab.RG">收据</span></button>
-              <button type="button" class="secondary" data-invoice-type="PF" role="tab"><span data-i18n="doc.tab.PF">形式发票</span></button>
-              <button type="button" class="secondary" data-invoice-type="GR" role="tab"><span data-i18n="doc.tab.GR">发货单</span></button>
-              <button type="button" class="secondary" data-invoice-type="GT" role="tab"><span data-i18n="doc.tab.GT">运输单</span></button>
             </div>
             <div class="admin-list-toolbar">
               <div class="admin-list-toolbar__search">
@@ -1752,10 +1744,53 @@
   const DEFAULT_SALE_DOC = 'FS';
   /** Manual / Local API sale types (FT + FS + FR). */
   const SALE_DOC_TYPES = ['FT', 'FS', 'FR'];
-  /** Manual issue dropdown: sales + PF + GR + GT. */
+  /** Manual issue dropdown catalog: sales + PF + GR + GT (filtered by ACTIVE series). */
   const MANUAL_DOC_TYPES = ['FT', 'FS', 'FR', 'PF', 'GR', 'GT'];
   /** Bill-sync issue types only (FT + FS); FR is manual path. */
   const BILL_SYNC_DOC_TYPES = ['FT', 'FS'];
+  /** Invoice list tab catalog order (excluding 全部); visibility = ACTIVE series. */
+  const INVOICE_LIST_DOC_TYPE_CATALOG = ['FT', 'FS', 'FR', 'NC', 'ND', 'RG', 'PF', 'GR', 'GT'];
+  /** ONLY document_type → setup.status *_series_ok key. */
+  const DOC_TYPE_SERIES_OK_KEY = {
+    FT: 'series_ok',
+    FS: 'fs_series_ok',
+    FR: 'fr_series_ok',
+    NC: 'nc_series_ok',
+    ND: 'nd_series_ok',
+    RG: 'rg_series_ok',
+    PF: 'pf_series_ok',
+    GR: 'gr_series_ok',
+    GT: 'gt_series_ok'
+  };
+
+  /** ONLY: store has ACTIVE series for document_type (setup *_series_ok). */
+  function docTypeHasActiveSeries(st, code) {
+    const key = DOC_TYPE_SERIES_OK_KEY[String(code || '').trim().toUpperCase()];
+    return !!(key && st && st[key]);
+  }
+
+  /** ONLY enabled invoice-list tab types: '' (全部) + ACTIVE-series types in catalog order. */
+  function enabledInvoiceListDocTypes(st) {
+    const out = [''];
+    INVOICE_LIST_DOC_TYPE_CATALOG.forEach(function (code) {
+      if (docTypeHasActiveSeries(st, code)) out.push(code);
+    });
+    return out;
+  }
+
+  /** ONLY manual issue dropdown types that have ACTIVE series. */
+  function enabledManualDocTypes(st) {
+    return MANUAL_DOC_TYPES.filter(function (code) {
+      return docTypeHasActiveSeries(st, code);
+    });
+  }
+
+  /** ONLY bill-sync issue types that have ACTIVE series. */
+  function enabledBillSyncDocTypes(st) {
+    return BILL_SYNC_DOC_TYPES.filter(function (code) {
+      return docTypeHasActiveSeries(st, code);
+    });
+  }
   const PAYMENT_METHODS = ['CASH', 'CARD', 'MBWAY', 'MULTIBANCO', 'MIXED', 'ACCOUNT', 'OTHER'];
   /** Settling methods for RG receipt (no ACCOUNT). */
   const RECEIPT_PAYMENT_METHODS = ['CASH', 'CARD', 'MBWAY', 'MULTIBANCO', 'MIXED', 'OTHER'];
@@ -1959,18 +1994,28 @@
     }).join('');
   }
 
+  /** Pick selected value that remains in enabled list (prefer keep → default → first). */
+  function pickEnabledDocType(cur, enabled, fallback) {
+    const list = enabled && enabled.length ? enabled : (fallback ? [fallback] : []);
+    const want = String(cur || '').trim().toUpperCase();
+    if (list.includes(want)) return want;
+    if (fallback && list.includes(fallback)) return fallback;
+    return list[0] || fallback || DEFAULT_SALE_DOC;
+  }
+
   /** ONLY refresh for sale-doc + pay + register selects (locale / enter). */
   function refreshLocalizedSelects() {
     const docSel = $('#docType');
     if (docSel) {
-      const cur = docSel.value || DEFAULT_SALE_DOC;
-      docSel.innerHTML = saleDocTypeOptionsHtml(cur, MANUAL_DOC_TYPES);
+      const enabled = enabledManualDocTypes(setupStatusCache);
+      const cur = pickEnabledDocType(docSel.value || DEFAULT_SALE_DOC, enabled, DEFAULT_SALE_DOC);
+      docSel.innerHTML = saleDocTypeOptionsHtml(cur, enabled.length ? enabled : [DEFAULT_SALE_DOC]);
     }
     const splitSel = $('#splitDocType');
     if (splitSel) {
-      let cur = splitSel.value || DEFAULT_SALE_DOC;
-      if (!BILL_SYNC_DOC_TYPES.includes(cur)) cur = DEFAULT_SALE_DOC;
-      splitSel.innerHTML = saleDocTypeOptionsHtml(cur, BILL_SYNC_DOC_TYPES);
+      const enabled = enabledBillSyncDocTypes(setupStatusCache);
+      const cur = pickEnabledDocType(splitSel.value || DEFAULT_SALE_DOC, enabled, DEFAULT_SALE_DOC);
+      splitSel.innerHTML = saleDocTypeOptionsHtml(cur, enabled.length ? enabled : [DEFAULT_SALE_DOC]);
     }
     const paySel = $('#invPay');
     if (paySel) {
@@ -2387,8 +2432,6 @@
   let invoiceListPageSize = FiscalUI.LIST_DEFAULT_PAGE_SIZE;
   /** ONLY pagination bar for invoice list (FiscalUI.createListPaginationBar). */
   let invoiceListPaginationCtrl = null;
-  /** ONLY active document-type tab on invoice list ('' = all, or FT / FS / FR / NC / ND). */
-  const INVOICE_LIST_DOC_TYPES = ['', 'FT', 'FS', 'FR', 'NC', 'ND', 'RG', 'PF', 'GR', 'GT'];
   /** ONLY invoice type label for empty-state copy. */
   function invoiceListDocTypeLabel(t) {
     const code = String(t || '').trim().toUpperCase();
@@ -2398,7 +2441,7 @@
   let invoiceListDocType = sessionStorage.getItem('fiscal_invoice_doc_type_v2');
   if (invoiceListDocType == null) invoiceListDocType = '';
   invoiceListDocType = String(invoiceListDocType).trim().toUpperCase();
-  if (!INVOICE_LIST_DOC_TYPES.includes(invoiceListDocType)) invoiceListDocType = '';
+  if (invoiceListDocType && INVOICE_LIST_DOC_TYPE_CATALOG.indexOf(invoiceListDocType) < 0) invoiceListDocType = '';
   let invoiceFilterPanelOpen = false;
 
   const CATALOG_PICKER_PAGE_SIZE = 500;
@@ -3459,12 +3502,14 @@
     } catch (_) { /* owner/cashier: admin-only */ }
   }
 
-  /** ONLY settings status UI path (dashboard + wizard + collapse + series form). */
+  /** ONLY settings status UI path (dashboard + wizard + collapse + series form + enabled doc types). */
   function applySettingsStatusUI(st) {
     if (st) loadSavedStoreForms();
     renderSetupDashboard(st);
     applySeriesForm(st);
     applySettingsWizardUI(st);
+    renderInvoiceTypeTabs();
+    refreshLocalizedSelects();
     if (st) applySettingsCollapseDefaults(st);
     const prof = $('#fiscalProfileHint');
     if (prof) {
@@ -4522,7 +4567,8 @@
   function setInvoiceListDocType(nextType) {
     let t = String(nextType == null ? '' : nextType).trim().toUpperCase();
     if (t === 'ALL') t = '';
-    if (!INVOICE_LIST_DOC_TYPES.includes(t)) return;
+    const allowed = enabledInvoiceListDocTypes(setupStatusCache);
+    if (!allowed.includes(t)) return;
     invoiceListDocType = t;
     sessionStorage.setItem('fiscal_invoice_doc_type_v2', t);
     $$('#invoiceTypeTabs [data-invoice-type]').forEach(btn => {
@@ -4535,9 +4581,32 @@
     invoiceListPage = 1;
   }
 
+  /** ONLY renderer for invoice list type tabs (全部 + ACTIVE-series types). */
+  function renderInvoiceTypeTabs() {
+    const tabs = $('#invoiceTypeTabs');
+    if (!tabs) return;
+    const enabled = enabledInvoiceListDocTypes(setupStatusCache);
+    const prev = String(invoiceListDocType || '').trim().toUpperCase();
+    let cur = prev;
+    if (!enabled.includes(cur)) cur = '';
+    invoiceListDocType = cur;
+    sessionStorage.setItem('fiscal_invoice_doc_type_v2', cur);
+    tabs.innerHTML = enabled.map(function (code) {
+      const active = code === cur ? ' active' : '';
+      const i18nKey = code ? ('doc.tab.' + code) : 'common.all';
+      return '<button type="button" class="secondary' + active + '" data-invoice-type="' + code +
+        '" role="tab"><span data-i18n="' + i18nKey + '">' + escHtml(FiscalAdminI18n.t(i18nKey)) +
+        '</span></button>';
+    }).join('');
+    if (prev !== cur && invoiceFiltersReady) {
+      resetInvoiceListPage();
+      refreshInvoices().catch(reportError);
+    }
+  }
+
   /** ONLY invoice type tab initializer. */
   function initInvoiceTypeTabs() {
-    setInvoiceListDocType(invoiceListDocType);
+    renderInvoiceTypeTabs();
     const tabs = $('#invoiceTypeTabs');
     if (!tabs || tabs._bound) return;
     tabs._bound = true;

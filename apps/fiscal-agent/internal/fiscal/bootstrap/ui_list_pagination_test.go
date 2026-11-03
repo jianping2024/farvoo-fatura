@@ -266,10 +266,14 @@ func TestAdminHTMLInvoiceListPaginationUnique(t *testing.T) {
 	if !strings.Contains(adminHTML, ".hub-metric {\n      display: inline-flex; align-items: center; gap: 0.65rem;\n      min-height: 2.75rem; padding: 0.5rem 0.9rem;\n      background: #fff; border: 1px solid var(--line); border-radius: var(--radius);\n      box-shadow: var(--shadow);\n    }") {
 		t.Fatal("hub-metric must use var(--radius) + shadow once (no third hardcoded 10px radius)")
 	}
-	for _, dt := range []string{"FT", "FS", "NC", "ND"} {
-		if !strings.Contains(adminHTML, `data-invoice-type="`+dt+`"`) {
-			t.Fatalf("invoice type tab %s missing", dt)
-		}
+	if strings.Contains(adminHTML, `data-invoice-type="FT"`) {
+		t.Fatal("per-type invoice tabs must not be hard-coded; renderInvoiceTypeTabs owns them")
+	}
+	if !strings.Contains(adminHTML, "function renderInvoiceTypeTabs") {
+		t.Fatal("invoice list must use renderInvoiceTypeTabs for type tabs")
+	}
+	if !strings.Contains(adminHTML, "function enabledInvoiceListDocTypes") {
+		t.Fatal("invoice list tabs must be driven by enabledInvoiceListDocTypes (*_series_ok)")
 	}
 	if !strings.Contains(adminHTML, "params.set('document_type'") {
 		t.Fatal("invoice list must filter by document_type query param")

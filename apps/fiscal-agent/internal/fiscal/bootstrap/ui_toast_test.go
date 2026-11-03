@@ -500,8 +500,20 @@ func TestAdminHTMLInvoiceHubLayout(t *testing.T) {
 	if !strings.Contains(section, `data-i18n="common.all">全部</span></button>`) {
 		t.Fatal("全部 tab must show i18n label only (no ALL abbr)")
 	}
-	if !strings.Contains(section, `data-i18n="doc.tab.FT">完整发票</span></button>`) {
-		t.Fatal("invoice type tabs must show business label only")
+	if strings.Contains(section, `data-invoice-type="FT"`) {
+		t.Fatal("invoice type tabs (except 全部) must not be hard-coded; renderInvoiceTypeTabs owns them")
+	}
+	if n := strings.Count(adminHTML, "function enabledInvoiceListDocTypes"); n != 1 {
+		t.Fatalf("enabledInvoiceListDocTypes must be the only enabled-list source, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function renderInvoiceTypeTabs"); n != 1 {
+		t.Fatalf("renderInvoiceTypeTabs must be the only invoice tab renderer, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "function docTypeHasActiveSeries"); n != 1 {
+		t.Fatalf("docTypeHasActiveSeries must be the only series_ok gate for doc types, got %d", n)
+	}
+	if !strings.Contains(adminHTML, `'doc.tab.' + code`) {
+		t.Fatal("renderInvoiceTypeTabs must use doc.tab.* business labels")
 	}
 	for _, abbr := range []string{"ALL", "FT", "FS", "NC", "ND"} {
 		if strings.Contains(section, "<small>"+abbr+"</small>") {
