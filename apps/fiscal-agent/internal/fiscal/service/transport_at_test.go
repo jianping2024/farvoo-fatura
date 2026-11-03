@@ -257,3 +257,19 @@ func TestManualTransport_NonVATRecipientName(t *testing.T) {
 		ct.docs = nil
 	}
 }
+
+// Manual GR/GT with explicit load/unload points sends those points to AT (not the defaults).
+func TestManualTransport_ExplicitShipPointsReachAT(t *testing.T) {
+	svc, _, ct := transportFixture(t)
+	in := manualTransportInput("gr-points", "GR", "Maria Costa")
+	in.ShipFrom = domain.Address{Detail: "Rua do Armazém 5", City: "Loures", PostalCode: "2670-001"}
+	in.ShipTo = domain.Address{Detail: "Rua Augusta 100", City: "Lisboa", PostalCode: "1100-053"}
+	if _, err := svc.IssueManualDeliveryNote(context.Background(), in, "op-demo-cashier", "", domain.LoopbackFiscalTerminalID, "127.0.0.1"); err != nil {
+		t.Fatal(err)
+	}
+	d := ct.docs[len(ct.docs)-1]
+	if d.ShipFrom != (at.TransportAddress{Detail: "Rua do Armazém 5", City: "Loures", PostalCode: "2670-001"}) ||
+		d.ShipTo != (at.TransportAddress{Detail: "Rua Augusta 100", City: "Lisboa", PostalCode: "1100-053"}) {
+		t.Fatalf("points to AT: from %+v to %+v", d.ShipFrom, d.ShipTo)
+	}
+}
