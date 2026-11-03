@@ -1089,9 +1089,30 @@ func TestAdminHTMLConfirmActionSinglePath(t *testing.T) {
 	if n := strings.Count(adminHTML, `id="confirmActionModal"`); n != 1 {
 		t.Fatalf("confirmActionModal must exist exactly once, got %d", n)
 	}
+	if n := strings.Count(adminHTML, `id="confirmActionReason"`); n != 1 {
+		t.Fatalf("confirmActionReason input must exist exactly once, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "const CONFIRM_ACTION_REASON_MAX = 50"); n != 1 {
+		t.Fatalf("CONFIRM_ACTION_REASON_MAX must be declared once as 50, got %d", n)
+	}
 	nCalls := strings.Count(adminHTML, "openConfirmAction({") - strings.Count(adminHTML, "function openConfirmAction({")
 	if nCalls != 8 {
 		t.Fatalf("openConfirmAction must be called from exactly 8 sites, got %d", nCalls)
+	}
+	// PF/GR/GT annul must collect reason from the confirm modal (SAF-T ≤50), not hard-code Cancelado.
+	annulIdx := strings.Index(adminHTML, "$('#btnInvoiceDetailAnnulPf').onclick")
+	if annulIdx < 0 {
+		t.Fatal("annul button handler missing")
+	}
+	annulBlock := adminHTML[annulIdx:]
+	if end := strings.Index(annulBlock, "$('#receiptFull')"); end > 0 {
+		annulBlock = annulBlock[:end]
+	}
+	if !strings.Contains(annulBlock, "withReason: true") {
+		t.Fatal("annul confirm must use withReason: true")
+	}
+	if strings.Contains(annulBlock, "reason: 'Cancelado'") || strings.Contains(annulBlock, `reason: "Cancelado"`) {
+		t.Fatal("annul must not hard-code reason Cancelado; use modal input")
 	}
 }
 

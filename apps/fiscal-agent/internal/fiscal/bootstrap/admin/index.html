@@ -1631,6 +1631,11 @@
       </div>
       <div class="sheet-body">
         <p class="hint" id="confirmActionBody"></p>
+        <div class="field hidden" id="confirmActionReasonWrap">
+          <label id="confirmActionReasonLabel" data-i18n="action.annul_pf_reason">作废原因</label>
+          <input id="confirmActionReason" type="text" maxlength="50" autocomplete="off" />
+          <p class="hint" id="confirmActionReasonCount" aria-live="polite"></p>
+        </div>
       </div>
       <div class="sheet-foot">
         <div class="actions">
@@ -2168,24 +2173,71 @@
     $('#changePinModal').classList.add('hidden');
   }
 
-  /** ONLY destructive/generic confirm path (replaces native browser dialog). */
+  /** ONLY destructive/generic confirm path (replaces native browser dialog). Optional withReason for PF/GR/GT annul (SAF-T Reason ≤50). */
   let confirmActionHandler = null;
+  let confirmActionNeedsReason = false;
+  const CONFIRM_ACTION_REASON_MAX = 50;
 
-  function openConfirmAction({ title, body, submitLabel, onConfirm }) {
+  function confirmActionReasonLen(s) {
+    return Array.from(String(s || '')).length;
+  }
+
+  function syncConfirmActionReasonCount() {
+    const el = $('#confirmActionReasonCount');
+    const input = $('#confirmActionReason');
+    if (!el || !input || !confirmActionNeedsReason) return;
+    const n = confirmActionReasonLen(input.value);
+    el.textContent = n + '/' + CONFIRM_ACTION_REASON_MAX;
+  }
+
+  function openConfirmAction({ title, body, submitLabel, onConfirm, withReason, reasonPlaceholder }) {
     $('#confirmActionTitle').textContent = title || FiscalAdminI18n.t('common.confirm_title');
     $('#confirmActionBody').textContent = body || '';
     $('#btnConfirmActionSubmit').textContent = submitLabel || FiscalAdminI18n.t('common.confirm');
     confirmActionHandler = onConfirm;
+    confirmActionNeedsReason = !!withReason;
+    const wrap = $('#confirmActionReasonWrap');
+    const input = $('#confirmActionReason');
+    const label = $('#confirmActionReasonLabel');
+    if (wrap && input) {
+      wrap.classList.toggle('hidden', !confirmActionNeedsReason);
+      input.value = '';
+      input.placeholder = confirmActionNeedsReason ? (reasonPlaceholder || 'Cancelado') : '';
+      if (label) label.textContent = FiscalAdminI18n.t('action.annul_pf_reason');
+      syncConfirmActionReasonCount();
+    }
     $('#confirmActionModal').classList.remove('hidden');
+    if (confirmActionNeedsReason && input) {
+      setTimeout(() => { try { input.focus(); } catch (_) {} }, 0);
+    }
   }
 
   function closeConfirmActionModal() {
     $('#confirmActionModal').classList.add('hidden');
     confirmActionHandler = null;
+    confirmActionNeedsReason = false;
+    const input = $('#confirmActionReason');
+    if (input) input.value = '';
+    const wrap = $('#confirmActionReasonWrap');
+    if (wrap) wrap.classList.add('hidden');
   }
 
   async function runConfirmAction() {
     const fn = confirmActionHandler;
+    if (confirmActionNeedsReason) {
+      const reason = String(($('#confirmActionReason') && $('#confirmActionReason').value) || '').trim();
+      if (!reason) {
+        toast(FiscalAdminI18n.t('action.annul_pf_reason_need'), 'error');
+        return;
+      }
+      if (confirmActionReasonLen(reason) > CONFIRM_ACTION_REASON_MAX) {
+        toast(FiscalAdminI18n.t('action.annul_pf_reason_need'), 'error');
+        return;
+      }
+      closeConfirmActionModal();
+      if (fn) await fn(reason);
+      return;
+    }
     closeConfirmActionModal();
     if (fn) await fn();
   }
@@ -6118,12 +6170,14 @@
     if (!docId) return;
     openConfirmAction({
       title: FiscalAdminI18n.t('action.annul_pf'),
-      body: FiscalAdminI18n.t('action.annul_pf_reason'),
-      onConfirm: async () => {
+      body: '',
+      withReason: true,
+      reasonPlaceholder: 'Cancelado',
+      onConfirm: async (reason) => {
         await withBusy($('#btnInvoiceDetailAnnulPf'), FiscalAdminI18n.t('common.submitting'), async () => {
           await j('POST', '/local/v1/fiscal-documents/' + encodeURIComponent(docId) + '/annul', {
             request_id: 'annul-pf-' + Date.now(),
-            reason: 'Cancelado'
+            reason: reason
           });
           toast(FiscalAdminI18n.t('action.annul_pf_ok'), 'success');
           closeInvoiceDetail();
@@ -7152,6 +7206,9 @@
   $('#confirmActionModal').addEventListener('click', e => {
     if (e.target.id === 'confirmActionModal') closeConfirmActionModal();
   });
+  if ($('#confirmActionReason')) {
+    $('#confirmActionReason').addEventListener('input', () => syncConfirmActionReasonCount());
+  }
   $('#btnConfirmActionSubmit').onclick = () => withBusy($('#btnConfirmActionSubmit'), FiscalAdminI18n.t('common.processing'), async () => {
     await runConfirmAction();
   });
