@@ -433,8 +433,8 @@ func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	if strings.Contains(adminHTML, "inv.order_label") {
 		t.Fatal("do not read order_label; use formatInvoiceOrderCell")
 	}
-	if !strings.Contains(adminHTML, "formatInvoiceDocStatus(inv.document_status)") {
-		t.Fatal("detail doc status must use formatInvoiceDocStatus")
+	if !strings.Contains(adminHTML, "formatInvoiceDocStatusDetailHtml(inv.document_status)") {
+		t.Fatal("detail doc status must use formatInvoiceDocStatusDetailHtml")
 	}
 	if !strings.Contains(adminHTML, "formatInvoicePrintStatus(inv.print_status)") {
 		t.Fatal("detail print status must use formatInvoicePrintStatus")
@@ -1113,6 +1113,34 @@ func TestAdminHTMLConfirmActionSinglePath(t *testing.T) {
 	}
 	if strings.Contains(annulBlock, "reason: 'Cancelado'") || strings.Contains(annulBlock, `reason: "Cancelado"`) {
 		t.Fatal("annul must not hard-code reason Cancelado; use modal input")
+	}
+}
+
+func TestAdminHTMLAnnulledDocVisualSinglePath(t *testing.T) {
+	for _, fn := range []string{
+		"function invoiceListStatusPill(",
+		"function formatInvoiceDocStatusDetailHtml(",
+		"function formatInvoiceDocStatus(",
+	} {
+		if n := strings.Count(adminHTML, fn); n != 1 {
+			t.Fatalf("%s must appear exactly once, got %d", fn, n)
+		}
+	}
+	if !strings.Contains(adminHTML, "is-annulled") {
+		t.Fatal("invoice list must mark annulled rows with is-annulled")
+	}
+	if !strings.Contains(adminHTML, "status-pill annulled") {
+		t.Fatal("annulled status pill class missing")
+	}
+	i18n := string(fiscalUIAdminI18nJS)
+	if !strings.Contains(i18n, `'invoice.doc_status.A'`) {
+		t.Fatal("i18n must define invoice.doc_status.A")
+	}
+	if !strings.Contains(i18n, `'invoice.doc_status.F'`) {
+		t.Fatal("i18n must define invoice.doc_status.F")
+	}
+	if !strings.Contains(i18n, `'invoice.doc_status.N'`) {
+		t.Fatal("i18n must define invoice.doc_status.N")
 	}
 }
 

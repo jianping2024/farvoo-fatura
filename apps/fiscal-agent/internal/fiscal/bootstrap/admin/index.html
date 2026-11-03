@@ -576,6 +576,12 @@
     }
     .status-pill.ok { background: #dff3e7; color: #1f7a4c; }
     .status-pill.optional { background: #eef2f4; color: var(--muted); }
+    .status-pill.annulled { background: #fce8e8; color: #8b2e2e; }
+    .status-pill.invoiced { background: #eef2f4; color: var(--muted); }
+    /* ONLY invoice list mark for annulled docs (document_status=A). */
+    tr.clickable.is-annulled { background: #fff8f8; }
+    tr.clickable.is-annulled:hover { background: #fff1f1; }
+    .inv-no-cell { display: inline-flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
     .series-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
     .series-card {
       border: 1px solid var(--line); border-radius: 12px; padding: 0.75rem; background: #fff;
@@ -2510,9 +2516,24 @@
     return '—';
   }
 
-  /** ONLY invoice-no cell text (invoice list). */
+  /** ONLY list status pill for non-default invoice statuses (A / F). N and FT enums: no list pill. */
+  function invoiceListStatusPill(inv) {
+    const st = String((inv && inv.document_status) || '').trim();
+    if (st === 'A') {
+      return '<span class="status-pill annulled">' + escHtml(formatInvoiceDocStatus('A')) + '</span>';
+    }
+    if (st === 'F') {
+      return '<span class="status-pill invoiced">' + escHtml(formatInvoiceDocStatus('F')) + '</span>';
+    }
+    return '';
+  }
+
+  /** ONLY invoice-no cell (invoice list): number + optional A/F status pill. */
   function formatInvoiceNoCell(inv) {
-    return (inv && inv.invoice_no) ? inv.invoice_no : '—';
+    const no = (inv && inv.invoice_no) ? escHtml(inv.invoice_no) : '—';
+    const pill = invoiceListStatusPill(inv);
+    if (!pill) return no;
+    return '<span class="inv-no-cell">' + no + pill + '</span>';
   }
 
   /** ONLY issued-at cell text (invoice list + detail). */
@@ -2537,13 +2558,23 @@
     return '—';
   }
 
-  /** ONLY invoice document_status label (detail drawer). */
+  /** ONLY invoice document_status label (detail drawer + list pills). */
   function formatInvoiceDocStatus(code) {
     const c = String(code || '').trim();
     if (!c) return '—';
     const key = 'invoice.doc_status.' + c;
     const tr = FiscalAdminI18n.t(key);
     return (tr && tr !== key) ? tr : c;
+  }
+
+  /** ONLY detail document_status cell HTML (annulled uses status-pill.annulled). */
+  function formatInvoiceDocStatusDetailHtml(code) {
+    const c = String(code || '').trim();
+    const label = formatInvoiceDocStatus(c);
+    if (c === 'A') {
+      return '<span class="status-pill annulled">' + escHtml(label) + '</span>';
+    }
+    return escHtml(label);
   }
 
   /** ONLY invoice print_status label (detail drawer). */
@@ -2598,8 +2629,11 @@
       invoiceDetailRow(FiscalAdminI18n.t('col.amount'), fmtMoney(inv.gross_total)) +
       invoiceDetailRow('ATCUD', inv.atcud) +
       invoiceDetailRow(FiscalAdminI18n.t('col.type'), inv.document_type) +
-      invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.doc_status'), formatInvoiceDocStatus(inv.document_status)) +
+      invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.doc_status'), formatInvoiceDocStatusDetailHtml(inv.document_status)) +
       invoiceDetailRow(FiscalAdminI18n.t('invoice.detail.print_status'), formatInvoicePrintStatus(inv.print_status));
+    if (String(inv.document_status || '') === 'A' && inv.status_reason) {
+      body += invoiceDetailRow(FiscalAdminI18n.t('action.annul_pf_reason'), escHtml(inv.status_reason));
+    }
     if (inv.document_type === 'NC' || inv.document_type === 'ND' || inv.document_type === 'RG') {
       body += invoiceDetailOriginalRow(inv);
       if (inv.credit_reason && inv.document_type !== 'RG') {
@@ -4657,7 +4691,7 @@
       tbody.innerHTML = invoiceListEmptyCellHtml(term, typeLabel);
     } else {
       tbody.innerHTML = list.map(inv =>
-        '<tr class="clickable" data-inv="' + inv.document_id + '">' +
+        '<tr class="clickable' + (String(inv.document_status || '') === 'A' ? ' is-annulled' : '') + '" data-inv="' + inv.document_id + '">' +
           '<td class="col-when">' + formatInvoiceWhenCell(inv) + '</td>' +
           '<td class="col-no">' + formatInvoiceNoCell(inv) + '</td>' +
           '<td class="col-buyer">' + formatInvoiceBuyerCell(inv) + '</td>' +
