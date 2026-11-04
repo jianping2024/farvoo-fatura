@@ -2834,14 +2834,16 @@
   }
 
   /** ONLY bootstrap-admin UI path (login page on agent host; API path bootstrap-owner retained). */
-  async function bootstrapOwnerAndLogin(displayName, pin) {
+  async function bootstrapOwnerAndLogin(displayName, pinInput) {
     const name = String(displayName || '').trim();
-    const pinVal = String(pin || '').trim();
+    const pinVal = String(pinInput || '').trim();
     if (!name || !/^\d{6}$/.test(pinVal)) {
       toast(FiscalAdminI18n.t('settings.ops.need_name_pin'), 'error');
       return false;
     }
     const created = await j('POST', '/local/v1/setup/bootstrap-owner', { display_name: name, pin: pinVal });
+    // Invalidate Public cache so loadLoginOperators sees bootstrap_required=false (not stale true).
+    loginSetupPublicCache = null;
     await loadLoginOperators();
     if ($('#loginOperator')) $('#loginOperator').value = created.operator_id || '';
     pin = pinVal;

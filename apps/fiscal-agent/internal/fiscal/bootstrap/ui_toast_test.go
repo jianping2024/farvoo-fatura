@@ -67,6 +67,34 @@ func TestAdminSetupStatusCacheSplit(t *testing.T) {
 	}
 }
 
+// TestAdminBootstrapOwnerAndLoginAutoLogin nails cold-start create-admin → login:
+// must clear loginSetupPublicCache and write outer pin (not a shadowed param).
+func TestAdminBootstrapOwnerAndLoginAutoLogin(t *testing.T) {
+	if n := strings.Count(adminHTML, "async function bootstrapOwnerAndLogin"); n != 1 {
+		t.Fatalf("bootstrapOwnerAndLogin must appear exactly once, got %d", n)
+	}
+	fn := adminHTML[strings.Index(adminHTML, "async function bootstrapOwnerAndLogin"):]
+	if i := strings.Index(fn[1:], "\n  async function "); i > 0 {
+		fn = fn[:i+1]
+	}
+	if !strings.Contains(fn, "loginSetupPublicCache = null") {
+		t.Fatal("bootstrapOwnerAndLogin must invalidate loginSetupPublicCache before loadLoginOperators")
+	}
+	if !strings.Contains(fn, "await loadLoginOperators()") {
+		t.Fatal("bootstrapOwnerAndLogin must reload operators after create")
+	}
+	if !strings.Contains(fn, "await tryLogin()") {
+		t.Fatal("bootstrapOwnerAndLogin must call tryLogin after create")
+	}
+	// Param must not shadow outer let pin (regression: pin=pinVal only updated the param).
+	if strings.Contains(fn, "async function bootstrapOwnerAndLogin(displayName, pin)") {
+		t.Fatal("bootstrapOwnerAndLogin must not name the PIN param `pin` (shadows outer pin)")
+	}
+	if !strings.Contains(fn, "pin = pinVal") {
+		t.Fatal("bootstrapOwnerAndLogin must assign outer pin = pinVal for tryLogin")
+	}
+}
+
 func TestAdminHTMLUsesSharedToastOnly(t *testing.T) {
 	if !strings.Contains(adminHTML, `/fiscal-ui/toast.js`) {
 		t.Fatal("admin must load /fiscal-ui/toast.js")
