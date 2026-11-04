@@ -1,0 +1,9 @@
+# Admin GR GR2026T02/1 → ATDocCodeID
+# source_dump=20261103T171719Z
+# captured_at≈20261103T171719 (UTC from filename)
+# desensitized=no UsernameToken; WorkContext stripped from response
+url=https://servicos.portaldasfinancas.gov.pt:701/sgdtws/documentosTransporte
+soap_action=https://servicos.portaldasfinancas.gov.pt/sgdtws/documentosTransporte/
+http_status=200
+request_body_bytes=1353
+response_bytes=718

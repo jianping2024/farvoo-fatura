@@ -1,6 +1,6 @@
 # GR：发货 / 交货单（Guia de remessa）
 
-> **状态：定稿**（G1–G6 已落地；G7 = A2 live：2026-11-03 Admin 在 AT test 签发 GR 拿到真 `ATDocCodeID`，A2 待 mock 回归后关闭）  
+> **状态：定稿**（G1–G6 已落地；G7 = A2 live **已关闭** 2026-11-04：Admin AT test 真 `ATDocCodeID` + 脱敏 fixtures）  
 > **权威：是**（GR 行为、实现步骤、AT 运输通信与测试接入；库列与 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md) + `migrations/014_gr_delivery.sql` 对齐）  
 > **对应实现：** `store.IssueGR` / `AnnulGR`、`store.linkDeliveryNotesInTx`、`store.ListLinkableDeliveryNotes`、`service.IssueDeliveryNote`、`service.applyManualRecipient`、`at.TransportClient`（默认 mock；`FISCAL_AT_ENV=test` 走 SOAP）  
 > **test/prod 统一接入：** 见 [`fiscal-at-live-integration.zh.md`](fiscal-at-live-integration.zh.md)（A2 = 原 G7）  

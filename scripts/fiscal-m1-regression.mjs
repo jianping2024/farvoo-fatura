@@ -70,6 +70,7 @@ async function main() {
     FISCAL_BIND: bind,
     FISCAL_STORE_ID: 'store-demo-001',
     FISCAL_AT_ENV: 'mock',
+    FISCAL_ALLOW_DEV_KEY: '1',
     FISCAL_ALLOW_LOCAL_PROVISION: '1',
   });
   const child = spawn('go', ['run', './cmd/fiscal-local'], {

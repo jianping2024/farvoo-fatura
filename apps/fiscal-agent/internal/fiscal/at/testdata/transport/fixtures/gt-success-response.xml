@@ -1,0 +1,15 @@
+<!-- desensitized AT test dump; WorkContext header stripped; no secrets -->
+<?xml version="1.0" ?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Body>
+    <ns0:envioDocumentoTransporteResponseElem xmlns:ns0="https://servicos.portaldasfinancas.gov.pt/sgdtws/documentosTransporte/">
+      <ResponseStatus>
+        <ReturnCode>0</ReturnCode>
+        <ReturnMessage>OK</ReturnMessage>
+      </ResponseStatus>
+      <DocumentNumber>GT GT2026T01/1</DocumentNumber>
+      <ATCUD>AAJFJP8X9D-1</ATCUD>
+      <ATDocCodeID>1108720347</ATDocCodeID>
+    </ns0:envioDocumentoTransporteResponseElem>
+  </S:Body>
+</S:Envelope>
