@@ -24,7 +24,10 @@ First-time setup (no command line)
 6. Fiscal setup / issue FT: tray → 开票 / Fiscal…, or http://127.0.0.1:17880/
    Production: Ops console activates signing key; Agent syncs wrapped key (no PEM paste).
    UAT only: set FISCAL_ALLOW_LOCAL_PROVISION=1 (or config fiscal_allow_local_provision:true) to paste PEM.
-   Optional in config.json: "fiscal_at_env": "mock"
+   This build is an AT **test** pack: Setup/zip installs at-certs\ (public TesteWebservices).
+   On first start, if config.json has no fiscal_at_env, Agent writes "test" + cert paths
+   (uses fiscal-test.db). Explicit "mock" or "prod" in config.json is left alone.
+   Admin: set taxpayer + AT sub-user (WSE+WDT), register series, then issue GR/GT against AT test.
 7. The agent stays in the Windows system tray (near the clock, click ^ if hidden).
    Icon color: green = OK, yellow = outside hours or setup, red = error.
    Right-click: printer settings, fiscal, open log folder, exit.

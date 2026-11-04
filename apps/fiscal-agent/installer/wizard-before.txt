@@ -26,6 +26,11 @@ Portable zip vs this Setup
   This installer offers optional desktop and sign-in shortcuts on the tasks step,
   plus clean uninstall. Portable zip has no wizard — use Setup for daily POS PCs.
 
+AT environment (this build)
+  This Setup is the AT **test** upgrade pack: it installs public AT test certificates
+  under at-certs\ and, when config.json has no fiscal_at_env, the Agent seeds "test"
+  (separate fiscal-test.db). Not for production AT (prod comes later).
+
 Configuration flow
   This installer only installs and starts the local tray agent (print + fiscal).
   Pairing and printer mapping are done from Farvoo Dashboard → Print assistant

@@ -2,6 +2,16 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.60
+
+**AT test 升级包（A1+A2 + Setup 预置 test）**
+
+- **本包用途：** 对接 AT **test**（非 prod）。Setup/zip 安装 `at-certs\`（公开 `TesteWebservices.pfx` + `ChavePublicaAT.cer`）；启动时若 `config.json` 未写 `fiscal_at_env`，自动写入 `test` 与证路径（库为 `fiscal-test.db`）。已显式写 `mock`/`prod` 不改。
+- **A1：** 系列 SOAP live（test）— Admin 注册得真 `validation_code`。
+- **A2：** 运输 SOAP live（test）— Admin 开 GR/GT 得真 `ATDocCodeID`；失败关闭；脱敏 fixtures 入库。
+- 近期 Admin：作废原因、作废视觉、发票 Tab 仅 ACTIVE 系列、FT 挂 GR、开票/Agent 图标拆分等。
+- 下一刀：**A3 prod 门禁**（正式证；禁止本测试 pfx 打 prod）。
+
 ## 0.5.59
 
 **AT live A0：共享底座（加密 / mTLS / SOAP 公共件）**

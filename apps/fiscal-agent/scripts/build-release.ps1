@@ -82,9 +82,15 @@ foreach ($a in $archs) {
   }
 
   Copy-Item (Join-Path $Root "installer\WINDOWS-README.txt") $outDir -Force
+  # AT test pack certs (same as Inno Setup) so portable zip can seed fiscal_at_env=test.
+  $atCertsSrc = Join-Path $Root "internal\fiscal\at\testdata\transport\certificados\current"
+  $atCertsDst = Join-Path $outDir "at-certs"
+  New-Item -ItemType Directory -Force -Path $atCertsDst | Out-Null
+  Copy-Item (Join-Path $atCertsSrc "TesteWebservices.pfx") $atCertsDst -Force
+  Copy-Item (Join-Path $atCertsSrc "ChavePublicaAT.cer") $atCertsDst -Force
   $agentZip = Join-Path $Dist "FarvooFiscalAgent-windows-$($a.Name).zip"
   if (Test-Path $agentZip) { Remove-Item -Force $agentZip }
-  Compress-Archive -Path (Join-Path $outDir "FarvooFiscalAgent.exe"), (Join-Path $outDir "VERSION.txt"), (Join-Path $outDir "WINDOWS-README.txt") -DestinationPath $agentZip -Force
+  Compress-Archive -Path (Join-Path $outDir "FarvooFiscalAgent.exe"), (Join-Path $outDir "VERSION.txt"), (Join-Path $outDir "WINDOWS-README.txt"), $atCertsDst -DestinationPath $agentZip -Force
   Write-Host "zip: $agentZip"
 
   if ($a.Name -eq "amd64") {

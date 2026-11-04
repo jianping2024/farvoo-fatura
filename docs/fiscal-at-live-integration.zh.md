@@ -193,9 +193,9 @@ prod URL 在 A3 写入；**禁止**用 `TesteWebservices.pfx` 打 prod。
 |------|----------|----------|
 | `TesteWebservices.pfx` / 正式通信 pfx | 安装目录下固定子目录（如 `at-certs\`），或随 Setup 解压 | Setup / 内部装机清单写入 `config.json` |
 | `ChavePublicaAT.cer` | 同上 | 同上 |
-| `fiscal_at_env` | `config.json` | 测试包可预置 `test`；门店正式包预置 `prod` 或装机时改一次 |
+| `fiscal_at_env` | `config.json` | **0.5.60 起 Setup/zip = AT test 包**：装 `at-certs\`；空 `fiscal_at_env` → Agent 写入 `test`（`ensurePackagedATTestDefaults`）。门店正式包预置 `prod` 待 A3 |
 
-店员日常：**只开 Admin 配纳税人 + AT 子用户 + 注册系列**；不碰证书路径与 `fiscal_at_env`。
+店员日常：**只开 Admin 配纳税人 + AT 子用户 + 注册系列**；不碰证书路径与 `fiscal_at_env`（test 包已预置）。
 
 ---
 
