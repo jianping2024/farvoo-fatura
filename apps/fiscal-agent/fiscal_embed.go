@@ -146,6 +146,7 @@ func startEmbeddedFiscal(cfg *config) error {
 	embeddedFiscalMu.Lock()
 	defer embeddedFiscalMu.Unlock()
 
+	cfg = ensurePackagedATTestDefaults(cfg)
 	applyFiscalRuntimeFromConfig(cfg)
 	atEnv, err := at.EnvFromProcess()
 	if err != nil {

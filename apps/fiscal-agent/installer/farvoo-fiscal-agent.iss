@@ -67,6 +67,9 @@ Source: "..\dist\amd64\{#MyAppExe}"; DestDir: "{app}"; Flags: ignoreversion rest
 Source: "..\dist\amd64\VERSION.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "WINDOWS-README.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\assets\fiscal_app_icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+; AT test pack materials (public TesteWebservices; Agent seeds fiscal_at_env=test when empty).
+Source: "..\internal\fiscal\at\testdata\transport\certificados\current\TesteWebservices.pfx"; DestDir: "{app}\at-certs"; DestName: "TesteWebservices.pfx"; Flags: ignoreversion
+Source: "..\internal\fiscal\at\testdata\transport\certificados\current\ChavePublicaAT.cer"; DestDir: "{app}\at-certs"; DestName: "ChavePublicaAT.cer"; Flags: ignoreversion
 Source: "deps\MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Tasks: webview2
 
 [Icons]

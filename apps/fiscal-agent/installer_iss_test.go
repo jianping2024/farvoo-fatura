@@ -34,6 +34,9 @@ func TestInnoSetupUpgradeStory(t *testing.T) {
 		"/F /IM {#MyAppExe} /T",
 		"/F /IM {#MyLegacyExe} /T",
 		`#define MyLegacyExe "MesaPrintAgent.exe"`,
+		`DestDir: "{app}\at-certs"`,
+		"TesteWebservices.pfx",
+		"ChavePublicaAT.cer",
 	}
 	for _, s := range mustContain {
 		if !strings.Contains(iss, s) {
