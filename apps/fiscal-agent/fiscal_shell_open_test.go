@@ -36,6 +36,9 @@ func TestSoleFiscalShellOpenPath(t *testing.T) {
 	if strings.Count(ss, "ensureFiscalStarted") != 1 {
 		t.Fatal("open path should call ensureFiscalStarted exactly once in fiscal_shell_windows.go")
 	}
+	if strings.Count(ss, "fiscalwebview.UseAgentFiscalWindowIcon()") != 1 {
+		t.Fatal("Agent must call UseAgentFiscalWindowIcon exactly once (WebView uses fiscal A1 icon id 2)")
+	}
 
 	entry, err := os.ReadFile(filepath.Join(agent, "agent_entry_windows.go"))
 	if err != nil {
