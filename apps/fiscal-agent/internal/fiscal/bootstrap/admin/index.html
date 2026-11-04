@@ -732,6 +732,9 @@
         <div class="field"><label class="hint" data-i18n="login.bootstrap.pin">6 位 PIN</label><input id="loginBootstrapPin" inputmode="numeric" maxlength="6" style="margin-bottom:0.75rem" /></div>
         <button type="button" id="btnLoginBootstrapOwner" style="width:100%" data-i18n="login.bootstrap.submit">创建管理员并登录</button>
       </div>
+      <div id="loginWaitOps" class="hidden">
+        <p class="hint" id="loginWaitOpsHint" data-i18n="login.wait.ops_not_entitled">等待运营开通开票：请在 Ops 为该店保存开票业态（餐馆 / 商超）后再创建管理员。</p>
+      </div>
       <div id="loginTerminalPair" class="hidden" style="margin-top:1rem;border-top:1px solid #dce8e0;padding-top:1rem">
         <p class="hint" id="loginTerminalPairHint" data-i18n="settings.terminals.login_need">这台电脑还不能开票。请店长在 Agent 电脑：设置 → 开票电脑 → 添加开票电脑，把屏幕上的码输入这里。</p>
         <div class="field"><label class="hint" for="loginPairCode" data-i18n="settings.terminals.pair_code_label">配对码</label>
@@ -2829,8 +2832,28 @@
   function setLoginBootstrapMode(showBootstrap) {
     const existing = $('#loginExisting');
     const bootstrap = $('#loginBootstrap');
+    const wait = $('#loginWaitOps');
     if (existing) existing.classList.toggle('hidden', !!showBootstrap);
     if (bootstrap) bootstrap.classList.toggle('hidden', !showBootstrap);
+    if (wait && showBootstrap) wait.classList.add('hidden');
+  }
+
+  /** ONLY cold-start wait UI when operators empty but Ops has not opened fiscal (scheme A). */
+  function setLoginWaitOpsMode(st) {
+    const existing = $('#loginExisting');
+    const bootstrap = $('#loginBootstrap');
+    const wait = $('#loginWaitOps');
+    const hint = $('#loginWaitOpsHint');
+    if (existing) existing.classList.add('hidden');
+    if (bootstrap) bootstrap.classList.add('hidden');
+    if (wait) wait.classList.remove('hidden');
+    if (hint) {
+      const key = (st && st.cloud_paired_ok)
+        ? 'login.wait.ops_not_entitled'
+        : 'login.wait.cloud_not_paired';
+      hint.textContent = FiscalAdminI18n.t(key);
+      hint.setAttribute('data-i18n', key);
+    }
   }
 
   /** ONLY bootstrap-admin UI path (login page on agent host; API path bootstrap-owner retained). */
@@ -2881,9 +2904,12 @@
       }
       setLoginBootstrapMode(false);
       if (!ops.length) {
-        sel.innerHTML = '<option value="">' + FiscalAdminI18n.t('settings.ops.load_fail') + '</option>';
+        // Empty roster + not entitled → wait for Ops (or pair); do not offer create-admin.
+        setLoginWaitOpsMode(st);
         return;
       }
+      const wait = $('#loginWaitOps');
+      if (wait) wait.classList.add('hidden');
       for (const o of ops) {
         const opt = document.createElement('option');
         opt.value = o.id;
@@ -2892,6 +2918,9 @@
       }
     } catch (_) {
       setLoginBootstrapMode(false);
+      const wait = $('#loginWaitOps');
+      if (wait) wait.classList.add('hidden');
+      if ($('#loginExisting')) $('#loginExisting').classList.remove('hidden');
       sel.innerHTML = '<option value="">' + FiscalAdminI18n.t('settings.ops.load_fail') + '</option>';
     }
   }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"farvoo-fiscal-agent/internal/fiscal/fiscalsigning"
@@ -12,6 +13,7 @@ import (
 
 const (
 	ErrCodeFiscalProfileMissing = "fiscal_profile_missing"
+	ErrCodeOpsFiscalNotEntitled = "ops_fiscal_not_entitled"
 	ErrCodeTerminalsFull        = "terminals_full"
 	ErrCodePairInvalid          = "pairing_invalid"
 	ErrCodePairExpired          = "pairing_expired"
@@ -25,10 +27,48 @@ type LoginResult struct {
 	SessionEpoch int
 }
 
+// OpsFiscalEntitled is the ONLY Ops-open gate for first-admin bootstrap (scheme A):
+// restaurant|retail fiscal_profile from Ops (local cache or live store-policy).
+// UAT: FISCAL_ALLOW_LOCAL_PROVISION=1 bypasses the cloud check.
+func (s *FiscalService) OpsFiscalEntitled(ctx context.Context) (entitled bool, profile string, paired bool) {
+	if s == nil {
+		return false, "", false
+	}
+	paired = s.cloudPaired()
+	if os.Getenv("FISCAL_ALLOW_LOCAL_PROVISION") == "1" {
+		return true, "", paired
+	}
+	if !paired || s.db == nil {
+		return false, "", paired
+	}
+	if ok, prof, _, err := s.db.FiscalProfileOK(s.storeID); err == nil && ok {
+		return true, prof, true
+	}
+	cli := &fiscalsigning.Client{APIBase: s.cloud.APIBase, JWT: s.cloud.JWT}
+	policy, err := cli.PullStorePolicy(ctx)
+	if err != nil || policy == nil {
+		return false, "", true
+	}
+	if policy.FiscalProfile != "restaurant" && policy.FiscalProfile != "retail" {
+		return false, "", true
+	}
+	// Best-effort cache; may fail before taxpayer_settings row exists — ignore.
+	_ = s.db.SaveOpsFiscalProfile(s.storeID, policy.FiscalProfile)
+	return true, policy.FiscalProfile, true
+}
+
 // BootstrapOwner creates first admin when operators empty (API path bootstrap-owner retained).
-func (s *FiscalService) BootstrapOwner(storeID, displayName, pin string) (string, error) {
+// Requires OpsFiscalEntitled (or local-provision UAT bypass) — same gate as bootstrap_required.
+func (s *FiscalService) BootstrapOwner(ctx context.Context, storeID, displayName, pin string) (string, error) {
 	if s == nil || s.db == nil {
 		return "", fmt.Errorf("fiscal: service nil")
+	}
+	entitled, _, paired := s.OpsFiscalEntitled(ctx)
+	if !entitled {
+		if !paired {
+			return "", coded(ErrCodeCloudNotPaired, "pair print agent before creating first admin")
+		}
+		return "", coded(ErrCodeOpsFiscalNotEntitled, "ops has not set fiscal_profile yet")
 	}
 	return s.db.BootstrapOwner(storeID, displayName, pin)
 }
