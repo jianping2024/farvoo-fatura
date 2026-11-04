@@ -2329,8 +2329,21 @@
     return t;
   }
 
+  /** ONLY writer for data-fiscal-locked + disabled on status-gated setup buttons. */
+  function setFiscalBtnLocked(btn, locked) {
+    if (!btn) return;
+    if (locked) {
+      btn.dataset.fiscalLocked = '1';
+      btn.disabled = true;
+    } else {
+      delete btn.dataset.fiscalLocked;
+      btn.disabled = false;
+    }
+  }
+
   /** Busy wrapper: reportError once on failure (fn must throw, not toast the same error).
-   *  data-busy-prev lets markSaveSuccess restore the real label, not the busy text. */
+   *  data-busy-prev lets markSaveSuccess restore the real label, not the busy text.
+   *  finally respects data-fiscal-locked (status gates own final disabled). */
   async function withBusy(btn, labelBusy, fn) {
     const prev = btn.textContent;
     btn.dataset.busyPrev = prev;
@@ -2339,9 +2352,10 @@
     try { await fn(); }
     catch (er) { reportError(er); }
     finally {
-      btn.disabled = false;
       delete btn.dataset.busyPrev;
       if (!btn.classList.contains('btn-saved')) btn.textContent = prev;
+      // Status gates (applySeriesForm / activate sync) own final disabled via data-fiscal-locked.
+      btn.disabled = btn.dataset.fiscalLocked === '1';
     }
   }
 
@@ -3566,7 +3580,9 @@
       setActCloudStatus('wait', FiscalAdminI18n.t('settings.series.sync_hint'));
     }
     const cloudBtn = $('#btnActCloud');
-    if (cloudBtn && st) cloudBtn.disabled = !st.taxpayer_ok || !st.cloud_paired_ok || st.activated_ok;
+    if (cloudBtn && st) {
+      setFiscalBtnLocked(cloudBtn, !st.taxpayer_ok || !st.cloud_paired_ok || st.activated_ok);
+    }
   }
 
   /** Apply SetupStatus embedded in mutation responses (avoids redundant GET /setup/status). */
@@ -3642,12 +3658,12 @@
       if (r.ok && r.code) {
         inp.value = r.code;
         inp.readOnly = true;
-        btn.disabled = true;
+        setFiscalBtnLocked(btn, true);
         if (hint) hint.textContent = FiscalAdminI18n.t('settings.series.locked');
         if (pill) { pill.textContent = FiscalAdminI18n.t('settings.series.registered'); pill.className = 'status-pill ok'; }
       } else {
         inp.readOnly = false;
-        btn.disabled = false;
+        setFiscalBtnLocked(btn, false);
         if (hint) hint.textContent = '';
         if (pill) {
           pill.textContent = r.optional ? FiscalAdminI18n.t('common.optional') : FiscalAdminI18n.t('common.pending');
