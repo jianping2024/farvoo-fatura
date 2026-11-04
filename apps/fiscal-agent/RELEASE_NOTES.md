@@ -2,6 +2,14 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.61
+
+**冷启动建管理员须 Ops 已开通开票业态**
+
+- 首位 `admin` bootstrap：须打印已配对，且 Ops 已保存 `fiscal_profile`（餐馆/商超）；未开通时登录页只提示等待，`POST bootstrap-owner` 同步拒绝。
+- UAT：`FISCAL_ALLOW_LOCAL_PROVISION=1` 仍可旁路（与本地 PEM 同口径）。
+- 签名「激活开票」仍在建管理员之后；唯一开通门 `OpsFiscalEntitled`。
+
 ## 0.5.60
 
 **AT test 升级包（A1+A2 + Setup 预置 test）**
