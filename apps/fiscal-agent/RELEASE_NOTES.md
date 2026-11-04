@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.62
+
+**系列注册成功后按钮立即保持灰态**
+
+- `withBusy` 结束不再无条件 `disabled=false`；服从 `data-fiscal-locked`。
+- `setFiscalBtnLocked`：系列按钮（`applySeriesForm`）与「从运营同步」（`applySettingsStatusUI`）唯一锁写入口。
+
 ## 0.5.61
 
 **冷启动建管理员须 Ops 已开通开票业态**

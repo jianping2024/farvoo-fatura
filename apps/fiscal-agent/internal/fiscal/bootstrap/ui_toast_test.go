@@ -129,6 +129,9 @@ func TestAdminHTMLUsesSharedToastOnly(t *testing.T) {
 	if n := strings.Count(adminHTML, "async function withBusy"); n != 1 {
 		t.Fatalf("withBusy must appear exactly once, got %d", n)
 	}
+	if n := strings.Count(adminHTML, "function setFiscalBtnLocked"); n != 1 {
+		t.Fatalf("setFiscalBtnLocked must appear exactly once, got %d", n)
+	}
 	wbIdx := strings.Index(adminHTML, "async function withBusy")
 	wbEnd := strings.Index(adminHTML[wbIdx+1:], "\n  async function ")
 	if wbEnd < 0 {
@@ -140,6 +143,18 @@ func TestAdminHTMLUsesSharedToastOnly(t *testing.T) {
 	wbBody := adminHTML[wbIdx : wbIdx+1+wbEnd]
 	if strings.Count(wbBody, "reportError(er)") != 1 {
 		t.Fatalf("withBusy must call reportError exactly once, got %d", strings.Count(wbBody, "reportError(er)"))
+	}
+	if strings.Contains(wbBody, "btn.disabled = false") {
+		t.Fatal("withBusy must not unconditionally re-enable; respect data-fiscal-locked")
+	}
+	if !strings.Contains(wbBody, "btn.dataset.fiscalLocked === '1'") {
+		t.Fatal("withBusy finally must restore disabled from data-fiscal-locked")
+	}
+	if !strings.Contains(adminHTML, "setFiscalBtnLocked(btn, true)") || !strings.Contains(adminHTML, "setFiscalBtnLocked(btn, false)") {
+		t.Fatal("applySeriesForm must lock/unlock series buttons via setFiscalBtnLocked")
+	}
+	if !strings.Contains(adminHTML, "setFiscalBtnLocked(cloudBtn,") {
+		t.Fatal("applySettingsStatusUI must lock #btnActCloud via setFiscalBtnLocked")
 	}
 	if !strings.Contains(adminHTML, "function requireStation") {
 		t.Fatal("admin must define requireStation")
