@@ -1,0 +1,44 @@
+<!-- desensitized AT test dump; no UsernameToken / password / private key -->
+<?xml version="1.0" ?>
+<tns:envioDocumentoTransporteRequestElem xmlns:tns="https://servicos.portaldasfinancas.gov.pt/sgdtws/documentosTransporte/">
+  <TaxRegistrationNumber>519655290</TaxRegistrationNumber>
+  <CompanyName>Farvoo Demo Lda</CompanyName>
+  <CompanyAddress>
+    <Addressdetail>Rua Demo 1</Addressdetail>
+    <City>Lisboa</City>
+    <PostalCode>1000-001</PostalCode>
+    <Country>PT</Country>
+  </CompanyAddress>
+  <DocumentNumber>GT GR2026T01/1</DocumentNumber>
+  <ATCUD>AAJFJW8H89-1</ATCUD>
+  <MovementStatus>N</MovementStatus>
+  <MovementDate>2026-11-03</MovementDate>
+  <MovementType>GT</MovementType>
+  <CustomerTaxID>519655290</CustomerTaxID>
+  <CustomerAddress>
+    <Addressdetail>Rua Augusta 100</Addressdetail>
+    <City>Lisboa</City>
+    <PostalCode>1100-053</PostalCode>
+    <Country>PT</Country>
+  </CustomerAddress>
+  <CustomerName>Farvoo Demo Lda</CustomerName>
+  <AddressTo>
+    <Addressdetail>Rua Augusta 100</Addressdetail>
+    <City>Lisboa</City>
+    <PostalCode>1100-053</PostalCode>
+    <Country>PT</Country>
+  </AddressTo>
+  <AddressFrom>
+    <Addressdetail>Rua Demo 1</Addressdetail>
+    <City>Lisboa</City>
+    <PostalCode>1000-001</PostalCode>
+    <Country>PT</Country>
+  </AddressFrom>
+  <MovementStartTime>2026-11-03T17:09:00</MovementStartTime>
+  <Line>
+    <ProductDescription>tea</ProductDescription>
+    <Quantity>1</Quantity>
+    <UnitOfMeasure>UN</UnitOfMeasure>
+    <UnitPrice>491.15</UnitPrice>
+  </Line>
+</tns:envioDocumentoTransporteRequestElem>

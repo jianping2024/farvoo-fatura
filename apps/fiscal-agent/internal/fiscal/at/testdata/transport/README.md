@@ -19,6 +19,7 @@
 
 | 路径 | 说明 |
 |------|------|
+| `fixtures/` | A2 关闭：Admin AT test 脱敏请求/响应样例（无密码/私钥）；见 [`fixtures/README.md`](fixtures/README.md) |
 | `certificados.zip` | 官方旧包原文（勿用于联调） |
 | `certificados/stale-official-zip/` | 从官方 zip 解出的过期证 |
 | `documentosTransporte.wsdl` | 社区镜像（官方 info WSDL 当日 404） |

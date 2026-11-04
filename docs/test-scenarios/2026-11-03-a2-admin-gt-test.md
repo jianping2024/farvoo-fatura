@@ -94,6 +94,6 @@
 **已知实现缺口：**
 - 「只挂同一购方 GR」仅由列表接口与 Admin 保证，`linkDeliveryNotesInTx` 未校验。
 - 非纳税人收货方 AT 报文 `CustomerTaxID=999999990`（AT test 接受），待与运输 WS 手册核对。
-- A2 关闭：剩其余回归脚本与 §7.2 脱敏 fixtures。
+- A2 关闭：见 [`2026-11-04-a2-close.md`](2026-11-04-a2-close.md)（2026-11-04 已关）。
 
 **测试数据：** 误签 FT `FT2026DEMO01/2`、`/3`、`/4`（FT/FS 推荐覆盖 GR/GT 所致，已修）、意外 GR `/7`（本店 NIF，用户有意）；GR `/2`、GT `/4` 收货方名称为 `Consumidor Final`（修复前签出）。均为 test 数据，保留。

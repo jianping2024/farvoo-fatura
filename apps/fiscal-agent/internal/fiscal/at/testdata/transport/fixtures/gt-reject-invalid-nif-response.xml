@@ -1,0 +1,12 @@
+<!-- desensitized AT test dump; WorkContext header stripped; no secrets -->
+<?xml version="1.0" ?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Body>
+    <ns0:envioDocumentoTransporteResponseElem xmlns:ns0="https://servicos.portaldasfinancas.gov.pt/sgdtws/documentosTransporte/">
+      <ResponseStatus>
+        <ReturnCode>-1</ReturnCode>
+        <ReturnMessage>O NIF do destinatário (123456789) não é válido.</ReturnMessage>
+      </ResponseStatus>
+    </ns0:envioDocumentoTransporteResponseElem>
+  </S:Body>
+</S:Envelope>

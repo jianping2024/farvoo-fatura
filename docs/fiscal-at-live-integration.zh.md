@@ -1,9 +1,9 @@
 # AT 测试 / 正式环境统一接入规划
 
-> **状态：定稿**（规划已齐；**A0、A1 已落地**；**A2 进行中**）  
+> **状态：定稿**（规划已齐；**A0、A1、A2 已落地**；下一刀 **A3**）  
 > **权威：是**（本仓接 AT **真实** test/prod SOAP 的分刀顺序与共享底座；**不**改现有 mock 行为）  
-> **对应实现：** A0：`at/crypto.go`、`at/tls.go`、`at/soaputil.go`、`at/live_config.go`；A1：`at/series_soap.go`；A2：`at/transport_soap.go`、`service/transport_at.go`  
-> **现状：** `FISCAL_AT_ENV=mock`（默认/CI）全绿；`test` 系列已通、运输探针已通（A2 待 Admin 走通）；`prod` 仍失败关闭（待 A3）  
+> **对应实现：** A0：`at/crypto.go`、`at/tls.go`、`at/soaputil.go`、`at/live_config.go`；A1：`at/series_soap.go`；A2：`at/transport_soap.go`、`service/transport_at.go`；fixtures：`at/testdata/transport/fixtures/`  
+> **现状：** `FISCAL_AT_ENV=mock`（默认/CI）全绿；`test` 系列 + 运输 Admin 已通（真 `ATDocCodeID`）；`prod` 仍失败关闭（待 A3）  
 > **拍板（2026-11-02）：** 材料齐 → AT test 联调；**严格一刀一刀**（A0 → A1 → A2 → A3）  
 > **相关：** [`fiscal-m1-identity-series.zh.md`](fiscal-m1-identity-series.zh.md)（系列）、[`fiscal-gr.zh.md`](fiscal-gr.zh.md) §7–8（运输）、[`fiscal-gt.zh.md`](fiscal-gt.zh.md)（T5=A2）、[`fiscal-config-boundary.zh.md`](fiscal-config-boundary.zh.md)、[`fiscal-dev-plan.zh.md`](fiscal-dev-plan.zh.md) §P1
 
@@ -15,8 +15,8 @@
 |----|------|------|------------------|
 | **A0** | 共享底座（加密 + mTLS + SOAP 公共件） | **已完成**（2026-11-02；0.5.59） | 无网单测绿；mock 行为不变 |
 | **A1** | 系列 SOAP live（test） | **已完成**（2026-11-02）：Admin 经 test 港注册 FT/FS/GR，真验证码入 `fiscal-test.db` | test 注册至少一种销售系列 + GR 系列，得真 `validation_code` |
-| **A2** | 运输 SOAP live（test）= 原 G7 / GT T5 | **进行中**：关闭条件 1 ✅（Admin GR /1–/7、GT /1–/4 真 `ATDocCodeID`）、2 ✅（AT `-3` / `-1` 拒绝均零行不占号）；3 部分：`go test ./internal/fiscal/...` + GR/GT/PF/手工 FT/FT-FS 推荐/界面语言 6 套回归绿，**其余回归脚本未跑**；§7.2 第 3 步脱敏 fixtures 未入库 | test 返回真 `ATDocCodeID`；mock 回归仍绿 |
-| **A3** | prod 门禁 | 未开始 | 正式证；禁止测试 pfx 打 prod |
+| **A2** | 运输 SOAP live（test）= 原 G7 / GT T5 | **已完成**（2026-11-04）：关闭条件 1–3 全过；见 §7.3.1 | test 返回真 `ATDocCodeID`；mock 回归仍绿 |
+| **A3** | prod 门禁 | 未开始（下一刀） | 正式证；禁止测试 pfx 打 prod |
 | A4 | 观测 / Admin 只读 `at_env`（可选） | 未开始 | 非本阶段硬门槛 |
 
 ```text
@@ -355,6 +355,21 @@ apps/fiscal-agent/internal/fiscal/at/
 | 2 | 通信失败 → 零发票行（现有失败关闭语义） |
 | 3 | mock / CI 全绿 |
 
+### 7.3.1 关闭记录（2026-11-04）
+
+环境：`fiscal-local`，`FISCAL_AT_ENV=test`，`fiscal-test.db`；公共 `TesteWebservices.pfx`；子用户 `519655290/1`（WSE+WDT）。互动测见 [`2026-11-02-a2-admin-gr-test.md`](test-scenarios/2026-11-02-a2-admin-gr-test.md)、[`2026-11-03-a2-admin-gt-test.md`](test-scenarios/2026-11-03-a2-admin-gt-test.md)；收口报告 [`2026-11-04-a2-close.md`](test-scenarios/2026-11-04-a2-close.md)。
+
+| # | 条件 | 证据 |
+|---|------|------|
+| 1 | 真 `ATDocCodeID` | Admin GR `GR2026T02/1`…`/7`、GT `GT2026T01/1`…`/4`（2026-11-03） |
+| 2 | 失败关闭 | AT `-3` / `-1` 拒绝 → 零新行、不占号 |
+| 3 | mock / CI | `go test ./internal/fiscal/...`；`fiscal-local` / `gr` / `gt` / `pf` 回归绿；`rg` 断言 OK（进程偶发挂起另立） |
+| §7.2.3 | 脱敏 fixtures | `apps/fiscal-agent/internal/fiscal/at/testdata/transport/fixtures/`（GR/GT 成功 + `-3`/`-1` 拒绝；无 UsernameToken/密码/私钥） |
+
+关闭条件 1–3 全过。下一刀 **A3**（prod 门禁）。
+
+**遗留（另立，不挡 A2）：** SAF-T `DocumentStatus`/`SourceBilling`（§7.2.1）；非纳税人 `CustomerTaxID=999999990` 与手册核对；部分回归脚本 `go run` 子进程 SIGTERM 后 node 不退出；`fiscal-m1-regression` 缺会话 cookie（已补 `FISCAL_ALLOW_DEV_KEY`，setup 仍需改用 `ensureOwnerSession`）。
+
 ---
 
 ## 8. 刀 A3 — prod 门禁
@@ -419,3 +434,4 @@ at/soaputil.go
 | 2026-11-02 | **P0 修复**：非法 `fiscal_at_env` 失败关闭；config 覆盖残留 env；按 env 分库 + `fiscal_meta.at_env` 印记 |
 | 2026-11-02 | **P0：产品只走打包/`config.json`**，禁止要求客户改系统环境变量；§4.0–§4.3 |
 | 2026-11-03 | **A2 Admin live**：GR /1–/7、GT /1–/4 真 `ATDocCodeID`；AT 拒绝 `-3`/`-1` 失败关闭；拒绝码映射与 Admin 提示；A2 剩全量回归 + 脱敏 fixtures |
+| 2026-11-04 | **A2 关闭**：脱敏 fixtures 入库；mock 回归收口；`fiscal-m1-regression` 补 `FISCAL_ALLOW_DEV_KEY`；下一刀 = A3 |

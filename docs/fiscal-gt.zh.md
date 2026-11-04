@@ -1,6 +1,6 @@
 # GT：运输单（Guia de transporte）
 
-> **状态：定稿**（T1–T4 mock 已落地；T5 = A2 live：2026-11-03 Admin 在 AT test 签发调拨与外送 GT 拿到真 `ATDocCodeID`）  
+> **状态：定稿**（T1–T4 mock 已落地；T5 = A2 live **已关闭** 2026-11-04：Admin AT test 真 `ATDocCodeID`）  
 > **权威：是**（GT 行为、实现分刀、与 GR 边界；库列见 [`fiscal-sqlite-schema.zh.md`](fiscal-sqlite-schema.zh.md)；迁移 `015_gt_transport.sql`）  
 > **对应实现：** `store.IssueGT` / `AnnulGT`、`service.IssueTransportNote` / `AnnulTransportNote`；复用 `at.TransportClient`（`MovementType=GT`）  
 > **用途/当事人：** [`fiscal-doc-types-usage.zh.md`](fiscal-doc-types-usage.zh.md) §9  
