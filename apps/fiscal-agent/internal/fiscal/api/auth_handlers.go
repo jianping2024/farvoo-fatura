@@ -39,7 +39,7 @@ func handleBootstrapOwner(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		writeErr(w, http.StatusBadRequest, "invalid_json", "invalid body")
 		return
 	}
-	id, err := deps.Fiscal.BootstrapOwner(deps.StoreID, strings.TrimSpace(body.DisplayName), body.PIN)
+	id, err := deps.Fiscal.BootstrapOwner(r.Context(), deps.StoreID, strings.TrimSpace(body.DisplayName), body.PIN)
 	if err != nil {
 		if errors.Is(err, store.ErrBootstrapNotEmpty) {
 			writeErr(w, http.StatusForbidden, "bootstrap_not_empty", "operators already exist")
@@ -53,7 +53,7 @@ func handleBootstrapOwner(w http.ResponseWriter, r *http.Request, deps HandlerDe
 			writeErr(w, http.StatusBadRequest, "invalid_pin", "pin must be 6 digits")
 			return
 		}
-		writeErr(w, http.StatusInternalServerError, "bootstrap_failed", err.Error())
+		writeCoded(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"operator_id": id})

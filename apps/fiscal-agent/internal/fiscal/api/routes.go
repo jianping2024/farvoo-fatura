@@ -363,7 +363,8 @@ func handleSetupStatus(w http.ResponseWriter, r *http.Request, deps HandlerDeps)
 		writeJSON(w, http.StatusOK, st)
 		return
 	}
-	pub, err := BuildSetupStatusPublic(deps.StoreID, st, deps.Fiscal.DB())
+	entitled, opsProfile, paired := deps.Fiscal.OpsFiscalEntitled(r.Context())
+	pub, err := BuildSetupStatusPublic(deps.StoreID, st, deps.Fiscal.DB(), entitled, paired, opsProfile)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "status_failed", err.Error())
 		return
@@ -994,7 +995,7 @@ func writeCoded(w http.ResponseWriter, err error) {
 	if errors.As(err, &ce) {
 		status := http.StatusBadRequest
 		switch ce.Code {
-		case service.ErrCodeForbidden:
+		case service.ErrCodeForbidden, service.ErrCodeOpsFiscalNotEntitled, service.ErrCodeCloudNotPaired:
 			status = http.StatusForbidden
 		case service.ErrCodeATSOAPFailed:
 			status = http.StatusBadGateway

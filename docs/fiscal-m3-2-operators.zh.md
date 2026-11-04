@@ -177,15 +177,17 @@ M3.1 单 checkbox 改 **`op-demo-cashier`** 为 **临时 demo**；M3.2 落地后
 
 | 项 | 定法 |
 |----|------|
-| 触发条件 | `operators` 表 **0 行**（本店） |
+| 触发条件 | `operators` 表 **0 行**（本店）**且** Ops 已开通开票（方案 A：已保存 `fiscal_profile`=`restaurant`\|`retail`）；另须打印代理已配对（才能问云端）。UAT：`FISCAL_ALLOW_LOCAL_PROVISION=1` 可旁路云开通检查 |
 | 入口 | **登录页**（仅 Agent 本机 `127.0.0.1` / `::1`）；设置 **无** bootstrap |
-| 表单 | `display_name` + 6 位 PIN；UI 文案 **「创建管理员并登录」** |
-| API | `POST /local/v1/setup/bootstrap-owner`（**路径名保留**；**无会话**；**仅 loopback**；handler 内断言 `COUNT(operators)=0`，否则 403） |
+| 表单 | `display_name` + 6 位 PIN；UI 文案 **「创建管理员并登录」**；未配对 / 未开通时 **不**出表单，只提示等待 |
+| API | `POST /local/v1/setup/bootstrap-owner`（**路径名保留**；**无会话**；**仅 loopback**；handler 内断言空库 + **同一开通门** `OpsFiscalEntitled`，否则 403：`cloud_not_paired` / `ops_fiscal_not_entitled` / `bootstrap_not_empty`） |
+| 匿名 status | `bootstrap_required` **唯一**出口 `BuildSetupStatusPublic`（空库 ∧ 已开通）；另回 `cloud_paired_ok`、`ops_fiscal_entitled` |
 | 写入 | 1 行 `role=admin`、`can_issue_nc=1`、`pin_hash` 已设 |
 | 完成后 | 立即要求 `POST /login`；由 **admin** 再创建 `owner` / `cashier` |
-| 换机 | 拷库则名册随库；**新机空库**再走本流程 |
+| 换机 | 拷库则名册随库；**新机空库**再走本流程（仍须 Ops `fiscal_profile` 仍在） |
+| 顺序 | 配对 → Ops 保存业态 → bootstrap → 纳税人/系列 → 设备 register → Ops 签名「激活开票」→ 领钥（**签名激活不是**本门禁） |
 
-**禁止：** 独立的、可随时调用的「免登录创建 admin」API（除 `COUNT=0` 这一次性 bootstrap）；bootstrap **不得**再写 `role=owner`。
+**禁止：** 独立的、可随时调用的「免登录创建 admin」API（除一次性 bootstrap）；bootstrap **不得**再写 `role=owner`；**不得**用签名钥 `active` / `ready_to_issue` 挡 bootstrap；**不得**只藏 UI 不挡 API。
 
 ### 3.6 PIN 策略
 
@@ -499,7 +501,7 @@ LAN 已鉴权路由：requireActiveLANTerminal（本机 loopback 免检）
 
 ## 5. 验收清单
 
-1. **冷启动：** 空库 → 登录页创建首个 **`admin`** + PIN → 登录成功。  
+1. **冷启动：** 已配对 + Ops 已存 `fiscal_profile`（或 UAT 本地旁路）→ 空库登录页创建首个 **`admin`** + PIN → 登录成功；未开通时无创建表单且 `POST bootstrap-owner` 403。  
 2. **名册：** **`admin`** 建 1 `owner` + 1 `cashier`；**`owner`** 仅能建 / 管 `cashier`；管理表权限符合 §3.3.2。  
 3. **设置可见性：** **`owner`** 可见门店信息 / 店员 / 打印机 / SAF-T；**不可见** AT 凭证、系列、激活、备份；**`admin`** 全可见。  
 4. **API 档位：** **`owner`** 调 `PUT at-credentials` / `activate-from-cloud` → **403**；调 `PUT taxpayer` / SAF-T → **200**。  
@@ -537,6 +539,7 @@ LAN 已鉴权路由：requireActiveLANTerminal（本机 loopback 免检）
 
 | 日期 | 变更 |
 |------|------|
+| 2026-11-04 | §3.5：**方案 A** — bootstrap 须 Ops 已存 `fiscal_profile`（+ 已配对）；`OpsFiscalEntitled` 唯一开通门；UAT 本地旁路 |
 | 2026-09-03 | **0.4.76：** §3.8.1 端数/设备改本地 admin（max）+ owner（设备）；废止 Ops 配对/吊销同步 |
 | 2026-08-30 | 定稿：Agent 本地创建；废止 Farvoo 同步 |
 | 2026-09-03 | **0.4.74：** §3.8.1 运行时门闩 `requireActiveLANTerminal`；status 吊销 Cookie 只回 Public |

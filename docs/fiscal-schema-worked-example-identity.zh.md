@@ -176,7 +176,7 @@ T0  claim 六位码
     → config.json: restaurant_id, device_id, agentjwt
     → 本例尚无写 SQLite 身份表
 
-T0b 空库 bootstrap（仅 loopback 登录页）
+T0b 配对且 Ops 已存 fiscal_profile 后 → 空库 bootstrap（仅 loopback 登录页）
     → INSERT operators（王五 admin + pin_hash）
 
 T1  admin 登录后填商家资料
