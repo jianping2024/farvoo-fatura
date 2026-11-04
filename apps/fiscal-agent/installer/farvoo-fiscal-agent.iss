@@ -50,7 +50,7 @@ WizardStyle=modern
 LicenseFile=LICENSE.txt
 InfoBeforeFile=wizard-before.txt
 InfoAfterFile=wizard-after.txt
-SetupIconFile=..\assets\app_icon.ico
+SetupIconFile=..\assets\agent_app_icon.ico
 UninstallDisplayIcon={app}\{#MyAppExe}
 
 [Languages]
@@ -66,15 +66,16 @@ Name: "webview2"; Description: "Install Microsoft Edge WebView2 Runtime if missi
 Source: "..\dist\amd64\{#MyAppExe}"; DestDir: "{app}"; Flags: ignoreversion restartreplace
 Source: "..\dist\amd64\VERSION.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "WINDOWS-README.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\assets\fiscal_app_icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "deps\MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Tasks: webview2
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
-Name: "{group}\Farvoo 开票"; Filename: "{app}\{#MyAppExe}"; Parameters: "fiscal"
+Name: "{group}\Farvoo 开票"; Filename: "{app}\{#MyAppExe}"; Parameters: "fiscal"; IconFilename: "{app}\fiscal_app_icon.ico"
 Name: "{group}\Printer settings"; Filename: "{app}\{#MyAppExe}"; Parameters: "configure"
 Name: "{group}\Read me"; Filename: "{app}\WINDOWS-README.txt"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon
-Name: "{autodesktop}\Farvoo 开票"; Filename: "{app}\{#MyAppExe}"; Parameters: "fiscal"; Tasks: desktopfiscal
+Name: "{autodesktop}\Farvoo 开票"; Filename: "{app}\{#MyAppExe}"; Parameters: "fiscal"; IconFilename: "{app}\fiscal_app_icon.ico"; Tasks: desktopfiscal
 Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: autostart
 
 [Run]

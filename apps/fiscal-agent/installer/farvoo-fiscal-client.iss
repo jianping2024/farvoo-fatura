@@ -33,7 +33,7 @@ SolidCompression=yes
 WizardStyle=modern
 ; Sole EULA text: installer/LICENSE.txt (Agent + Client share; require accept to continue).
 LicenseFile=LICENSE.txt
-SetupIconFile=..\assets\app_icon.ico
+SetupIconFile=..\assets\fiscal_app_icon.ico
 UninstallDisplayIcon={app}\{#MyAppExe}
 
 [Languages]

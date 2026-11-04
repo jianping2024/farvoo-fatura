@@ -19,7 +19,7 @@
 | 目标 | 说明 |
 |------|------|
 | 产品感 | 无地址栏/标签栏；Farvoo 标题与图标；任务栏独立图标 |
-| 窗口图标 | **P0 定法：** `assets/app_icon.ico`（深绿底 + 奶油色衬线 F + 右下橙点）经 `rsrc` 嵌入 Agent/Client EXE；WebView2 `IconId` = `fiscalwebview.WindowIconID`（1）；Inno `SetupIconFile` 同文件 |
+| 窗口图标 | **P0 定法（分标）：** Agent 壳 = `assets/agent_app_icon.ico`（深绿底 + 奶油色衬线 F + 右下橙点）；开票 = `assets/fiscal_app_icon.ico`（同色板 F + 折角单据角标 A1）。Agent `rsrc` 顺序 `agent,fiscal` → 默认 EXE/安装包 = Agent 标，WebView `IconId` = `AgentFiscalIconID`（2，经 `UseAgentFiscalWindowIcon`）；Client 仅嵌 fiscal → 壳与 WebView = id 1。Inno：Agent `SetupIconFile`=agent、开票快捷方式 `IconFilename`=`fiscal_app_icon.ico`；Client `SetupIconFile`=fiscal。再生：`./scripts/embed-app-icon.sh` |
 | 架构不变 | UI 仍为现有 `bootstrap/admin`；会话仍为 Cookie + PIN；**不改** Fiscal API |
 | 一 Agent · 多端 | Agent 本机 + LAN 其它 PC 共用同一 WebView2 模块；**两个 binary 入口** |
 | 运维简单 | LAN 端 **设置里改 Agent IP**；P0 **不做** mDNS / Dashboard 预填安装包 |
@@ -201,6 +201,7 @@ apps/fiscal-agent/
 
 | 日期 | 变更 |
 |------|------|
+| 2026-11-03 | **图标分标：** Agent=`agent_app_icon.ico`（F+橙点）；开票=`fiscal_app_icon.ico`（A1 折角单据）；Agent WebView id=2；Client/快捷方式用 fiscal |
 | 2026-09-03 | **0.4.73**：Agent 安装器桌面「Farvoo 开票」改为默认不勾（纯打印店不落桌面图标） |
 | 2026-09-03 | **0.4.67 WebView UI 线程 + IPC 长驻 + 僵窗重建**：`startUIThread` 唯一消息循环；HWND 无响应丢弃；pipe accept 长驻；Admin 去掉 stale cookie 假 PIN |
 | 2026-09-02 | **定稿落地（0.4.58）**：WebView2 壳、Client、IPC、`fiscal` 子命令、安装器 |

@@ -135,7 +135,7 @@ Version is in **[VERSION](./VERSION)**. Production builds run on **GitHub Action
 
 **Do not** treat macOS `go build` + zip as a release. Official artifacts: tag `fiscal-agent-v*` → CI → GitHub Releases.
 
-**App icon (WebView taskbar / title bar / installer):** `assets/app_icon.ico` embedded via `rsrc_windows_*.syso`. Regenerate with `./scripts/embed-app-icon.sh` after changing the mark.
+**App icons:** `assets/agent_app_icon.ico` (Agent EXE / installer) and `assets/fiscal_app_icon.ico` (开票 WebView / Client / fiscal shortcuts). Agent embeds both via `rsrc` (shell=agent, WebView id=2). Regenerate with `./scripts/embed-app-icon.sh`.
 
 ### Publish a release
 

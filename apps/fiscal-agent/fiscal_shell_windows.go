@@ -18,6 +18,11 @@ import (
 
 var openFiscalOnTrayStart bool
 
+func init() {
+	// Agent rsrc: agent_app_icon (1) + fiscal_app_icon A1 (2). WebView must use id 2.
+	fiscalwebview.UseAgentFiscalWindowIcon()
+}
+
 func agentFiscalWebViewDataDir() string {
 	return filepath.Join(agentDataDir(), "fiscal-webview")
 }
