@@ -2,6 +2,13 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.63
+
+**打印代理设置页：勾选框与字号行排版**
+
+- setup / configure：`input` 整行样式不再套到 checkbox；数字 + `px` 用 `.inline-unit` 垂直对齐。
+- 说明文字去掉负 margin；回归断言锁住唯一 CSS 写法。
+
 ## 0.5.62
 
 **系列注册成功后按钮立即保持灰态**
