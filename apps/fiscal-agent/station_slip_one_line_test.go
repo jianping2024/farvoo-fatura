@@ -147,10 +147,15 @@ func TestWizardUIHasStationSlipPrintOpts(t *testing.T) {
 		for _, want := range []string{
 			`id="hanBitmapFontPx"`, `id="stationNameOneLine"`, `id="stationNoteOneLine"`,
 			"MesaWizardUI.bindHanBitmapFontPxInput", "MesaWizardUI.bindStationOneLineCheckbox",
+			`input:not([type="checkbox"])`, `input[type="checkbox"]`,
+			`class="inline-unit"`, `class="check-label"`,
 		} {
 			if !strings.Contains(html, want) {
 				t.Errorf("%s missing %s", name, want)
 			}
+		}
+		if strings.Contains(html, "select, input {") {
+			t.Errorf("%s still applies full-row styles to all input (incl. checkbox)", name)
 		}
 	}
 	js := string(wizardUISharedJS)

@@ -11,7 +11,13 @@
     h1 { font-size: 1.2rem; margin: 0 0 6px; color: #d4a853; }
     .sub { font-size: 13px; color: #9aa5b1; margin-bottom: 20px; line-height: 1.5; }
     label { display: block; font-size: 12px; color: #9aa5b1; margin-bottom: 6px; }
-    select, input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #2d3a4a; background: #0f1419; color: #e8e6e3; font-size: 14px; margin-bottom: 14px; }
+    /* Field controls only — checkbox must not inherit full-row width/margin. */
+    select, input:not([type="checkbox"]) { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #2d3a4a; background: #0f1419; color: #e8e6e3; font-size: 14px; margin-bottom: 8px; }
+    input[type="checkbox"] { width: auto; flex-shrink: 0; margin: 3px 0 0; padding: 0; }
+    .inline-unit { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .inline-unit input { width: 5em; margin: 0; }
+    .check-label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 14px; color: #e8e6e3; margin-bottom: 0; }
+    .check-label .hint { margin: 4px 0 0; }
     .row { display: flex; gap: 8px; margin-bottom: 14px; }
     .row label { flex: 1; display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid #2d3a4a; border-radius: 8px; cursor: pointer; font-size: 14px; color: #e8e6e3; }
     .row input { width: auto; margin: 0; }
@@ -20,7 +26,7 @@
     .err { color: #f87171; font-size: 13px; min-height: 1.2em; margin-top: 8px; }
     .ok { display: none; text-align: center; }
     .ok h2 { color: #4ade80; font-size: 1.1rem; }
-    .hint { font-size: 11px; color: #9aa5b1; margin-top: -8px; margin-bottom: 14px; line-height: 1.45; }
+    .hint { font-size: 11px; color: #9aa5b1; margin: 0 0 14px; line-height: 1.45; }
     .scan-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; padding: 10px 12px; background: #0f1419; border: 1px solid #2d3a4a; border-radius: 8px; }
     .scan-status { font-size: 13px; color: #e8e6e3; margin: 0; line-height: 1.45; flex: 1; min-width: 200px; }
     .scan-refresh { width: auto !important; margin: 0 !important; padding: 8px 14px !important; font-size: 13px !important; }
@@ -67,8 +73,8 @@
       </div>
       <div class="stations" id="hanBitmapFontPxBlock">
         <label for="hanBitmapFontPx" id="hanBitmapFontPxLabel">…</label>
-        <div style="display:flex;align-items:center;gap:8px">
-          <input type="number" id="hanBitmapFontPx" min="16" max="40" step="1" style="width:5em" />
+        <div class="inline-unit">
+          <input type="number" id="hanBitmapFontPx" min="16" max="40" step="1" />
           <span id="hanBitmapFontPxUnit">px</span>
         </div>
         <p class="hint" id="hanBitmapFontPxHint">…</p>
@@ -83,22 +89,22 @@
         <p class="ok-msg" id="stationPtNameSizeOk"></p>
       </div>
       <div class="stations" id="stationNameOneLineBlock">
-        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
-          <input type="checkbox" id="stationNameOneLine" style="margin-top:3px" />
+        <label class="check-label">
+          <input type="checkbox" id="stationNameOneLine" />
           <span>
             <span id="stationNameOneLineLabel">…</span>
-            <p class="hint" id="stationNameOneLineHint" style="margin:4px 0 0">…</p>
+            <p class="hint" id="stationNameOneLineHint">…</p>
           </span>
         </label>
         <p class="err" id="stationNameOneLineErr"></p>
         <p class="ok-msg" id="stationNameOneLineOk"></p>
       </div>
       <div class="stations" id="stationNoteOneLineBlock">
-        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
-          <input type="checkbox" id="stationNoteOneLine" style="margin-top:3px" />
+        <label class="check-label">
+          <input type="checkbox" id="stationNoteOneLine" />
           <span>
             <span id="stationNoteOneLineLabel">…</span>
-            <p class="hint" id="stationNoteOneLineHint" style="margin:4px 0 0">…</p>
+            <p class="hint" id="stationNoteOneLineHint">…</p>
           </span>
         </label>
         <p class="err" id="stationNoteOneLineErr"></p>
