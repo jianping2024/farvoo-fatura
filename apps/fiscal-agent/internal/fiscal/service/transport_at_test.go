@@ -106,7 +106,7 @@ func TestIssueDeliveryNote_RealNumberToAT_NoDoubleSend(t *testing.T) {
 		d.ShipTo != (at.TransportAddress{Detail: "Rua B 2", City: "Porto", PostalCode: "4000-123"}) {
 		t.Fatalf("default points: from %+v to %+v", d.ShipFrom, d.ShipTo)
 	}
-	if len(d.Lines) != 1 || d.Lines[0].UnitPrice != "10.00" || d.Lines[0].Quantity != "2" {
+	if len(d.Lines) != 1 || d.Lines[0].UnitPrice != "10.000000" || d.Lines[0].Quantity != "2" {
 		t.Fatalf("lines: %+v", d.Lines)
 	}
 	if len(d.MovementStartTime) != 19 || strings.ContainsAny(d.MovementStartTime[10:], "Z+") {
