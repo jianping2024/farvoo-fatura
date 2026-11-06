@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"farvoo-fiscal-agent/internal/fiscal/service"
+	"farvoo-fiscal-agent/internal/fiscal/store"
 )
 
 func handleExportSAFT(w http.ResponseWriter, r *http.Request, deps HandlerDeps) {
@@ -13,10 +14,13 @@ func handleExportSAFT(w http.ResponseWriter, r *http.Request, deps HandlerDeps) 
 		writeErr(w, http.StatusServiceUnavailable, "fiscal_unavailable", "fiscal service not configured")
 		return
 	}
+	// Period: start_date + end_date, or year + month as shorthand for that calendar month.
 	var body struct {
-		StoreID string `json:"store_id"`
-		Year    int    `json:"year"`
-		Month   int    `json:"month"`
+		StoreID   string `json:"store_id"`
+		StartDate string `json:"start_date"`
+		EndDate   string `json:"end_date"`
+		Year      int    `json:"year"`
+		Month     int    `json:"month"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "bad_json", err.Error())
@@ -30,8 +34,16 @@ func handleExportSAFT(w http.ResponseWriter, r *http.Request, deps HandlerDeps) 
 	if !ok {
 		return
 	}
+	if body.StartDate == "" && body.EndDate == "" && body.Year != 0 {
+		start, end, err := store.SAFTPeriodBounds(body.Year, body.Month, "UTC")
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, "validation_failed", err.Error())
+			return
+		}
+		body.StartDate, body.EndDate = start, end
+	}
 	res, err := deps.Fiscal.ExportSAFT(r.Context(), service.ExportSAFTInput{
-		StoreID: storeID, Year: body.Year, Month: body.Month, OperatorID: opID,
+		StoreID: storeID, StartDate: body.StartDate, EndDate: body.EndDate, OperatorID: opID,
 	})
 	if err != nil {
 		writeCoded(w, err)

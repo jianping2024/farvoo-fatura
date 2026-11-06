@@ -231,6 +231,7 @@ func startEmbeddedFiscal(cfg *config) error {
 		CashDrawerPinGet:      cashPinGet,
 		CashDrawerPinSet:      cashPinSet,
 		AutoSessionSecretFile: true, // ONLY Retail embed entry; see docs/fiscal-session-secret.zh.md
+		Version:               Version,
 	}
 	if opts.Seed {
 		cwd, _ := os.Getwd()

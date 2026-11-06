@@ -19,6 +19,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/locale"
 	"farvoo-fiscal-agent/internal/fiscal/protect"
 	"farvoo-fiscal-agent/internal/fiscal/signer"
+	"farvoo-fiscal-agent/internal/fiscal/software"
 	"farvoo-fiscal-agent/internal/fiscal/store"
 
 	"github.com/google/uuid"
@@ -148,9 +149,6 @@ func (s *FiscalService) UpsertTaxpayer(p store.TaxpayerInput) error {
 	if p.Timezone == "" {
 		p.Timezone = "Europe/Lisbon"
 	}
-	if p.SoftwareCertificateNumber == "" {
-		p.SoftwareCertificateNumber = "0"
-	}
 	if p.TaxRegistrationNumber == "" || p.LegalName == "" || p.AddressDetail == "" || p.City == "" || p.PostalCode == "" {
 		return fmt.Errorf("fiscal: taxpayer required fields missing")
 	}
@@ -246,9 +244,7 @@ func (s *FiscalService) RegisterSeries(ctx context.Context, storeID, seriesCode,
 	if err != nil {
 		return nil, err
 	}
-	var certStr string
-	_ = s.db.SQL.QueryRow(`SELECT software_certificate_number FROM taxpayer_settings WHERE store_id=?`, storeID).Scan(&certStr)
-	certN, _ := strconv.Atoi(certStr)
+	certN, _ := strconv.Atoi(software.CertificateNumber)
 
 	res, err := s.at.RegisterSeries(ctx, at.RegisterRequest{
 		Username: cred.Username, Password: string(pass),

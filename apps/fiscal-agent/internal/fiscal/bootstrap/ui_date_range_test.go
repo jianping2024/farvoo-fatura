@@ -123,14 +123,14 @@ func TestAdminHTMLInvoiceFiltersUnique(t *testing.T) {
 	if n := strings.Count(adminHTML, "function listDateRangeLabels"); n != 1 {
 		t.Fatalf("listDateRangeLabels must be the ONLY date-range copy, got %d", n)
 	}
-	if n := strings.Count(adminHTML, "getLabels: listDateRangeLabels"); n != 1 {
-		t.Fatalf("invoice date filter must use listDateRangeLabels once, got %d", n)
+	if n := strings.Count(adminHTML, "getLabels: listDateRangeLabels"); n != 2 {
+		t.Fatalf("invoice + SAF-T date filters must each use listDateRangeLabels, got %d", n)
 	}
 	if !strings.Contains(adminHTML, "getLocale:") {
 		t.Fatal("invoice date filter must pass getLocale for DatePicker labels")
 	}
-	if !strings.Contains(adminHTML, "invoiceDateFilterCtrl, movementDatePicker, movementTimePicker]") {
-		t.Fatal("applyAdminLocale must include invoiceDateFilterCtrl + movementDatePicker + movementTimePicker in the shared relabel loop")
+	if !strings.Contains(adminHTML, "invoiceDateFilterCtrl, saftDateRangeCtrl, movementDatePicker, movementTimePicker]") {
+		t.Fatal("applyAdminLocale must include invoiceDateFilterCtrl + saftDateRangeCtrl + movementDatePicker + movementTimePicker in the shared relabel loop")
 	}
 	if strings.Contains(adminHTML, `type="datetime-local"`) || strings.Contains(adminHTML, `type="date"`) {
 		t.Fatal("admin dates must use FiscalUI.createDatePicker, not native date inputs")

@@ -14,6 +14,7 @@ import (
 	fiscalprint "farvoo-fiscal-agent/internal/fiscal/print"
 	"farvoo-fiscal-agent/internal/fiscal/service"
 	"farvoo-fiscal-agent/internal/fiscal/signer"
+	"farvoo-fiscal-agent/internal/fiscal/software"
 	"farvoo-fiscal-agent/internal/fiscal/store"
 	"farvoo-fiscal-agent/internal/fiscal/uievents"
 	"farvoo-fiscal-agent/internal/fiscal/worker"
@@ -25,7 +26,7 @@ type Options struct {
 	DataDir                   string
 	BindAddr                  string
 	AllowLAN                  bool // H2: required for 0.0.0.0 / non-loopback BindAddr (no env)
-	SoftwareCertificateNumber string
+	Version                   string // main.Version (VERSION via ldflags) → software.SetVersion
 	StoreID                   string
 	SigningKeyPEMPath         string
 	Seed                      bool
@@ -61,6 +62,7 @@ type Runtime struct {
 // StartCore opens DB, optional seed, starts print worker — no Listen.
 // ONLY core bootstrap path used by Agent embed and fiscal-local.
 func StartCore(opts Options) (*Runtime, error) {
+	software.SetVersion(opts.Version)
 	if opts.DBPath == "" {
 		return nil, fmt.Errorf("bootstrap: DBPath required")
 	}
@@ -111,7 +113,6 @@ func StartCore(opts Options) (*Runtime, error) {
 		if err := db.SeedDemoFromKeyFile(store.SeedDemoParams{
 			StoreID: opts.StoreID, TaxpayerNIF: "517535009", LegalName: "Farvoo Demo Lda",
 			Address: "Rua Demo 1", City: "Lisboa", PostalCode: "1000-001", Timezone: "Europe/Lisbon",
-			SoftwareCertificateNumber: opts.SoftwareCertificateNumber,
 			SeriesCode:                fmt.Sprintf("FT%dDEMO01", year),
 			ValidationCode:            "CSDF7T5H", FiscalYear: year,
 			OperatorID: "op-demo-cashier", OperatorName: "Demo Admin", SigningKeyVersion: 1,

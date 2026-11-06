@@ -9,6 +9,7 @@ import (
 
 // InsertSAFTExportInput is the ONLY write payload for saft_exports.
 type InsertSAFTExportInput struct {
+	ID               string // caller-assigned: the archived file is named after it
 	StoreID          string
 	TaxpayerNIF      string
 	PeriodYear       int
@@ -29,7 +30,10 @@ type InsertSAFTExportInput struct {
 
 // InsertSAFTExport appends one saft_exports row (never updates prior exports).
 func (d *DB) InsertSAFTExport(in InsertSAFTExportInput) (*SAFTExportRow, error) {
-	id := uuid.NewString()
+	id := in.ID
+	if id == "" {
+		id = uuid.NewString()
+	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := d.SQL.Exec(`INSERT INTO saft_exports (
 		id, store_id, taxpayer_nif, period_year, period_month, start_date, end_date,

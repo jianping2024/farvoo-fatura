@@ -207,6 +207,7 @@ type SAFTWorkingDocument struct {
 	WorkStatus      string
 	WorkStatusDate  string
 	StatusReason    string
+	StatusSourceID  string // DocumentStatus/SourceID: user who set the current status
 	Hash            string
 	HashControl     int
 	SourceID        string
@@ -228,6 +229,7 @@ type SAFTStockMovement struct {
 	MovementStatus     string
 	MovementStatusDate string
 	StatusReason       string
+	StatusSourceID     string // DocumentStatus/SourceID: user who set the current status
 	Hash               string
 	HashControl        int
 	SourceID           string
@@ -246,13 +248,14 @@ type SAFTStockMovement struct {
 func (d *DB) LoadSAFTWorkingDocumentsForPeriod(storeID, startDate, endDate string) ([]SAFTWorkingDocument, error) {
 	rows, err := d.SQL.Query(`SELECT i.id, i.invoice_no, i.atcud, i.invoice_date, i.system_entry_date,
 		i.document_status, COALESCE(NULLIF(i.status_changed_at,''), i.system_entry_date),
-		COALESCE(i.status_reason,''), i.hash, i.hash_control, o.saft_user_code,
+		COALESCE(i.status_reason,''), so.saft_user_code, i.hash, i.hash_control, o.saft_user_code,
 		i.gross_total, i.net_total, i.tax_payable,
 		cs.customer_tax_id, cs.company_name, cs.address_detail, cs.city, cs.postal_code, cs.country,
 		cs.account_id, cs.self_billing_indicator
 		FROM invoices i
 		JOIN invoice_customer_snapshots cs ON cs.invoice_id = i.id
 		JOIN operators o ON o.id = i.source_id
+		JOIN operators so ON so.id = i.status_source_id
 		WHERE i.store_id = ? AND i.invoice_date >= ? AND i.invoice_date <= ?
 		AND i.document_type = 'PF'
 		ORDER BY i.invoice_date, i.created_at`, storeID, startDate, endDate)
@@ -266,7 +269,7 @@ func (d *DB) LoadSAFTWorkingDocumentsForPeriod(storeID, startDate, endDate strin
 		var w SAFTWorkingDocument
 		if err := rows.Scan(
 			&w.ID, &w.DocumentNumber, &w.ATCUD, &w.WorkDate, &w.SystemEntryDate,
-			&w.WorkStatus, &w.WorkStatusDate, &w.StatusReason, &w.Hash, &w.HashControl, &w.SourceID,
+			&w.WorkStatus, &w.WorkStatusDate, &w.StatusReason, &w.StatusSourceID, &w.Hash, &w.HashControl, &w.SourceID,
 			&w.GrossTotal, &w.NetTotal, &w.TaxPayable,
 			&w.Customer.CustomerTaxID, &w.Customer.CompanyName, &w.Customer.AddressDetail,
 			&w.Customer.City, &w.Customer.PostalCode, &w.Customer.Country,
@@ -294,7 +297,7 @@ func (d *DB) LoadSAFTWorkingDocumentsForPeriod(storeID, startDate, endDate strin
 func (d *DB) LoadSAFTStockMovementsForPeriod(storeID, startDate, endDate string) ([]SAFTStockMovement, error) {
 	rows, err := d.SQL.Query(`SELECT i.id, i.invoice_no, i.atcud, i.document_type, i.invoice_date, i.system_entry_date,
 		i.document_status, COALESCE(NULLIF(i.status_changed_at,''), i.system_entry_date),
-		COALESCE(i.status_reason,''), i.hash, i.hash_control, o.saft_user_code,
+		COALESCE(i.status_reason,''), so.saft_user_code, i.hash, i.hash_control, o.saft_user_code,
 		i.gross_total, i.net_total, i.tax_payable,
 		`+shipAddressSelect("ship_from")+`, `+shipAddressSelect("ship_to")+`,
 		COALESCE(i.movement_start_at,''), COALESCE(i.at_transport_doc_code,''),
@@ -303,6 +306,7 @@ func (d *DB) LoadSAFTStockMovementsForPeriod(storeID, startDate, endDate string)
 		FROM invoices i
 		JOIN invoice_customer_snapshots cs ON cs.invoice_id = i.id
 		JOIN operators o ON o.id = i.source_id
+		JOIN operators so ON so.id = i.status_source_id
 		WHERE i.store_id = ? AND i.invoice_date >= ? AND i.invoice_date <= ?
 		AND i.document_type IN ('GR','GT')
 		ORDER BY i.invoice_date, i.created_at`, storeID, startDate, endDate)
@@ -317,7 +321,7 @@ func (d *DB) LoadSAFTStockMovementsForPeriod(storeID, startDate, endDate string)
 		var from, to shipAddressCols
 		dest := []any{
 			&m.ID, &m.DocumentNumber, &m.ATCUD, &m.MovementType, &m.MovementDate, &m.SystemEntryDate,
-			&m.MovementStatus, &m.MovementStatusDate, &m.StatusReason, &m.Hash, &m.HashControl, &m.SourceID,
+			&m.MovementStatus, &m.MovementStatusDate, &m.StatusReason, &m.StatusSourceID, &m.Hash, &m.HashControl, &m.SourceID,
 			&m.GrossTotal, &m.NetTotal, &m.TaxPayable,
 		}
 		dest = append(dest, from.dest()...)

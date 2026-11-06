@@ -24,12 +24,12 @@
 
 | 项 | 定法 |
 |----|------|
-| 期间边界 | 自然月；按门店 `taxpayer_settings.timezone` 计算 `[start_date, end_date]`（含首尾日，格式 `YYYY-MM-DD`） |
+| 期间边界 | 任意闭区间 `[start_date, end_date]`（`YYYY-MM-DD`），必须在同一财年内；自然月是区间的特例（API 仍接受 `year`+`month` 简写） |
 | 票筛选列 | **`invoices.invoice_date`** 落在上述闭区间 |
 | 含票类型 | 该月内所有 **已签** 本地票（P0：**FT + NC**；后续 FS/FR 等同理） |
 | 空月 | **拒绝**导出，API `409` + `error=no_invoices`；**不**写空 XML |
 | 重复导出 | **追加**新 `saft_exports` 行；**不** UPDATE 历史行 |
-| 文件路径 | `{parent(FISCAL_DATA_DIR)}/saft/{nif}/{year}/saft_{nif}_{year}-{MM}.xml` |
+| 文件路径 | `{parent(FISCAL_DATA_DIR)}/saft/{nif}/{year}/saft_{nif}_{start}_{end}_{exportID前8位}.xml`；**每次导出一份不可变文件**，重导出不覆盖历史文件，`file_sha256` 永远对应本行文件 |
 | 编码 | Windows-1252，无 BOM |
 | 行金额口径 | 行 `line_net`（**未含税**，2 位）；Portaria 302/2016 4.1.4.20.6/7 |
 | 行借贷方向 | **NC → `DebitAmount`**；FT/FS/FR/ND、PF、GR/GT → `CreditAmount`（唯一规则 `saft.lineIsDebit`） |
@@ -38,7 +38,11 @@
 | UnitPrice | 行 `unit_price_net`，6 位（`compliance.UnitPriceDecimals`，开票时 `LineFromGross` 唯一写入）；2026-11 之前的历史行为 2 位 |
 | 控制合计 | SalesInvoices / WorkingDocuments `TotalDebit`/`TotalCredit` = Σ 对应侧行金额（PF 排除 `A`） |
 | 0% 税率行 | 必须带 `TaxExemptionReason` + `TaxExemptionCode`；缺失 → `INVALID` |
-| validation_status | `VALID` / `INVALID`（Windows-1252 **编解码 roundtrip**；葡语重音合法；中文等不可编码字符 → `INVALID`；0% 行缺免税原因 → `INVALID`） |
+| validation_status | `VALID` / `INVALID` = **builder 层检查**（Windows-1252 编解码 roundtrip；0% 行缺免税原因；ProductDescription < 2 字符）。**不是** XSD 校验：Agent 端无 XSD 1.1 引擎，XSD 结构由 CI 门禁 `scripts/fiscal-saft-xsd-check.sh` 覆盖全票种样本保证 |
+| Header 软件身份 | `TaxAccountingBasis=F`；`ProductCompanyTaxID` / `ProductID`（`Farvoo/FAINA VAIDOSA, LDA`）/ `SoftwareCertificateNumber` 来自 `internal/fiscal/software`（唯一来源，签发与 AT 系列注册同读）；`ProductVersion` = `VERSION`（release 经 ldflags；dev 构建为 `dev`）；`DateCreated` = 导出当天（门店时区）；`TaxEntity=Global`（一个 NIF 一家店） |
+| 文本上限 | `domain` 的 SAF-T 上限表为唯一来源；录入时校验（作废/冲销原因 1–50 字符，`domain.ValidateStatusReason`），导出 `saft.writeText` 按同表截断（只为兜底已签历史单据） |
+| SourceID | 单据层 = 创建人（`invoices.source_id`）；`DocumentStatus/SourceID` = 当前状态操作人（`invoices.status_source_id`，迁移 019）；均输出 `operators.saft_user_code` |
+| MovementOfGoods 合计 | `NumberOfMovementLines` 含作废（A）单据行（Portaria 4.2.1）；`TotalQuantityIssued` 不含 A（4.2.2） |
 | 审计 | 每次成功导出写 `audit_log.action = EXPORT_SAFT` |
 
 ## 4. 唯一路径
@@ -60,13 +64,11 @@ Admin §7 exportSAFT() / Local API
 | 归档 | `store.InsertSAFTExport` | UPDATE 旧 export 行 |
 | Admin UI | `exportSAFT()` | 其它按钮直 POST 不同 body |
 
-## 5. 期间边界（`store.SAFTPeriodBounds`）
+## 5. 期间边界
 
-输入：`year`、`month`（1–12）、`timezone`（IANA，如 `Europe/Lisbon`）。
+`service.ExportSAFT` 只收 `start_date`..`end_date`（含首尾，同一财年，`start ≤ end`），筛选 `invoice_date` 在此闭区间内的已签单据；Header `FiscalYear` 取 `start_date` 年份。
 
-输出：`start_date = YYYY-MM-01`，`end_date = 该月最后一天`（均在门店时区语义下对应自然月）。
-
-**示例：** `2026-08` + `Europe/Lisbon` → `2026-08-01` … `2026-08-31`；筛选 `invoice_date` 在此闭区间内的已签票。
+`year`+`month` 简写只在 API 层经 `store.SAFTPeriodBounds` 展开为该自然月首尾日，例：`2026-08` → `2026-08-01` … `2026-08-31`。
 
 ## 6. `saft_exports` 列（与 schema 一致）
 
@@ -102,14 +104,14 @@ Admin §7 exportSAFT() / Local API
 
 | 字段 | 必填 | 说明 |
 |------|------|------|
-| year | 是 | ≥ 2000 |
-| month | 是 | 1–12 |
+| start_date / end_date | 二选一 | `YYYY-MM-DD`，同一财年 |
+| year / month | 二选一 | 自然月简写（≥2000 / 1–12） |
 | operator_id | 否 | 写入 `created_by` |
 | store_id | 否 | 默认进程 `FISCAL_STORE_ID` |
 
 **成功 200：** `export_id`、`file_name`、`file_path`、`file_sha256`、`invoice_count`、`total_*`、`validation_status`、`validation_errors?`
 
-**错误：** `validation_failed`（年月非法）、`no_invoices`（空月）、`taxpayer_missing`
+**错误：** `validation_failed`（期间非法或跨财年）、`no_invoices`（空月）、`taxpayer_missing`
 
 ### 7.2 `GET /local/v1/saft/exports?year=&month=`
 
@@ -128,7 +130,7 @@ Admin §7 exportSAFT() / Local API
 | SAF-T 节点 | 来源 |
 |------------|------|
 | Header.CompanyID / TaxRegistrationNumber | `taxpayer_settings` |
-| Header.FiscalYear / StartDate / EndDate | 请求年月 + `SAFTPeriodBounds` |
+| Header.FiscalYear / StartDate / EndDate | 请求区间（`FiscalYear` = 起始年） |
 | MasterFiles.Customer | 票上客户快照经 `saft.saftCustomer` 去重：有 NIF → `CustomerID=NIF`；无 NIF 的 Consumidor Final → `CF`（地址 Desconhecido）；无 NIF 署名收货方 → `C`+名称地址哈希 12 位；`CustomerTaxID` 无 NIF 时 = 999999990。各单据 `CustomerID` 用同一函数 |
 | SourceID（全部单据） | `operators.saft_user_code`（迁移 018，门店内 `U001`…，触发器分配；XSD ≤30 字符）；`invoices.source_id` 仍为 operators.id |
 | MasterFiles.Product | 行 `product_code` / `saft_name` 去重 |
@@ -145,7 +147,7 @@ Admin §7 exportSAFT() / Local API
 
 ## 9. Admin §7
 
-设置页 **「7. SAF-T 月导」**：年/月输入、**导出 SAF-T**、**刷新列表**；列表展示 `validation_status`、`invoice_count`、下载链接。
+设置页 **「7. SAF-T」**：日期区间（`FiscalUI.createDateRangeFilter`，默认「本月」，可自由选起止）、**导出 SAF-T**、**刷新列表**；列表展示起止日期、`validation_status`、`invoice_count`、每次导出各自的下载链接。
 
 ## 10. 回归与 UAT
 

@@ -21,7 +21,6 @@ func TestActivateFromCloud_RequiresCloudPairing(t *testing.T) {
 	if err := db.UpsertTaxpayer(store.TaxpayerInput{
 		StoreID: storeID, TaxRegistrationNumber: "517535009", LegalName: "Demo",
 		AddressDetail: "Rua 1", City: "Lisboa", PostalCode: "1000-001", Country: "PT", Timezone: "Europe/Lisbon",
-		SoftwareCertificateNumber: "0",
 	}); err != nil {
 		t.Fatal(err)
 	}

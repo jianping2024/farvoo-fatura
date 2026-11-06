@@ -28,7 +28,7 @@ func TestVerifySeriesIntegrity_BlockAndHeal(t *testing.T) {
 	if err := db.SeedDemoFromKeyFile(store.SeedDemoParams{
 		StoreID: "store-demo-001", TaxpayerNIF: "517535009", LegalName: "Demo Lda",
 		Address: "Rua 1", City: "Lisboa", PostalCode: "1000-001", Timezone: "Europe/Lisbon",
-		SoftwareCertificateNumber: "0", SeriesCode: "FT2026DEMO01", ValidationCode: "CSDF7T5H",
+		SeriesCode: "FT2026DEMO01", ValidationCode: "CSDF7T5H",
 		FiscalYear: 2026, OperatorID: "op-demo-cashier", OperatorName: "Cashier",
 		SigningKeyVersion: 1, InstallationID: "inst-1", DeviceID: "dev-1", DevicePublicKey: "x",
 	}, filepath.Join("..", "testdata", "dev_signing_key.pem"), pub); err != nil {

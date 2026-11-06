@@ -54,7 +54,7 @@ func TestBuildContainsFTAndNC(t *testing.T) {
 	}
 
 	built, err := saft.Build(saft.BuildInput{
-		Taxpayer: taxpayer, Year: 2026, Month: 8,
+		Taxpayer: taxpayer, CreatedDate: "2026-09-02",
 		StartDate: "2026-08-01", EndDate: "2026-08-31", Invoices: invoices,
 	})
 	if err != nil {
@@ -82,7 +82,7 @@ func TestBuildPortugueseAccentsValid(t *testing.T) {
 	taxpayer := &store.TaxpayerSettings{
 		TaxRegistrationNumber: "517535009", LegalName: "Farvoo Demo Lda",
 		AddressDetail: "Rua Demo 1", City: "Lisboa", PostalCode: "1000-001", Country: "PT",
-		SoftwareCertificateNumber: "0", ProductID: "Farvoo/InvoiceEngine",
+
 	}
 	inv := store.SAFTInvoice{
 		DocumentType: "FT", InvoiceNo: "FT FT2026DEMO01/1", ATCUD: "X-1",
@@ -97,7 +97,7 @@ func TestBuildPortugueseAccentsValid(t *testing.T) {
 		}},
 	}
 	built, err := saft.Build(saft.BuildInput{
-		Taxpayer: taxpayer, Year: 2026, Month: 8,
+		Taxpayer: taxpayer, CreatedDate: "2026-09-02",
 		StartDate: "2026-08-01", EndDate: "2026-08-31", Invoices: []store.SAFTInvoice{inv},
 	})
 	if err != nil {
@@ -119,7 +119,7 @@ func TestBuildRejectsNon1252Characters(t *testing.T) {
 	taxpayer := &store.TaxpayerSettings{
 		TaxRegistrationNumber: "517535009", LegalName: "Farvoo Demo Lda",
 		AddressDetail: "Rua Demo 1", City: "Lisboa", PostalCode: "1000-001", Country: "PT",
-		SoftwareCertificateNumber: "0", ProductID: "Farvoo/InvoiceEngine",
+
 	}
 	inv := store.SAFTInvoice{
 		DocumentType: "FT", InvoiceNo: "FT FT2026DEMO01/1", ATCUD: "X-1",
@@ -134,7 +134,7 @@ func TestBuildRejectsNon1252Characters(t *testing.T) {
 		}},
 	}
 	built, err := saft.Build(saft.BuildInput{
-		Taxpayer: taxpayer, Year: 2026, Month: 8,
+		Taxpayer: taxpayer, CreatedDate: "2026-09-02",
 		StartDate: "2026-08-01", EndDate: "2026-08-31", Invoices: []store.SAFTInvoice{inv},
 	})
 	if err != nil {
@@ -152,7 +152,7 @@ func seedSAFTDemo(t *testing.T, db *store.DB, sig *signer.PEMSigner) string {
 	if err := db.SeedDemoFromKeyFile(store.SeedDemoParams{
 		StoreID: "store-demo-001", TaxpayerNIF: "517535009", LegalName: "Demo Lda",
 		Address: "Rua 1", City: "Lisboa", PostalCode: "1000-001", Timezone: "Europe/Lisbon",
-		SoftwareCertificateNumber: "0", SeriesCode: "FT2026DEMO01", ValidationCode: "CSDF7T5H",
+		SeriesCode: "FT2026DEMO01", ValidationCode: "CSDF7T5H",
 		FiscalYear: 2026, OperatorID: "op-demo-cashier", OperatorName: "Cashier",
 		SigningKeyVersion: 1, InstallationID: "inst-1", DeviceID: "dev-1", DevicePublicKey: "x",
 	}, keyPath, pub); err != nil {

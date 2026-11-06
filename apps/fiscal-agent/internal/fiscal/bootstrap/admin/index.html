@@ -1464,10 +1464,7 @@
             <details class="settings-panel" id="settings-section-saft" data-settings-section="saft">
               <summary data-i18n="settings.saft.title">SAF-T</summary>
               <div class="settings-panel-body">
-                <div class="split">
-                  <div class="field"><label for="saftYear" data-i18n="settings.saft.year">年份</label><input id="saftYear" type="number" min="2000" max="2100" /></div>
-                  <div class="field"><label for="saftMonth" data-i18n="settings.saft.month">月份</label><input id="saftMonth" type="number" min="1" max="12" /></div>
-                </div>
+                <div id="saftDateRange"></div>
                 <div class="admin-list-toolbar">
                   <div class="admin-list-toolbar__actions" style="margin-left:0">
                     <button type="button" class="btn-toolbar btn-toolbar--icon" id="btnSaftRefresh" data-i18n="settings.saft.refresh" data-i18n-attr="aria-label title" aria-label="刷新列表" title="刷新列表">↻</button>
@@ -1549,7 +1546,7 @@
             <tbody id="adjustLinesTbody"></tbody>
           </table>
         </div>
-        <div class="field"><label id="adjustReasonLabel" data-i18n="adjust.reason">原因</label><input id="adjustReason" placeholder="" maxlength="200" /></div>
+        <div class="field"><label id="adjustReasonLabel" data-i18n="adjust.reason">原因</label><input id="adjustReason" placeholder="" maxlength="50" /></div>
       </div>
       <div class="sheet-foot">
         <div class="actions">
@@ -2062,7 +2059,7 @@
     if (setupStatusCache) applySettingsStatusUI(setupStatusCache);
     [billsListPaginationCtrl, productListPaginationCtrl,
       customerListPaginationCtrl, invoiceListPaginationCtrl, auditLogPaginationCtrl,
-      invoiceDateFilterCtrl, movementDatePicker, movementTimePicker]
+      invoiceDateFilterCtrl, saftDateRangeCtrl, movementDatePicker, movementTimePicker]
       .forEach(function (c) { if (c && c.relabel) c.relabel(); });
     if ($('#app-shell') && $('#app-shell').classList.contains('on')) {
       void refreshOperatorsPanel();
@@ -2443,6 +2440,7 @@
   let invoiceListCache = [];
   /** ONLY date-range control for invoice list (FiscalUI.createDateRangeFilter). */
   let invoiceDateFilterCtrl = null;
+  let saftDateRangeCtrl = null;
   let invoiceSearchDebounce = null;
   let invoiceFiltersReady = false;
   let invoiceListPage = 1;
@@ -3314,8 +3312,7 @@
       city: $('#city').value.trim(),
       postal_code: $('#postal').value.trim(),
       country: 'PT',
-      timezone: 'Europe/Lisbon',
-      software_certificate_number: '0'
+      timezone: 'Europe/Lisbon'
     });
     applySetupStatusFromResponse(st);
     markSaveSuccess(btn);
@@ -6559,10 +6556,7 @@
   });
 
   async function refreshSAFTExports() {
-    const y = parseInt($('#saftYear').value, 10);
-    const m = parseInt($('#saftMonth').value, 10);
-    const q = (y > 0 && m > 0) ? ('?year=' + y + '&month=' + m) : '';
-    const data = await j('GET', '/local/v1/saft/exports' + q);
+    const data = await j('GET', '/local/v1/saft/exports');
     const list = data.exports || [];
     const el = $('#saftExportList');
     if (!list.length) {
@@ -6570,7 +6564,7 @@
       return;
     }
     el.innerHTML = list.map(ex => {
-      const period = ex.period_year + '-' + String(ex.period_month).padStart(2, '0');
+      const period = ex.start_date + ' ~ ' + ex.end_date;
       return '<li class="' + (ex.validation_status === 'VALID' ? 'ok' : 'no') + '">' +
       FiscalAdminI18n.fmt('settings.saft.row', { period: period, count: ex.invoice_count, status: ex.validation_status }) +
       ' · <a href="/local/v1/saft/exports/' + ex.id + '/download" download="' + (ex.file_name || 'saft.xml') + '">' +
@@ -6578,13 +6572,12 @@
     }).join('');
   }
 
-  /** ONLY SAF-T export UI path. */
+  /** ONLY SAF-T export UI path: inclusive start..end within one fiscal year. */
   async function exportSAFT() {
-    const year = parseInt($('#saftYear').value, 10);
-    const month = parseInt($('#saftMonth').value, 10);
+    const range = saftDateRangeCtrl.getRange();
     return j('POST', '/local/v1/saft/exports', {
-      year: year,
-      month: month
+      start_date: range.from,
+      end_date: range.to
     });
   }
 
@@ -6597,8 +6590,16 @@
   $('#seriesPf').value = 'PF' + y + 'DEMO01';
   $('#seriesGr').value = 'GR' + y + 'DEMO01';
   if ($('#seriesGt')) $('#seriesGt').value = 'GT' + y + 'DEMO01';
-  $('#saftYear').value = String(y);
-  $('#saftMonth').value = String(new Date().getMonth() + 1);
+  saftDateRangeCtrl = FiscalUI.createDateRangeFilter('#saftDateRange', {
+    storageKey: 'fiscal_saft_date_range_v1',
+    timezone: INVOICE_TZ,
+    defaultPreset: 'month',
+    getLabels: listDateRangeLabels,
+    getLocale: function () {
+      return (typeof FiscalAdminI18n !== 'undefined' && FiscalAdminI18n.getLocale)
+        ? FiscalAdminI18n.getLocale() : 'zh';
+    },
+  });
 
   $('#btnRefreshSetup').onclick = () => withBusy($('#btnRefreshSetup'), FiscalAdminI18n.t('common.refreshing'), async () => {
     await refreshSetupStatus({ autoSync: true }); toast(FiscalAdminI18n.t('settings.status.refreshed'), 'success');

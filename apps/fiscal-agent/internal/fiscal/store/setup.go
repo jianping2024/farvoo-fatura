@@ -20,12 +20,10 @@ func (d *DB) UpsertTaxpayer(p TaxpayerInput) error {
 		_, err = d.SQL.Exec(`INSERT INTO taxpayer_settings (
 			id, store_id, tax_registration_number, legal_name, business_name,
 			address_detail, city, postal_code, country, timezone, phone,
-			software_certificate_number, product_id, product_version,
 			fs_amount_threshold, tax_country_region, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'Farvoo/InvoiceEngine', '0.0.0', '100.00', 'PT', ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, '100.00', 'PT', ?, ?)`,
 			id, p.StoreID, p.TaxRegistrationNumber, p.LegalName, nullStr(p.BusinessName),
-			p.AddressDetail, p.City, p.PostalCode, p.Country, p.Timezone,
-			p.SoftwareCertificateNumber, now, now)
+			p.AddressDetail, p.City, p.PostalCode, p.Country, p.Timezone, now, now)
 		return err
 	}
 	if err != nil {
@@ -33,10 +31,10 @@ func (d *DB) UpsertTaxpayer(p TaxpayerInput) error {
 	}
 	_, err = d.SQL.Exec(`UPDATE taxpayer_settings SET
 		tax_registration_number=?, legal_name=?, business_name=?, address_detail=?, city=?, postal_code=?,
-		country=?, timezone=?, software_certificate_number=?, updated_at=?
+		country=?, timezone=?, updated_at=?
 		WHERE store_id=?`,
 		p.TaxRegistrationNumber, p.LegalName, nullStr(p.BusinessName), p.AddressDetail, p.City, p.PostalCode,
-		p.Country, p.Timezone, p.SoftwareCertificateNumber, now, p.StoreID)
+		p.Country, p.Timezone, now, p.StoreID)
 	return err
 }
 
@@ -51,7 +49,6 @@ type TaxpayerInput struct {
 	PostalCode                string `json:"postal_code"`
 	Country                   string `json:"country"`
 	Timezone                  string `json:"timezone"`
-	SoftwareCertificateNumber string `json:"software_certificate_number"`
 }
 
 // UpsertATCredentials stores sealed AT password (ONLY at_credentials write path).

@@ -48,7 +48,7 @@ func transportFixture(t *testing.T) (*service.FiscalService, *store.DB, *capture
 	if err := db.SeedDemoFromKeyFile(store.SeedDemoParams{
 		StoreID: "store-demo-001", TaxpayerNIF: "519655290", LegalName: "FAINA VAIDOSA LDA",
 		Address: "Rua 1", City: "Lisboa", PostalCode: "1000-001", Timezone: "Europe/Lisbon",
-		SoftwareCertificateNumber: "0", SeriesCode: "FT2026DEMO01", ValidationCode: "CSDF7T5H",
+		SeriesCode: "FT2026DEMO01", ValidationCode: "CSDF7T5H",
 		FiscalYear: 2026, OperatorID: "op-demo-cashier", OperatorName: "Cashier",
 		SigningKeyVersion: 1, InstallationID: "inst-1", DeviceID: "dev-1", DevicePublicKey: "x",
 	}, keyPath, pub); err != nil {

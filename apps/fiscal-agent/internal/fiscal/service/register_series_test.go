@@ -23,7 +23,6 @@ func TestRegisterSeries_IdempotentAndRejectSecondCode(t *testing.T) {
 	if err := db.UpsertTaxpayer(store.TaxpayerInput{
 		StoreID: storeID, TaxRegistrationNumber: "517535009", LegalName: "Demo",
 		AddressDetail: "Rua 1", City: "Lisboa", PostalCode: "1000-001", Country: "PT", Timezone: "Europe/Lisbon",
-		SoftwareCertificateNumber: "0",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +85,6 @@ func TestRegisterSeries_CodeTakenByOtherDocType(t *testing.T) {
 	if err := db.UpsertTaxpayer(store.TaxpayerInput{
 		StoreID: storeID, TaxRegistrationNumber: "519655290", LegalName: "Demo",
 		AddressDetail: "Rua 1", City: "Lisboa", PostalCode: "1000-001", Country: "PT", Timezone: "Europe/Lisbon",
-		SoftwareCertificateNumber: "0",
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -9,20 +9,24 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"farvoo-fiscal-agent/internal/fiscal/saft"
 	"farvoo-fiscal-agent/internal/fiscal/store"
+
+	"github.com/google/uuid"
 )
 
 const (
 	ErrCodeNoInvoices = "no_invoices"
 )
 
-// ExportSAFTInput is input for the ONLY SAF-T export orchestration.
+// ExportSAFTInput is input for the ONLY SAF-T export orchestration: an inclusive period
+// StartDate..EndDate (YYYY-MM-DD) inside one fiscal year; a calendar month is one such period.
 type ExportSAFTInput struct {
 	StoreID    string
-	Year       int
-	Month      int
+	StartDate  string
+	EndDate    string
 	OperatorID string
 }
 
@@ -46,9 +50,12 @@ func (s *FiscalService) ExportSAFT(_ context.Context, in ExportSAFTInput) (*Expo
 	if storeID == "" {
 		storeID = s.storeID
 	}
-	if in.Year < 2000 || in.Month < 1 || in.Month > 12 {
-		return nil, coded("validation_failed", "year and month required")
+	start, errS := time.Parse("2006-01-02", in.StartDate)
+	end, errE := time.Parse("2006-01-02", in.EndDate)
+	if errS != nil || errE != nil || end.Before(start) || start.Year() != end.Year() || start.Year() < 2000 {
+		return nil, coded(ErrCodeValidationFailed, "start_date and end_date (YYYY-MM-DD) must be ordered within one fiscal year")
 	}
+	startDate, endDate := in.StartDate, in.EndDate
 	taxpayer, err := s.db.GetTaxpayerSettings(storeID)
 	if errors.Is(err, store.ErrNotFound) {
 		return nil, coded(ErrCodeTaxpayerMissing, "taxpayer not configured")
@@ -56,9 +63,9 @@ func (s *FiscalService) ExportSAFT(_ context.Context, in ExportSAFTInput) (*Expo
 	if err != nil {
 		return nil, err
 	}
-	startDate, endDate, err := store.SAFTPeriodBounds(in.Year, in.Month, taxpayer.Timezone)
+	loc, err := time.LoadLocation(taxpayer.Timezone)
 	if err != nil {
-		return nil, err
+		loc = time.UTC
 	}
 	invoices, err := s.db.LoadSAFTInvoicesForPeriod(storeID, startDate, endDate)
 	if err != nil {
@@ -81,16 +88,18 @@ func (s *FiscalService) ExportSAFT(_ context.Context, in ExportSAFTInput) (*Expo
 	}
 
 	built, err := saft.Build(saft.BuildInput{
-		Taxpayer: taxpayer, Year: in.Year, Month: in.Month,
-		StartDate: startDate, EndDate: endDate, Invoices: invoices, Payments: payments,
-		WorkDocs: workDocs, Movements: movements,
+		Taxpayer: taxpayer, StartDate: startDate, EndDate: endDate,
+		CreatedDate: time.Now().In(loc).Format("2006-01-02"),
+		Invoices:    invoices, Payments: payments, WorkDocs: workDocs, Movements: movements,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	fileName := fmt.Sprintf("saft_%s_%d-%02d.xml", taxpayer.TaxRegistrationNumber, in.Year, in.Month)
-	dir := filepath.Join(saftRoot(s.dataDir), taxpayer.TaxRegistrationNumber, fmt.Sprintf("%d", in.Year))
+	// One immutable file per export row: re-exporting a period never overwrites an archived file.
+	exportID := uuid.NewString()
+	fileName := fmt.Sprintf("saft_%s_%s_%s_%s.xml", taxpayer.TaxRegistrationNumber, startDate, endDate, exportID[:8])
+	dir := filepath.Join(saftRoot(s.dataDir), taxpayer.TaxRegistrationNumber, startDate[:4])
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
@@ -111,8 +120,8 @@ func (s *FiscalService) ExportSAFT(_ context.Context, in ExportSAFTInput) (*Expo
 		operatorID = "op-demo-cashier"
 	}
 	row, err := s.db.InsertSAFTExport(store.InsertSAFTExportInput{
-		StoreID: storeID, TaxpayerNIF: taxpayer.TaxRegistrationNumber,
-		PeriodYear: in.Year, PeriodMonth: in.Month,
+		ID: exportID, StoreID: storeID, TaxpayerNIF: taxpayer.TaxRegistrationNumber,
+		PeriodYear: start.Year(), PeriodMonth: int(start.Month()),
 		StartDate: startDate, EndDate: endDate,
 		FileName: fileName, FilePath: filePath, FileSHA256: fileSHA,
 		InvoiceCount: len(invoices) + len(payments),
@@ -124,7 +133,7 @@ func (s *FiscalService) ExportSAFT(_ context.Context, in ExportSAFTInput) (*Expo
 		return nil, err
 	}
 	_ = s.db.InsertAuditLog(operatorID, "EXPORT_SAFT", "saft_exports", row.ID,
-		fmt.Sprintf(`{"year":%d,"month":%d,"invoice_count":%d}`, in.Year, in.Month, len(invoices)+len(payments)))
+		fmt.Sprintf(`{"start_date":%q,"end_date":%q,"invoice_count":%d}`, startDate, endDate, len(invoices)+len(payments)))
 
 	return &ExportSAFTResult{
 		ExportID: row.ID, FileName: fileName, FilePath: filePath, FileSHA256: fileSHA,

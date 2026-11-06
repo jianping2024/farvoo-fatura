@@ -33,7 +33,7 @@ func TestIssueGR_Annul_LinkFT(t *testing.T) {
 	if err := db.SeedDemoFromKeyFile(store.SeedDemoParams{
 		StoreID: "store-demo-001", TaxpayerNIF: "517535009", LegalName: "Demo Lda",
 		Address: "Rua 1", City: "Lisboa", PostalCode: "1000-001", Timezone: "Europe/Lisbon",
-		SoftwareCertificateNumber: "0", SeriesCode: "FT2026DEMO01", ValidationCode: "CSDF7T5H",
+		SeriesCode: "FT2026DEMO01", ValidationCode: "CSDF7T5H",
 		FiscalYear: 2026, OperatorID: "op-demo-cashier", OperatorName: "Cashier",
 		SigningKeyVersion: 1, InstallationID: "inst-1", DeviceID: "dev-1", DevicePublicKey: "x",
 	}, keyPath, pub); err != nil {
@@ -143,12 +143,33 @@ func TestIssueGR_Annul_LinkFT(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Annulled by another operator: SAF-T SourceID keeps the creator, DocumentStatus/SourceID
+	// names who annulled (Portaria 302/2016 4.2.3.x vs 4.2.3.3.x).
+	if err := db.UpsertOperator("op-annul", "store-demo-001", "admin", "Annuller", ""); err != nil {
+		t.Fatal(err)
+	}
 	ann, err := db.AnnulGR(context.Background(), store.AnnulGRParams{
 		StoreID: "store-demo-001", RequestID: "annul-n", DocumentID: gr2.DocumentID,
-		OperatorID: "op-demo-cashier", Reason: "Cancelado",
+		OperatorID: "op-annul", Reason: "Cancelado",
 	})
 	if err != nil || ann.DocumentStatus != domain.WorkStatusAnnulled {
 		t.Fatalf("annul %+v err=%v", ann, err)
+	}
+	var creator, statusBy string
+	if err := db.SQL.QueryRow(`SELECT source_id, status_source_id FROM invoices WHERE id=?`, gr2.DocumentID).Scan(&creator, &statusBy); err != nil {
+		t.Fatal(err)
+	}
+	if creator != "op-demo-cashier" || statusBy != "op-annul" {
+		t.Fatalf("source_id=%s status_source_id=%s", creator, statusBy)
+	}
+	moves, err := db.LoadSAFTStockMovementsForPeriod("store-demo-001", "2000-01-01", "2100-12-31")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range moves {
+		if m.ID == gr2.DocumentID && (m.SourceID == m.StatusSourceID || m.SourceID == "" || m.StatusSourceID == "") {
+			t.Fatalf("SAF-T SourceID %q / StatusSourceID %q must differ", m.SourceID, m.StatusSourceID)
+		}
 	}
 
 	// FT → GR picker: linked (F) and normal (N) are offered, annulled (A) is not.

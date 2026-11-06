@@ -16,6 +16,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/saft"
 	"farvoo-fiscal-agent/internal/fiscal/signer"
+	"farvoo-fiscal-agent/internal/fiscal/software"
 	"farvoo-fiscal-agent/internal/fiscal/store"
 
 	"github.com/shopspring/decimal"
@@ -29,11 +30,30 @@ const xsdFixtureEnv = "SAFT_XSD_FIXTURE_OUT"
 var uuidSourceID = regexp.MustCompile(`<SourceID>[0-9a-f]{8}-[0-9a-f]{4}-`)
 
 type auditFile struct {
+	Header struct {
+		TaxAccountingBasis  string `xml:"TaxAccountingBasis"`
+		FiscalYear          string `xml:"FiscalYear"`
+		DateCreated         string `xml:"DateCreated"`
+		ProductCompanyTaxID string `xml:"ProductCompanyTaxID"`
+		CertificateNumber   string `xml:"SoftwareCertificateNumber"`
+		ProductID           string `xml:"ProductID"`
+		ProductVersion      string `xml:"ProductVersion"`
+	} `xml:"Header"`
+	MovementOfGoods struct {
+		Lines    int    `xml:"NumberOfMovementLines"`
+		Quantity string `xml:"TotalQuantityIssued"`
+		Docs     []struct {
+			Status string     `xml:"DocumentStatus>MovementStatus"`
+			Lines  []saftLine `xml:"Line"`
+			Totals docTotals  `xml:"DocumentTotals"`
+		} `xml:"StockMovement"`
+	} `xml:"SourceDocuments>MovementOfGoods"`
 	SalesInvoices struct {
 		TotalDebit  string `xml:"TotalDebit"`
 		TotalCredit string `xml:"TotalCredit"`
 		Invoices    []struct {
 			InvoiceNo   string     `xml:"InvoiceNo"`
+			Period      string     `xml:"Period"`
 			InvoiceType string     `xml:"InvoiceType"`
 			Lines       []saftLine `xml:"Line"`
 			Totals      docTotals  `xml:"DocumentTotals"`
@@ -47,10 +67,6 @@ type auditFile struct {
 			Totals docTotals  `xml:"DocumentTotals"`
 		} `xml:"WorkDocument"`
 	} `xml:"SourceDocuments>WorkingDocuments"`
-	Movements []struct {
-		Lines  []saftLine `xml:"Line"`
-		Totals docTotals  `xml:"DocumentTotals"`
-	} `xml:"SourceDocuments>MovementOfGoods>StockMovement"`
 }
 
 type saftLine struct {
@@ -98,6 +114,26 @@ func TestBuildLineAmountsNetAndSided(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	h := af.Header
+	if h.TaxAccountingBasis != "F" || h.FiscalYear != "2026" || h.DateCreated != "2026-09-02" ||
+		h.ProductCompanyTaxID != software.ProducerTaxID || h.CertificateNumber != software.CertificateNumber ||
+		h.ProductID != "Farvoo/FAINA VAIDOSA, LDA" || h.ProductVersion != software.Version() {
+		t.Fatalf("Header (Portaria 1.4/1.12/1.14–1.16): %+v", h)
+	}
+	// 4.2.1 counts every line incl. annulled; 4.2.2 sums quantities of non-annulled documents.
+	wantLines, wantQty := 0, decimal.Zero
+	for _, m := range af.MovementOfGoods.Docs {
+		for _, ln := range m.Lines {
+			wantLines++
+			if m.Status != "A" {
+				wantQty = wantQty.Add(dec(t, ln.Quantity))
+			}
+		}
+	}
+	if af.MovementOfGoods.Lines != wantLines || !dec(t, af.MovementOfGoods.Quantity).Equal(wantQty) {
+		t.Fatalf("MovementOfGoods lines/qty %d/%s want %d/%s", af.MovementOfGoods.Lines, af.MovementOfGoods.Quantity, wantLines, wantQty)
+	}
+
 	checkLines := func(label, docType string, lines []saftLine, tot docTotals) decimal.Decimal {
 		t.Helper()
 		sum := decimal.Zero
@@ -132,6 +168,9 @@ func TestBuildLineAmountsNetAndSided(t *testing.T) {
 	types := map[string]bool{}
 	for _, inv := range af.SalesInvoices.Invoices {
 		types[inv.InvoiceType] = true
+		if inv.Period != "8" {
+			t.Fatalf("%s Period %q: month 1–12 without leading zero", inv.InvoiceNo, inv.Period)
+		}
 		s := checkLines(inv.InvoiceNo, inv.InvoiceType, inv.Lines, inv.Totals)
 		if inv.InvoiceType == "NC" {
 			debit = debit.Add(s)
@@ -155,10 +194,10 @@ func TestBuildLineAmountsNetAndSided(t *testing.T) {
 	if len(af.WorkingDocuments.Docs) == 0 || !wd.Equal(dec(t, af.WorkingDocuments.TotalCredit)) {
 		t.Fatalf("WorkingDocuments TotalCredit %s want %s", af.WorkingDocuments.TotalCredit, wd)
 	}
-	if len(af.Movements) != 2 {
-		t.Fatalf("movements %d", len(af.Movements))
+	if len(af.MovementOfGoods.Docs) != 3 {
+		t.Fatalf("movements %d", len(af.MovementOfGoods.Docs))
 	}
-	for _, m := range af.Movements {
+	for _, m := range af.MovementOfGoods.Docs {
 		checkLines("movement", "GT", m.Lines, m.Totals)
 	}
 }
@@ -240,7 +279,7 @@ func buildFixture(t *testing.T) *saft.BuildResult {
 
 	pf := store.SAFTWorkingDocument{
 		ID: "pf-1", DocumentNumber: "PF PF2026DEMO01/1", ATCUD: "PFVAL123-1", WorkDate: multi.InvoiceDate,
-		SystemEntryDate: multi.SystemEntryDate, WorkStatus: "N", WorkStatusDate: multi.SystemEntryDate,
+		SystemEntryDate: multi.SystemEntryDate, WorkStatus: "N", WorkStatusDate: multi.SystemEntryDate, StatusSourceID: multi.SourceID,
 		Hash: multi.Hash, HashControl: multi.HashControl, SourceID: multi.SourceID,
 		GrossTotal: multi.GrossTotal, NetTotal: multi.NetTotal, TaxPayable: multi.TaxPayable,
 		Customer: multi.Customer, Lines: multi.Lines,
@@ -253,7 +292,7 @@ func buildFixture(t *testing.T) *saft.BuildResult {
 		return store.SAFTStockMovement{
 			ID: no, DocumentNumber: typ + " " + typ + "2026DEMO01/1", ATCUD: typ + "VAL123-1", MovementType: typ,
 			MovementDate: multi.InvoiceDate, SystemEntryDate: multi.SystemEntryDate,
-			MovementStatus: "N", MovementStatusDate: multi.SystemEntryDate,
+			MovementStatus: "N", MovementStatusDate: multi.SystemEntryDate, StatusSourceID: multi.SourceID,
 			Hash: multi.Hash, HashControl: multi.HashControl, SourceID: multi.SourceID,
 			GrossTotal: multi.GrossTotal, NetTotal: multi.NetTotal, TaxPayable: multi.TaxPayable,
 			ShipFrom: shop, ShipTo: domain.Address{Detail: "Rua 2", City: "Porto", PostalCode: "4000-001"},
@@ -265,6 +304,9 @@ func buildFixture(t *testing.T) *saft.BuildResult {
 	grNamed.Customer = store.SAFTCustomer{CompanyName: "Maria Costa", AddressDetail: "Rua 3", City: "Porto", PostalCode: "4000-002", Country: "PT", AccountID: "Desconhecido"}
 	gtWalkIn := movement("gt-1", "GT")
 	gtWalkIn.Customer = store.SAFTCustomer{CompanyName: "Consumidor Final", AddressDetail: "Avenida da Liberdade", City: "Lisboa", PostalCode: "1250-147", Country: "PT", AccountID: "Desconhecido"}
+	grAnnulled := movement("gr-2", "GR")
+	grAnnulled.DocumentNumber, grAnnulled.ATCUD = "GR GR2026DEMO01/2", "GRVAL123-2"
+	grAnnulled.MovementStatus, grAnnulled.StatusReason = "A", "Cliente desistiu"
 	rg := store.SAFTPayment{
 		ID: "rg-1", PaymentRefNo: "RG RG2026DEMO01/1", ATCUD: "RGVAL123-1", TransactionDate: multi.InvoiceDate,
 		SystemEntryDate: multi.SystemEntryDate, SourceID: multi.SourceID, GrossTotal: multi.GrossTotal,
@@ -273,10 +315,10 @@ func buildFixture(t *testing.T) *saft.BuildResult {
 	}
 
 	built, err := saft.Build(saft.BuildInput{
-		Taxpayer: taxpayer, Year: 2026, Month: 8, StartDate: "2026-08-01", EndDate: "2026-08-31",
+		Taxpayer: taxpayer, StartDate: "2026-08-01", EndDate: "2026-08-31", CreatedDate: "2026-09-02",
 		Invoices:  invoices,
 		WorkDocs:  []store.SAFTWorkingDocument{pf, pfCancelled},
-		Movements: []store.SAFTStockMovement{grNamed, gtWalkIn},
+		Movements: []store.SAFTStockMovement{grNamed, gtWalkIn, grAnnulled},
 		Payments:  []store.SAFTPayment{rg},
 	})
 	if err != nil {
@@ -289,7 +331,6 @@ func TestBuildFlagsZeroRateWithoutExemption(t *testing.T) {
 	taxpayer := &store.TaxpayerSettings{
 		TaxRegistrationNumber: "517535009", LegalName: "Farvoo Demo Lda",
 		AddressDetail: "Rua Demo 1", City: "Lisboa", PostalCode: "1000-001", Country: "PT",
-		SoftwareCertificateNumber: "0", ProductID: "Farvoo/InvoiceEngine",
 	}
 	inv := store.SAFTInvoice{
 		DocumentType: "FT", InvoiceNo: "FT FT2026DEMO01/1", InvoiceDate: "2026-08-21",
@@ -301,7 +342,7 @@ func TestBuildFlagsZeroRateWithoutExemption(t *testing.T) {
 		}},
 	}
 	built, err := saft.Build(saft.BuildInput{
-		Taxpayer: taxpayer, Year: 2026, Month: 8, StartDate: "2026-08-01", EndDate: "2026-08-31", Invoices: []store.SAFTInvoice{inv},
+		Taxpayer: taxpayer, StartDate: "2026-08-01", EndDate: "2026-08-31", CreatedDate: "2026-09-02", Invoices: []store.SAFTInvoice{inv},
 	})
 	if err != nil {
 		t.Fatal(err)
