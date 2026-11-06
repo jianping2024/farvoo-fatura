@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"farvoo-fiscal-agent/internal/fiscal/billsync"
@@ -89,7 +90,7 @@ func TestDraftToSaleSnapshot_RejectSplit(t *testing.T) {
 	_, err := billsync.DraftToSaleSnapshot(billsync.Snapshot{
 		SourceSaleID: "s", ScopeType: "split",
 		Splits: []billsync.SplitPart{{ScopeID: "p1", Lines: []billsync.Line{
-			{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+			{ItemCode: "A", Name: "Item X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
 		}}},
 	})
 	ie := billsync.AsIngestError(err)
@@ -105,7 +106,7 @@ func TestIngest_AlreadyInvoicedViaTaxDB(t *testing.T) {
 
 	payload, _ := json.Marshal(billsync.Snapshot{
 		RequestID: "r1", SourceSaleID: "s1", ScopeType: "whole_table", GrossTotal: "1.00",
-		Lines: []billsync.Line{{ItemCode: "A", Name: "X", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00", Qty: "1"}},
+		Lines: []billsync.Line{{ItemCode: "A", Name: "Item X", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00", Qty: "1"}},
 	})
 	draft, err := billsync.IngestCloudJob(db, billsync.CloudJob{ID: "j1", Payload: payload})
 	if err != nil {
@@ -123,7 +124,7 @@ func TestIngest_AlreadyInvoicedViaTaxDB(t *testing.T) {
 	}
 	payload2, _ := json.Marshal(billsync.Snapshot{
 		RequestID: "r2", SourceSaleID: "s1", ScopeType: "whole_table", GrossTotal: "1.00",
-		Lines: []billsync.Line{{ItemCode: "A", Name: "X", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00", Qty: "1"}},
+		Lines: []billsync.Line{{ItemCode: "A", Name: "Item X", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00", Qty: "1"}},
 	})
 	_, err = billsync.IngestCloudJob(db, billsync.CloudJob{ID: "j2", Payload: payload2})
 	ie := billsync.AsIngestError(err)
@@ -205,7 +206,7 @@ func TestIssueFromBillDraft_RejectNonOpen(t *testing.T) {
 	defer db.Close()
 	payload, _ := json.Marshal(billsync.Snapshot{
 		RequestID: "r1", SourceSaleID: "s-disc", ScopeType: "whole_table", GrossTotal: "1.00",
-		Lines: []billsync.Line{{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"}},
+		Lines: []billsync.Line{{ItemCode: "A", Name: "Item X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"}},
 	})
 	d1, err := billsync.IngestCloudJob(db, billsync.CloudJob{ID: "j1", Payload: payload})
 	if err != nil {
@@ -213,7 +214,7 @@ func TestIssueFromBillDraft_RejectNonOpen(t *testing.T) {
 	}
 	payload2, _ := json.Marshal(billsync.Snapshot{
 		RequestID: "r2", SourceSaleID: "s-disc", ScopeType: "whole_table", GrossTotal: "1.00",
-		Lines: []billsync.Line{{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"}},
+		Lines: []billsync.Line{{ItemCode: "A", Name: "Item X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"}},
 	})
 	if _, err := billsync.IngestCloudJob(db, billsync.CloudJob{ID: "j2", Payload: payload2}); err != nil {
 		t.Fatal(err)
@@ -267,10 +268,10 @@ func TestIssueFromBillDraft_PersonPartialThenComplete(t *testing.T) {
 		RequestID: "req-split", SourceSaleID: "sale-p", ScopeType: "split",
 		Splits: []billsync.SplitPart{
 			{ScopeID: scopeA, Name: "A", GrossTotal: "1.00", Lines: []billsync.Line{
-				{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+				{ItemCode: "A", Name: "Item X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
 			}},
 			{ScopeID: scopeB, Name: "B", GrossTotal: "2.00", Lines: []billsync.Line{
-				{ItemCode: "B", Name: "Y", Qty: "1", UnitPriceGross: "2.00", LineGross: "2.00", VATRate: "23.00"},
+				{ItemCode: "B", Name: "Item Y", Qty: "1", UnitPriceGross: "2.00", LineGross: "2.00", VATRate: "23.00"},
 			}},
 		},
 	})
@@ -341,7 +342,7 @@ func TestIssueFromBillDraft_PersonOnWholeTableViaAllocation(t *testing.T) {
 	defer db.Close()
 	payload, _ := json.Marshal(billsync.Snapshot{
 		RequestID: "r1", SourceSaleID: "s-wt", ScopeType: "whole_table", GrossTotal: "3.00",
-		Lines: []billsync.Line{{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "3.00", LineGross: "3.00", VATRate: "23.00"}},
+		Lines: []billsync.Line{{ItemCode: "A", Name: "Item X", Qty: "1", UnitPriceGross: "3.00", LineGross: "3.00", VATRate: "23.00"}},
 	})
 	d, err := billsync.IngestCloudJob(db, billsync.CloudJob{ID: "j1", Payload: payload})
 	if err != nil {
@@ -403,7 +404,7 @@ func TestSaveAllocation_AfterPersonA_AllowsEditBOnly(t *testing.T) {
 	defer db.Close()
 	payload, _ := json.Marshal(billsync.Snapshot{
 		RequestID: "r-edit-b", SourceSaleID: "s-edit-b", ScopeType: "whole_table", GrossTotal: "6.00",
-		Lines: []billsync.Line{{ItemCode: "A", Name: "X", Qty: "2", UnitPriceGross: "3.00", LineGross: "6.00", VATRate: "23.00"}},
+		Lines: []billsync.Line{{ItemCode: "A", Name: "Item X", Qty: "2", UnitPriceGross: "3.00", LineGross: "6.00", VATRate: "23.00"}},
 	})
 	d, err := billsync.IngestCloudJob(db, billsync.CloudJob{ID: "j-edit-b", Payload: payload})
 	if err != nil {
@@ -476,10 +477,10 @@ func TestDiscardBillDrafts_KeepsInvoices(t *testing.T) {
 		RequestID: "req-d", SourceSaleID: "sale-d", ScopeType: "split",
 		Splits: []billsync.SplitPart{
 			{ScopeID: scopeA, Name: "A", GrossTotal: "1.00", Lines: []billsync.Line{
-				{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+				{ItemCode: "A", Name: "Item X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
 			}},
 			{ScopeID: scopeB, Name: "B", GrossTotal: "1.00", Lines: []billsync.Line{
-				{ItemCode: "B", Name: "Y", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+				{ItemCode: "B", Name: "Item Y", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
 			}},
 		},
 	})
@@ -602,5 +603,33 @@ func TestIngestCloudJob_LiveLocalByItemHalfQty(t *testing.T) {
 	}
 	if draft.Status != store.BillDraftOpen {
 		t.Fatalf("%+v", draft)
+	}
+}
+
+// A dish name SAF-T cannot hold (CJK) fails the whole job before any draft or product is saved.
+func TestIngest_RejectsNonSAFTDishName(t *testing.T) {
+	db, err := store.Open(filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	payload, _ := json.Marshal(billsync.Snapshot{
+		RequestID: "req-cjk", SourceSystem: "farvoo", SourceSaleID: "sale-cjk",
+		TableDisplayName: "018", ScopeType: "whole_table", GrossTotal: "12.00",
+		Lines: []billsync.Line{
+			{ItemCode: "A", Name: "Prato", Qty: "1", UnitPriceGross: "2.00", LineGross: "2.00", VATRate: "23.00"},
+			{ItemCode: "jincha", Name: "金叉套餐", Qty: "1", UnitPriceGross: "10.00", LineGross: "10.00", VATRate: "23.00"},
+		},
+	})
+	_, err = billsync.IngestCloudJob(db, billsync.CloudJob{ID: "job-cjk", Status: "pending", Payload: payload})
+	ie := billsync.AsIngestError(err)
+	if ie == nil || ie.Code != billsync.CodeSAFTTextInvalid || !strings.Contains(ie.Message, "product.saft_name") {
+		t.Fatalf("want saft_text_invalid, got %v", err)
+	}
+	if list, _ := db.ListBillDrafts(10); len(list) != 0 {
+		t.Fatalf("drafts=%d, want none", len(list))
+	}
+	if _, err := db.GetFiscalProductByCode("A"); err == nil {
+		t.Fatal("no product may be saved from a rejected job")
 	}
 }

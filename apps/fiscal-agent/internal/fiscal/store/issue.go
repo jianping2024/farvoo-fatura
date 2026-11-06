@@ -369,10 +369,7 @@ func buildLines(in []domain.SaleLine, _ string) ([]preparedLine, []compliance.Ta
 		if err != nil {
 			return nil, nil, decimal.Zero, decimal.Zero, decimal.Zero, err
 		}
-		saftName := sl.SaftName
-		if saftName == "" {
-			saftName = sl.DisplayName
-		}
+		saftName := sl.EffectiveSaftName()
 		uom := sl.UnitOfMeasure
 		if uom == "" {
 			uom = "UN"

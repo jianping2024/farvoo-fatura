@@ -983,6 +983,9 @@ func handleSaveBillDraftAllocation(w http.ResponseWriter, r *http.Request, deps 
 }
 
 func writeCoded(w http.ResponseWriter, err error) {
+	if writeSAFTTextErr(w, err) {
+		return
+	}
 	if errors.Is(err, store.ErrLastOwnerConstraint) {
 		writeErr(w, http.StatusConflict, "last_owner_constraint", err.Error())
 		return
@@ -1021,6 +1024,21 @@ func writeCoded(w http.ResponseWriter, err error) {
 		return
 	}
 	writeErr(w, http.StatusBadRequest, "issue_failed", err.Error())
+}
+
+// writeSAFTTextErr is the ONLY HTTP shape of *domain.SAFTTextError: saft_text_invalid with
+// field (dotted path), part (encoding | too_short | too_long) and the character limits, so Admin
+// can name and focus the field. Reports whether err was one.
+func writeSAFTTextErr(w http.ResponseWriter, err error) bool {
+	var te *domain.SAFTTextError
+	if !errors.As(err, &te) {
+		return false
+	}
+	writeJSON(w, http.StatusBadRequest, map[string]any{
+		"error": service.ErrCodeSAFTTextInvalid, "message": te.Error(),
+		"field": te.Field, "part": te.Reason, "min": te.Min, "max": te.Max,
+	})
+	return true
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

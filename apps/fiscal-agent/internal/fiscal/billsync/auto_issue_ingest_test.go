@@ -53,7 +53,7 @@ func TestAutoIssue_RequiresDocumentType(t *testing.T) {
 		RequestID: "req-ai-nodoc", SourceSaleID: "sale-ai-nodoc", ScopeType: "whole_table",
 		GrossTotal: "1.00", AutoIssue: true,
 		Lines: []billsync.Line{
-			{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+			{ItemCode: "A", Name: "Item X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
 		},
 	})
 	_, err := svc.IngestBillSyncJob(context.Background(), billsync.CloudJob{ID: "j", Payload: payload})
@@ -75,10 +75,10 @@ func TestAutoIssue_SplitPersonThenSecondPerson(t *testing.T) {
 		AutoIssue: true, DocumentType: "FS", PaymentMethod: "CASH",
 		Splits: []billsync.SplitPart{
 			{ScopeID: scopeA, Name: "A", GrossTotal: "1.00", Lines: []billsync.Line{
-				{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+				{ItemCode: "A", Name: "Item X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
 			}},
 			{ScopeID: scopeB, Name: "B", GrossTotal: "2.00", Lines: []billsync.Line{
-				{ItemCode: "B", Name: "Y", Qty: "1", UnitPriceGross: "2.00", LineGross: "2.00", VATRate: "23.00"},
+				{ItemCode: "B", Name: "Item Y", Qty: "1", UnitPriceGross: "2.00", LineGross: "2.00", VATRate: "23.00"},
 			}},
 		},
 	}
@@ -124,7 +124,7 @@ func TestAutoIssue_DoesNotBreakManualIngest(t *testing.T) {
 		RequestID: "req-manual", SourceSaleID: "sale-manual", ScopeType: "whole_table",
 		GrossTotal: "1.00",
 		Lines: []billsync.Line{
-			{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+			{ItemCode: "A", Name: "Item X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
 		},
 	})
 	out, err := svc.IngestBillSyncJob(context.Background(), billsync.CloudJob{ID: "jm", Payload: payload})
@@ -155,7 +155,7 @@ func TestProcessBillSyncJob_ReturnsInvoiceNo(t *testing.T) {
 		RequestID: "req-proc", SourceSaleID: "sale-proc", ScopeType: "whole_table",
 		GrossTotal: "1.00", AutoIssue: true, DocumentType: "FS",
 		Lines: []billsync.Line{
-			{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+			{ItemCode: "A", Name: "Item X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
 		},
 	})
 	no, docID, err := svc.ProcessBillSyncJob(context.Background(), billsync.CloudJob{ID: "jp", Payload: payload})
@@ -171,7 +171,7 @@ func TestIngestBillSyncJob_ReprintUsesExistingDocument(t *testing.T) {
 		RequestID: "req-rp-issue", SourceSaleID: "sale-rp", ScopeType: "whole_table",
 		GrossTotal: "1.00", AutoIssue: true, DocumentType: "FS", PaymentMethod: "CASH",
 		Lines: []billsync.Line{
-			{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+			{ItemCode: "A", Name: "Item X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
 		},
 	})
 	issued, err := svc.IngestBillSyncJob(context.Background(), billsync.CloudJob{ID: "j-issue", Payload: issuePayload})
@@ -205,7 +205,7 @@ func TestAutoIssue_StationRequired(t *testing.T) {
 		RequestID: "req-nost", SourceSaleID: "sale-nost", ScopeType: "whole_table",
 		GrossTotal: "1.00", AutoIssue: true, DocumentType: "FS",
 		Lines: []billsync.Line{
-			{ItemCode: "A", Name: "X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
+			{ItemCode: "A", Name: "Item X", Qty: "1", UnitPriceGross: "1.00", LineGross: "1.00", VATRate: "23.00"},
 		},
 	})
 	_, err := svc.IngestBillSyncJob(context.Background(), billsync.CloudJob{ID: "jn", Payload: payload})

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -17,7 +18,6 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/store"
 
 	"github.com/shopspring/decimal"
-	"golang.org/x/text/encoding/charmap"
 )
 
 const auditNS = "urn:OECD:StandardAuditFile-Tax:PT_1.04_01"
@@ -56,11 +56,6 @@ func Build(in BuildInput) (*BuildResult, error) {
 		return nil, fmt.Errorf("saft: period %s..%s must be ordered dates within one fiscal year", in.StartDate, in.EndDate)
 	}
 	var valErrs []string
-	checkText := func(label, s string) {
-		if err := validateWindows1252(s); err != nil {
-			valErrs = append(valErrs, fmt.Sprintf("%s: %v", label, err))
-		}
-	}
 
 	totalNet := decimal.Zero
 	totalTax := decimal.Zero
@@ -75,7 +70,7 @@ func Build(in BuildInput) (*BuildResult, error) {
 	var b strings.Builder
 	b.WriteString(`<?xml version="1.0" encoding="Windows-1252"?>`)
 	b.WriteString(`<AuditFile xmlns="` + auditNS + `">`)
-	writeHeader(&b, in, checkText)
+	writeHeader(&b, in)
 
 	b.WriteString(`<MasterFiles>`)
 	collectLine := func(docNo string, ln store.SAFTLine) {
@@ -131,7 +126,7 @@ func Build(in BuildInput) (*BuildResult, error) {
 			collectLine(wd.DocumentNumber, ln)
 		}
 	}
-	writeMasterFiles(&b, customers, products, taxes, checkText)
+	writeMasterFiles(&b, customers, products, taxes)
 	b.WriteString(`</MasterFiles>`)
 
 	b.WriteString(`<SourceDocuments>`)
@@ -140,17 +135,18 @@ func Build(in BuildInput) (*BuildResult, error) {
 	fmt.Fprintf(&b, `<TotalDebit>%s</TotalDebit>`, compliance.Money2(totalDebit))
 	fmt.Fprintf(&b, `<TotalCredit>%s</TotalCredit>`, compliance.Money2(totalCredit))
 	for _, inv := range in.Invoices {
-		writeInvoice(&b, inv, checkText)
+		writeInvoice(&b, inv)
 	}
 	b.WriteString(`</SalesInvoices>`)
 	// XSD order: SalesInvoices, MovementOfGoods, WorkingDocuments, Payments.
-	writeMovementOfGoods(&b, in.Movements, checkText)
-	writeWorkingDocuments(&b, in.WorkDocs, checkText)
-	writePayments(&b, in.Payments, checkText)
+	writeMovementOfGoods(&b, in.Movements)
+	writeWorkingDocuments(&b, in.WorkDocs)
+	writePayments(&b, in.Payments)
 	b.WriteString(`</SourceDocuments>`)
 	b.WriteString(`</AuditFile>`)
 
 	xmlUTF8 := b.String()
+	valErrs = append(valErrs, encodingErrors(xmlUTF8)...)
 	xmlBytes := escposenc.Windows1252(xmlUTF8)
 	status := "VALID"
 	if len(valErrs) > 0 {
@@ -212,10 +208,8 @@ func isZeroRate(vatRate string) bool {
 	return err == nil && d.IsZero()
 }
 
-func writeHeader(b *strings.Builder, in BuildInput, check func(string, string)) {
+func writeHeader(b *strings.Builder, in BuildInput) {
 	t := in.Taxpayer
-	check("legal_name", t.LegalName)
-	check("address", t.AddressDetail)
 	b.WriteString(`<Header>`)
 	writeElem(b, "AuditFileVersion", "1.04_01")
 	writeElem(b, "CompanyID", t.TaxRegistrationNumber)
@@ -241,7 +235,7 @@ func writeHeader(b *strings.Builder, in BuildInput, check func(string, string)) 
 	b.WriteString(`</Header>`)
 }
 
-func writeMasterFiles(b *strings.Builder, customers map[string]customerEntry, products map[string]store.SAFTLine, taxes map[taxKey]struct{}, check func(string, string)) {
+func writeMasterFiles(b *strings.Builder, customers map[string]customerEntry, products map[string]store.SAFTLine, taxes map[taxKey]struct{}) {
 	cids := make([]string, 0, len(customers))
 	for k := range customers {
 		cids = append(cids, k)
@@ -249,7 +243,6 @@ func writeMasterFiles(b *strings.Builder, customers map[string]customerEntry, pr
 	sort.Strings(cids)
 	for _, k := range cids {
 		c := customers[k]
-		check("customer", c.CompanyName)
 		b.WriteString(`<Customer>`)
 		writeElem(b, "CustomerID", c.ID)
 		writeText(b, "AccountID", c.AccountID, domain.SAFTMaxID)
@@ -268,7 +261,6 @@ func writeMasterFiles(b *strings.Builder, customers map[string]customerEntry, pr
 	sort.Strings(pcodes)
 	for _, code := range pcodes {
 		p := products[code]
-		check("product", p.ProductDescription)
 		b.WriteString(`<Product>`)
 		writeElem(b, "ProductType", p.ProductType)
 		writeText(b, "ProductCode", p.ProductCode, domain.SAFTMaxProductCode)
@@ -299,8 +291,7 @@ func writeMasterFiles(b *strings.Builder, customers map[string]customerEntry, pr
 	b.WriteString(`</TaxTable>`)
 }
 
-func writeInvoice(b *strings.Builder, inv store.SAFTInvoice, check func(string, string)) {
-	check("invoice_no", inv.InvoiceNo)
+func writeInvoice(b *strings.Builder, inv store.SAFTInvoice) {
 	b.WriteString(`<Invoice>`)
 	writeElem(b, "InvoiceNo", inv.InvoiceNo)
 	writeElem(b, "ATCUD", inv.ATCUD)
@@ -328,7 +319,7 @@ func writeInvoice(b *strings.Builder, inv store.SAFTInvoice, check func(string, 
 	writeElem(b, "SystemEntryDate", inv.SystemEntryDate)
 	writeElem(b, "CustomerID", saftCustomer(inv.Customer).ID)
 	for _, ln := range inv.Lines {
-		writeLine(b, inv, ln, check)
+		writeLine(b, inv, ln)
 	}
 	b.WriteString(`<DocumentTotals>`)
 	writeElem(b, "TaxPayable", inv.TaxPayable)
@@ -338,8 +329,7 @@ func writeInvoice(b *strings.Builder, inv store.SAFTInvoice, check func(string, 
 	b.WriteString(`</Invoice>`)
 }
 
-func writeLine(b *strings.Builder, inv store.SAFTInvoice, ln store.SAFTLine, check func(string, string)) {
-	check("line_desc", ln.ProductDescription)
+func writeLine(b *strings.Builder, inv store.SAFTInvoice, ln store.SAFTLine) {
 	b.WriteString(`<Line>`)
 	fmt.Fprintf(b, `<LineNumber>%d</LineNumber>`, ln.LineNumber)
 	if ln.LineNumber == 1 {
@@ -368,7 +358,7 @@ func writeLine(b *strings.Builder, inv store.SAFTInvoice, ln store.SAFTLine, che
 	b.WriteString(`</Line>`)
 }
 
-func writeWorkingDocuments(b *strings.Builder, docs []store.SAFTWorkingDocument, check func(string, string)) {
+func writeWorkingDocuments(b *strings.Builder, docs []store.SAFTWorkingDocument) {
 	if len(docs) == 0 {
 		return
 	}
@@ -387,13 +377,12 @@ func writeWorkingDocuments(b *strings.Builder, docs []store.SAFTWorkingDocument,
 	writeElem(b, "TotalDebit", "0.00")
 	writeElem(b, "TotalCredit", compliance.Money2(totalCredit))
 	for _, d := range docs {
-		writeWorkDocument(b, d, check)
+		writeWorkDocument(b, d)
 	}
 	b.WriteString(`</WorkingDocuments>`)
 }
 
-func writeWorkDocument(b *strings.Builder, d store.SAFTWorkingDocument, check func(string, string)) {
-	check("work_doc", d.DocumentNumber)
+func writeWorkDocument(b *strings.Builder, d store.SAFTWorkingDocument) {
 	b.WriteString(`<WorkDocument>`)
 	writeElem(b, "DocumentNumber", d.DocumentNumber)
 	writeElem(b, "ATCUD", d.ATCUD)
@@ -414,7 +403,7 @@ func writeWorkDocument(b *strings.Builder, d store.SAFTWorkingDocument, check fu
 	writeElem(b, "SystemEntryDate", d.SystemEntryDate)
 	writeElem(b, "CustomerID", saftCustomer(d.Customer).ID)
 	for _, ln := range d.Lines {
-		writeWorkLine(b, d, ln, check)
+		writeWorkLine(b, d, ln)
 	}
 	b.WriteString(`<DocumentTotals>`)
 	writeElem(b, "TaxPayable", d.TaxPayable)
@@ -424,8 +413,7 @@ func writeWorkDocument(b *strings.Builder, d store.SAFTWorkingDocument, check fu
 	b.WriteString(`</WorkDocument>`)
 }
 
-func writeWorkLine(b *strings.Builder, d store.SAFTWorkingDocument, ln store.SAFTLine, check func(string, string)) {
-	check("work_line", ln.ProductDescription)
+func writeWorkLine(b *strings.Builder, d store.SAFTWorkingDocument, ln store.SAFTLine) {
 	b.WriteString(`<Line>`)
 	fmt.Fprintf(b, `<LineNumber>%d</LineNumber>`, ln.LineNumber)
 	writeLineProduct(b, ln)
@@ -436,7 +424,7 @@ func writeWorkLine(b *strings.Builder, d store.SAFTWorkingDocument, ln store.SAF
 	b.WriteString(`</Line>`)
 }
 
-func writeMovementOfGoods(b *strings.Builder, moves []store.SAFTStockMovement, check func(string, string)) {
+func writeMovementOfGoods(b *strings.Builder, moves []store.SAFTStockMovement) {
 	if len(moves) == 0 {
 		return
 	}
@@ -457,13 +445,12 @@ func writeMovementOfGoods(b *strings.Builder, moves []store.SAFTStockMovement, c
 	fmt.Fprintf(b, `<NumberOfMovementLines>%d</NumberOfMovementLines>`, lineCount)
 	writeElem(b, "TotalQuantityIssued", compliance.Money2(qtyIssued))
 	for _, m := range moves {
-		writeStockMovement(b, m, check)
+		writeStockMovement(b, m)
 	}
 	b.WriteString(`</MovementOfGoods>`)
 }
 
-func writeStockMovement(b *strings.Builder, m store.SAFTStockMovement, check func(string, string)) {
-	check("stock_mov", m.DocumentNumber)
+func writeStockMovement(b *strings.Builder, m store.SAFTStockMovement) {
 	b.WriteString(`<StockMovement>`)
 	writeElem(b, "DocumentNumber", m.DocumentNumber)
 	writeElem(b, "ATCUD", m.ATCUD)
@@ -497,7 +484,7 @@ func writeStockMovement(b *strings.Builder, m store.SAFTStockMovement, check fun
 		writeElem(b, "ATDocCodeID", c)
 	}
 	for _, ln := range m.Lines {
-		writeMovementLine(b, m, ln, check)
+		writeMovementLine(b, m, ln)
 	}
 	b.WriteString(`<DocumentTotals>`)
 	writeElem(b, "TaxPayable", m.TaxPayable)
@@ -543,8 +530,7 @@ func writeLineProduct(b *strings.Builder, ln store.SAFTLine) {
 	writeElem(b, "UnitPrice", ln.UnitPriceNet)
 }
 
-func writeMovementLine(b *strings.Builder, m store.SAFTStockMovement, ln store.SAFTLine, check func(string, string)) {
-	check("mov_line", ln.ProductDescription)
+func writeMovementLine(b *strings.Builder, m store.SAFTStockMovement, ln store.SAFTLine) {
 	b.WriteString(`<Line>`)
 	fmt.Fprintf(b, `<LineNumber>%d</LineNumber>`, ln.LineNumber)
 	writeLineProduct(b, ln)
@@ -554,7 +540,7 @@ func writeMovementLine(b *strings.Builder, m store.SAFTStockMovement, ln store.S
 	b.WriteString(`</Line>`)
 }
 
-func writePayments(b *strings.Builder, payments []store.SAFTPayment, check func(string, string)) {
+func writePayments(b *strings.Builder, payments []store.SAFTPayment) {
 	if len(payments) == 0 {
 		return
 	}
@@ -568,13 +554,12 @@ func writePayments(b *strings.Builder, payments []store.SAFTPayment, check func(
 	writeElem(b, "TotalDebit", "0.00")
 	writeElem(b, "TotalCredit", compliance.Money2(totalCredit))
 	for _, p := range payments {
-		writePayment(b, p, check)
+		writePayment(b, p)
 	}
 	b.WriteString(`</Payments>`)
 }
 
-func writePayment(b *strings.Builder, p store.SAFTPayment, check func(string, string)) {
-	check("payment_ref", p.PaymentRefNo)
+func writePayment(b *strings.Builder, p store.SAFTPayment) {
 	b.WriteString(`<Payment>`)
 	writeElem(b, "PaymentRefNo", p.PaymentRefNo)
 	writeElem(b, "ATCUD", p.ATCUD)
@@ -672,14 +657,24 @@ func vatRatePercent(vatRate string) string {
 	return compliance.Money2(d.Mul(decimal.NewFromInt(100)))
 }
 
-func validateWindows1252(s string) error {
-	raw := escposenc.Windows1252(s)
-	back, err := charmap.Windows1252.NewDecoder().String(string(raw))
-	if err != nil {
-		return fmt.Errorf("contains non-Windows-1252 characters")
+var textElem = regexp.MustCompile(`<([A-Za-z]+)>([^<]*)</`)
+
+// encodingErrors is the ONLY SAF-T encoding check: every element of the finished document must
+// be Windows-1252 (the file encoding), otherwise escposenc.Windows1252 would silently drop
+// characters. Entry validation (domain.ValidateSAFTText) keeps new data clean; this reports what
+// is already signed, naming the document (last InvoiceNo / DocumentNumber / PaymentRefNo seen).
+func encodingErrors(xmlUTF8 string) []string {
+	var errs []string
+	doc := ""
+	for _, m := range textElem.FindAllStringSubmatch(xmlUTF8, -1) {
+		name, value := m[1], m[2]
+		switch name {
+		case "InvoiceNo", "DocumentNumber", "PaymentRefNo":
+			doc = value + " "
+		}
+		if !domain.EncodesWindows1252(value) {
+			errs = append(errs, fmt.Sprintf("%s%s %q: not Windows-1252", doc, name, value))
+		}
 	}
-	if back != s {
-		return fmt.Errorf("contains non-Windows-1252 characters")
-	}
-	return nil
+	return errs
 }

@@ -211,6 +211,10 @@ func mapAutoIssueErr(err error) error {
 	if errors.As(err, &ce) {
 		return billsync.NewIngestError(ce.Code, ce.Msg)
 	}
+	var te *domain.SAFTTextError
+	if errors.As(err, &te) {
+		return billsync.NewIngestError(ErrCodeSAFTTextInvalid, te.Error())
+	}
 	if errors.Is(err, store.ErrNotFound) {
 		return billsync.NewIngestError("draft_not_found", err.Error())
 	}

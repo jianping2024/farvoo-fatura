@@ -30,6 +30,9 @@ func (s *FiscalService) IssueTransportNote(ctx context.Context, req domain.Trans
 	if len(req.Snapshot.Lines) == 0 {
 		return nil, coded(ErrCodeValidationFailed, "lines required")
 	}
+	if err := validateSaleText(&req.Snapshot); err != nil {
+		return nil, err
+	}
 	if req.StoreID == "" {
 		req.StoreID = s.storeID
 	}
@@ -201,7 +204,7 @@ func (s *FiscalService) AnnulTransportNote(ctx context.Context, req domain.Annul
 	}
 	reason, err := domain.ValidateStatusReason(req.Reason)
 	if err != nil {
-		return nil, coded(ErrCodeValidationFailed, err.Error())
+		return nil, err
 	}
 	if req.StoreID == "" {
 		req.StoreID = s.storeID

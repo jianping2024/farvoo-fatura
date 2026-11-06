@@ -52,7 +52,16 @@ func (s *FiscalService) resolveShipPoints(storeID string, cust domain.CustomerIn
 			return from, to, coded(ErrCodeTransportAddressIncomplete, err.Error())
 		}
 	}
-	return from.Normalize(), to.Normalize(), nil
+	// Customer text was checked with the snapshot (validateSaleText); the two points here.
+	from, err := from.Normalize().ValidateSAFTText("ship_from")
+	if err != nil {
+		return from, to, err
+	}
+	to, err = to.Normalize().ValidateSAFTText("ship_to")
+	if err != nil {
+		return from, to, err
+	}
+	return from, to, nil
 }
 
 func toATAddress(a domain.Address) at.TransportAddress {

@@ -183,7 +183,7 @@ async function main() {
       request_id: 'rg-fs-' + Date.now(), document_type: 'FS',
       snapshot: {
         source_system: 'LOCAL', source_sale_id: 'sale-fs', scope_type: 'session', scope_id: 's-fs', fiscal_purpose: 'sale',
-        lines: [{ product_code: 'DEMO1', display_name: 'X', saft_name: 'X', quantity: '1', unit_price_gross: '10.00', vat_rate: '0.23', product_type: 'P', unit_of_measure: 'UN' }],
+        lines: [{ product_code: 'DEMO1', display_name: 'Item X', saft_name: 'Item X', quantity: '1', unit_price_gross: '10.00', vat_rate: '0.23', product_type: 'P', unit_of_measure: 'UN' }],
         customer: { tax_id: '999999990', company_name: 'Consumidor Final', country: 'PT' },
         payments: [{ method: 'CASH', amount: '10.00' }],
       },
