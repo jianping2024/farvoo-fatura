@@ -12,27 +12,24 @@ const SeedDemoOperatorPIN = "123456"
 
 // SeedDemoParams seeds the minimum rows for local FT issuance (no AT SOAP).
 type SeedDemoParams struct {
-	StoreID                   string
-	TaxpayerNIF               string
-	LegalName                 string
-	Address                   string
-	City                      string
-	PostalCode                string
-	Timezone                  string
-	SoftwareCertificateNumber string
-	ProductID                 string
-	ProductVersion            string
-	SeriesCode                string
-	ValidationCode            string // 8-char AT code (seeded for offline)
-	FiscalYear                int
-	OperatorID                string
-	OperatorName              string
-	SigningKeyVersion         int
-	PublicKeyPEM              string
-	WrappedPrivateKey         string // P0/dev: may store PEM marker; real wrap later
-	InstallationID            string
-	DeviceID                  string
-	DevicePublicKey           string
+	StoreID           string
+	TaxpayerNIF       string
+	LegalName         string
+	Address           string
+	City              string
+	PostalCode        string
+	Timezone          string
+	SeriesCode        string
+	ValidationCode    string // 8-char AT code (seeded for offline)
+	FiscalYear        int
+	OperatorID        string
+	OperatorName      string
+	SigningKeyVersion int
+	PublicKeyPEM      string
+	WrappedPrivateKey string // P0/dev: may store PEM marker; real wrap later
+	InstallationID    string
+	DeviceID          string
+	DevicePublicKey   string
 }
 
 // SeedDemo inserts identity + ACTIVE FT/FS series + consumidor final if missing.
@@ -41,15 +38,6 @@ func (d *DB) SeedDemo(p SeedDemoParams) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	if p.Timezone == "" {
 		p.Timezone = "Europe/Lisbon"
-	}
-	if p.SoftwareCertificateNumber == "" {
-		p.SoftwareCertificateNumber = "0"
-	}
-	if p.ProductID == "" {
-		p.ProductID = "Farvoo/InvoiceEngine"
-	}
-	if p.ProductVersion == "" {
-		p.ProductVersion = "0.0.0"
 	}
 	if p.SigningKeyVersion == 0 {
 		p.SigningKeyVersion = 1
@@ -69,12 +57,10 @@ func (d *DB) SeedDemo(p SeedDemoParams) error {
 	_, err = tx.Exec(`INSERT OR IGNORE INTO taxpayer_settings (
 		id, store_id, tax_registration_number, legal_name, business_name,
 		address_detail, city, postal_code, country, timezone, phone,
-		software_certificate_number, product_id, product_version,
 		fs_amount_threshold, tax_country_region, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PT', ?, NULL, ?, ?, ?, '100.00', 'PT', ?, ?)`,
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PT', ?, NULL, '100.00', 'PT', ?, ?)`,
 		"tax-"+p.StoreID, p.StoreID, p.TaxpayerNIF, p.LegalName, p.LegalName,
-		p.Address, p.City, p.PostalCode, p.Timezone,
-		p.SoftwareCertificateNumber, p.ProductID, p.ProductVersion, now, now)
+		p.Address, p.City, p.PostalCode, p.Timezone, now, now)
 	if err != nil {
 		return fmt.Errorf("seed taxpayer: %w", err)
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"farvoo-fiscal-agent/internal/fiscal/catalog"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
@@ -117,12 +116,9 @@ func (s *FiscalService) AnnulProforma(ctx context.Context, req domain.AnnulProfo
 	if req.DocumentID == "" {
 		return nil, coded(ErrCodeValidationFailed, "document id required")
 	}
-	reason := strings.TrimSpace(req.Reason)
-	if reason == "" {
-		return nil, coded(ErrCodeValidationFailed, "reason required")
-	}
-	if utf8.RuneCountInString(reason) > 50 {
-		return nil, coded(ErrCodeValidationFailed, "reason length must be 1-50")
+	reason, err := domain.ValidateStatusReason(req.Reason)
+	if err != nil {
+		return nil, coded(ErrCodeValidationFailed, err.Error())
 	}
 	if req.StoreID == "" {
 		req.StoreID = s.storeID

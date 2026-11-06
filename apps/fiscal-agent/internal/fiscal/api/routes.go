@@ -491,7 +491,7 @@ func handleGetTaxpayer(w http.ResponseWriter, r *http.Request, deps HandlerDeps)
 	writeJSON(w, http.StatusOK, store.TaxpayerInput{
 		StoreID: t.StoreID, TaxRegistrationNumber: t.TaxRegistrationNumber, LegalName: t.LegalName,
 		BusinessName: t.BusinessName, AddressDetail: t.AddressDetail, City: t.City, PostalCode: t.PostalCode,
-		Country: t.Country, Timezone: t.Timezone, SoftwareCertificateNumber: t.SoftwareCertificateNumber,
+		Country: t.Country, Timezone: t.Timezone,
 	})
 }
 

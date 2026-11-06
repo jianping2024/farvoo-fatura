@@ -27,12 +27,9 @@ func (s *FiscalService) IssueDebitNote(ctx context.Context, req domain.DebitNote
 	if req.OperatorID == "" {
 		return nil, coded(ErrCodeValidationFailed, "operator_id required")
 	}
-	reason := strings.TrimSpace(req.Reason)
-	if reason == "" {
-		return nil, coded(ErrCodeValidationFailed, "reason required")
-	}
-	if len(reason) > 200 {
-		return nil, coded(ErrCodeValidationFailed, "reason length must be 1-200")
+	reason, err := domain.ValidateStatusReason(req.Reason)
+	if err != nil {
+		return nil, coded(ErrCodeValidationFailed, err.Error())
 	}
 	if req.OriginalInvoiceID == "" {
 		return nil, coded(ErrCodeValidationFailed, "original invoice id required")

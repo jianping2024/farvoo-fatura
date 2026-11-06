@@ -15,7 +15,7 @@ func TestLocalTerminalPairAndMax(t *testing.T) {
 	storeID := "store-term-1"
 	if err := db.UpsertTaxpayer(TaxpayerInput{
 		StoreID: storeID, LegalName: "T", TaxRegistrationNumber: "123",
-		Country: "PT", Timezone: "Europe/Lisbon", SoftwareCertificateNumber: "0",
+		Country: "PT", Timezone: "Europe/Lisbon",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestTerminalActivateDeleteAndStations(t *testing.T) {
 	storeID := "store-term-2"
 	if err := db.UpsertTaxpayer(TaxpayerInput{
 		StoreID: storeID, LegalName: "T", TaxRegistrationNumber: "456",
-		Country: "PT", Timezone: "Europe/Lisbon", SoftwareCertificateNumber: "0",
+		Country: "PT", Timezone: "Europe/Lisbon",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestSetFiscalTerminalLabel(t *testing.T) {
 	storeID := "store-term-label"
 	if err := db.UpsertTaxpayer(TaxpayerInput{
 		StoreID: storeID, LegalName: "T", TaxRegistrationNumber: "789",
-		Country: "PT", Timezone: "Europe/Lisbon", SoftwareCertificateNumber: "0",
+		Country: "PT", Timezone: "Europe/Lisbon",
 	}); err != nil {
 		t.Fatal(err)
 	}

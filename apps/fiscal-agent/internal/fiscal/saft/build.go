@@ -5,12 +5,15 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"farvoo-fiscal-agent/internal/escposenc"
 	"farvoo-fiscal-agent/internal/fiscal/compliance"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/ptnif"
+	"farvoo-fiscal-agent/internal/fiscal/software"
 	"farvoo-fiscal-agent/internal/fiscal/store"
 
 	"github.com/shopspring/decimal"
@@ -19,17 +22,17 @@ import (
 
 const auditNS = "urn:OECD:StandardAuditFile-Tax:PT_1.04_01"
 
-// BuildInput is input for the ONLY SAF-T XML builder.
+// BuildInput is input for the ONLY SAF-T XML builder. StartDate/EndDate (YYYY-MM-DD, one
+// fiscal year) bound the period; CreatedDate is the day the file is produced (Header 1.12).
 type BuildInput struct {
-	Taxpayer  *store.TaxpayerSettings
-	Year      int
-	Month     int
-	StartDate string
-	EndDate   string
-	Invoices  []store.SAFTInvoice
-	Payments  []store.SAFTPayment         // RG receipts → Payments table
-	WorkDocs  []store.SAFTWorkingDocument // PF → WorkingDocuments
-	Movements []store.SAFTStockMovement   // GR/GT → MovementOfGoods
+	Taxpayer    *store.TaxpayerSettings
+	StartDate   string
+	EndDate     string
+	CreatedDate string
+	Invoices    []store.SAFTInvoice
+	Payments    []store.SAFTPayment         // RG receipts → Payments table
+	WorkDocs    []store.SAFTWorkingDocument // PF → WorkingDocuments
+	Movements   []store.SAFTStockMovement   // GR/GT → MovementOfGoods
 }
 
 // BuildResult is SAF-T XML output and validation outcome.
@@ -48,6 +51,9 @@ type BuildResult struct {
 func Build(in BuildInput) (*BuildResult, error) {
 	if in.Taxpayer == nil {
 		return nil, fmt.Errorf("saft: taxpayer required")
+	}
+	if len(in.StartDate) < 4 || len(in.EndDate) < 4 || in.StartDate[:4] != in.EndDate[:4] || in.StartDate > in.EndDate {
+		return nil, fmt.Errorf("saft: period %s..%s must be ordered dates within one fiscal year", in.StartDate, in.EndDate)
 	}
 	var valErrs []string
 	checkText := func(label, s string) {
@@ -73,6 +79,9 @@ func Build(in BuildInput) (*BuildResult, error) {
 
 	b.WriteString(`<MasterFiles>`)
 	collectLine := func(docNo string, ln store.SAFTLine) {
+		if utf8.RuneCountInString(strings.TrimSpace(ln.ProductDescription)) < domain.SAFTMinProductDesc {
+			valErrs = append(valErrs, fmt.Sprintf("%s line %d: ProductDescription needs at least %d characters", docNo, ln.LineNumber, domain.SAFTMinProductDesc))
+		}
 		products[ln.ProductCode] = ln
 		taxes[taxKeyFromLine(ln)] = struct{}{}
 		if isZeroRate(ln.VATRate) && (strings.TrimSpace(ln.TaxExemptionReason) == "" || strings.TrimSpace(ln.TaxExemptionCode) == "") {
@@ -211,27 +220,24 @@ func writeHeader(b *strings.Builder, in BuildInput, check func(string, string)) 
 	writeElem(b, "AuditFileVersion", "1.04_01")
 	writeElem(b, "CompanyID", t.TaxRegistrationNumber)
 	writeElem(b, "TaxRegistrationNumber", t.TaxRegistrationNumber)
-	writeElem(b, "TaxAccountingBasis", "P")
-	writeElem(b, "CompanyName", t.LegalName)
+	writeElem(b, "TaxAccountingBasis", "F") // 1.4: invoicing program
+	writeText(b, "CompanyName", t.LegalName, domain.SAFTMaxCompanyName)
 	if t.BusinessName != "" {
-		writeElem(b, "BusinessName", t.BusinessName)
+		writeText(b, "BusinessName", t.BusinessName, domain.SAFTMaxBusinessName)
 	}
 	b.WriteString(`<CompanyAddress>`)
-	writeElem(b, "AddressDetail", t.AddressDetail)
-	writeElem(b, "City", t.City)
-	writeElem(b, "PostalCode", t.PostalCode)
-	writeElem(b, "Country", t.Country)
+	writeAddress(b, domain.Address{Detail: t.AddressDetail, City: t.City, PostalCode: t.PostalCode, Country: t.Country})
 	b.WriteString(`</CompanyAddress>`)
-	fmt.Fprintf(b, `<FiscalYear>%d</FiscalYear>`, in.Year)
+	writeElem(b, "FiscalYear", in.StartDate[:4])
 	writeElem(b, "StartDate", in.StartDate)
 	writeElem(b, "EndDate", in.EndDate)
 	writeElem(b, "CurrencyCode", "EUR")
-	writeElem(b, "DateCreated", in.EndDate)
-	writeElem(b, "TaxEntity", "Global")
-	writeElem(b, "ProductCompanyTaxID", t.TaxRegistrationNumber)
-	writeElem(b, "SoftwareCertificateNumber", t.SoftwareCertificateNumber)
-	writeElem(b, "ProductID", t.ProductID)
-	writeElem(b, "ProductVersion", t.ProductVersion)
+	writeElem(b, "DateCreated", in.CreatedDate)
+	writeElem(b, "TaxEntity", "Global") // one NIF = one store
+	writeElem(b, "ProductCompanyTaxID", software.ProducerTaxID)
+	writeElem(b, "SoftwareCertificateNumber", software.CertificateNumber)
+	writeElem(b, "ProductID", software.ProductID())
+	writeElem(b, "ProductVersion", software.Version())
 	b.WriteString(`</Header>`)
 }
 
@@ -246,14 +252,11 @@ func writeMasterFiles(b *strings.Builder, customers map[string]customerEntry, pr
 		check("customer", c.CompanyName)
 		b.WriteString(`<Customer>`)
 		writeElem(b, "CustomerID", c.ID)
-		writeElem(b, "AccountID", c.AccountID)
-		writeElem(b, "CustomerTaxID", c.CustomerTaxID)
-		writeElem(b, "CompanyName", c.CompanyName)
+		writeText(b, "AccountID", c.AccountID, domain.SAFTMaxID)
+		writeText(b, "CustomerTaxID", c.CustomerTaxID, domain.SAFTMaxID)
+		writeText(b, "CompanyName", c.CompanyName, domain.SAFTMaxCompanyName)
 		b.WriteString(`<BillingAddress>`)
-		writeElem(b, "AddressDetail", c.AddressDetail)
-		writeElem(b, "City", c.City)
-		writeElem(b, "PostalCode", c.PostalCode)
-		writeElem(b, "Country", c.Country)
+		writeAddress(b, domain.Address{Detail: c.AddressDetail, City: c.City, PostalCode: c.PostalCode, Country: c.Country})
 		b.WriteString(`</BillingAddress>`)
 		fmt.Fprintf(b, `<SelfBillingIndicator>%d</SelfBillingIndicator>`, c.SelfBillingIndicator)
 		b.WriteString(`</Customer>`)
@@ -268,9 +271,9 @@ func writeMasterFiles(b *strings.Builder, customers map[string]customerEntry, pr
 		check("product", p.ProductDescription)
 		b.WriteString(`<Product>`)
 		writeElem(b, "ProductType", p.ProductType)
-		writeElem(b, "ProductCode", p.ProductCode)
-		writeElem(b, "ProductDescription", p.ProductDescription)
-		writeElem(b, "ProductNumberCode", p.ProductCode)
+		writeText(b, "ProductCode", p.ProductCode, domain.SAFTMaxProductCode)
+		writeText(b, "ProductDescription", p.ProductDescription, domain.SAFTMaxProductDesc)
+		writeText(b, "ProductNumberCode", p.ProductCode, domain.SAFTMaxProductCode)
 		b.WriteString(`</Product>`)
 	}
 	tkeys := make([]taxKey, 0, len(taxes))
@@ -289,7 +292,7 @@ func writeMasterFiles(b *strings.Builder, customers map[string]customerEntry, pr
 		writeElem(b, "TaxType", tk.TaxType)
 		writeElem(b, "TaxCountryRegion", tk.TaxCountryRegion)
 		writeElem(b, "TaxCode", tk.TaxCode)
-		writeElem(b, "Description", "IVA "+tk.TaxCode)
+		writeText(b, "Description", "IVA "+tk.TaxCode, domain.SAFTMaxTaxDescription)
 		writeElem(b, "TaxPercentage", vatRatePercent(tk.VATRate))
 		b.WriteString(`</TaxTableEntry>`)
 	}
@@ -311,11 +314,11 @@ func writeInvoice(b *strings.Builder, inv store.SAFTInvoice, check func(string, 
 	b.WriteString(`</DocumentStatus>`)
 	writeElem(b, "Hash", inv.Hash)
 	fmt.Fprintf(b, `<HashControl>%d</HashControl>`, inv.HashControl)
-	period := inv.InvoiceDate
-	if len(period) >= 7 {
-		period = period[5:7]
+	if len(inv.InvoiceDate) >= 7 {
+		if m, err := strconv.Atoi(inv.InvoiceDate[5:7]); err == nil {
+			fmt.Fprintf(b, `<Period>%d</Period>`, m) // 4.1.4.6: month 1–12
+		}
 	}
-	writeElem(b, "Period", period)
 	writeElem(b, "InvoiceDate", inv.InvoiceDate)
 	writeElem(b, "InvoiceType", inv.DocumentType)
 	b.WriteString(`<SpecialRegimes>`)
@@ -342,28 +345,24 @@ func writeLine(b *strings.Builder, inv store.SAFTInvoice, ln store.SAFTLine, che
 	if ln.LineNumber == 1 {
 		if on := strings.TrimSpace(inv.OrderOriginatingON); on != "" {
 			b.WriteString(`<OrderReferences>`)
-			writeElem(b, "OriginatingON", on)
+			writeText(b, "OriginatingON", on, domain.SAFTMaxReference)
 			if od := strings.TrimSpace(inv.OrderDate); od != "" {
 				writeElem(b, "OrderDate", od)
 			}
 			b.WriteString(`</OrderReferences>`)
 		}
 	}
-	writeElem(b, "ProductCode", ln.ProductCode)
-	writeElem(b, "ProductDescription", ln.ProductDescription)
-	writeElem(b, "Quantity", ln.Quantity)
-	writeElem(b, "UnitOfMeasure", ln.UnitOfMeasure)
-	writeElem(b, "UnitPrice", ln.UnitPriceNet)
+	writeLineProduct(b, ln)
 	writeElem(b, "TaxPointDate", inv.InvoiceDate)
 	if ln.ReferenceOriginalInvoice != "" {
 		b.WriteString(`<References>`)
-		writeElem(b, "Reference", ln.ReferenceOriginalInvoice)
+		writeText(b, "Reference", ln.ReferenceOriginalInvoice, domain.SAFTMaxReference)
 		if ln.ReferenceReason != "" {
-			writeElem(b, "Reason", ln.ReferenceReason)
+			writeText(b, "Reason", ln.ReferenceReason, domain.SAFTMaxReason)
 		}
 		b.WriteString(`</References>`)
 	}
-	writeElem(b, "Description", ln.ProductDescription)
+	writeText(b, "Description", ln.ProductDescription, domain.SAFTMaxLineDesc)
 	writeLineAmount(b, inv.DocumentType, ln)
 	writeLineTax(b, ln)
 	b.WriteString(`</Line>`)
@@ -402,9 +401,9 @@ func writeWorkDocument(b *strings.Builder, d store.SAFTWorkingDocument, check fu
 	writeElem(b, "WorkStatus", d.WorkStatus)
 	writeElem(b, "WorkStatusDate", d.WorkStatusDate)
 	if r := strings.TrimSpace(d.StatusReason); r != "" {
-		writeElem(b, "Reason", r)
+		writeText(b, "Reason", r, domain.SAFTMaxReason)
 	}
-	writeElem(b, "SourceID", d.SourceID)
+	writeElem(b, "SourceID", d.StatusSourceID)
 	writeElem(b, "SourceBilling", "P")
 	b.WriteString(`</DocumentStatus>`)
 	writeElem(b, "Hash", d.Hash)
@@ -429,13 +428,9 @@ func writeWorkLine(b *strings.Builder, d store.SAFTWorkingDocument, ln store.SAF
 	check("work_line", ln.ProductDescription)
 	b.WriteString(`<Line>`)
 	fmt.Fprintf(b, `<LineNumber>%d</LineNumber>`, ln.LineNumber)
-	writeElem(b, "ProductCode", ln.ProductCode)
-	writeElem(b, "ProductDescription", ln.ProductDescription)
-	writeElem(b, "Quantity", ln.Quantity)
-	writeElem(b, "UnitOfMeasure", ln.UnitOfMeasure)
-	writeElem(b, "UnitPrice", ln.UnitPriceNet)
+	writeLineProduct(b, ln)
 	writeElem(b, "TaxPointDate", d.WorkDate)
-	writeElem(b, "Description", ln.ProductDescription)
+	writeText(b, "Description", ln.ProductDescription, domain.SAFTMaxLineDesc)
 	writeLineAmount(b, "PF", ln)
 	writeLineTax(b, ln)
 	b.WriteString(`</Line>`)
@@ -445,11 +440,15 @@ func writeMovementOfGoods(b *strings.Builder, moves []store.SAFTStockMovement, c
 	if len(moves) == 0 {
 		return
 	}
+	// Portaria 4.2.1 counts lines of annulled (A) documents too; 4.2.2 sums quantities without them.
 	lineCount := 0
 	qtyIssued := decimal.Zero
 	for _, m := range moves {
 		for _, ln := range m.Lines {
 			lineCount++
+			if m.MovementStatus == "A" {
+				continue
+			}
 			q, _ := compliance.ParseDecimal(ln.Quantity)
 			qtyIssued = qtyIssued.Add(q)
 		}
@@ -472,9 +471,9 @@ func writeStockMovement(b *strings.Builder, m store.SAFTStockMovement, check fun
 	writeElem(b, "MovementStatus", m.MovementStatus)
 	writeElem(b, "MovementStatusDate", m.MovementStatusDate)
 	if r := strings.TrimSpace(m.StatusReason); r != "" {
-		writeElem(b, "Reason", r)
+		writeText(b, "Reason", r, domain.SAFTMaxReason)
 	}
-	writeElem(b, "SourceID", m.SourceID)
+	writeElem(b, "SourceID", m.StatusSourceID)
 	writeElem(b, "SourceBilling", "P")
 	b.WriteString(`</DocumentStatus>`)
 	writeElem(b, "Hash", m.Hash)
@@ -514,6 +513,14 @@ func writeShippingPoint(b *strings.Builder, tag string, a domain.Address) {
 	if a.IsZero() {
 		return
 	}
+	b.WriteString(`<` + tag + `><Address>`)
+	writeAddress(b, a)
+	b.WriteString(`</Address></` + tag + `>`)
+}
+
+// writeAddress writes AddressStructure (AddressDetail, City, PostalCode, Country, all mandatory);
+// unknown parts (pre-017 free text, final consumer) are "Desconhecido".
+func writeAddress(b *strings.Builder, a domain.Address) {
 	n := a.Normalize()
 	orUnknown := func(v string) string {
 		if v == "" {
@@ -521,24 +528,27 @@ func writeShippingPoint(b *strings.Builder, tag string, a domain.Address) {
 		}
 		return v
 	}
-	b.WriteString(`<` + tag + `><Address>`)
-	writeElem(b, "AddressDetail", orUnknown(n.Detail))
-	writeElem(b, "City", orUnknown(n.City))
-	writeElem(b, "PostalCode", orUnknown(n.PostalCode))
+	writeText(b, "AddressDetail", orUnknown(n.Detail), domain.SAFTMaxAddressDetail)
+	writeText(b, "City", orUnknown(n.City), domain.SAFTMaxCity)
+	writeText(b, "PostalCode", orUnknown(n.PostalCode), domain.SAFTMaxPostalCode)
 	writeElem(b, "Country", n.Country)
-	b.WriteString(`</Address></` + tag + `>`)
+}
+
+// writeLineProduct writes the product block shared by every source-document line.
+func writeLineProduct(b *strings.Builder, ln store.SAFTLine) {
+	writeText(b, "ProductCode", ln.ProductCode, domain.SAFTMaxProductCode)
+	writeText(b, "ProductDescription", ln.ProductDescription, domain.SAFTMaxProductDesc)
+	writeElem(b, "Quantity", ln.Quantity)
+	writeText(b, "UnitOfMeasure", ln.UnitOfMeasure, domain.SAFTMaxUnitOfMeasure)
+	writeElem(b, "UnitPrice", ln.UnitPriceNet)
 }
 
 func writeMovementLine(b *strings.Builder, m store.SAFTStockMovement, ln store.SAFTLine, check func(string, string)) {
 	check("mov_line", ln.ProductDescription)
 	b.WriteString(`<Line>`)
 	fmt.Fprintf(b, `<LineNumber>%d</LineNumber>`, ln.LineNumber)
-	writeElem(b, "ProductCode", ln.ProductCode)
-	writeElem(b, "ProductDescription", ln.ProductDescription)
-	writeElem(b, "Quantity", ln.Quantity)
-	writeElem(b, "UnitOfMeasure", ln.UnitOfMeasure)
-	writeElem(b, "UnitPrice", ln.UnitPriceNet)
-	writeElem(b, "Description", ln.ProductDescription)
+	writeLineProduct(b, ln)
+	writeText(b, "Description", ln.ProductDescription, domain.SAFTMaxLineDesc)
 	writeLineAmount(b, m.MovementType, ln)
 	writeLineTax(b, ln)
 	b.WriteString(`</Line>`)
@@ -587,7 +597,7 @@ func writePayment(b *strings.Builder, p store.SAFTPayment, check func(string, st
 	b.WriteString(`<Line>`)
 	fmt.Fprintf(b, `<LineNumber>%d</LineNumber>`, 1)
 	b.WriteString(`<SourceDocumentID>`)
-	writeElem(b, "OriginatingON", p.OriginalInvoiceNo)
+	writeText(b, "OriginatingON", p.OriginalInvoiceNo, domain.SAFTMaxReference)
 	writeElem(b, "InvoiceDate", p.OriginalInvoiceDate)
 	b.WriteString(`</SourceDocumentID>`)
 	writeElem(b, "CreditAmount", p.GrossTotal)
@@ -602,6 +612,16 @@ func writePayment(b *strings.Builder, p store.SAFTPayment, check func(string, st
 
 func writeElem(b *strings.Builder, name, value string) {
 	fmt.Fprintf(b, "<%s>%s</%s>", name, xmlEscape(value), name)
+}
+
+// writeText is the ONLY writer for free-text SAF-T fields: it caps the value at the XSD limit
+// from domain's table (characters). Entry validation enforces the same limits on new data; the
+// cap only keeps signed historic documents exportable.
+func writeText(b *strings.Builder, name, value string, max int) {
+	if utf8.RuneCountInString(value) > max {
+		value = string([]rune(value)[:max])
+	}
+	writeElem(b, name, value)
 }
 
 func xmlEscape(s string) string {

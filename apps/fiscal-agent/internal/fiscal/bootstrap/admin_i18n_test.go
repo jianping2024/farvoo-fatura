@@ -167,8 +167,8 @@ func TestAdminSettingsI18nUniqueWriters(t *testing.T) {
 	if n := strings.Count(html, "getLabels: listPagerLabels"); n != 5 {
 		t.Fatalf("all 5 pagination bars must use listPagerLabels, got %d", n)
 	}
-	if n := strings.Count(html, "getLabels: listDateRangeLabels"); n != 1 {
-		t.Fatalf("invoice date filter must use listDateRangeLabels once, got %d", n)
+	if n := strings.Count(html, "getLabels: listDateRangeLabels"); n != 2 {
+		t.Fatalf("invoice + SAF-T date filters must each use listDateRangeLabels, got %d", n)
 	}
 	if n := strings.Count(html, ".relabel()"); n != 1 {
 		t.Fatalf("locale relabel loop must be the only .relabel() call site, got %d", n)

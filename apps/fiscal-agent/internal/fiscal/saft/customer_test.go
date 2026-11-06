@@ -1,6 +1,7 @@
 package saft
 
 import (
+	"strings"
 	"testing"
 
 	"farvoo-fiscal-agent/internal/fiscal/store"
@@ -26,5 +27,14 @@ func TestSAFTCustomerIdentity(t *testing.T) {
 	m1, m2, j := saftCustomer(maria), saftCustomer(maria), saftCustomer(joao)
 	if m1.ID != m2.ID || m1.ID == j.ID || m1.ID == "CF" || len(m1.ID) > 30 || m1.CustomerTaxID != "999999990" {
 		t.Fatalf("named without NIF must be stable, distinct, ≤30: %q %q %q", m1.ID, m2.ID, j.ID)
+	}
+}
+
+// writeText caps free text at the XSD limit in characters, not bytes.
+func TestWriteTextCapsCharacters(t *testing.T) {
+	var b strings.Builder
+	writeText(&b, "Reason", strings.Repeat("ã", 60), 50)
+	if got := b.String(); got != "<Reason>"+strings.Repeat("ã", 50)+"</Reason>" {
+		t.Fatalf("got %q", got)
 	}
 }

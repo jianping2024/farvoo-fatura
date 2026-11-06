@@ -13,6 +13,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/compliance"
 	fiscalprint "farvoo-fiscal-agent/internal/fiscal/print"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
+	"farvoo-fiscal-agent/internal/fiscal/software"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -96,11 +97,12 @@ func (d *DB) IssueFT(ctx context.Context, signer Signer, p IssueParams) (*IssueR
 		return rec, nil
 	}
 
-	var tz, nif, legalName, businessName, addr, city, postal, cert, taxRegion string
+	var tz, nif, legalName, businessName, addr, city, postal, taxRegion string
+	cert := software.CertificateNumber
 	err = tx.QueryRow(`SELECT timezone, tax_registration_number, legal_name, COALESCE(business_name,''),
-		address_detail, city, postal_code, software_certificate_number, tax_country_region
+		address_detail, city, postal_code, tax_country_region
 		FROM taxpayer_settings WHERE store_id = ?`, p.StoreID).
-		Scan(&tz, &nif, &legalName, &businessName, &addr, &city, &postal, &cert, &taxRegion)
+		Scan(&tz, &nif, &legalName, &businessName, &addr, &city, &postal, &taxRegion)
 	if err != nil {
 		return nil, fmt.Errorf("store: taxpayer_settings: %w", err)
 	}

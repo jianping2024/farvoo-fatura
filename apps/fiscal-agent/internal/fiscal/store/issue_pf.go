@@ -14,6 +14,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/compliance"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 	fiscalprint "farvoo-fiscal-agent/internal/fiscal/print"
+	"farvoo-fiscal-agent/internal/fiscal/software"
 
 	"github.com/google/uuid"
 )
@@ -69,11 +70,12 @@ func (d *DB) IssuePF(ctx context.Context, signer Signer, p IssuePFParams) (*Issu
 		return rec, nil
 	}
 
-	var tz, nif, legalName, businessName, addr, city, postal, cert, taxRegion string
+	var tz, nif, legalName, businessName, addr, city, postal, taxRegion string
+	cert := software.CertificateNumber
 	err = tx.QueryRow(`SELECT timezone, tax_registration_number, legal_name, COALESCE(business_name,''),
-		address_detail, city, postal_code, software_certificate_number, tax_country_region
+		address_detail, city, postal_code, tax_country_region
 		FROM taxpayer_settings WHERE store_id = ?`, p.StoreID).
-		Scan(&tz, &nif, &legalName, &businessName, &addr, &city, &postal, &cert, &taxRegion)
+		Scan(&tz, &nif, &legalName, &businessName, &addr, &city, &postal, &taxRegion)
 	if err != nil {
 		return nil, fmt.Errorf("store: taxpayer_settings: %w", err)
 	}
@@ -322,7 +324,7 @@ func linkProformaInTx(tx *sql.Tx, storeID, saleInvoiceID, proformaID, statusChan
 		return fmt.Errorf("store: insert proforma reference: %w", err)
 	}
 	if docStatus == string(domain.WorkStatusNormal) {
-		_, err = tx.Exec(`UPDATE invoices SET document_status = 'F', status_changed_at = ?, source_id = COALESCE(NULLIF(?, ''), source_id)
+		_, err = tx.Exec(`UPDATE invoices SET document_status = 'F', status_changed_at = ?, status_source_id = COALESCE(NULLIF(?, ''), status_source_id)
 			WHERE id = ? AND document_status = 'N'`, statusChangedAt, strings.TrimSpace(operatorID), pfID)
 		if err != nil {
 			return fmt.Errorf("store: mark PF invoiced: %w", err)
@@ -399,7 +401,7 @@ func (d *DB) AnnulPF(ctx context.Context, p AnnulPFParams) (*IssueRecord, error)
 	statusAt := p.NowUTC.In(loc).Format("2006-01-02T15:04:05")
 	nowRFC := p.NowUTC.Format(time.RFC3339)
 
-	_, err = tx.Exec(`UPDATE invoices SET document_status = 'A', status_reason = ?, status_changed_at = ?, source_id = ?
+	_, err = tx.Exec(`UPDATE invoices SET document_status = 'A', status_reason = ?, status_changed_at = ?, status_source_id = ?
 		WHERE id = ? AND document_status = 'N'`, reason, statusAt, p.OperatorID, p.DocumentID)
 	if err != nil {
 		return nil, err
