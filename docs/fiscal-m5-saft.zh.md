@@ -18,7 +18,7 @@
 | Dashboard / Ops 票证查询 | 不要求云上有票 |
 | e-Fatura 逐票实时上报 | 不做 |
 | AT 在线提交 SAF-T | P0 仅本地文件 + 归档行 |
-| XSD 在线校验工具链 | P0 用结构化断言 + Windows-1252 自检 |
+| XSD 在线校验工具链 | 不做在线校验；本地/CI 用官方 XSD 1.1 离线校验（`scripts/fiscal-saft-xsd-check.sh`） |
 
 ## 3. P0 定法
 
@@ -31,9 +31,14 @@
 | 重复导出 | **追加**新 `saft_exports` 行；**不** UPDATE 历史行 |
 | 文件路径 | `{parent(FISCAL_DATA_DIR)}/saft/{nif}/{year}/saft_{nif}_{year}-{MM}.xml` |
 | 编码 | Windows-1252，无 BOM |
-| FT 行金额 | `DebitAmount` = 行 `gross` |
-| NC 行金额 | `CreditAmount` = 行 `gross`；`References` 来自 `invoice_line_references` |
-| validation_status | `VALID` / `INVALID`（Windows-1252 **编解码 roundtrip**；葡语重音合法；中文等不可编码字符 → `INVALID`） |
+| 行金额口径 | 行 `line_net`（**未含税**，2 位）；Portaria 302/2016 4.1.4.20.6/7 |
+| 行借贷方向 | **NC → `DebitAmount`**；FT/FS/FR/ND、PF、GR/GT → `CreditAmount`（唯一规则 `saft.lineIsDebit`） |
+| NC References | 来自 `invoice_line_references`，XSD 位置在 `TaxPointDate` 与 `Description` 之间 |
+| SettlementAmount | 不输出（系统无行折扣） |
+| UnitPrice | 行 `unit_price_net`，6 位（`compliance.UnitPriceDecimals`，开票时 `LineFromGross` 唯一写入）；2026-11 之前的历史行为 2 位 |
+| 控制合计 | SalesInvoices / WorkingDocuments `TotalDebit`/`TotalCredit` = Σ 对应侧行金额（PF 排除 `A`） |
+| 0% 税率行 | 必须带 `TaxExemptionReason` + `TaxExemptionCode`；缺失 → `INVALID` |
+| validation_status | `VALID` / `INVALID`（Windows-1252 **编解码 roundtrip**；葡语重音合法；中文等不可编码字符 → `INVALID`；0% 行缺免税原因 → `INVALID`） |
 | 审计 | 每次成功导出写 `audit_log.action = EXPORT_SAFT` |
 
 ## 4. 唯一路径
@@ -124,14 +129,18 @@ Admin §7 exportSAFT() / Local API
 |------------|------|
 | Header.CompanyID / TaxRegistrationNumber | `taxpayer_settings` |
 | Header.FiscalYear / StartDate / EndDate | 请求年月 + `SAFTPeriodBounds` |
-| MasterFiles.Customer | 票上客户快照去重 |
+| MasterFiles.Customer | 票上客户快照经 `saft.saftCustomer` 去重：有 NIF → `CustomerID=NIF`；无 NIF 的 Consumidor Final → `CF`（地址 Desconhecido）；无 NIF 署名收货方 → `C`+名称地址哈希 12 位；`CustomerTaxID` 无 NIF 时 = 999999990。各单据 `CustomerID` 用同一函数 |
+| SourceID（全部单据） | `operators.saft_user_code`（迁移 018，门店内 `U001`…，触发器分配；XSD ≤30 字符）；`invoices.source_id` 仍为 operators.id |
 | MasterFiles.Product | 行 `product_code` / `saft_name` 去重 |
-| MasterFiles.TaxTable | 行 `vat_rate` 去重 |
+| MasterFiles.TaxTable | 一个 `TaxTable`，每个行 `vat_rate` 去重为一条 `TaxTableEntry` |
 | SourceDocuments.SalesInvoices.Invoice | 每张 FT/NC 一条 |
 | Invoice.DocumentNumber | `invoice_no` |
 | Invoice.ATCUD | `atcud` |
-| Invoice.DocumentStatus | `document_status` |
-| Line.DebitAmount / CreditAmount | FT 借方 / NC 贷方 |
+| Invoice.DocumentStatus | 复合节点：`InvoiceStatus=N`、`InvoiceStatusDate=system_entry_date`、`SourceID`、`SourceBilling=P`（销售单无作废路径；NC/ND 冲销只改原票业务状态） |
+| Line.CreditAmount / DebitAmount | `line_net`；FT 等贷方 / NC 借方 |
+| Line.Tax 后 | 0% 行：`TaxExemptionReason` / `TaxExemptionCode` |
+| SourceDocuments 顺序 | SalesInvoices → MovementOfGoods → WorkingDocuments → Payments（XSD 顺序） |
+| Payment | `TransactionDate`、`PaymentType` 在 `DocumentStatus` 前；`DocumentStatus.SourcePayment=P`；行金额 = 收款额（RG 无 Tax） |
 | Line.References | NC：`invoice_line_references` → 原票号 + 原因 |
 
 ## 9. Admin §7
@@ -143,7 +152,8 @@ Admin §7 exportSAFT() / Local API
 | 脚本 | 场景 |
 |------|------|
 | `scripts/fiscal-m5-regression.mjs` | setup → FT → NC → export → sqlite → list → download → NC ref → 空月拒绝 → 重复导出新行 → audit |
-| `go test ./internal/fiscal/saft/...` | FT+NC 结构化 XML 断言 |
+| `go test ./internal/fiscal/saft/...` | FT+NC 结构化 XML 断言；`TestBuildLineAmountsNetAndSided`：Σ行=NetTotal、Net+Tax=Gross、借贷方向、Qty×UP≈行金额 |
+| `scripts/fiscal-saft-xsd-check.sh` | 全票种样本（FT/NC/PF/GR/GT/RG/0% 免税）对官方 XSD 1.1 校验；接入 `check-fiscal-agent.sh` 与 CI |
 | Admin §7（Chrome DevTools） | 导出、列表 VALID、下载 |
 
 ## 11. 验收对照（dev-plan M5）

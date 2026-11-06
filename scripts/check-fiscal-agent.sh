@@ -41,6 +41,7 @@ run_go_checks() {
 
 echo "fiscal-agent VERSION=$VERSION"
 run_go_checks
+"$ROOT/scripts/fiscal-saft-xsd-check.sh"
 echo "OK — safe to tag: git tag fiscal-agent-v$VERSION && git push origin fiscal-agent-v$VERSION"
 echo "Then wait for Actions → fiscal-agent-release (green) before telling users to download."
 echo "Never build Setup/zip locally on macOS as a substitute for GitHub Release."

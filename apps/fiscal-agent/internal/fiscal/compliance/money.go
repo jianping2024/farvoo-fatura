@@ -20,6 +20,10 @@ func Money2(d decimal.Decimal) string {
 	return d.StringFixed(2)
 }
 
+// UnitPriceDecimals is the precision of the net unit price (SAF-T UnitPrice). Line and document
+// amounts stay 2dp; a finer unit price keeps Quantity × UnitPrice within rounding of the line net.
+const UnitPriceDecimals = 6
+
 // LineFromGross splits a gross line amount into net + tax given VAT rate (e.g. "0.23").
 func LineFromGross(qty, unitGross, vatRate string) (lineGross, lineNet, lineTax, unitNet string, err error) {
 	q, err := ParseDecimal(qty)
@@ -39,8 +43,8 @@ func LineFromGross(qty, unitGross, vatRate string) (lineGross, lineNet, lineTax,
 	onePlus := decimal.NewFromInt(1).Add(rate)
 	net := gross.Div(onePlus).Round(2)
 	tax := gross.Sub(net).Round(2)
-	un := ug.Div(onePlus).Round(2)
-	return Money2(gross), Money2(net), Money2(tax), Money2(un), nil
+	un := ug.Div(onePlus)
+	return Money2(gross), Money2(net), Money2(tax), un.StringFixed(UnitPriceDecimals), nil
 }
 
 // TaxCodeForRate maps mainland PT VAT rate to SAF-T tax code.

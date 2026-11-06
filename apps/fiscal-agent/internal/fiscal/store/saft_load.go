@@ -36,7 +36,8 @@ type SAFTCustomer struct {
 	SelfBillingIndicator int
 }
 
-// SAFTInvoice is one signed document for SAF-T export.
+// SAFTInvoice is one signed document for SAF-T export. SourceID on every SAF-T document is the
+// operator's short saft_user_code (migration 018), not the operators.id UUID.
 type SAFTInvoice struct {
 	ID                        string
 	DocumentType              string
@@ -62,11 +63,12 @@ type SAFTInvoice struct {
 func (d *DB) LoadSAFTInvoicesForPeriod(storeID, startDate, endDate string) ([]SAFTInvoice, error) {
 	rows, err := d.SQL.Query(`SELECT i.id, i.document_type, i.invoice_no, i.atcud, i.invoice_date, i.system_entry_date,
 		i.hash, IFNULL(i.previous_hash,''), i.hash_control, i.gross_total, i.net_total, i.tax_payable,
-		i.source_id, i.software_certificate_number,
+		o.saft_user_code, i.software_certificate_number,
 		cs.customer_tax_id, cs.company_name, cs.address_detail, cs.city, cs.postal_code, cs.country,
 		cs.account_id, cs.self_billing_indicator
 		FROM invoices i
 		JOIN invoice_customer_snapshots cs ON cs.invoice_id = i.id
+		JOIN operators o ON o.id = i.source_id
 		WHERE i.store_id = ? AND i.invoice_date >= ? AND i.invoice_date <= ?
 		AND i.document_type IN ('FT','NC','ND','FS','FR')
 		ORDER BY i.invoice_date, i.created_at`, storeID, startDate, endDate)
@@ -244,12 +246,13 @@ type SAFTStockMovement struct {
 func (d *DB) LoadSAFTWorkingDocumentsForPeriod(storeID, startDate, endDate string) ([]SAFTWorkingDocument, error) {
 	rows, err := d.SQL.Query(`SELECT i.id, i.invoice_no, i.atcud, i.invoice_date, i.system_entry_date,
 		i.document_status, COALESCE(NULLIF(i.status_changed_at,''), i.system_entry_date),
-		COALESCE(i.status_reason,''), i.hash, i.hash_control, i.source_id,
+		COALESCE(i.status_reason,''), i.hash, i.hash_control, o.saft_user_code,
 		i.gross_total, i.net_total, i.tax_payable,
 		cs.customer_tax_id, cs.company_name, cs.address_detail, cs.city, cs.postal_code, cs.country,
 		cs.account_id, cs.self_billing_indicator
 		FROM invoices i
 		JOIN invoice_customer_snapshots cs ON cs.invoice_id = i.id
+		JOIN operators o ON o.id = i.source_id
 		WHERE i.store_id = ? AND i.invoice_date >= ? AND i.invoice_date <= ?
 		AND i.document_type = 'PF'
 		ORDER BY i.invoice_date, i.created_at`, storeID, startDate, endDate)
@@ -291,7 +294,7 @@ func (d *DB) LoadSAFTWorkingDocumentsForPeriod(storeID, startDate, endDate strin
 func (d *DB) LoadSAFTStockMovementsForPeriod(storeID, startDate, endDate string) ([]SAFTStockMovement, error) {
 	rows, err := d.SQL.Query(`SELECT i.id, i.invoice_no, i.atcud, i.document_type, i.invoice_date, i.system_entry_date,
 		i.document_status, COALESCE(NULLIF(i.status_changed_at,''), i.system_entry_date),
-		COALESCE(i.status_reason,''), i.hash, i.hash_control, i.source_id,
+		COALESCE(i.status_reason,''), i.hash, i.hash_control, o.saft_user_code,
 		i.gross_total, i.net_total, i.tax_payable,
 		`+shipAddressSelect("ship_from")+`, `+shipAddressSelect("ship_to")+`,
 		COALESCE(i.movement_start_at,''), COALESCE(i.at_transport_doc_code,''),
@@ -299,6 +302,7 @@ func (d *DB) LoadSAFTStockMovementsForPeriod(storeID, startDate, endDate string)
 		cs.account_id, cs.self_billing_indicator
 		FROM invoices i
 		JOIN invoice_customer_snapshots cs ON cs.invoice_id = i.id
+		JOIN operators o ON o.id = i.source_id
 		WHERE i.store_id = ? AND i.invoice_date >= ? AND i.invoice_date <= ?
 		AND i.document_type IN ('GR','GT')
 		ORDER BY i.invoice_date, i.created_at`, storeID, startDate, endDate)
@@ -346,7 +350,7 @@ func (d *DB) LoadSAFTStockMovementsForPeriod(storeID, startDate, endDate string)
 
 func (d *DB) LoadSAFTPaymentsForPeriod(storeID, startDate, endDate string) ([]SAFTPayment, error) {
 	rows, err := d.SQL.Query(`SELECT i.id, i.invoice_no, i.atcud, i.invoice_date, i.system_entry_date,
-		i.source_id, i.gross_total,
+		o.saft_user_code, i.gross_total,
 		COALESCE((SELECT method FROM invoice_payments WHERE invoice_id = i.id ORDER BY paid_at LIMIT 1), 'CASH'),
 		cs.customer_tax_id, cs.company_name, cs.address_detail, cs.city, cs.postal_code, cs.country,
 		cs.account_id, cs.self_billing_indicator,
@@ -354,6 +358,7 @@ func (d *DB) LoadSAFTPaymentsForPeriod(storeID, startDate, endDate string) ([]SA
 		oi.invoice_date
 		FROM invoices i
 		JOIN invoice_customer_snapshots cs ON cs.invoice_id = i.id
+		JOIN operators o ON o.id = i.source_id
 		JOIN invoice_receipt_references r ON r.receipt_invoice_id = i.id
 		JOIN invoices oi ON oi.id = r.original_invoice_id
 		WHERE i.store_id = ? AND i.invoice_date >= ? AND i.invoice_date <= ?
