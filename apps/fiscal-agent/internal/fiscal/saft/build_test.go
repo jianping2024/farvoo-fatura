@@ -143,6 +143,23 @@ func TestBuildRejectsNon1252Characters(t *testing.T) {
 	if built.ValidationStatus != "INVALID" {
 		t.Fatalf("expected INVALID got %s", built.ValidationStatus)
 	}
+
+	// Fields outside the product name (address, city, product code) are covered too, and each
+	// error names the document and element instead of the text being dropped silently.
+	inv.Lines[0].ProductDescription, inv.Lines[0].ProductCode = "Chá de jasmim", "茶1"
+	inv.Customer = store.SAFTCustomer{CustomerTaxID: "509442013", CompanyName: "Cliente Lda", AddressDetail: "Rua 2", City: "里斯本", PostalCode: "1000-002", Country: "PT"}
+	built, err = saft.Build(saft.BuildInput{
+		Taxpayer: taxpayer, CreatedDate: "2026-09-02",
+		StartDate: "2026-08-01", EndDate: "2026-08-31", Invoices: []store.SAFTInvoice{inv},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(built.ValidationErrors, "\n")
+	if built.ValidationStatus != "INVALID" || !strings.Contains(joined, `City "里斯本"`) ||
+		!strings.Contains(joined, `FT FT2026DEMO01/1 ProductCode "茶1"`) {
+		t.Fatalf("want city + product code errors, got %s %v", built.ValidationStatus, built.ValidationErrors)
+	}
 }
 
 func seedSAFTDemo(t *testing.T, db *store.DB, sig *signer.PEMSigner) string {

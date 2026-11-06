@@ -18,6 +18,7 @@ const (
 	CodeInvalidVATRate    = "invalid_vat_rate"
 	CodeEmptyItemCode     = "empty_item_code"
 	CodePersistFailed     = "persist_failed"
+	CodeSAFTTextInvalid   = "saft_text_invalid" // name / item_code not storable as SAF-T text
 )
 
 // IngestError is a typed failure for ack.
@@ -168,6 +169,10 @@ func ValidateAndDedupeProducts(lines []Line) ([]store.ProductUpsertInput, error)
 	var out []store.ProductUpsertInput
 	for _, code := range order {
 		s := m[code]
+		// Same rule as the product write, checked before the draft is saved.
+		if _, _, err := store.CleanProductText(code, s.name, s.name); err != nil {
+			return nil, ingestErr(CodeSAFTTextInvalid, err.Error())
+		}
 		out = append(out, store.ProductUpsertInput{
 			ProductCode:    code,
 			DisplayName:    s.name,

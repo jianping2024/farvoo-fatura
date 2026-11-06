@@ -52,6 +52,13 @@ func (d *DB) UpsertLocalCustomer(in LocalCustomerInput) (*CustomerRow, error) {
 		return nil, err
 	}
 	tax = norm
+	text, err := domain.CustomerInput{
+		CompanyName: in.CompanyName, AddressDetail: in.AddressDetail, City: in.City, PostalCode: in.PostalCode,
+	}.ValidateSAFTText("customer")
+	if err != nil {
+		return nil, err
+	}
+	in.CompanyName, in.AddressDetail, in.City, in.PostalCode = text.CompanyName, text.AddressDetail, text.City, text.PostalCode
 	name := strings.TrimSpace(in.CompanyName)
 	if name == "" {
 		name = tax

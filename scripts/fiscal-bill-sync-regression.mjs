@@ -232,7 +232,7 @@ async function main() {
         lines: [
           {
             item_code: 'X',
-            name: 'X',
+            name: 'Item X',
             qty: '1',
             unit_price_gross: '1.00',
             line_gross: '1.00',
@@ -665,7 +665,7 @@ async function main() {
           lines: [
             {
               item_code: 'A',
-              name: 'X',
+              name: 'Item X',
               qty: '1',
               unit_price_gross: '1.00',
               line_gross: '1.00',
@@ -680,7 +680,7 @@ async function main() {
           lines: [
             {
               item_code: 'B',
-              name: 'Y',
+              name: 'Item Y',
               qty: '1',
               unit_price_gross: '1.00',
               line_gross: '1.00',

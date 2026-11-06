@@ -32,7 +32,7 @@ func (s *FiscalService) IssueCreditNote(ctx context.Context, req domain.CreditNo
 	}
 	reason, err := domain.ValidateStatusReason(req.Reason)
 	if err != nil {
-		return nil, coded(ErrCodeValidationFailed, err.Error())
+		return nil, err
 	}
 	if req.OriginalInvoiceID == "" {
 		return nil, coded(ErrCodeValidationFailed, "original invoice id required")

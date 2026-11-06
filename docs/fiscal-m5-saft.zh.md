@@ -38,12 +38,33 @@
 | UnitPrice | 行 `unit_price_net`，6 位（`compliance.UnitPriceDecimals`，开票时 `LineFromGross` 唯一写入）；2026-11 之前的历史行为 2 位 |
 | 控制合计 | SalesInvoices / WorkingDocuments `TotalDebit`/`TotalCredit` = Σ 对应侧行金额（PF 排除 `A`） |
 | 0% 税率行 | 必须带 `TaxExemptionReason` + `TaxExemptionCode`；缺失 → `INVALID` |
-| validation_status | `VALID` / `INVALID` = **builder 层检查**（Windows-1252 编解码 roundtrip；0% 行缺免税原因；ProductDescription < 2 字符）。**不是** XSD 校验：Agent 端无 XSD 1.1 引擎，XSD 结构由 CI 门禁 `scripts/fiscal-saft-xsd-check.sh` 覆盖全票种样本保证 |
+| validation_status | `VALID` / `INVALID` = **builder 层检查**（成品 XML 每个元素可编码 Windows-1252——`saft.encodingErrors`，错误写明单据号 + 元素 + 原文；0% 行缺免税原因；ProductDescription < 2 字符）。**不是** XSD 校验：Agent 端无 XSD 1.1 引擎，XSD 结构由 CI 门禁 `scripts/fiscal-saft-xsd-check.sh` 覆盖全票种样本保证 |
 | Header 软件身份 | `TaxAccountingBasis=F`；`ProductCompanyTaxID` / `ProductID`（`Farvoo/FAINA VAIDOSA, LDA`）/ `SoftwareCertificateNumber` 来自 `internal/fiscal/software`（唯一来源，签发与 AT 系列注册同读）；`ProductVersion` = `VERSION`（release 经 ldflags；dev 构建为 `dev`）；`DateCreated` = 导出当天（门店时区）；`TaxEntity=Global`（一个 NIF 一家店） |
-| 文本上限 | `domain` 的 SAF-T 上限表为唯一来源；录入时校验（作废/冲销原因 1–50 字符，`domain.ValidateStatusReason`），导出 `saft.writeText` 按同表截断（只为兜底已签历史单据） |
+| 文本上限 | `domain` 的 SAF-T 上限表为唯一来源；录入时由 `domain.ValidateSAFTText` 统一校验（见 §3.1），导出 `saft.writeText` 按同表截断（只为兜底已签历史单据） |
 | SourceID | 单据层 = 创建人（`invoices.source_id`）；`DocumentStatus/SourceID` = 当前状态操作人（`invoices.status_source_id`，迁移 019）；均输出 `operators.saft_user_code` |
 | MovementOfGoods 合计 | `NumberOfMovementLines` 含作废（A）单据行（Portaria 4.2.1）；`TotalQuantityIssued` 不含 A（4.2.2） |
 | 审计 | 每次成功导出写 `audit_log.action = EXPORT_SAFT` |
+
+### 3.1 录入时的 SAF-T 文本校验（签发前拦截）
+
+已签单据不可改，所以 SAF-T 文本必须在**录入和签发前**合格；导出端只负责如实报告历史数据。
+
+**唯一规则** `domain.ValidateSAFTText(field, s, min, max)`：NFC 规范化（macOS 输入的「a + 组合波浪号」→「ã」）+ 去首尾空格 → 必须可编码 Windows-1252（`domain.EncodesWindows1252`，导出端同用）→ 长度 `min..max` 字符（`min=0` 表示可空）。返回清洗后的值，存的就是校验过的值。失败返回 `*domain.SAFTTextError{Field, Reason, Min, Max}`，`Reason` ∈ `encoding` / `too_short` / `too_long`。
+
+| 入口 | 字段（field 路径） | 上限 |
+|------|--------------------|------|
+| 商品主档 `store.CleanProductText`（本地保存 + 云同步 + bill sync ingest 预检） | `product.product_code` / `product.saft_name`（空则用 display_name） | 1–60 / 2–200 |
+| 客户主档 `store.UpsertLocalCustomer` | `customer.company_name` / `address_detail` / `city` / `postal_code` | 0–100 / 210 / 50 / 20 |
+| 门店资料 `service.UpsertTaxpayer` | `taxpayer.legal_name` / `business_name` / `address_detail` / `city` / `postal_code` | 100 / 60 / 210 / 50 / 20 |
+| 新单签发 `service.validateSaleText`（FT/FS/FR、PF、GR、GT 四个 service 入口，在签名、占号、AT 之前） | `customer.*`；`lines.<n>.saft_name`（`SaleLine.EffectiveSaftName`）/ `lines.<n>.product_code`（空 = 系统编 LINEn） | 同上 |
+| GR/GT 装卸货地 `service.resolveShipPoints` | `ship_from.*` / `ship_to.*` | 210 / 50 / 20 |
+| 作废 / NC / ND 原因 `domain.ValidateStatusReason` | `reason` | 1–50 |
+
+NC/ND/RG 沿用原单的客户与商品行，不重复校验。
+
+**错误出口（唯一）**：HTTP `400 {error: "saft_text_invalid", field, part, min, max}`（`api.writeSAFTTextErr`）；bill sync ack code `saft_text_invalid`（`billsync.CodeSAFTTextInvalid`，ingest 在存草稿前拒绝整单）。Admin：`FiscalUI.formatError` 生成三语提示（订单行带「第 n 行」与「请在商品资料里填写葡语税票名称」）；`focusSAFTTextField` 按 field 标红并聚焦对应输入框或订单行。
+
+**发版前扫描**：`go run ./cmd/saft-text-scan <fiscal.db>`（同一规则，只读）列出需先修的主档（fix）与已签单据中的不合格文本（signed）。
 
 ## 4. 唯一路径
 
@@ -155,6 +176,7 @@ Admin §7 exportSAFT() / Local API
 |------|------|
 | `scripts/fiscal-m5-regression.mjs` | setup → FT → NC → export → sqlite → list → download → NC ref → 空月拒绝 → 重复导出新行 → audit |
 | `go test ./internal/fiscal/saft/...` | FT+NC 结构化 XML 断言；`TestBuildLineAmountsNetAndSided`：Σ行=NetTotal、Net+Tax=Gross、借贷方向、Qty×UP≈行金额 |
+| `go test ./internal/fiscal/domain/ ./internal/fiscal/service/ -run SAFTText` | 录入规则（重音 / € / NFD / 中文 / emoji / 2 与 200 边界）、四类入口拒绝、被拒不占号、GR 不触 AT |
 | `scripts/fiscal-saft-xsd-check.sh` | 全票种样本（FT/NC/PF/GR/GT/RG/0% 免税）对官方 XSD 1.1 校验；接入 `check-fiscal-agent.sh` 与 CI |
 | Admin §7（Chrome DevTools） | 导出、列表 VALID、下载 |
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/vatpercent"
 
 	"github.com/google/uuid"
@@ -46,6 +47,24 @@ type LocalProductInput struct {
 	TaxCode        string
 }
 
+// CleanProductText is the ONLY product SAF-T text rule (both product writes and bill sync
+// ingest): saft_name falls back to display_name, then product_code (1..60) and saft_name
+// (2..200) must be Windows-1252 SAF-T text. Returns the cleaned code and saft_name.
+func CleanProductText(code, displayName, saftName string) (string, string, error) {
+	if strings.TrimSpace(saftName) == "" {
+		saftName = displayName
+	}
+	code, err := domain.ValidateSAFTText("product.product_code", code, 1, domain.SAFTMaxProductCode)
+	if err != nil {
+		return "", "", err
+	}
+	saftName, err = domain.ValidateSAFTText("product.saft_name", saftName, domain.SAFTMinProductDesc, domain.SAFTMaxProductDesc)
+	if err != nil {
+		return "", "", err
+	}
+	return code, saftName, nil
+}
+
 // UpsertFiscalProductByCode is the ONLY product write used by bill sync ingest (REMOTE_SYNC).
 // Never overwrites LOCAL rows; refuses to create when code owned by LOCAL.
 func (d *DB) UpsertFiscalProductByCode(in ProductUpsertInput) (created, updated bool, err error) {
@@ -53,11 +72,9 @@ func (d *DB) UpsertFiscalProductByCode(in ProductUpsertInput) (created, updated 
 	if in.ProductCode == "" {
 		return false, false, fmt.Errorf("store: product_code required")
 	}
-	if strings.TrimSpace(in.SaftName) == "" {
-		in.SaftName = in.DisplayName
-	}
-	if strings.TrimSpace(in.SaftName) == "" {
-		return false, false, fmt.Errorf("store: saft_name required")
+	in.ProductCode, in.SaftName, err = CleanProductText(in.ProductCode, in.DisplayName, in.SaftName)
+	if err != nil {
+		return false, false, err
 	}
 	if strings.TrimSpace(in.UnitPriceGross) == "" || strings.TrimSpace(in.VATRate) == "" {
 		return false, false, fmt.Errorf("store: unit_price_gross and vat_rate required")
@@ -124,11 +141,10 @@ func (d *DB) UpsertLocalFiscalProduct(in LocalProductInput) (*FiscalProductRow, 
 	if in.ProductCode == "" {
 		return nil, fmt.Errorf("store: product_code required")
 	}
-	if strings.TrimSpace(in.SaftName) == "" {
-		in.SaftName = in.DisplayName
-	}
-	if strings.TrimSpace(in.SaftName) == "" {
-		return nil, fmt.Errorf("store: saft_name required")
+	var err error
+	in.ProductCode, in.SaftName, err = CleanProductText(in.ProductCode, in.DisplayName, in.SaftName)
+	if err != nil {
+		return nil, err
 	}
 	if strings.TrimSpace(in.UnitPriceGross) == "" || strings.TrimSpace(in.VATRate) == "" {
 		return nil, fmt.Errorf("store: unit_price_gross and vat_rate required")

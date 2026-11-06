@@ -31,6 +31,9 @@ func (s *FiscalService) IssueProforma(ctx context.Context, req domain.ProformaRe
 	if len(req.Snapshot.Lines) == 0 {
 		return nil, coded(ErrCodeValidationFailed, "lines required")
 	}
+	if err := validateSaleText(&req.Snapshot); err != nil {
+		return nil, err
+	}
 	if req.StoreID == "" {
 		req.StoreID = s.storeID
 	}
@@ -118,7 +121,7 @@ func (s *FiscalService) AnnulProforma(ctx context.Context, req domain.AnnulProfo
 	}
 	reason, err := domain.ValidateStatusReason(req.Reason)
 	if err != nil {
-		return nil, coded(ErrCodeValidationFailed, err.Error())
+		return nil, err
 	}
 	if req.StoreID == "" {
 		req.StoreID = s.storeID

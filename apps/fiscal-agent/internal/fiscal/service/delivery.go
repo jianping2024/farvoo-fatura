@@ -44,6 +44,9 @@ func (s *FiscalService) IssueDeliveryNote(ctx context.Context, req domain.Delive
 	if len(req.Snapshot.Lines) == 0 {
 		return nil, coded(ErrCodeValidationFailed, "lines required")
 	}
+	if err := validateSaleText(&req.Snapshot); err != nil {
+		return nil, err
+	}
 	if req.StoreID == "" {
 		req.StoreID = s.storeID
 	}
@@ -214,7 +217,7 @@ func (s *FiscalService) AnnulDeliveryNote(ctx context.Context, req domain.AnnulD
 	}
 	reason, err := domain.ValidateStatusReason(req.Reason)
 	if err != nil {
-		return nil, coded(ErrCodeValidationFailed, err.Error())
+		return nil, err
 	}
 	if req.StoreID == "" {
 		req.StoreID = s.storeID

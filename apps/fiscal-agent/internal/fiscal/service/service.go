@@ -56,6 +56,22 @@ func codedField(code, msg, field, part string) error {
 	return &CodedError{Code: code, Msg: msg, Field: field, Part: part}
 }
 
+// ErrCodeSAFTTextInvalid: a free-text field would not survive SAF-T (Windows-1252 / XSD length).
+// The error stays a *domain.SAFTTextError (field, reason, limits); api.writeCoded and
+// mapAutoIssueErr turn it into this code.
+const ErrCodeSAFTTextInvalid = billsync.CodeSAFTTextInvalid
+
+// validateSaleText is the ONLY new-sale SAF-T text step (FT/FS/FR, PF, GR, GT): before signing,
+// numbering and AT. Replaces the snapshot with the cleaned text that gets frozen.
+func validateSaleText(snap *domain.SaleSnapshot) error {
+	clean, err := snap.ValidateSAFTText()
+	if err != nil {
+		return err
+	}
+	*snap = clean
+	return nil
+}
+
 // FiscalService orchestrates setup + issuance.
 type FiscalService struct {
 	db          *store.DB
@@ -151,6 +167,23 @@ func (s *FiscalService) UpsertTaxpayer(p store.TaxpayerInput) error {
 	}
 	if p.TaxRegistrationNumber == "" || p.LegalName == "" || p.AddressDetail == "" || p.City == "" || p.PostalCode == "" {
 		return fmt.Errorf("fiscal: taxpayer required fields missing")
+	}
+	for _, f := range []struct {
+		name     string
+		v        *string
+		min, max int
+	}{
+		{"legal_name", &p.LegalName, 1, domain.SAFTMaxCompanyName},
+		{"business_name", &p.BusinessName, 0, domain.SAFTMaxBusinessName},
+		{"address_detail", &p.AddressDetail, 1, domain.SAFTMaxAddressDetail},
+		{"city", &p.City, 1, domain.SAFTMaxCity},
+		{"postal_code", &p.PostalCode, 1, domain.SAFTMaxPostalCode},
+	} {
+		t, err := domain.ValidateSAFTText("taxpayer."+f.name, *f.v, f.min, f.max)
+		if err != nil {
+			return err
+		}
+		*f.v = t
 	}
 	if err := s.db.EnsureConsumidorFinal(); err != nil {
 		return err
@@ -483,6 +516,9 @@ func (s *FiscalService) IssueDocument(ctx context.Context, req domain.IssueReque
 	}
 	if len(req.Snapshot.Lines) == 0 {
 		return nil, fmt.Errorf("fiscal: lines required")
+	}
+	if err := validateSaleText(&req.Snapshot); err != nil {
+		return nil, err
 	}
 	switch docType {
 	case domain.DocumentFT, domain.DocumentFS, domain.DocumentFR:

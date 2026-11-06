@@ -118,8 +118,8 @@ async function main() {
           lines: [
             {
               product_code: 'P',
-              display_name: 'X',
-              saft_name: 'X',
+              display_name: 'Item X',
+              saft_name: 'Item X',
               quantity: '1',
               unit_price_gross: '1.00',
               vat_rate: '0.23',

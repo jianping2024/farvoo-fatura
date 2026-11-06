@@ -82,6 +82,9 @@ func handleUpsertProduct(w http.ResponseWriter, r *http.Request, deps HandlerDep
 			writeErr(w, http.StatusConflict, "product_conflict", err.Error())
 			return
 		}
+		if writeSAFTTextErr(w, err) {
+			return
+		}
 		writeErr(w, http.StatusBadRequest, "validation_failed", err.Error())
 		return
 	}
@@ -133,6 +136,9 @@ func handleUpsertCustomer(w http.ResponseWriter, r *http.Request, deps HandlerDe
 		AddressDetail: body.AddressDetail, City: body.City, PostalCode: body.PostalCode, Country: body.Country,
 	})
 	if err != nil {
+		if writeSAFTTextErr(w, err) {
+			return
+		}
 		writeErr(w, http.StatusBadRequest, "validation_failed", err.Error())
 		return
 	}

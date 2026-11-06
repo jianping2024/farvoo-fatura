@@ -109,8 +109,8 @@ func TestExportSAFTArchivesEachExportAndTakesDateRange(t *testing.T) {
 		FiscalTerminalID: domain.LoopbackFiscalTerminalID, FiscalTerminalLabel: "127.0.0.1",
 		OriginalInvoiceID: ft.DocumentID, Reason: strings.Repeat("a", 51), CreditFull: true,
 	})
-	var ce *service.CodedError
-	if !errors.As(err, &ce) || ce.Code != service.ErrCodeValidationFailed {
-		t.Fatalf("51-char NC reason: want validation_failed, got %v", err)
+	var te *domain.SAFTTextError
+	if !errors.As(err, &te) || te.Field != "reason" || te.Reason != domain.SAFTTextTooLong {
+		t.Fatalf("51-char NC reason: want reason too_long, got %v", err)
 	}
 }

@@ -727,7 +727,7 @@ Farvoo `bill_sync_jobs` 经 Agent 唯一路径 `billsync.PullAndIngest` → `ser
 同事务 `BEGIN IMMEDIATE`：
 
 1. 查 `idempotency_keys`（命中则返回原票，不占新号）  
-2. Windows-1252 / 金额 / 系列 ACTIVE 校验  
+2. 金额 / 系列 ACTIVE 校验（SAF-T 文本已在事务之前由 service `validateSaleText` → `domain.ValidateSAFTText` 校验并清洗，见 [`fiscal-m5-saft.zh.md`](fiscal-m5-saft.zh.md) §3.1）  
 3. 更新 `series.last_number` / `last_hash`  
 4. 插入 `invoices` + `invoice_lines` + `invoice_customer_snapshots` + `invoice_payments`（NC 另写 `invoice_line_references`）  
 5. 插入 `local_print_jobs`（ORIGINAL + 完整 payload）  

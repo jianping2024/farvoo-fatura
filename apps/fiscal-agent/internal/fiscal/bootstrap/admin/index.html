@@ -583,6 +583,7 @@
     input.field-invalid, select.field-invalid, textarea.field-invalid {
       border-color: #e8a0a0; background: #fff8f8;
     }
+    #orderLines tr.line-invalid td, #invSummaryLines tr.line-invalid td { background: #fff1f1; }
     button.btn-saved { background: #1f7a4c !important; }
     .settings-wizard-bar {
       display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.85rem;
@@ -1709,7 +1710,7 @@
             <div class="field"><label data-i18n="product.field.name">名称</label><input id="pName" placeholder="花茶套餐" data-i18n="product.name_ph" data-i18n-attr="placeholder" /></div>
           </div>
           <div class="row split">
-            <div class="field"><label data-i18n="product.field.fiscal_name">税票名称</label><input id="pSaft" placeholder="Cha sortido" /></div>
+            <div class="field"><label data-i18n="product.field.fiscal_name">税票名称</label><input id="pSaft" placeholder="Cha sortido" /><p class="hint" data-i18n="product.fiscal_name_hint">写进 SAF-T 的葡语名称（2–200 字，不能含中文）；留空则用上面的名称</p></div>
             <div class="field"><label data-i18n="product.field.price">售价（含税）</label><input id="pPrice" placeholder="4.50" /></div>
           </div>
           <div class="field"><label>IVA %</label><select id="pVat"></select></div>
@@ -3268,6 +3269,47 @@
     return true;
   }
 
+  /** ONLY saft_text_invalid mark + focus path. er.field is the Agent's dotted path; ids maps the
+   *  paths this form owns to input ids; lines.<n>.* marks order line n (edit table + issue summary). The toast stays with
+   *  reportError (caller rethrows). */
+  function focusSAFTTextField(er, ids) {
+    if (!er || er.error !== 'saft_text_invalid' || !er.field) return;
+    const field = String(er.field);
+    const line = /^lines\.(\d+)\./.exec(field);
+    if (line) {
+      $$('#orderLines tr.line-invalid, #invSummaryLines tr.line-invalid').forEach((r) => r.classList.remove('line-invalid'));
+      const sel = 'tr[data-line="' + (Number(line[1]) - 1) + '"]';
+      $$('#orderLines ' + sel + ', #invSummaryLines ' + sel).forEach((row) => {
+        row.classList.add('line-invalid');
+        if (row.offsetParent) {
+          try { row.scrollIntoView({ block: 'nearest' }); } catch (_) { /* */ }
+        }
+      });
+      return;
+    }
+    const el = ids && ids[field] ? $('#' + ids[field]) : null;
+    if (!el) return;
+    el.classList.add('field-invalid');
+    try { el.focus(); el.select && el.select(); } catch (_) { /* */ }
+  }
+  function clearSAFTTextField(ids) {
+    Object.keys(ids || {}).forEach((k) => {
+      const el = $('#' + ids[k]);
+      if (el) el.classList.remove('field-invalid');
+    });
+  }
+  const PRODUCT_SAFT_FIELDS = { 'product.saft_name': 'pSaft', 'product.product_code': 'pCode' };
+  const CUSTOMER_SAFT_FIELDS = { 'customer.company_name': 'cName' };
+  const TAXPAYER_SAFT_FIELDS = {
+    'taxpayer.legal_name': 'legal', 'taxpayer.address_detail': 'addr', 'taxpayer.city': 'city', 'taxpayer.postal_code': 'postal'
+  };
+  const ORDER_SAFT_FIELDS = {
+    'customer.company_name': 'invName',
+    'customer.address_detail': 'invGrAddress', 'customer.city': 'invGrCity', 'customer.postal_code': 'invGrPostal',
+    'ship_from.address_detail': 'invShipFrom', 'ship_from.city': 'invShipFromCity', 'ship_from.postal_code': 'invShipFromPostal',
+    'ship_to.address_detail': 'invShipTo', 'ship_to.city': 'invShipToCity', 'ship_to.postal_code': 'invShipToPostal'
+  };
+
   function markSaveSuccess(btn) {
     if (!btn) return;
     const orig = btn.dataset.labelOrig || btn.dataset.busyPrev || btn.textContent;
@@ -3305,15 +3347,22 @@
     if (!validateTaxpayerForm()) {
       throw { error: 'validation_failed', message: FiscalAdminI18n.t('common.fix_fields') };
     }
-    const st = await j('PUT', '/local/v1/setup/taxpayer', {
-      tax_registration_number: $('#nif').value.trim(),
-      legal_name: $('#legal').value.trim(),
-      address_detail: $('#addr').value.trim(),
-      city: $('#city').value.trim(),
-      postal_code: $('#postal').value.trim(),
-      country: 'PT',
-      timezone: 'Europe/Lisbon'
-    });
+    clearSAFTTextField(TAXPAYER_SAFT_FIELDS);
+    let st;
+    try {
+      st = await j('PUT', '/local/v1/setup/taxpayer', {
+        tax_registration_number: $('#nif').value.trim(),
+        legal_name: $('#legal').value.trim(),
+        address_detail: $('#addr').value.trim(),
+        city: $('#city').value.trim(),
+        postal_code: $('#postal').value.trim(),
+        country: 'PT',
+        timezone: 'Europe/Lisbon'
+      });
+    } catch (er) {
+      focusSAFTTextField(er, TAXPAYER_SAFT_FIELDS);
+      throw er;
+    }
     applySetupStatusFromResponse(st);
     markSaveSuccess(btn);
     toast(FiscalAdminI18n.t('settings.store.saved'), 'success');
@@ -4066,9 +4115,9 @@
   function renderInvoiceSummary(order) {
     const tbody = $('#invSummaryLines');
     if (!order) { tbody.innerHTML = ''; return; }
-    let html = order.lines.map(ln => {
+    let html = order.lines.map((ln, idx) => {
       const split = lineFromGrossPreview(ln.qty, ln.price, ln.vat);
-      return '<tr><td>' + (ln.name || ln.product_code) + '</td><td>' + ln.qty + ' × ' + Number(ln.price).toFixed(2) +
+      return '<tr data-line="' + idx + '"><td>' + (ln.name || ln.product_code) + '</td><td>' + ln.qty + ' × ' + Number(ln.price).toFixed(2) +
         ' · ' + fmtVatPercent(ln.vat) + '</td><td>' + split.gross.toFixed(2) + '</td></tr>';
     }).join('');
     const b = orderMoneyBreakdown(order);
@@ -4223,6 +4272,7 @@
     const searchBlock = $('#pickerSearchBlock');
     const fields = $('#productFormFields');
     const saveBtn = $('#btnSaveProduct');
+    clearSAFTTextField(PRODUCT_SAFT_FIELDS);
     $('#pickerSearch').value = '';
     if (mode === 'pick') {
       $('#productPickerTitle').textContent = FiscalAdminI18n.t('picker.title.add');
@@ -4275,8 +4325,13 @@
       toast(FiscalAdminI18n.t('product.toast.need_fields'), 'error');
       return null;
     }
-    if (!body.saft_name) body.saft_name = body.display_name;
-    await j('POST', '/local/v1/products', body);
+    clearSAFTTextField(PRODUCT_SAFT_FIELDS);
+    try {
+      await j('POST', '/local/v1/products', body);
+    } catch (er) {
+      focusSAFTTextField(er, PRODUCT_SAFT_FIELDS);
+      throw er;
+    }
     await refreshProducts();
     const data = await j('GET', buildProductsQueryPath(body.product_code, 1, 1));
     return (data.products || []).find(x => x.product_code === body.product_code) || body;
@@ -5556,9 +5611,11 @@
       if (body.movement_purpose === 'transfer') body.recipient_is_vat_payer = true;
     }
     let res;
+    clearSAFTTextField(ORDER_SAFT_FIELDS);
     try {
       res = await j('POST', '/local/v1/fiscal-documents/manual', body);
     } catch (er) {
+      focusSAFTTextField(er, ORDER_SAFT_FIELDS);
       if (er && er.error === 'transport_address_incomplete' && er.field && er.part) {
         clearTransportAddressInvalid();
         const id = transportAddressInputId(String(er.field), String(er.part));
@@ -6544,10 +6601,16 @@
         toast(FiscalAdminI18n.t('customers.err.nif_required'), 'error');
         return;
       }
-      await j('POST', '/local/v1/customers', {
-        customer_tax_id: tax,
-        company_name: $('#cName').value.trim()
-      });
+      clearSAFTTextField(CUSTOMER_SAFT_FIELDS);
+      try {
+        await j('POST', '/local/v1/customers', {
+          customer_tax_id: tax,
+          company_name: $('#cName').value.trim()
+        });
+      } catch (er) {
+        focusSAFTTextField(er, CUSTOMER_SAFT_FIELDS);
+        throw er;
+      }
       toast(FiscalAdminI18n.t('customers.toast.saved'), 'success');
       $('#customerForm').classList.add('hidden');
       catalogCustomers = [];

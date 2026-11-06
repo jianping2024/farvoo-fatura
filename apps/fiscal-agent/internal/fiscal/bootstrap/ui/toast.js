@@ -88,6 +88,32 @@
   var AT_TEXT_CODES = { at_number_taken: true, movement_start_past: true };
 
   /** Map API / thrown objects to a short user-facing string (for toast). */
+  /** saft_text_invalid (Agent field = dotted path, part = encoding|too_short|too_long, min/max):
+   *  "Line 3: Invoice name must use Latin characters…". Empty when i18n is unavailable. */
+  function saftTextMessage(err) {
+    var i18n = global.FiscalAdminI18n;
+    if (!i18n || typeof i18n.fmt !== 'function' || typeof i18n.t !== 'function') return '';
+    var field = err.field != null ? String(err.field) : '';
+    var part = err.part != null ? String(err.part) : '';
+    var key = 'errors.saft_text_invalid.' + part;
+    var name = field.slice(field.lastIndexOf('.') + 1);
+    var role = field.slice(0, field.indexOf('.'));
+    var label = i18n.t('saft.field.' + name);
+    if (label === 'saft.field.' + name) label = field;
+    if (role === 'ship_from' || role === 'ship_to') {
+      var roleLabel = i18n.t('gr.addr.role.' + role);
+      if (roleLabel !== 'gr.addr.role.' + role) label = roleLabel + ' · ' + label;
+    }
+    var msg = i18n.fmt(key, { field: label, min: err.min, max: err.max });
+    if (msg === key) return '';
+    var line = /^lines\.(\d+)\./.exec(field);
+    if (line) {
+      msg = i18n.fmt('saft.line_prefix', { n: line[1] }) + msg;
+      if (name === 'saft_name') msg += ' ' + i18n.t('saft.saft_name_hint');
+    }
+    return msg;
+  }
+
   function formatError(err) {
     if (err == null) return tOr('errors.unknown', 'unknown error');
     if (typeof err === 'string') return err;
@@ -120,6 +146,11 @@
           }
         } catch (_) { /* */ }
       }
+    }
+
+    if (code === 'saft_text_invalid') {
+      var st = saftTextMessage(err);
+      if (st) return st;
     }
 
     // AT business rejection: localized prefix + AT's own message (Portuguese, the only precise reason).

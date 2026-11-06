@@ -33,7 +33,7 @@ func TestUpsertLocalFiscalProduct_andRemoteGuard(t *testing.T) {
 		t.Fatalf("local upsert: %v %+v", err, row)
 	}
 	_, _, err = db.UpsertFiscalProductByCode(ProductUpsertInput{
-		ProductCode: "LOCAL-1", DisplayName: "X", SaftName: "X", UnitPriceGross: "1.00", VATRate: "23.00",
+		ProductCode: "LOCAL-1", DisplayName: "Xa", SaftName: "Xa", UnitPriceGross: "1.00", VATRate: "23.00",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -43,7 +43,7 @@ func TestUpsertLocalFiscalProduct_andRemoteGuard(t *testing.T) {
 		t.Fatalf("REMOTE must not overwrite LOCAL: %+v", got)
 	}
 	_, _, err = db.UpsertFiscalProductByCode(ProductUpsertInput{
-		ProductCode: "R-1", DisplayName: "B", SaftName: "B", UnitPriceGross: "2.00", VATRate: "23.00",
+		ProductCode: "R-1", DisplayName: "Bolo", SaftName: "Bolo", UnitPriceGross: "2.00", VATRate: "23.00",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -53,7 +53,7 @@ func TestUpsertLocalFiscalProduct_andRemoteGuard(t *testing.T) {
 		t.Fatalf("remote sync: %+v", remote)
 	}
 	_, err = db.UpsertLocalFiscalProduct(LocalProductInput{
-		ProductCode: "R-1", DisplayName: "C", SaftName: "C", UnitPriceGross: "3.00", VATRate: "23.00",
+		ProductCode: "R-1", DisplayName: "Café", SaftName: "Café", UnitPriceGross: "3.00", VATRate: "23.00",
 	})
 	if err == nil {
 		t.Fatal("LOCAL must not take REMOTE code")
