@@ -62,7 +62,7 @@
 
 NC/ND/RG 沿用原单的客户与商品行，不重复校验。
 
-**错误出口（唯一）**：HTTP `400 {error: "saft_text_invalid", field, part, min, max}`（`api.writeSAFTTextErr`）；bill sync ack code `saft_text_invalid`（`billsync.CodeSAFTTextInvalid`，ingest 在存草稿前拒绝整单）。Admin：`FiscalUI.formatError` 生成三语提示（订单行带「第 n 行」与「请在商品资料里填写葡语税票名称」）；`focusSAFTTextField` 按 field 标红并聚焦对应输入框或订单行。
+**错误出口（唯一）**：HTTP `400 {error: "saft_text_invalid", field, part, min, max}`（`api.writeSAFTTextErr`）；bill sync ack code `saft_text_invalid`（`billsync.CodeSAFTTextInvalid`，ingest 在存草稿前拒绝整单）。Admin：`FiscalUI.formatError` 生成三语提示（订单行带「第 n 行」与「请在商品资料里填写「葡语名称」」）；`focusSAFTTextField` 按 field 标红并聚焦对应输入框或订单行。
 
 **发版前扫描**：`go run ./cmd/saft-text-scan <fiscal.db>`（同一规则，只读）列出需先修的主档（fix）与已签单据中的不合格文本（signed）。
 

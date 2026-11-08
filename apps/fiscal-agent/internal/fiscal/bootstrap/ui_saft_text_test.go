@@ -34,10 +34,20 @@ func TestAdminSAFTTextErrorSinglePath(t *testing.T) {
 		"errors.saft_text_invalid.encoding", "errors.saft_text_invalid.too_short", "errors.saft_text_invalid.too_long",
 		"saft.line_prefix", "saft.saft_name_hint", "saft.field.saft_name", "saft.field.product_code",
 		"saft.field.company_name", "saft.field.legal_name", "saft.field.address_detail", "saft.field.city",
-		"saft.field.postal_code", "saft.field.reason", "product.fiscal_name_hint",
+		"saft.field.postal_code", "saft.field.reason", "product.fiscal_name_hint", "product.field.fiscal_name",
 	} {
 		if n := strings.Count(i18n, "'"+key+"':"); n != 3 {
 			t.Fatalf("%s must exist in zh/en/pt, got %d", key, n)
 		}
+	}
+	// Storefront copy: Chinese operators see「葡语名称」, not the opaque「税票名称」.
+	if strings.Contains(i18n, "税票名称") || strings.Contains(html, "税票名称") {
+		t.Fatal("user-facing Admin copy must say 葡语名称, not 税票名称")
+	}
+	if !strings.Contains(i18n, "'saft.field.saft_name': '葡语名称'") ||
+		!strings.Contains(i18n, "'product.field.fiscal_name': '葡语名称'") ||
+		!strings.Contains(i18n, "'saft.field.saft_name': 'Portuguese name'") ||
+		!strings.Contains(i18n, "'saft.field.saft_name': 'Nome em português'") {
+		t.Fatal("saft_name field labels must be 葡语名称 / Portuguese name / Nome em português")
 	}
 }
