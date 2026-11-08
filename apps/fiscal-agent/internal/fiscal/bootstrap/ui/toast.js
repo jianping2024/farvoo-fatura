@@ -89,7 +89,7 @@
 
   /** Map API / thrown objects to a short user-facing string (for toast). */
   /** saft_text_invalid (Agent field = dotted path, part = encoding|too_short|too_long, min/max):
-   *  "Line 3: Invoice name must use Latin characters…". Empty when i18n is unavailable. */
+   *  "Line 3: Portuguese name must use Latin characters…". Empty when i18n is unavailable. */
   function saftTextMessage(err) {
     var i18n = global.FiscalAdminI18n;
     if (!i18n || typeof i18n.fmt !== 'function' || typeof i18n.t !== 'function') return '';
