@@ -707,6 +707,53 @@ func TestAdminHTMLProductWorkbenchUnique(t *testing.T) {
 	if strings.Contains(adminHTML, `id="productForm"`) {
 		t.Fatal("inline productForm panel must not return; use productFormFields in workbench")
 	}
+	for _, fn := range []string{
+		"function setProductFieldsLocked",
+		"function openProductFromList",
+		"function closeModalById",
+		"function topOpenModalBackdrop",
+	} {
+		if n := strings.Count(adminHTML, fn); n != 1 {
+			t.Fatalf("%s must appear exactly once, got %d", fn, n)
+		}
+	}
+	if strings.Contains(adminHTML, `data-row-kind="product"`) {
+		t.Fatal("product rows open the workbench on click; do not keep a product ⋯ menu")
+	}
+	if !strings.Contains(adminHTML, `class="clickable" data-product-code="`) {
+		t.Fatal("product list rows must be clickable via data-product-code")
+	}
+	if strings.Count(adminHTML, `colspan="4" class="hint">' + FiscalAdminI18n.t('common.loading')`) != 1 {
+		t.Fatal("product list loading colspan must be 4")
+	}
+	if n := strings.Count(adminHTML, `class="ghost sheet-close"`); n != 9 {
+		t.Fatalf("every Admin modal needs one sheet-close, got %d", n)
+	}
+	if n := strings.Count(adminHTML, `data-sheet-close data-i18n="common.close"`); n != 9 {
+		t.Fatalf("data-sheet-close must appear once per modal, got %d", n)
+	}
+	if strings.Count(adminHTML, "ONLY modal dismiss chrome") != 1 {
+		t.Fatal("sheet-close layout comment must appear once")
+	}
+	if strings.Count(adminHTML, "ONLY dismiss path for Admin .modal") != 1 {
+		t.Fatal("closeModalById must be the only modal dismiss path")
+	}
+	if strings.Contains(adminHTML, `e.target.id === 'invoiceDetailModal'`) ||
+		strings.Contains(adminHTML, `e.target.id === 'productPicker'`) ||
+		strings.Contains(adminHTML, `e.target === $('#changePinModal')`) {
+		t.Fatal("per-modal backdrop listeners must be gone; use closeModalById")
+	}
+	if strings.Count(adminHTML, `product.source === 'REMOTE_SYNC'`) != 1 {
+		t.Fatal("REMOTE_SYNC readonly must be decided once inside openProductWorkbench")
+	}
+	orderTotal := strings.Index(adminHTML, `data-i18n="order.total"`)
+	if orderTotal < 0 {
+		t.Fatal("missing order total sheet")
+	}
+	orderHead := adminHTML[orderTotal-80 : orderTotal+80]
+	if strings.Contains(orderHead, "data-sheet-close") {
+		t.Fatal("in-page order sheets must not get a modal close button")
+	}
 }
 
 func TestAdminHTMLBillDraftEventsUnique(t *testing.T) {
