@@ -55,8 +55,9 @@ func DraftPartToSaleSnapshot(snap Snapshot, scopeID string) (domain.SaleSnapshot
 	return DraftPersonFromAllocation(snap, alloc, scopeID)
 }
 
-// ApplyCustomerOverride sets buyer on sale. Empty nif → Consumidor Final.
-// ONLY customer override for draft→issue / manual FT path.
+// ApplyCustomerOverride sets buyer on sale. Empty nif stays the final-consumer tax id.
+// A supplied name is kept (so an FT issued from a non-VAT GR still matches that recipient);
+// an empty name becomes Consumidor Final. ONLY customer override for draft→issue / manual FT.
 func ApplyCustomerOverride(sale *domain.SaleSnapshot, nif, name string) error {
 	if sale == nil {
 		return ingestErr(CodeValidationFailed, "sale required")
@@ -64,9 +65,12 @@ func ApplyCustomerOverride(sale *domain.SaleSnapshot, nif, name string) error {
 	nif = strings.TrimSpace(nif)
 	name = strings.TrimSpace(name)
 	if nif == "" {
+		if name == "" {
+			name = defaultCustomerName
+		}
 		sale.Customer = domain.CustomerInput{
 			TaxID:       defaultCustomerTaxID,
-			CompanyName: defaultCustomerName,
+			CompanyName: name,
 			Country:     "PT",
 		}
 		return nil

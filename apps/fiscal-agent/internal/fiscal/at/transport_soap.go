@@ -204,10 +204,12 @@ func (c *SOAPTransportClient) RegisterDocument(ctx context.Context, doc Transpor
 	if err != nil {
 		return nil, unavailable(err.Error())
 	}
-	return parseTransportEnvelope(status, raw)
+	// A new document needs ATDocCodeID. An annulment (MovementStatus=A) succeeds on ReturnCode 0
+	// even when AT does not assign a second code; the stored code stays as issued.
+	return parseTransportEnvelope(status, raw, strings.TrimSpace(doc.MovementStatus) != "A")
 }
 
-func parseTransportEnvelope(status int, raw []byte) (*TransportResult, error) {
+func parseTransportEnvelope(status int, raw []byte, requireDocCode bool) (*TransportResult, error) {
 	var env struct {
 		Body struct {
 			Fault *soapFault `xml:"Fault"`
@@ -238,8 +240,10 @@ func parseTransportEnvelope(status int, raw []byte) (*TransportResult, error) {
 	for _, st := range r.Statuses {
 		msgs = append(msgs, fmt.Sprintf("%d %s", st.Code, strings.TrimSpace(st.Msg)))
 	}
-	if code := r.Statuses[0].Code; code != 0 || strings.TrimSpace(r.ATDocCodeID) == "" {
+	code := r.Statuses[0].Code
+	docCode := strings.TrimSpace(r.ATDocCodeID)
+	if code != 0 || (requireDocCode && docCode == "") {
 		return nil, returnCodeError(code, strings.Join(msgs, "; "))
 	}
-	return &TransportResult{ATDocCodeID: strings.TrimSpace(r.ATDocCodeID), RawMessage: strings.Join(msgs, "; ")}, nil
+	return &TransportResult{ATDocCodeID: docCode, RawMessage: strings.Join(msgs, "; ")}, nil
 }

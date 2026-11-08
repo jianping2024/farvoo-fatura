@@ -144,9 +144,9 @@ func TestIssueDeliveryNote_PastMovementStartNeverReachesAT(t *testing.T) {
 func TestIssueDeliveryNote_IncompleteAddressNeverReachesAT(t *testing.T) {
 	svc, _, ct := transportFixture(t)
 	cases := []struct {
-		mut        func(*domain.DeliveryNoteRequest)
-		wantField  string
-		wantPart   string
+		mut       func(*domain.DeliveryNoteRequest)
+		wantField string
+		wantPart  string
 	}{
 		{
 			mut: func(r *domain.DeliveryNoteRequest) {
@@ -304,5 +304,95 @@ func TestIssueDeliveryNote_ATRejectionCodes(t *testing.T) {
 		if err := db.SQL.QueryRow(`SELECT last_number FROM series WHERE document_type = 'GR'`).Scan(&n); err != nil || n != 0 {
 			t.Fatalf("%s: number used after rejection (%d)", c.te.Code, n)
 		}
+	}
+}
+
+func TestAnnulDeliveryNote_TellsATThenLocal(t *testing.T) {
+	svc, db, ct := transportFixture(t)
+	issued, err := svc.IssueDeliveryNote(context.Background(), grRequest("gr-annul-at"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var codeBefore string
+	if err := db.SQL.QueryRow(`SELECT at_transport_doc_code FROM invoices WHERE id = ?`, issued.DocumentID).Scan(&codeBefore); err != nil {
+		t.Fatal(err)
+	}
+	res, err := svc.AnnulDeliveryNote(context.Background(), domain.AnnulDeliveryNoteRequest{
+		StoreID: "store-demo-001", RequestID: "annul-gr-at", DocumentID: issued.DocumentID,
+		OperatorID: "op-demo-cashier", Reason: "Cliente desistiu",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.DocumentStatus != domain.WorkStatusAnnulled {
+		t.Fatalf("status %s", res.DocumentStatus)
+	}
+	if len(ct.docs) != 2 || ct.docs[1].MovementStatus != "A" || ct.docs[1].DocumentNumber != ct.docs[0].DocumentNumber {
+		t.Fatalf("annul wire: %+v", ct.docs)
+	}
+	var codeAfter, status string
+	if err := db.SQL.QueryRow(`SELECT at_transport_doc_code, document_status FROM invoices WHERE id = ?`, issued.DocumentID).Scan(&codeAfter, &status); err != nil {
+		t.Fatal(err)
+	}
+	if codeAfter != codeBefore || status != "A" {
+		t.Fatalf("code %s→%s status %s", codeBefore, codeAfter, status)
+	}
+	if _, err := svc.AnnulDeliveryNote(context.Background(), domain.AnnulDeliveryNoteRequest{
+		StoreID: "store-demo-001", RequestID: "annul-gr-at", DocumentID: issued.DocumentID,
+		OperatorID: "op-demo-cashier", Reason: "Cliente desistiu",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(ct.docs) != 2 {
+		t.Fatalf("retry communicated again: %d", len(ct.docs))
+	}
+	again, err := svc.AnnulDeliveryNote(context.Background(), domain.AnnulDeliveryNoteRequest{
+		StoreID: "store-demo-001", RequestID: "annul-gr-at-2", DocumentID: issued.DocumentID,
+		OperatorID: "op-demo-cashier", Reason: "Again",
+	})
+	if err != nil || !again.IdempotentHit || again.DocumentStatus != domain.WorkStatusAnnulled {
+		t.Fatalf("second request: %+v %v", again, err)
+	}
+	if len(ct.docs) != 2 {
+		t.Fatalf("second request communicated again: %d", len(ct.docs))
+	}
+}
+
+func TestAnnulDeliveryNote_PastOrRejectedDoesNotChangeLocal(t *testing.T) {
+	svc, db, ct := transportFixture(t)
+	issued, err := svc.IssueDeliveryNote(context.Background(), grRequest("gr-annul-past"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.SQL.Exec(`UPDATE invoices SET movement_start_at = ? WHERE id = ?`, "2020-01-01T00:00:00", issued.DocumentID); err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.AnnulDeliveryNote(context.Background(), domain.AnnulDeliveryNoteRequest{
+		StoreID: "store-demo-001", RequestID: "annul-past", DocumentID: issued.DocumentID,
+		OperatorID: "op-demo-cashier", Reason: "Cliente desistiu",
+	})
+	var ce *service.CodedError
+	if !errors.As(err, &ce) || ce.Code != service.ErrCodeMovementStartPast {
+		t.Fatalf("past: %v", err)
+	}
+	if len(ct.docs) != 1 {
+		t.Fatalf("past annul called AT: %d", len(ct.docs))
+	}
+
+	live, err := svc.IssueDeliveryNote(context.Background(), grRequest("gr-annul-rej"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.SetTransportClient(rejectTransport{err: &at.TransportError{Kind: at.ErrTransportRejected, Code: "-1", Message: "recusado"}})
+	_, err = svc.AnnulDeliveryNote(context.Background(), domain.AnnulDeliveryNoteRequest{
+		StoreID: "store-demo-001", RequestID: "annul-rej", DocumentID: live.DocumentID,
+		OperatorID: "op-demo-cashier", Reason: "Cliente desistiu",
+	})
+	if !errors.As(err, &ce) || ce.Code != service.ErrCodeATTransportRejected || ce.Msg != "recusado" {
+		t.Fatalf("reject: %v", err)
+	}
+	var status string
+	if err := db.SQL.QueryRow(`SELECT document_status FROM invoices WHERE id = ?`, live.DocumentID).Scan(&status); err != nil || status != "N" {
+		t.Fatalf("status after AT reject: %s %v", status, err)
 	}
 }

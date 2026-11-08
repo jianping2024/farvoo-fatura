@@ -203,7 +203,7 @@ GT ──(通常无)──► （调拨可永远无销售票）
 
 ### 8.5 开 FT 时如何「选挂」GR
 
-- **规则：只挂同一购方的 GR**（FT 购方 NIF = GR 收货方 NIF）；散客 GR（无 NIF）只能经入口 ① 挂。服务端过滤（`GET /local/v1/delivery-notes/linkable?customer_nif=`，空 NIF 不返回）。  
+- **规则：只挂同一购方的 GR**。有真实 NIF 时，FT 购方 NIF = GR 收货方 NIF。都没有真实 NIF 时，FT 购方名称 = GR 收货方名称。签发写路径 `linkDeliveryNotesInTx` 核对；列表仍只按 NIF 过滤（`GET /local/v1/delivery-notes/linkable?customer_nif=`，空 NIF 不返回）。  
 - **入口 ①（主）：GR 详情「开发票」** → 新开 FT，按 GR **原明细**（数量 / 含税单价 / 税率）与收货方预填，默认已挂本 GR（可移除）。  
 - **入口 ②：签发 FT 时补挂** → 仅当票种 FT 且购方 NIF 有效时出现；该客户的可挂 GR 默认**折叠**（「该客户有 N 张可挂发货单」），行显示签发时刻 · 金额 · 状态（未开票 / 已部分开票）；改 NIF 时清掉不属于新购方的已挂项。  
 - 可挂状态：`N`、`F`（`domain.LinkableDeliveryNoteStatuses`）；不选也可开 FT。  

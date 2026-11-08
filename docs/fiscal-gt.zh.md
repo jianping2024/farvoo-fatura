@@ -60,7 +60,7 @@
 | 场景 | 必选 `transfer` \| `customer`（见 §4.1） |
 | 时点 | **上路前**；`movement_start_at` 不得早于签发时刻（与 AT 规则对齐）；UI 不提供「已上路补开」 |
 | 与销售票 | **无强制、无可选挂靠** |
-| 作废 | **允许**；仅 `N`→`A`（须 reason，1–50 字，与 PF/GR 同弹窗）；`A` 禁止再操作。GT 非销售发票，但是运输单据，可作废。**P0 mock：** 只按状态门禁（与 GR 同），**不**按开运时刻拒作废；live（A2）后再对齐 AT「开运时刻之后不可作废」 |
+| 作废 | **允许**；仅 `N`→`A`（须 reason，1–50 字，与 PF/GR 同弹窗）。开运时刻已过则拒绝且不通信；未过则与 GR 一样先报 `MovementStatus=A`，成功后本地才改。`A` 禁止再操作 |
 | 权限 | 已登录可开票操作员即可作废（**不**要求 `admin` / `can_issue_nc`；与 GR 同） |
 | 列表 / 营收 | GT 独立 Tab；**不计入**销售营收 |
 | setup 字段 | **`ready_to_gt`**（短名；JSON `ready_to_gt` / `gt_series_ok`） |
@@ -103,7 +103,10 @@
       → store.IssueGT
 
 作废：
-  service.AnnulTransportNote → store.AnnulGT（仅 N→A）
+  service.AnnulTransportNote → service.annulMovement
+    → 开运时刻未过
+    → at.TransportClient.RegisterDocument（MovementStatus=A，不占新号）
+    → store.AnnulGT（仅 N→A）
 ```
 
 | 层 | 唯一入口 | 禁止 |
@@ -112,7 +115,7 @@
 | AT 通信 | `TransportClient.RegisterDocument` | handler 直连；失败仍 INSERT |
 | 打印 | `BuildPayload` + `RenderESCPOS`（GT 前缀） | |
 
-**与 GR 编排并列、不合并为一个 service 函数**（避免 `document_type` 分支泄漏进 GR 唯一路径）。共享的仅：运输列写入、`TransportClient`、打印运输块。
+签发仍与 GR 分函数。作废通信共用 `annulMovement`（先报状态 A，再各自落库）。共享的还有：运输列写入、`TransportClient`、打印运输块。
 
 Annul HTTP：复用 `POST …/fiscal-documents/{id}/annul`，按 `document_type` 分流（已有 PF/GR；加 GT → `AnnulTransportNote`）。
 

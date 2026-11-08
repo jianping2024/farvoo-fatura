@@ -148,8 +148,8 @@ func validateGRCustomer(c domain.CustomerInput, vatPayer bool) error {
 
 // applyManualRecipient is the ONLY manual GR/GT recipient step after BuildManualSaleSnapshot:
 // form address onto the snapshot; a non-VAT recipient keeps the typed name with an empty TaxID.
-// BuildManualSaleSnapshot (via ApplyCustomerOverride) turns an empty NIF into the sales-invoice
-// walk-in buyer (999999990 / Consumidor Final), which GR/GT must not inherit.
+// BuildManualSaleSnapshot (via ApplyCustomerOverride) stores tax id 999999990 when NIF is empty
+// and keeps a supplied name. GR/GT must not inherit that tax id.
 func applyManualRecipient(snap *domain.SaleSnapshot, in catalog.ManualIssueInput, vatPayer bool) {
 	if a := strings.TrimSpace(in.CustomerAddress); a != "" {
 		snap.Customer.AddressDetail = a
@@ -201,49 +201,7 @@ func (s *FiscalService) IssueManualDeliveryNote(ctx context.Context, in catalog.
 	})
 }
 
-// AnnulDeliveryNote is the ONLY orchestration entry for GR annulment.
+// AnnulDeliveryNote is the GR entry into annulMovement.
 func (s *FiscalService) AnnulDeliveryNote(ctx context.Context, req domain.AnnulDeliveryNoteRequest) (*domain.IssueResult, error) {
-	if s == nil || s.db == nil {
-		return nil, fmt.Errorf("fiscal: service not configured")
-	}
-	if req.RequestID == "" {
-		return nil, coded(ErrCodeValidationFailed, "request_id required")
-	}
-	if req.OperatorID == "" {
-		return nil, coded(ErrCodeValidationFailed, "operator_id required")
-	}
-	if req.DocumentID == "" {
-		return nil, coded(ErrCodeValidationFailed, "document id required")
-	}
-	reason, err := domain.ValidateStatusReason(req.Reason)
-	if err != nil {
-		return nil, err
-	}
-	if req.StoreID == "" {
-		req.StoreID = s.storeID
-	}
-	rec, err := s.db.AnnulGR(ctx, store.AnnulGRParams{
-		StoreID:    req.StoreID,
-		RequestID:  req.RequestID,
-		DocumentID: req.DocumentID,
-		OperatorID: req.OperatorID,
-		Reason:     reason,
-	})
-	if errors.Is(err, store.ErrConflict) {
-		return nil, coded(ErrCodeIdempotencyConflict, err.Error())
-	}
-	if errors.Is(err, store.ErrNotFound) {
-		return nil, coded(ErrCodeNotFound, "delivery note not found")
-	}
-	if errors.Is(err, store.ErrDeliveryNotAllowed) {
-		return nil, coded(ErrCodeAnnulNotAllowed, "delivery note cannot be annulled")
-	}
-	if err != nil {
-		return nil, coded("annul_failed", err.Error())
-	}
-	return &domain.IssueResult{
-		DocumentID: rec.DocumentID, InvoiceNo: rec.InvoiceNo, ATCUD: rec.ATCUD,
-		DocumentType: rec.DocumentType, DocumentStatus: rec.DocumentStatus,
-		IssuedAt: rec.IssuedAt, IdempotentHit: rec.IdempotentHit,
-	}, nil
+	return s.annulMovement(ctx, "GR", req.StoreID, req.RequestID, req.OperatorID, req.DocumentID, req.Reason)
 }

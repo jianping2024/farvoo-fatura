@@ -11,10 +11,6 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/store"
 )
 
-const (
-	ErrCodeTransportNotAllowed = "transport_not_allowed"
-)
-
 // IssueTransportNote is the ONLY orchestration entry for GT issuance.
 // Order: validate purpose/recipient → TransportClient.RegisterDocument(MovementType=GT) → store.IssueGT.
 func (s *FiscalService) IssueTransportNote(ctx context.Context, req domain.TransportNoteRequest) (*domain.IssueResult, error) {
@@ -188,49 +184,7 @@ func (s *FiscalService) IssueManualTransportNote(ctx context.Context, in catalog
 	})
 }
 
-// AnnulTransportNote is the ONLY orchestration entry for GT annulment.
+// AnnulTransportNote is the GT entry into annulMovement.
 func (s *FiscalService) AnnulTransportNote(ctx context.Context, req domain.AnnulTransportNoteRequest) (*domain.IssueResult, error) {
-	if s == nil || s.db == nil {
-		return nil, fmt.Errorf("fiscal: service not configured")
-	}
-	if req.RequestID == "" {
-		return nil, coded(ErrCodeValidationFailed, "request_id required")
-	}
-	if req.OperatorID == "" {
-		return nil, coded(ErrCodeValidationFailed, "operator_id required")
-	}
-	if req.DocumentID == "" {
-		return nil, coded(ErrCodeValidationFailed, "document id required")
-	}
-	reason, err := domain.ValidateStatusReason(req.Reason)
-	if err != nil {
-		return nil, err
-	}
-	if req.StoreID == "" {
-		req.StoreID = s.storeID
-	}
-	rec, err := s.db.AnnulGT(ctx, store.AnnulGTParams{
-		StoreID:    req.StoreID,
-		RequestID:  req.RequestID,
-		DocumentID: req.DocumentID,
-		OperatorID: req.OperatorID,
-		Reason:     reason,
-	})
-	if errors.Is(err, store.ErrConflict) {
-		return nil, coded(ErrCodeIdempotencyConflict, err.Error())
-	}
-	if errors.Is(err, store.ErrNotFound) {
-		return nil, coded(ErrCodeNotFound, "transport note not found")
-	}
-	if errors.Is(err, store.ErrTransportNotAllowed) {
-		return nil, coded(ErrCodeAnnulNotAllowed, "transport note cannot be annulled")
-	}
-	if err != nil {
-		return nil, coded("annul_failed", err.Error())
-	}
-	return &domain.IssueResult{
-		DocumentID: rec.DocumentID, InvoiceNo: rec.InvoiceNo, ATCUD: rec.ATCUD,
-		DocumentType: rec.DocumentType, DocumentStatus: rec.DocumentStatus,
-		IssuedAt: rec.IssuedAt, IdempotentHit: rec.IdempotentHit,
-	}, nil
+	return s.annulMovement(ctx, "GT", req.StoreID, req.RequestID, req.OperatorID, req.DocumentID, req.Reason)
 }

@@ -525,7 +525,7 @@ M1–M5 主路径稳定。
 | A3 | 手测 H1–H3 | **通过** | [`fiscal-m6-manual-uat.zh.md`](fiscal-m6-manual-uat.zh.md)（2026-09-02） |
 | A4 | 手测 H4 换机 | 可选 | 产品 UAT 记录 |
 
-**认证提交：** 窗口开放时以 **0.4.55** 制品 + [`fiscal-certification-checklist.zh.md`](fiscal-certification-checklist.zh.md) 出具报告；P0 阶段 **冻结行为变更**（仅 bugfix / 文档）。
+**认证提交：** 以当前 `apps/fiscal-agent/VERSION` + [`fiscal-certification-checklist.zh.md`](fiscal-certification-checklist.zh.md) 的 `fiscal-d62-cert-regression.mjs` 出具。0.4.55 的通过记录只覆盖当时的 FT/FS/FR/NC/ND，不能当作现在这版程序的证据。证书号在拿到认证号之前保持 `0`。
 
 ---
 

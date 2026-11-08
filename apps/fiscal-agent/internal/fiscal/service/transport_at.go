@@ -151,9 +151,10 @@ func mapTransportRegisterError(err error) error {
 	}
 }
 
-// communicateTransport is the ONLY GR/GT → AT step: reserve the real next number
-// (PrepareTransport), then envioDocumentoTransporte with it. Caller must hold
-// s.transportMu until store.IssueGR/IssueGT (ExpectedSeq) commits.
+// communicateTransport registers a new GR/GT: reserve the real next number
+// (PrepareTransport), then envioDocumentoTransporte with MovementStatus=N.
+// Caller must hold s.transportMu until store.IssueGR/IssueGT (ExpectedSeq) commits.
+// Annulment uses communicateAnnul (same RegisterDocument, status A, no new number).
 func (s *FiscalService) communicateTransport(ctx context.Context, storeID, docType string,
 	snap domain.SaleSnapshot, shipFrom, shipTo domain.Address, moveAt string) (*transportComm, error) {
 	prep, err := s.db.PrepareTransport(storeID, docType, snap)
@@ -163,14 +164,8 @@ func (s *FiscalService) communicateTransport(ctx context.Context, storeID, docTy
 	if err != nil {
 		return nil, coded(ErrCodeValidationFailed, err.Error())
 	}
-	var user, pass string
-	if cred, err := s.db.GetATCredentials(storeID); err == nil {
-		p, err := protect.Open(s.dataDir, cred.PasswordCiphertext, cred.WrapMeta)
-		if err != nil {
-			return nil, err
-		}
-		user, pass = cred.Username, string(p)
-	} else if !errors.Is(err, store.ErrNotFound) {
+	user, pass, err := s.transportCredentials(storeID)
+	if err != nil {
 		return nil, err
 	}
 	doc := at.TransportDocument{
@@ -209,6 +204,172 @@ func (s *FiscalService) communicateTransport(ctx context.Context, storeID, docTy
 		return nil, coded(ErrCodeATTransportRejected, "empty ATDocCodeID")
 	}
 	return &transportComm{prep: prep, atRes: atRes}, nil
+}
+
+// transportCredentials reads the AT sub-user for storeID. Missing credentials yield empty
+// user and password (mock ignores them). ONLY reader of at_credentials for transport SOAP.
+func (s *FiscalService) transportCredentials(storeID string) (string, string, error) {
+	cred, err := s.db.GetATCredentials(storeID)
+	if errors.Is(err, store.ErrNotFound) {
+		return "", "", nil
+	}
+	if err != nil {
+		return "", "", err
+	}
+	p, err := protect.Open(s.dataDir, cred.PasswordCiphertext, cred.WrapMeta)
+	if err != nil {
+		return "", "", err
+	}
+	return cred.Username, string(p), nil
+}
+
+// communicateAnnul resends an issued GR/GT with MovementStatus=A on the same
+// RegisterDocument path. It does not allocate a number and does not replace
+// at_transport_doc_code. Caller must hold s.transportMu.
+func (s *FiscalService) communicateAnnul(ctx context.Context, storeID string, m *store.CommunicatedMovement) error {
+	user, pass, err := s.transportCredentials(storeID)
+	if err != nil {
+		return err
+	}
+	moveAt := normalizeMovementStart(m.MovementStart)
+	doc := at.TransportDocument{
+		Username: user, Password: pass,
+		TaxRegistrationNumber: m.IssuerNIF,
+		CompanyName:           m.IssuerName,
+		CompanyAddress:        at.TransportAddress{Detail: m.IssuerAddr, City: m.IssuerCity, PostalCode: m.IssuerPost},
+		DocumentNumber:        m.InvoiceNo,
+		ATCUD:                 m.ATCUD,
+		MovementType:          m.DocumentType,
+		MovementStatus:        "A",
+		MovementStartTime:     moveAt,
+		CustomerTaxID:         strings.TrimSpace(m.Customer.TaxID),
+		CustomerName:          strings.TrimSpace(m.Customer.CompanyName),
+		CustomerAddress:       toATAddress(customerAddress(m.Customer)),
+		ShipFrom:              toATAddress(m.ShipFrom),
+		ShipTo:                toATAddress(m.ShipTo),
+	}
+	if len(moveAt) >= 10 {
+		doc.MovementDate = moveAt[:10]
+	}
+	for _, ln := range m.Lines {
+		doc.Lines = append(doc.Lines, at.TransportLine{
+			Description: ln.Description, Quantity: ln.Quantity, UnitOfMeasure: ln.UnitOfMeasure, UnitPrice: ln.UnitPriceNet,
+		})
+	}
+	tc := s.transport
+	if tc == nil {
+		tc = at.NewTransportFromEnv()
+	}
+	if _, err := tc.RegisterDocument(ctx, doc); err != nil {
+		return mapTransportRegisterError(err)
+	}
+	return nil
+}
+
+// annulMovement is the ONLY GR/GT annulment orchestration. Order: idempotent retry,
+// status and movement-start gates, communicateAnnul, then the type's local N→A write.
+func (s *FiscalService) annulMovement(ctx context.Context, docType, storeID, requestID, operatorID, documentID, reason string) (*domain.IssueResult, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("fiscal: service not configured")
+	}
+	if requestID == "" {
+		return nil, coded(ErrCodeValidationFailed, "request_id required")
+	}
+	if operatorID == "" {
+		return nil, coded(ErrCodeValidationFailed, "operator_id required")
+	}
+	if documentID == "" {
+		return nil, coded(ErrCodeValidationFailed, "document id required")
+	}
+	reason, err := domain.ValidateStatusReason(reason)
+	if err != nil {
+		return nil, err
+	}
+	if storeID == "" {
+		storeID = s.storeID
+	}
+
+	s.transportMu.Lock()
+	defer s.transportMu.Unlock()
+	if rec, hit, err := s.db.IssuedByRequestID(storeID, requestID); err != nil {
+		return nil, err
+	} else if hit && rec.DocumentID == documentID && rec.DocumentStatus == domain.WorkStatusAnnulled {
+		return annulResult(rec), nil
+	}
+
+	m, err := s.db.LoadCommunicatedMovement(storeID, documentID)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil, coded(ErrCodeNotFound, "document not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if m.DocumentType != docType {
+		return nil, coded(ErrCodeAnnulNotAllowed, docType+" cannot be annulled")
+	}
+	// Already annulled: the store business key returns the first result. Do not call AT again.
+	if m.DocumentStatus == string(domain.WorkStatusAnnulled) {
+		rec, err := s.annulMovementLocal(ctx, docType, storeID, requestID, operatorID, documentID, reason)
+		if err != nil {
+			return nil, err
+		}
+		return annulResult(rec), nil
+	}
+	if m.DocumentStatus != string(domain.WorkStatusNormal) {
+		return nil, coded(ErrCodeAnnulNotAllowed, docType+" cannot be annulled")
+	}
+	moveAt := normalizeMovementStart(m.MovementStart)
+	if err := assertMovementStartNotPast(moveAt); err != nil {
+		return nil, err
+	}
+	m.MovementStart = moveAt
+	if err := s.communicateAnnul(ctx, storeID, m); err != nil {
+		return nil, err
+	}
+
+	rec, err := s.annulMovementLocal(ctx, docType, storeID, requestID, operatorID, documentID, reason)
+	if err != nil {
+		return nil, err
+	}
+	return annulResult(rec), nil
+}
+
+func (s *FiscalService) annulMovementLocal(ctx context.Context, docType, storeID, requestID, operatorID, documentID, reason string) (*store.IssueRecord, error) {
+	var rec *store.IssueRecord
+	var err error
+	switch docType {
+	case "GR":
+		rec, err = s.db.AnnulGR(ctx, store.AnnulGRParams{
+			StoreID: storeID, RequestID: requestID, DocumentID: documentID, OperatorID: operatorID, Reason: reason,
+		})
+	case "GT":
+		rec, err = s.db.AnnulGT(ctx, store.AnnulGTParams{
+			StoreID: storeID, RequestID: requestID, DocumentID: documentID, OperatorID: operatorID, Reason: reason,
+		})
+	default:
+		return nil, coded(ErrCodeAnnulNotAllowed, "document cannot be annulled")
+	}
+	if errors.Is(err, store.ErrConflict) {
+		return nil, coded(ErrCodeIdempotencyConflict, err.Error())
+	}
+	if errors.Is(err, store.ErrNotFound) {
+		return nil, coded(ErrCodeNotFound, "document not found")
+	}
+	if errors.Is(err, store.ErrDeliveryNotAllowed) || errors.Is(err, store.ErrTransportNotAllowed) {
+		return nil, coded(ErrCodeAnnulNotAllowed, docType+" cannot be annulled")
+	}
+	if err != nil {
+		return nil, coded("annul_failed", err.Error())
+	}
+	return rec, nil
+}
+
+func annulResult(rec *store.IssueRecord) *domain.IssueResult {
+	return &domain.IssueResult{
+		DocumentID: rec.DocumentID, InvoiceNo: rec.InvoiceNo, ATCUD: rec.ATCUD,
+		DocumentType: rec.DocumentType, DocumentStatus: rec.DocumentStatus,
+		IssuedAt: rec.IssuedAt, IdempotentHit: rec.IdempotentHit,
+	}
 }
 
 // transportCommitFailed: AT already holds ATDocCodeID for the number but no local document

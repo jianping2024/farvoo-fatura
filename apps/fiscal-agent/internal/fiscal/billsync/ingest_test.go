@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"farvoo-fiscal-agent/internal/fiscal/billsync"
+	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/service"
 	"farvoo-fiscal-agent/internal/fiscal/signer"
-	"farvoo-fiscal-agent/internal/fiscal/domain"
 	"farvoo-fiscal-agent/internal/fiscal/store"
 	"farvoo-fiscal-agent/internal/fiscal/worker"
 )
@@ -254,6 +254,18 @@ func TestDraftPartToSaleSnapshot_Person(t *testing.T) {
 	}
 	if sale.Customer.TaxID != "123456789" {
 		t.Fatalf("nif %+v", sale.Customer)
+	}
+	if err := billsync.ApplyCustomerOverride(&sale, "", "Maria Costa"); err != nil {
+		t.Fatal(err)
+	}
+	if sale.Customer.TaxID != "999999990" || sale.Customer.CompanyName != "Maria Costa" {
+		t.Fatalf("kept name %+v", sale.Customer)
+	}
+	if err := billsync.ApplyCustomerOverride(&sale, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if sale.Customer.CompanyName != "Consumidor Final" {
+		t.Fatalf("empty name %+v", sale.Customer)
 	}
 }
 
