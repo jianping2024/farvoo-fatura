@@ -690,8 +690,16 @@
       max-height: 80vh; box-shadow: var(--shadow);
       display: flex; flex-direction: column; overflow: hidden; padding: 0;
     }
-    .modal > .sheet-head { padding: 1.15rem 1.25rem 0.85rem; }
-    .modal > .sheet-head h2 { font-size: 1.15rem; }
+    .modal > .sheet-head {
+      padding: 1.15rem 1.25rem 0.85rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    }
+    .modal > .sheet-head h2 { font-size: 1.15rem; flex: 1; min-width: 0; }
+    /* ONLY modal dismiss chrome (X / backdrop / Escape). Visual level stays ghost. */
+    .sheet-close {
+      flex: 0 0 auto; width: 2rem; height: 2rem; padding: 0;
+      font-size: 1.35rem; line-height: 1; font-weight: 500;
+    }
     .modal > .sheet-body { padding: 1rem 1.25rem; }
     .modal > .sheet-foot { padding: 0.85rem 1.25rem 1.15rem; }
     /* Order issue/confirm panels: same sheet shell, viewport-capped so foot stays visible. */
@@ -1130,7 +1138,7 @@
           </div>
           <div class="table-scroll">
             <table class="list-table">
-              <thead><tr><th data-i18n="col.code">编码</th><th data-i18n="common.name">名称</th><th data-i18n="col.price">售价</th><th>IVA</th><th class="col-actions"></th></tr></thead>
+              <thead><tr><th data-i18n="col.code">编码</th><th data-i18n="common.name">名称</th><th data-i18n="col.price">售价</th><th>IVA</th></tr></thead>
               <tbody id="productsTbody"></tbody>
             </table>
           </div>
@@ -1509,6 +1517,7 @@
     <div class="modal invoice-detail-modal">
       <div class="sheet-head">
         <h2 id="invoiceDetailTitle" data-i18n="invoice.detail.title">发票详情</h2>
+        <button type="button" class="ghost sheet-close" data-sheet-close data-i18n="common.close" data-i18n-attr="aria-label" aria-label="关闭">&times;</button>
       </div>
       <div class="sheet-body">
         <dl class="detail-grid" id="invoiceDetailBody"></dl>
@@ -1532,6 +1541,7 @@
     <div class="modal" style="max-width:560px">
       <div class="sheet-head">
         <h2 id="adjustModalTitle" data-i18n="adjust.title">纠正发票</h2>
+        <button type="button" class="ghost sheet-close" data-sheet-close data-i18n="common.close" data-i18n-attr="aria-label" aria-label="关闭">&times;</button>
       </div>
       <div class="sheet-body">
         <div class="credit-tabs">
@@ -1562,6 +1572,7 @@
     <div class="modal">
       <div class="sheet-head">
         <h2 id="adjustConfirmTitle" data-i18n="adjust.confirm_issue">确认签发</h2>
+        <button type="button" class="ghost sheet-close" data-sheet-close data-i18n="common.close" data-i18n-attr="aria-label" aria-label="关闭">&times;</button>
       </div>
       <div class="sheet-body">
         <p class="hint" data-i18n="adjust.confirm_hint">签发后不可撤销。</p>
@@ -1580,6 +1591,7 @@
     <div class="modal" style="max-width:480px">
       <div class="sheet-head">
         <h2 data-i18n="receipt.title">登记收款</h2>
+        <button type="button" class="ghost sheet-close" data-sheet-close data-i18n="common.close" data-i18n-attr="aria-label" aria-label="关闭">&times;</button>
       </div>
       <div class="sheet-body">
         <p class="hint" id="receiptRemainHint">—</p>
@@ -1612,6 +1624,7 @@
     <div class="modal" style="max-width:440px">
       <div class="sheet-head">
         <h2 id="confirmActionTitle" data-i18n="common.confirm_title">确认操作</h2>
+        <button type="button" class="ghost sheet-close" data-sheet-close data-i18n="common.close" data-i18n-attr="aria-label" aria-label="关闭">&times;</button>
       </div>
       <div class="sheet-body">
         <p class="hint" id="confirmActionBody"></p>
@@ -1634,6 +1647,7 @@
     <div class="modal" style="max-width:400px">
       <div class="sheet-head">
         <h2 data-i18n="settings.ops.change_pin">修改 PIN</h2>
+        <button type="button" class="ghost sheet-close" data-sheet-close data-i18n="common.close" data-i18n-attr="aria-label" aria-label="关闭">&times;</button>
       </div>
       <div class="sheet-body">
         <div class="field"><label data-i18n="settings.ops.pin_old">当前 PIN</label><input id="changePinOld" type="password" inputmode="numeric" maxlength="6" autocomplete="off" /></div>
@@ -1653,6 +1667,7 @@
     <div class="modal" style="max-width:420px">
       <div class="sheet-head">
         <h2 id="operatorFormTitle" data-i18n="settings.ops.add">添加开票员</h2>
+        <button type="button" class="ghost sheet-close" data-sheet-close data-i18n="common.close" data-i18n-attr="aria-label" aria-label="关闭">&times;</button>
       </div>
       <div class="sheet-body">
         <input type="hidden" id="operatorFormId" value="" />
@@ -1675,6 +1690,7 @@
     <div class="modal" style="max-width:400px">
       <div class="sheet-head">
         <h2 data-i18n="settings.ops.reset_pin">重置 PIN</h2>
+        <button type="button" class="ghost sheet-close" data-sheet-close data-i18n="common.close" data-i18n-attr="aria-label" aria-label="关闭">&times;</button>
       </div>
       <div class="sheet-body">
         <input type="hidden" id="operatorResetPinId" value="" />
@@ -1696,6 +1712,7 @@
     <div class="modal">
       <div class="sheet-head">
         <h2 id="productPickerTitle" data-i18n="picker.title.add">添加商品</h2>
+        <button type="button" class="ghost sheet-close" data-sheet-close data-i18n="common.close" data-i18n-attr="aria-label" aria-label="关闭">&times;</button>
       </div>
       <div class="sheet-body">
         <div id="pickerSearchBlock">
@@ -2088,6 +2105,7 @@
   let currentBill = null;
   let currentBillDetail = null;
   let catalogProducts = [];
+  let productListCache = [];
   let catalogCustomers = [];
   /** product workbench mode: pick | create | edit — ONE form (#pCode…). */
   let productWorkbenchMode = 'pick';
@@ -3750,7 +3768,7 @@
     el.textContent = ymd + ' ' + weekday;
   }
 
-  /** ONLY list row ⋯ trigger HTML (invoice / product / bill / operator). */
+  /** ONLY list row ⋯ trigger HTML (invoice / bill / operator / terminal). */
   function listRowMenuTriggerHtml(dataAttrs) {
     return '<button type="button" class="ghost btn-row-menu-trigger" data-row-menu-trigger ' + dataAttrs +
       ' aria-label="' + FiscalAdminI18n.t('common.actions') + '">⋯</button>';
@@ -4264,6 +4282,14 @@
     ).join('');
   }
 
+  /** ONLY lock/unlock for product workbench fields (REMOTE_SYNC is view-only). */
+  function setProductFieldsLocked(locked) {
+    ['pCode', 'pName', 'pSaft', 'pPrice', 'pVat'].forEach(id => {
+      const el = $('#' + id);
+      if (el) el.disabled = !!locked;
+    });
+  }
+
   /** ONLY entry to open product workbench (order pick / catalog create / edit). */
   async function openProductWorkbench(mode, product) {
     productWorkbenchMode = mode;
@@ -4272,8 +4298,10 @@
     const searchBlock = $('#pickerSearchBlock');
     const fields = $('#productFormFields');
     const saveBtn = $('#btnSaveProduct');
+    const readOnly = mode === 'edit' && product && product.source === 'REMOTE_SYNC';
     clearSAFTTextField(PRODUCT_SAFT_FIELDS);
     $('#pickerSearch').value = '';
+    setProductFieldsLocked(readOnly);
     if (mode === 'pick') {
       $('#productPickerTitle').textContent = FiscalAdminI18n.t('picker.title.add');
       searchBlock.classList.remove('hidden');
@@ -4289,13 +4317,13 @@
         $('#productFormHint').textContent = FiscalAdminI18n.t('picker.hint.create');
       }
     } else if (mode === 'edit' && product) {
-      $('#productPickerTitle').textContent = FiscalAdminI18n.t('picker.title.edit');
+      $('#productPickerTitle').textContent = FiscalAdminI18n.t(readOnly ? 'picker.title.readonly' : 'picker.title.edit');
       searchBlock.classList.add('hidden');
       fields.classList.remove('hidden');
-      saveBtn.classList.remove('hidden');
-      saveBtn.textContent = FiscalAdminI18n.t('common.save');
+      saveBtn.classList.toggle('hidden', readOnly);
+      if (!readOnly) saveBtn.textContent = FiscalAdminI18n.t('common.save');
       fillProductFields(product);
-      $('#productFormHint').textContent = FiscalAdminI18n.t('picker.hint.edit');
+      $('#productFormHint').textContent = FiscalAdminI18n.t(readOnly ? 'picker.hint.readonly' : 'picker.hint.edit');
     } else {
       $('#productPickerTitle').textContent = FiscalAdminI18n.t('picker.title.create');
       searchBlock.classList.add('hidden');
@@ -4307,11 +4335,28 @@
     }
     if (mode === 'pick') saveBtn.textContent = FiscalAdminI18n.t('picker.save_add');
     $('#productPicker').classList.remove('hidden');
-    if (mode === 'pick') {
+    if (readOnly) {
+      try { $('#productPicker [data-sheet-close]').focus(); } catch (_) { /* ignore */ }
+    } else if (mode === 'pick') {
       try { $('#pickerSearch').focus(); } catch (_) { /* ignore */ }
     } else {
       try { $('#pCode').focus(); } catch (_) { /* ignore */ }
     }
+  }
+
+  /** ONLY list-row opener for a product (same workbench; source decides edit vs readonly). */
+  async function openProductFromList(code) {
+    let p = productListCache.find(x => x.product_code === code);
+    if (!p) p = catalogProducts.find(x => x.product_code === code);
+    if (!p) {
+      const data = await j('GET', buildProductsQueryPath(code, 1, 1));
+      p = (data.products || []).find(x => x.product_code === code);
+    }
+    if (!p) {
+      toast(FiscalAdminI18n.t('picker.toast.not_found'), 'error');
+      return;
+    }
+    await openProductWorkbench('edit', p);
   }
 
   function closeProductWorkbench() {
@@ -4340,11 +4385,12 @@
   async function refreshProducts() {
     initProductListPanel();
     const tbody = $('#productsTbody');
-    tbody.innerHTML = '<tr><td colspan="5" class="hint">' + FiscalAdminI18n.t('common.loading') + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="hint">' + FiscalAdminI18n.t('common.loading') + '</td></tr>';
     if (productListPaginationCtrl) productListPaginationCtrl.setDisabled(true);
     const q = ($('#productsSearch') && $('#productsSearch').value) || '';
     const data = await j('GET', buildProductsQueryPath(q, productListPage, productListPageSize));
     const list = data.products || [];
+    productListCache = list;
     productListPage = data.page || productListPage;
     if (productListPaginationCtrl) {
       productListPaginationCtrl.update({
@@ -4356,18 +4402,14 @@
     }
     if (!list.length) {
       const term = String(q || '').trim();
-      tbody.innerHTML = '<tr><td colspan="5" class="hint">' +
+      tbody.innerHTML = '<tr><td colspan="4" class="hint">' +
         (term ? FiscalAdminI18n.t('products.empty_match') : FiscalAdminI18n.t('products.empty')) + '</td></tr>';
       return;
     }
-    tbody.innerHTML = list.map(p => {
-      const src = (p.source === 'REMOTE_SYNC') ? FiscalAdminI18n.t('products.source.pos') : FiscalAdminI18n.t('products.source.local');
-      const actions = (p.source === 'REMOTE_SYNC')
-        ? '<span class="hint">' + src + '</span>'
-        : listRowMenuTriggerHtml('data-row-kind="product" data-product-code="' + escHtml(p.product_code) + '"');
-      return '<tr><td>' + p.product_code + '</td><td>' + p.display_name + '</td><td>' + p.unit_price_gross +
-        '</td><td>' + fmtVatPercent(p.vat_rate) + '</td><td class="col-actions">' + actions + '</td></tr>';
-    }).join('');
+    tbody.innerHTML = list.map(p =>
+      '<tr class="clickable" data-product-code="' + escHtml(p.product_code) + '"><td>' + p.product_code + '</td><td>' + p.display_name + '</td><td>' + p.unit_price_gross +
+        '</td><td>' + fmtVatPercent(p.vat_rate) + '</td></tr>'
+    ).join('');
   }
 
   async function refreshCustomers() {
@@ -6165,11 +6207,18 @@
   $('#btnChangePinSubmit').onclick = () => withBusy($('#btnChangePinSubmit'), FiscalAdminI18n.t('common.saving'), async () => {
     await submitChangePin();
   });
-  $('#changePinModal').addEventListener('click', e => {
-    if (e.target === $('#changePinModal')) closeChangePinModal();
-  });
 
   document.addEventListener('click', e => {
+    const sheetClose = e.target.closest('[data-sheet-close]');
+    if (sheetClose) {
+      const backdrop = sheetClose.closest('.modal-backdrop');
+      if (backdrop) closeModalById(backdrop.id);
+      return;
+    }
+    if (e.target.classList && e.target.classList.contains('modal-backdrop')) {
+      closeModalById(e.target.id);
+      return;
+    }
     const nav = e.target.closest('[data-nav]');
     if (nav && !nav.dataset.goto) { showView(nav.dataset.nav); return; }
     const goto = e.target.closest('[data-goto]');
@@ -6198,6 +6247,11 @@
     const invRow = e.target.closest('tr[data-inv]');
     if (invRow && !e.target.closest('button')) {
       openInvoiceDetail(invRow.dataset.inv).catch(reportError);
+      return;
+    }
+    const prodRow = e.target.closest('tr[data-product-code]');
+    if (prodRow && !e.target.closest('button, input, select, textarea, a')) {
+      openProductFromList(prodRow.dataset.productCode).catch(reportError);
       return;
     }
   });
@@ -6250,9 +6304,6 @@
   $('#btnClosePicker').onclick = () => closeProductWorkbench();
 
   $('#btnCloseInvoiceDetail').onclick = () => closeInvoiceDetail();
-  $('#invoiceDetailModal').addEventListener('click', e => {
-    if (e.target.id === 'invoiceDetailModal') closeInvoiceDetail();
-  });
   $('#invoiceDetailBody').addEventListener('click', e => {
     const origBtn = e.target.closest('[data-open-original]');
     if (origBtn) {
@@ -6343,9 +6394,6 @@
 
   $('#receiptFull').onchange = () => syncReceiptAmountWrap();
   $('#btnReceiptCancel').onclick = () => closeReceiptModal();
-  $('#receiptModal').addEventListener('click', e => {
-    if (e.target.id === 'receiptModal') closeReceiptModal();
-  });
   $('#btnReceiptSubmit').onclick = () => withBusy($('#btnReceiptSubmit'), FiscalAdminI18n.t('common.submitting'), async () => {
     if (!receiptTargetDetail) return;
     const receiveFull = !!$('#receiptFull').checked;
@@ -6367,9 +6415,6 @@
   $('#adjustTabFull').onclick = () => setAdjustTab('full');
   $('#adjustTabPartial').onclick = () => setAdjustTab('partial');
   $('#btnAdjustCancel').onclick = () => closeAdjustModal();
-  $('#adjustModal').addEventListener('click', e => {
-    if (e.target.id === 'adjustModal') closeAdjustModal();
-  });
   $('#btnAdjustNext').onclick = () => {
     try {
       const payload = readAdjustSubmitPayload();
@@ -6377,9 +6422,6 @@
     } catch (er) { reportError(er); }
   };
   $('#btnAdjustConfirmBack').onclick = () => closeAdjustConfirmModal();
-  $('#adjustConfirmModal').addEventListener('click', e => {
-    if (e.target.id === 'adjustConfirmModal') closeAdjustConfirmModal();
-  });
   $('#btnAdjustSubmit').onclick = () => withBusy($('#btnAdjustSubmit'), FiscalAdminI18n.t('common.submitting'), async () => {
     const payload = $('#adjustConfirmModal')._payload;
     if (!payload || !adjustTargetDetail || !adjustKind) return;
@@ -7053,7 +7095,7 @@
     pop.style.visibility = '';
   }
 
-  /** ONLY open path for list row ⋯ menu (invoice / product / bill / operator / terminal). */
+  /** ONLY open path for list row ⋯ menu (invoice / bill / operator / terminal). */
   function openListRowMenu(anchor, ctx, items) {
     if (!anchor || !items || !items.length) return;
     if (listRowMenuAnchor === anchor && $('#listRowMenuPop') && !$('#listRowMenuPop').classList.contains('hidden')) {
@@ -7082,17 +7124,6 @@
     try {
       if (ctx.kind === 'invoice' && action === 'reprint') {
         await reprintInvoice(ctx.docId);
-        return;
-      }
-      if (ctx.kind === 'product' && action === 'edit') {
-        const code = ctx.productCode;
-        let p = catalogProducts.find(x => x.product_code === code);
-        if (!p) {
-          const data = await j('GET', buildProductsQueryPath(code, 1, 1));
-          p = (data.products || []).find(x => x.product_code === code);
-        }
-        if (p) await openProductWorkbench('edit', p);
-        else toast(FiscalAdminI18n.t('picker.toast.not_found'), 'error');
         return;
       }
       if (ctx.kind === 'bill' && action === 'open') {
@@ -7126,9 +7157,6 @@
     if (kind === 'invoice') {
       return [{ action: 'reprint', label: FiscalAdminI18n.t('action.reprint') }];
     }
-    if (kind === 'product') {
-      return [{ action: 'edit', label: FiscalAdminI18n.t('common.edit') }];
-    }
     if (kind === 'bill') {
       return [{ action: 'open', label: FiscalAdminI18n.t('bills.action.select') }];
     }
@@ -7158,7 +7186,6 @@
   function listRowMenuCtxForTrigger(trigger) {
     const kind = trigger.dataset.rowKind || '';
     if (kind === 'invoice') return { kind: kind, docId: trigger.dataset.docId };
-    if (kind === 'product') return { kind: kind, productCode: trigger.dataset.productCode };
     if (kind === 'bill') return { kind: kind, billId: trigger.dataset.billId };
     if (kind === 'operator') return { kind: kind, opId: trigger.dataset.opId };
     if (kind === 'terminal') return { kind: kind, termId: trigger.dataset.termId };
@@ -7328,15 +7355,9 @@
   $('#btnOperatorFormSubmit').onclick = () => withBusy($('#btnOperatorFormSubmit'), FiscalAdminI18n.t('common.saving'), async () => {
     await submitOperatorForm();
   });
-  $('#operatorFormModal').addEventListener('click', e => {
-    if (e.target === $('#operatorFormModal')) closeOperatorFormModal();
-  });
   $('#btnOperatorResetPinCancel').onclick = () => closeOperatorResetPinModal();
   $('#btnOperatorResetPinSubmit').onclick = () => withBusy($('#btnOperatorResetPinSubmit'), FiscalAdminI18n.t('common.resetting'), async () => {
     await submitOperatorResetPin();
-  });
-  $('#operatorResetPinModal').addEventListener('click', e => {
-    if (e.target === $('#operatorResetPinModal')) closeOperatorResetPinModal();
   });
   $('#operatorsTbody').addEventListener('click', e => {
     const trigger = e.target.closest('[data-row-menu-trigger]');
@@ -7357,18 +7378,38 @@
     if (e.target.closest('[data-row-menu-trigger]')) return;
     closeListRowMenu();
   });
+  /** ONLY dismiss path for Admin .modal (X, backdrop, Escape → existing close*). */
+  function closeModalById(id) {
+    switch (id) {
+      case 'invoiceDetailModal': closeInvoiceDetail(); break;
+      case 'adjustModal': closeAdjustModal(); break;
+      case 'adjustConfirmModal': closeAdjustConfirmModal(); break;
+      case 'receiptModal': closeReceiptModal(); break;
+      case 'confirmActionModal': closeConfirmActionModal(); break;
+      case 'changePinModal': closeChangePinModal(); break;
+      case 'operatorFormModal': closeOperatorFormModal(); break;
+      case 'operatorResetPinModal': closeOperatorResetPinModal(); break;
+      case 'productPicker': closeProductWorkbench(); break;
+      default: break;
+    }
+  }
+
+  /** ONLY topmost open Admin modal (later DOM sibling paints above). */
+  function topOpenModalBackdrop() {
+    const open = $$('.modal-backdrop').filter(el => !el.classList.contains('hidden'));
+    return open.length ? open[open.length - 1] : null;
+  }
+
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
-    if ($('#confirmActionModal') && !$('#confirmActionModal').classList.contains('hidden')) {
-      closeConfirmActionModal();
+    const top = topOpenModalBackdrop();
+    if (top) {
+      closeModalById(top.id);
       return;
     }
     closeListRowMenu();
   });
   $('#btnConfirmActionCancel').onclick = () => closeConfirmActionModal();
-  $('#confirmActionModal').addEventListener('click', e => {
-    if (e.target.id === 'confirmActionModal') closeConfirmActionModal();
-  });
   if ($('#confirmActionReason')) {
     $('#confirmActionReason').addEventListener('input', () => syncConfirmActionReasonCount());
   }
