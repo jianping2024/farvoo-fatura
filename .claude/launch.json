@@ -1,0 +1,32 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fiscal-local-at-test",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent && FISCAL_AT_ENV=test FISCAL_AT_SOAP_DUMP=/Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent/data/at-soap-dump FISCAL_DB=/Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent/data/fiscal-test.db FISCAL_DATA_DIR=/Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent/data/fiscal-test-secure FISCAL_BIND=127.0.0.1:17881 FISCAL_ALLOW_DEV_KEY=1 FISCAL_ALLOW_LOCAL_PROVISION=1 FISCAL_AT_CLIENT_CERT=/Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent/internal/fiscal/at/testdata/transport/certificados/current/TesteWebservices.pfx FISCAL_AT_CLIENT_CERT_PASS=TESTEwebservice FISCAL_AT_PASSWORD_PUBKEY=/Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent/internal/fiscal/at/testdata/transport/certificados/current/ChavePublicaAT.cer FISCAL_STATION_PRINTERS_JSON='{\"st-test-desk\":\"tcp:127.0.0.1:9100\"}' FISCAL_STATION_META_JSON='[{\"id\":\"st-test-desk\",\"name_zh\":\"测试档口\",\"name_en\":\"Test desk\",\"name_pt\":\"Balcao teste\",\"sort_order\":0}]' go run ./cmd/fiscal-local"
+      ],
+      "port": 17881
+    },
+    {
+      "name": "fiscal-local-mock-demo",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent && T=$(date +%s) && FISCAL_AT_ENV=mock FISCAL_SEED=1 FISCAL_DB=/Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent/data/fiscal-btn-uat-$T.db FISCAL_DATA_DIR=/Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent/data/fiscal-btn-uat-$T-secure FISCAL_BIND=127.0.0.1:17882 FISCAL_ALLOW_DEV_KEY=1 go run ./cmd/fiscal-local"
+      ],
+      "port": 17882
+    },
+    {
+      "name": "fiscal-local-at-test-r2",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent && FISCAL_AT_ENV=test FISCAL_AT_SOAP_DUMP=/Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent/data/at-soap-dump FISCAL_DB=/Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent/data/fiscal-test-r2.db FISCAL_DATA_DIR=/Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent/data/fiscal-test-r2-secure FISCAL_BIND=127.0.0.1:17881 FISCAL_ALLOW_DEV_KEY=1 FISCAL_ALLOW_LOCAL_PROVISION=1 FISCAL_AT_CLIENT_CERT=/Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent/internal/fiscal/at/testdata/transport/certificados/current/TesteWebservices.pfx FISCAL_AT_CLIENT_CERT_PASS=TESTEwebservice FISCAL_AT_PASSWORD_PUBKEY=/Users/chenjianping/Documents/farvoo-fatura/apps/fiscal-agent/internal/fiscal/at/testdata/transport/certificados/current/ChavePublicaAT.cer FISCAL_STATION_PRINTERS_JSON='{\"st-test-desk\":\"tcp:127.0.0.1:9100\"}' FISCAL_STATION_META_JSON='[{\"id\":\"st-test-desk\",\"name_zh\":\"测试档口\",\"name_en\":\"Test desk\",\"name_pt\":\"Balcao teste\",\"sort_order\":0}]' go run ./cmd/fiscal-local"
+      ],
+      "port": 17881
+    }
+  ]
+}
