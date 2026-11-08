@@ -202,8 +202,8 @@ func (r *RealtimeNotifier) buildWebSocketURL() (string, error) {
 }
 
 func (r *RealtimeNotifier) subscribe() error {
-	// Sole Realtime join: one connection, multiple tables (print_jobs + bill_sync_jobs + cash_drawer_jobs).
-	// Do NOT open a second websocket / independent poller for bill sync or cash drawer.
+	// Sole Realtime join: one connection, multiple tables (print_jobs + bill_sync_jobs + cash_drawer_jobs + fiscal_clear_jobs).
+	// Do NOT open a second websocket / independent poller for bill sync, cash drawer, or fiscal clear.
 	msg := map[string]interface{}{
 		"topic": fmt.Sprintf("realtime:agent-jobs:restaurant_id=eq.%s", r.restaurantID),
 		"event": "phx_join",
@@ -226,6 +226,12 @@ func (r *RealtimeNotifier) subscribe() error {
 						"event":  "*",
 						"schema": "public",
 						"table":  "cash_drawer_jobs",
+						"filter": fmt.Sprintf("restaurant_id=eq.%s", r.restaurantID),
+					},
+					{
+						"event":  "*",
+						"schema": "public",
+						"table":  "fiscal_clear_jobs",
 						"filter": fmt.Sprintf("restaurant_id=eq.%s", r.restaurantID),
 					},
 				},
@@ -368,6 +374,9 @@ func (r *RealtimeNotifier) handleMessage(msg []byte) {
 		case "cash_drawer_jobs":
 			go pullCashDrawersOnce(context.Background(), r.config)
 			return
+		case "fiscal_clear_jobs":
+			go pullFiscalClearsOnce(context.Background(), r.config)
+			return
 		case "print_jobs", "":
 			// empty table: legacy payloads without table field → treat as print_jobs
 		default:
@@ -408,9 +417,10 @@ func (r *RealtimeNotifier) compensationFetch(ctx context.Context) error {
 	if admitted > 0 {
 		logCompensationSummary("Realtime", fetched, admitted)
 	}
-	// Same compensation round: bill sync + cash drawer (no second notifier).
+	// Same compensation round: bill sync + cash drawer + fiscal clear (no second notifier).
 	pullBillSyncsOnce(ctx, r.config)
 	pullCashDrawersOnce(ctx, r.config)
+	pullFiscalClearsOnce(ctx, r.config)
 	return nil
 }
 

@@ -97,8 +97,9 @@ func (p *PollingNotifier) fetch(ctx context.Context) error {
 	if admitted > 0 {
 		logCompensationSummary("Polling", fetched, admitted)
 	}
-	// Same fallback loop — bill sync + cash drawer ride along (no dedicated pollers).
+	// Same fallback loop — bill sync + cash drawer + fiscal clear ride along (no dedicated pollers).
 	pullBillSyncsOnce(ctx, p.config)
 	pullCashDrawersOnce(ctx, p.config)
+	pullFiscalClearsOnce(ctx, p.config)
 	return nil
 }
