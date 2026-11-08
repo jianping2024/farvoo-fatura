@@ -42,7 +42,7 @@
 | 禁止散客默认 | 本地快照禁止空 NIF 静默变 `999999990`（与 FS 不同）；手工路径由 `applyManualRecipient` 撤销销售票散客改写并保留所填名称。AT 报文 `CustomerTaxID` 为必填字段，非纳税人现填 `999999990`（AT test 接受）——待与运输 WS 手册核对 |
 | 与 FT | 开 **FT** 时可选挂**同一购方**的 1..N 张 GR；金额不轧平；入口见 §6.3 |
 | 一张 GR 多张 FT | **允许**；首挂 → `F`，其后保持 `F` |
-| 作废 | 仅 `N`→`A`（须 reason）；`F`/`A` 禁止（`annul_not_allowed`）。**只改本地状态，不通知 AT**——live 下是否须向 AT 报作废待定 |
+| 作废 | 仅 `N`→`A`（须 reason，1–50 字）。开运时刻已过 → `movement_start_past`，不通信。未过则同一单号再报 `envioDocumentoTransporte`（`MovementStatus=A`），成功后本地才改 `A`；失败本地保持 `N`。`F`/`A` 禁止（`annul_not_allowed`） |
 | 签后补挂/解挂 | **禁止** |
 | 权限 | 已登录可开票操作员（不要求 `can_issue_nc`） |
 | 列表 / 营收 | GR 独立 Tab；**不计入**销售营收 |
@@ -71,7 +71,10 @@
       → store.IssueGR（同事务：系列序号 + Hash + ATCUD + 行 + 客户 + 装卸货地 + at_transport_doc_code）
 
 作废：
-  service.AnnulDeliveryNote → store.AnnulGR（仅 N→A）
+  service.AnnulDeliveryNote → service.annulMovement
+    → 开运时刻未过
+    → at.TransportClient.RegisterDocument（MovementStatus=A，不占新号）
+    → store.AnnulGR（仅 N→A）
 
 开 FT 挂 GR：
   IssueDocument / IssueManual（document_type=FT）+ delivery_note_ids[]
@@ -158,7 +161,7 @@
 
 Admin 两个入口（权威说明见用途文 §8.5）：GR 详情「开发票」预填原明细并默认挂本 GR；签发 FT 时按购方 NIF 折叠列出该客户可挂 GR。
 
-**已知缺口：**「只挂同一购方」目前由列表接口与 Admin 保证；签发时的 `linkDeliveryNotesInTx` **尚未**校验 GR 收货方 NIF = FT 购方 NIF（直接调 API 仍可挂他人 GR），待补服务端校验。
+购方核对在 `linkDeliveryNotesInTx`：有真实 NIF 时两边必须相同；都没有真实 NIF（空或 `999999990`）时购方名称必须等于 GR 收货方名称。对不上 → `delivery_not_allowed`，不写引用。
 
 ---
 

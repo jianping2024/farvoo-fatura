@@ -52,6 +52,22 @@ func TestBuildTransportBody(t *testing.T) {
 	}
 }
 
+func TestSOAPTransport_AnnulAcceptsReturnCodeWithoutNewCode(t *testing.T) {
+	resp := `<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><S:Body><ns2:envioDocumentoTransporteResponseElem xmlns:ns2="` + transportNS + `"><ResponseStatus><ReturnCode>0</ReturnCode><ReturnMessage>Anulado</ReturnMessage></ResponseStatus><DocumentNumber>GR GR2026T01/1</DocumentNumber></ns2:envioDocumentoTransporteResponseElem></S:Body></S:Envelope>`
+	sc, _ := fakeAT(t, func(string) (int, string) { return 200, resp })
+	c := &SOAPTransportClient{Env: EnvTest, URL: sc.URL, HTTP: sc.HTTP, PubKey: sc.PubKey}
+	doc := sampleTransportDoc()
+	doc.MovementStatus = "A"
+	res, err := c.RegisterDocument(context.Background(), doc)
+	if err != nil || res.ATDocCodeID != "" {
+		t.Fatalf("annul res %+v err %v", res, err)
+	}
+	doc.MovementStatus = "N"
+	if _, err := c.RegisterDocument(context.Background(), doc); err == nil {
+		t.Fatal("new document without ATDocCodeID must fail")
+	}
+}
+
 func TestSOAPTransport_Responses(t *testing.T) {
 	cases := []struct {
 		status int

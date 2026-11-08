@@ -1,9 +1,10 @@
 # Fiscal 认证检查清单
 
-> **状态：定稿**（M6 D6.2–D6.4 + P0 认证阶段关闭；**FR 产品化**后范围含 FR）  
-> **权威范围：** 产品认证单据 **FT + FS + FR + NC + ND**（账单同步签发仍仅 FT+FS；FR 为手工/API 销售票）  
-> **权威制品：** **0.4.55**（`fiscal-agent-v0.4.55`）  
-> **出具命令：** `node scripts/fiscal-d62-cert-regression.mjs`（逐项 pass/fail）；运维细测 `fiscal-d63-d64-regression.mjs`  
+> **状态：定稿**（提交用证据以当前程序为准，不再用 0.4.55 那一版）  
+> **权威范围：** 程序实际能开的单据 **FT + FS + FR + NC + ND + RG + PF + GR + GT**（账单同步签发仍仅 FT+FS）  
+> **权威制品：** `apps/fiscal-agent/VERSION`（当前工作区版本）  
+> **出具命令：** `node scripts/fiscal-d62-cert-regression.mjs`（含票种回归与 SAF-T XSD）；运维细测 `fiscal-d63-d64-regression.mjs`  
+> **样本：** 干净库。提审报文用将写入申请的产品签名私钥；本脚本的自动项使用开发私钥，不能代替那份样本。证书号保持 `0`。  
 > **分类：** `自动` = runner/单测可判；`手测` = 真机/扫枪/UI 肉眼  
 > **手测：** H1–H3 **已通过**（2026-09-02；步骤见 [`fiscal-m6-manual-uat.zh.md`](fiscal-m6-manual-uat.zh.md)）  
 > **设计：** [`fiscal-m6-backup-swap.zh.md`](fiscal-m6-backup-swap.zh.md)（D6.3/D6.4）；FR 产品定法见 [`fiscal-m6-fs-fr-nd.zh.md`](fiscal-m6-fs-fr-nd.zh.md)
@@ -90,6 +91,16 @@
 |---|--------|----------|------|----------|
 | C7.1 | 备份恢复校验 | backup 成功；`last_number`/`last_hash` 与票库一致（失配 block） | 自动 | d62 / `fiscal-d63-d64-regression.mjs` |
 | C7.2 | 换机本机停用 | `prepare-swap` → `activated_ok=false`；新机重新 wrap | 自动 + 手测 | d62 API；**手测** 真机拷库+运营激活 |
+
+## 8. 当前程序多出来的单据
+
+| # | 检查项 | 通过标准 | 分类 | 验证方式 |
+|---|--------|----------|------|----------|
+| C8.1 | GR 签发、作废、挂 FT | `fiscal-gr-regression.mjs` 退出码 0 | 自动 | d62 调用该脚本 |
+| C8.2 | GT 签发、作废 | `fiscal-gt-regression.mjs` 退出码 0 | 自动 | 同上 |
+| C8.3 | RG | `fiscal-rg-regression.mjs` 退出码 0 | 自动 | 同上 |
+| C8.4 | PF | `fiscal-pf-regression.mjs` 退出码 0 | 自动 | 同上 |
+| C8.5 | 全票种 SAF-T 过 XSD | `scripts/fiscal-saft-xsd-check.sh` 打印 `SAF-T XSD OK` | 自动 | 同上 |
 
 ---
 

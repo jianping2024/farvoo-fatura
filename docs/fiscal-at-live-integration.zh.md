@@ -337,7 +337,7 @@ apps/fiscal-agent/internal/fiscal/at/
 | 幂等 | 同 `request_id` 已签发 → 直接返回，**不再**通信 AT |
 | 地址 | `domain.Address` 结构化贯穿 API / DB（迁移 017）/ 打印 / SAF-T / AT；不做文本解析。省略装货地＝门店地址，省略卸货地＝客户地址；三者 `ValidatePT` 在 service 统一校验（mock 同 live） |
 | ATCUD | 报文带 `<ATCUD>`（现行 AT schema；镜像 WSDL 无此字段，缺则 AT 告警） |
-| 错误 | `at.ErrTransportInvalid`（本地拦截）/ `ErrTransportUnavailable`（网络、认证、配置，可重试）/ `ErrTransportRejected`（AT 拒绝；服务码 `at_transport_rejected`，`message` 仅为 AT `ReturnMessage`，Admin 显示「税务局（AT）拒绝，单据未签发：<原文>」；ReturnCode `-3` → `at_number_taken`，`-100` → `movement_start_past`）；SOAP fault 与 ReturnCode 统一在 `at/errors.go`：先按**来源**分类（fault `<detail>` 命名空间为 `http://autenticacao.portaldasfinancas.gov.pt/…` 的认证层 fault 一律 unavailable，如 2026-11-02 AT 凭证后端返回 HTML 时的 33「mismatched tag, expected hr」），服务层 fault 再查码表（1199、118 → unavailable；33 schema → rejected）；ReturnCode 54 缺 WDT → rejected |
+| 错误 | `at.ErrTransportInvalid`（本地拦截）/ `ErrTransportUnavailable`（网络、认证、配置，可重试）/ `ErrTransportRejected`（AT 拒绝；服务码 `at_transport_rejected`，`message` 仅为 AT `ReturnMessage`，Admin 显示「税务局（AT）拒绝，单据状态未变：<原文>」；ReturnCode `-3` → `at_number_taken`，`-100` → `movement_start_past`）；SOAP fault 与 ReturnCode 统一在 `at/errors.go`：先按**来源**分类（fault `<detail>` 命名空间为 `http://autenticacao.portaldasfinancas.gov.pt/…` 的认证层 fault 一律 unavailable，如 2026-11-02 AT 凭证后端返回 HTML 时的 33「mismatched tag, expected hr」），服务层 fault 再查码表（1199、118 → unavailable；33 schema → rejected）；ReturnCode 54 缺 WDT → rejected |
 | 对账 | AT 已登记但本地落库失败 → `audit_log` `at_transport_unsaved`（单号 + ATDocCodeID）并报错 |
 | 子用户权限 | 运输需 **WDT**（Webservice de comunicação de documentos de transporte）；系列需 WSE |
 | SAF-T | `ShipTo`/`ShipFrom` 按 XSD 置于 `MovementStartTime` 前，写完整 `<Address>`（旧单据缺项填 `Desconhecido`） |

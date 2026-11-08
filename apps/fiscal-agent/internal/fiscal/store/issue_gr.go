@@ -14,6 +14,7 @@ import (
 	"farvoo-fiscal-agent/internal/fiscal/compliance"
 	"farvoo-fiscal-agent/internal/fiscal/domain"
 	fiscalprint "farvoo-fiscal-agent/internal/fiscal/print"
+	"farvoo-fiscal-agent/internal/fiscal/ptnif"
 	"farvoo-fiscal-agent/internal/fiscal/software"
 
 	"github.com/google/uuid"
@@ -493,6 +494,18 @@ func linkDeliveryNotesInTx(tx *sql.Tx, storeID, saleInvoiceID string, deliveryID
 		if !domain.IsLinkableDeliveryNoteStatus(docStatus) {
 			return ErrDeliveryNotAllowed
 		}
+		var ftTax, ftName, grTax, grName string
+		if err = tx.QueryRow(`SELECT customer_tax_id, company_name FROM invoice_customer_snapshots WHERE invoice_id = ?`,
+			saleInvoiceID).Scan(&ftTax, &ftName); err != nil {
+			return err
+		}
+		if err = tx.QueryRow(`SELECT customer_tax_id, company_name FROM invoice_customer_snapshots WHERE invoice_id = ?`,
+			grID).Scan(&grTax, &grName); err != nil {
+			return err
+		}
+		if !sameDeliveryBuyer(ftTax, ftName, grTax, grName) {
+			return ErrDeliveryNotAllowed
+		}
 		_, err = tx.Exec(`INSERT INTO invoice_delivery_references (id, sale_invoice_id, delivery_invoice_id, created_at)
 			VALUES (?, ?, ?, ?)`, uuid.NewString(), saleInvoiceID, grID, time.Now().UTC().Format(time.RFC3339))
 		if err != nil {
@@ -510,6 +523,30 @@ func linkDeliveryNotesInTx(tx *sql.Tx, storeID, saleInvoiceID string, deliveryID
 		}
 	}
 	return nil
+}
+
+// sameDeliveryBuyer is the ONLY FT↔GR buyer check. A real NIF (not empty, not 999999990)
+// must match on both sides. With no real NIF, the names must be the same recipient
+// (GR rejects the walk-in placeholder, so "Consumidor Final" never links).
+func sameDeliveryBuyer(ftTax, ftName, grTax, grName string) bool {
+	ftNIF, ftReal := identifiedBuyerNIF(ftTax)
+	grNIF, grReal := identifiedBuyerNIF(grTax)
+	if ftReal || grReal {
+		return ftReal && grReal && ftNIF == grNIF
+	}
+	grName = strings.TrimSpace(grName)
+	if grName == "" || strings.EqualFold(grName, ptnif.FinalConsumerName) {
+		return false
+	}
+	return strings.TrimSpace(ftName) == grName
+}
+
+func identifiedBuyerNIF(tax string) (string, bool) {
+	tax = strings.TrimSpace(tax)
+	if tax == "" || tax == ptnif.FinalConsumer {
+		return "", false
+	}
+	return tax, true
 }
 
 // DeliveryExtra is GR detail for Admin / API.

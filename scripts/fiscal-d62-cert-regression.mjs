@@ -443,6 +443,27 @@ async function main() {
 
   child.kill('SIGTERM');
 
+  const extras = [
+    ['C8.1', 'scripts/fiscal-gr-regression.mjs'],
+    ['C8.2', 'scripts/fiscal-gt-regression.mjs'],
+    ['C8.3', 'scripts/fiscal-rg-regression.mjs'],
+    ['C8.4', 'scripts/fiscal-pf-regression.mjs'],
+  ];
+  for (const [id, script] of extras) {
+    try {
+      await run(process.execPath, [join(root, script)], { cwd: root });
+      pass(id, script);
+    } catch (e) {
+      fail(id, String(e.message || e).slice(0, 240));
+    }
+  }
+  try {
+    await run('bash', [join(root, 'scripts/fiscal-saft-xsd-check.sh')], { cwd: root });
+    pass('C8.5', 'SAF-T XSD');
+  } catch (e) {
+    fail('C8.5', String(e.message || e).slice(0, 240));
+  }
+
   const failed = results.filter((r) => r.status === 'fail');
   const passed = results.filter((r) => r.status === 'pass');
   const blockedN = results.filter((r) => r.status === 'blocked');
