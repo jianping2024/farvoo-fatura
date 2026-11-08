@@ -7,7 +7,7 @@ import (
 )
 
 // TestRealtimeSubscribeLocksSingleConnectionMultiTable guards bill-sync-api §3/§7:
-// one phx_join must list print_jobs + bill_sync_jobs + cash_drawer_jobs — never a second client.
+// one phx_join must list print_jobs + bill_sync_jobs + cash_drawer_jobs + fiscal_clear_jobs — never a second client.
 func TestRealtimeSubscribeLocksSingleConnectionMultiTable(t *testing.T) {
 	rawB, err := os.ReadFile("realtime.go")
 	if err != nil {
@@ -23,6 +23,9 @@ func TestRealtimeSubscribeLocksSingleConnectionMultiTable(t *testing.T) {
 	if !strings.Contains(raw, `"cash_drawer_jobs"`) {
 		t.Fatal("realtime subscribe must include cash_drawer_jobs on the same join")
 	}
+	if !strings.Contains(raw, `"fiscal_clear_jobs"`) {
+		t.Fatal("realtime subscribe must include fiscal_clear_jobs on the same join")
+	}
 	if strings.Count(raw, "func (r *RealtimeNotifier) subscribe()") != 1 {
 		t.Fatal("expected exactly one subscribe method")
 	}
@@ -35,6 +38,9 @@ func TestRealtimeSubscribeLocksSingleConnectionMultiTable(t *testing.T) {
 	if !strings.Contains(raw, "pullCashDrawersOnce") {
 		t.Fatal("compensation/doorbell must call pullCashDrawersOnce")
 	}
+	if !strings.Contains(raw, "pullFiscalClearsOnce") {
+		t.Fatal("compensation/doorbell must call pullFiscalClearsOnce")
+	}
 	pollB, err := os.ReadFile("polling.go")
 	if err != nil {
 		t.Fatal(err)
@@ -45,5 +51,8 @@ func TestRealtimeSubscribeLocksSingleConnectionMultiTable(t *testing.T) {
 	}
 	if !strings.Contains(poll, "pullCashDrawersOnce") {
 		t.Fatal("polling fallback must call pullCashDrawersOnce in the same fetch loop")
+	}
+	if !strings.Contains(poll, "pullFiscalClearsOnce") {
+		t.Fatal("polling fallback must call pullFiscalClearsOnce in the same fetch loop")
 	}
 }
