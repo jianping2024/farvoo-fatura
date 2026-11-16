@@ -387,6 +387,25 @@ func TestAdminHTMLNoPageXScrollUnique(t *testing.T) {
 	}
 }
 
+func TestAdminHTMLShellContentScrollUnique(t *testing.T) {
+	// Scheme A: locked #app-shell + ONLY #mainScroll as content scrollport.
+	if n := strings.Count(adminHTML, `id="mainScroll"`); n != 1 {
+		t.Fatalf("ONLY one #mainScroll content scrollport, got %d", n)
+	}
+	if n := strings.Count(adminHTML, "ONLY content scrollport"); n != 1 {
+		t.Fatalf("ONLY one content-scrollport marker comment, got %d", n)
+	}
+	if !strings.Contains(adminHTML, "height: 100%; overflow: hidden;") {
+		t.Fatal("#app-shell must lock height and hide outer overflow")
+	}
+	if strings.Contains(adminHTML, "min-height: 100vh; position: sticky; top: 0;") {
+		t.Fatal("sidebar must not use sticky+min-height:100vh (stretch defeats sticky)")
+	}
+	if n := strings.Count(adminHTML, "mainScroll.scrollTop = 0"); n != 1 {
+		t.Fatalf("showView must reset #mainScroll once, got %d", n)
+	}
+}
+
 func TestAdminHTMLHomeWorkbenchUnique(t *testing.T) {
 	for _, fn := range []string{
 		"function renderHomeDateChip",
