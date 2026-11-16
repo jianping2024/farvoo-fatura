@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin 壳滚动：现状 vs A vs B</title>
+  <style>
+    :root {
+      --brand: #0e3d26;
+      --paper: #f3f1e9;
+      --ink: #1a2e22;
+      --muted: #5f7468;
+      --panel: #fff;
+      --line: #ddd6c6;
+      --font: "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: var(--font); color: var(--ink); background: #ddd7c8; }
+    body {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100%;
+    }
+    header {
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 0.85rem 1.1rem 1rem;
+    }
+    header h1 { margin: 0 0 0.35rem; font-size: 1.05rem; }
+    header p { margin: 0; color: var(--muted); font-size: 0.88rem; line-height: 1.45; max-width: 70rem; }
+    .hint {
+      margin-top: 0.55rem;
+      padding: 0.55rem 0.75rem;
+      background: #fff8d6;
+      border: 1px solid #ead9a0;
+      border-radius: 10px;
+      color: #6a5410;
+      font-size: 0.86rem;
+      font-weight: 650;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.75rem;
+      padding: 0.75rem;
+      min-height: 0;
+    }
+    @media (max-width: 1100px) {
+      .board { grid-template-columns: 1fr; }
+      .pane { min-height: 420px; }
+    }
+    .pane {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      background: #fff;
+      border: 1px solid #cfc7b4;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 8px 22px rgba(40,50,30,.07);
+    }
+    .pane h2 {
+      margin: 0;
+      padding: 0.65rem 0.8rem 0.2rem;
+      font-size: 0.95rem;
+    }
+    .pane .sub {
+      padding: 0 0.8rem 0.55rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+    .meter {
+      margin: 0 0.8rem 0.55rem;
+      padding: 0.4rem 0.55rem;
+      border-radius: 8px;
+      background: #f4f1e8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      color: #334;
+      white-space: pre-line;
+    }
+    .meter strong { color: #0e3d26; }
+    .frame {
+      min-height: 0;
+      height: 100%;
+      border-top: 1px solid var(--line);
+      background: var(--paper);
+      position: relative;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 118px minmax(0, 1fr);
+      background: var(--paper);
+    }
+    .sidebar {
+      background: var(--brand);
+      color: #c8e0d4;
+      display: flex;
+      flex-direction: column;
+    }
+    .logo {
+      padding: 0.7rem 0.65rem;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      font-weight: 700;
+      font-size: 0.82rem;
+      color: #e8f2ec;
+    }
+    .nav a {
+      display: block;
+      margin: 0.2rem 0.4rem;
+      padding: 0.42rem 0.5rem;
+      border-radius: 8px;
+      color: inherit;
+      text-decoration: none;
+      font-size: 0.78rem;
+      font-weight: 650;
+    }
+    .nav a.active { background: rgba(255,255,255,.1); color: #fff; }
+    .foot {
+      margin-top: auto;
+      padding: 0.65rem;
+      border-top: 1px solid rgba(255,255,255,.07);
+      font-size: 0.72rem;
+      color: rgba(200,224,212,.8);
+      background: #0a2f1d;
+    }
+    .main { padding: 0.75rem 0.8rem 2rem; min-width: 0; }
+    .main h3 { margin: 0 0 0.55rem; font-size: 1rem; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.7rem 0.8rem;
+      margin-bottom: 0.55rem;
+      min-height: 88px;
+    }
+    .card b { display: block; margin-bottom: 0.25rem; font-size: 0.84rem; }
+    .card span { color: var(--muted); font-size: 0.76rem; line-height: 1.35; }
+    .stripe {
+      height: 8px;
+      background: repeating-linear-gradient(
+        90deg,
+        #f0c14a 0 10px,
+        #0e3d26 10px 20px
+      );
+    }
+
+    /* NOW: broken — sidebar stretches with content, sticky useless */
+    #nowFrame { overflow-y: auto; height: 100%; }
+    #nowShell { min-height: 100%; align-items: stretch; height: auto; }
+    #nowSidebar {
+      min-height: 100%;
+      /* stretched by grid to full content height → sticky dead */
+      position: sticky;
+      top: 0;
+    }
+
+    /* A: locked shell, only content scrolls */
+    #aFrame { height: 100%; overflow: hidden; }
+    #aShell { height: 100%; overflow: hidden; }
+    #aSidebar { height: 100%; overflow: hidden; }
+    #aScroll {
+      height: 100%;
+      overflow-y: auto;
+      min-width: 0;
+      outline: 2px solid #2f6fed;
+      outline-offset: -2px;
+    }
+
+    /* B: whole pane scrolls; sidebar sticky at viewport(=frame) height */
+    #bFrame { height: 100%; overflow-y: auto; }
+    #bShell { min-height: 100%; height: auto; align-items: start; }
+    #bSidebar {
+      position: sticky;
+      top: 0;
+      /* set by JS to frame clientHeight */
+      overflow: hidden;
+      outline: 2px solid #c45c26;
+      outline-offset: -2px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>三栏并排：先看「现状」和两边的差别</h1>
+    <p>
+      A 和 B 修好之后，<b>左边菜单都不走</b>，所以看起来很像。
+      真正好认的差别是：<b>左边坏掉的「现状」</b> vs 修好的；以及 A/B 的<b>蓝框/橙框谁在滚</b>。
+    </p>
+    <div class="hint">请在三栏里分别滚轮往下 —— 看左侧黄黑条和底部「退出」会不会跟着消失。</div>
+  </header>
+
+  <div class="board">
+    <!-- NOW -->
+    <section class="pane">
+      <h2>现状（坏的）</h2>
+      <div class="sub">整页一起滚。侧栏被拉得跟内容一样高 → 菜单和「退出」跟着飞走。</div>
+      <div class="meter" id="nowMeter">侧栏顶：还在画面里</div>
+      <div class="frame" id="nowFrame">
+        <div class="shell" id="nowShell">
+          <aside class="sidebar" id="nowSidebar">
+            <div class="stripe" title="侧栏顶部标记"></div>
+            <div class="logo">现状</div>
+            <nav class="nav">
+              <a href="#">发票</a>
+              <a href="#">商品</a>
+              <a class="active" href="#">设置</a>
+            </nav>
+            <div class="foot" id="nowFoot">退出 ← 滚下去就没了</div>
+          </aside>
+          <div class="main">
+            <h3>设置</h3>
+            <div class="card"><b>1 概览</b><span>往下滚，看左边黄黑条和「退出」。</span></div>
+            <div class="card"><b>2 门店</b><span>侧栏被拉长，sticky 失效。</span></div>
+            <div class="card"><b>3 系列</b><span>继续……</span></div>
+            <div class="card"><b>4 人员</b><span>继续……</span></div>
+            <div class="card"><b>5 记录</b><span>继续……</span></div>
+            <div class="card"><b>6 设备</b><span>继续……</span></div>
+            <div class="card"><b>7 电脑</b><span>到底了。左边菜单早没了。</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- A -->
+    <section class="pane">
+      <h2>A · 内容区自己滚</h2>
+      <div class="sub">外壳锁死。<b style="color:#2f6fed">蓝框</b>才是滚动区。左边完全不动，包括「退出」。</div>
+      <div class="meter" id="aMeter">内容滚动：0</div>
+      <div class="frame" id="aFrame">
+        <div class="shell" id="aShell">
+          <aside class="sidebar" id="aSidebar">
+            <div class="stripe"></div>
+            <div class="logo">方案 A</div>
+            <nav class="nav">
+              <a href="#">发票</a>
+              <a href="#">商品</a>
+              <a class="active" href="#">设置</a>
+            </nav>
+            <div class="foot">退出 ← 一直在</div>
+          </aside>
+          <div id="aScroll">
+            <div class="main">
+              <h3>设置</h3>
+              <div class="card"><b>1 概览</b><span>只有蓝框里的内容在动。</span></div>
+              <div class="card"><b>2 门店</b><span>鼠标在左边菜单上滚：内容也可以不动（看手感）。</span></div>
+              <div class="card"><b>3 系列</b><span>继续……</span></div>
+              <div class="card"><b>4 人员</b><span>继续……</span></div>
+              <div class="card"><b>5 记录</b><span>继续……</span></div>
+              <div class="card"><b>6 设备</b><span>继续……</span></div>
+              <div class="card"><b>7 电脑</b><span>左边黄黑条和「退出」都还在。</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B -->
+    <section class="pane">
+      <h2>B · 整页滚，侧栏钉住</h2>
+      <div class="sub">还是整页滚，但把<b style="color:#c45c26">橙框侧栏</b>高度钉成窗口高。菜单也不走。</div>
+      <div class="meter" id="bMeter">整页滚动：0</div>
+      <div class="frame" id="bFrame">
+        <div class="shell" id="bShell">
+          <aside class="sidebar" id="bSidebar">
+            <div class="stripe"></div>
+            <div class="logo">方案 B</div>
+            <nav class="nav">
+              <a href="#">发票</a>
+              <a href="#">商品</a>
+              <a class="active" href="#">设置</a>
+            </nav>
+            <div class="foot">退出 ← 一直在</div>
+          </aside>
+          <div class="main">
+            <h3>设置</h3>
+            <div class="card"><b>1 概览</b><span>整页在滚；侧栏靠 sticky 钉住。</span></div>
+            <div class="card"><b>2 门店</b><span>鼠标在左边菜单上滚：整页也会动。</span></div>
+            <div class="card"><b>3 系列</b><span>继续……</span></div>
+            <div class="card"><b>4 人员</b><span>继续……</span></div>
+            <div class="card"><b>5 记录</b><span>继续……</span></div>
+            <div class="card"><b>6 设备</b><span>继续……</span></div>
+            <div class="card"><b>7 电脑</b><span>和 A 一样菜单不走；差在「谁在滚」。</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const nowFrame = document.getElementById('nowFrame');
+    const nowSidebar = document.getElementById('nowSidebar');
+    const nowFoot = document.getElementById('nowFoot');
+    const nowMeter = document.getElementById('nowMeter');
+    const aScroll = document.getElementById('aScroll');
+    const aMeter = document.getElementById('aMeter');
+    const bFrame = document.getElementById('bFrame');
+    const bSidebar = document.getElementById('bSidebar');
+    const bMeter = document.getElementById('bMeter');
+
+    function syncB() {
+      bSidebar.style.height = bFrame.clientHeight + 'px';
+    }
+
+    function visible(el, root) {
+      const er = el.getBoundingClientRect();
+      const rr = root.getBoundingClientRect();
+      if (er.bottom < rr.top || er.top > rr.bottom) return '画面外';
+      return '还在画面里';
+    }
+
+    function tick() {
+      nowMeter.innerHTML =
+        '黄黑条：<strong>' + visible(nowSidebar.querySelector('.stripe'), nowFrame) + '</strong>\n' +
+        '「退出」：<strong>' + visible(nowFoot, nowFrame) + '</strong>\n' +
+        '整页滚动：' + Math.round(nowFrame.scrollTop);
+      aMeter.innerHTML =
+        '黄黑条：<strong>还在画面里</strong>\n' +
+        '「退出」：<strong>还在画面里</strong>\n' +
+        '内容滚动：' + Math.round(aScroll.scrollTop) + '（蓝框）';
+      bMeter.innerHTML =
+        '黄黑条：<strong>还在画面里</strong>\n' +
+        '「退出」：<strong>还在画面里</strong>\n' +
+        '整页滚动：' + Math.round(bFrame.scrollTop) + '（侧栏橙框钉住）';
+    }
+
+    nowFrame.addEventListener('scroll', tick, { passive: true });
+    aScroll.addEventListener('scroll', tick, { passive: true });
+    bFrame.addEventListener('scroll', tick, { passive: true });
+    new ResizeObserver(() => { syncB(); tick(); }).observe(bFrame);
+    syncB();
+    tick();
+  </script>
+</body>
+</html>

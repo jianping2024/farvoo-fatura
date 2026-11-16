@@ -19,6 +19,15 @@ func TestAdminCashDrawerUniqueWriters(t *testing.T) {
 	if strings.Count(html, `function refreshCashDrawerPanel`) != 1 {
 		t.Fatal("ONLY refreshCashDrawerPanel")
 	}
+	if strings.Count(html, `function syncMainChrome`) != 1 {
+		t.Fatal("ONLY syncMainChrome for open-drawer dock visibility")
+	}
+	if strings.Count(html, `syncMainChrome(name);`) != 1 {
+		t.Fatal("syncMainChrome must be called only from showView")
+	}
+	if !strings.Contains(html, `chrome.hidden = name !== 'invoices'`) {
+		t.Fatal("open-drawer dock must show ONLY on invoices hub")
+	}
 	if strings.Count(html, `POST', '/local/v1/cash-drawer/open'`) != 1 {
 		t.Fatalf("ONLY one POST cash-drawer/open got %d", strings.Count(html, `POST', '/local/v1/cash-drawer/open'`))
 	}
@@ -30,6 +39,9 @@ func TestAdminCashDrawerUniqueWriters(t *testing.T) {
 	}
 	if !strings.Contains(html, `id="mainChrome"`) {
 		t.Fatal("main-chrome host for drawer button required")
+	}
+	if !strings.Contains(html, `id="mainChrome" hidden`) {
+		t.Fatal("mainChrome must start hidden until showView(invoices)")
 	}
 	if !strings.Contains(html, `id="cashDrawerPin"`) {
 		t.Fatal("settings pin select required")
