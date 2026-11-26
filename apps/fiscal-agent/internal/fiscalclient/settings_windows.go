@@ -47,7 +47,7 @@ func RunSettings(host, port string) (string, error) {
 	}
 
 	if err := fiscalwebview.RunHTMLWindow(fiscalwebview.HTMLWindowOptions{
-		Title:    "Farvoo 开票 · 设置",
+		Title:    "OULIN 开票 · 设置",
 		HTML:     buf.String(),
 		DataPath: dataPath,
 		Width:    520,

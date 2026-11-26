@@ -1,13 +1,13 @@
-﻿; Farvoo Fiscal Client — Inno Setup (x64). From apps/fiscal-agent:
+﻿; OULIN Fiscal Client — Inno Setup (x64). From apps/fiscal-agent:
 ;   ISCC /DMyAppVersion=0.1.0 installer\farvoo-fiscal-client.iss
 
 #ifndef MyAppVersion
   #define MyAppVersion "0.1.0"
 #endif
 
-#define MyAppName "Farvoo Fiscal Client"
+#define MyAppName "OULIN Fiscal Client"
 #define MyAppExe "FarvooFiscalClient.exe"
-#define MyAppPublisher "Farvoo"
+#define MyAppPublisher "OULIN"
 #define MyAppURL "https://github.com/jianping2024/farvoo-fatura"
 #define WebView2Bootstrapper "MicrosoftEdgeWebview2Setup.exe"
 
@@ -40,7 +40,7 @@ UninstallDisplayIcon={app}\{#MyAppExe}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a Farvoo Fiscal shortcut on the desktop"; GroupDescription: "Desktop shortcut:"
+Name: "desktopicon"; Description: "Create an OULIN Fiscal shortcut on the desktop"; GroupDescription: "Desktop shortcut:"
 Name: "desktopsettings"; Description: "Create Agent settings shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: unchecked
 Name: "webview2"; Description: "Install Microsoft Edge WebView2 Runtime if missing (recommended)"; GroupDescription: "Prerequisites:"
 
@@ -54,12 +54,12 @@ Source: "deps\{#WebView2Bootstrapper}"; DestDir: "{tmp}"; Flags: deleteafterinst
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
 Name: "{group}\Agent settings…"; Filename: "{app}\{#MyAppExe}"; Parameters: "--settings"
 Name: "{group}\Read me"; Filename: "{app}\CLIENT-README.txt"
-Name: "{autodesktop}\Farvoo 开票"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon
-Name: "{autodesktop}\Farvoo Fiscal Client Settings"; Filename: "{app}\{#MyAppExe}"; Parameters: "--settings"; Tasks: desktopsettings
+Name: "{autodesktop}\OULIN 开票"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon
+Name: "{autodesktop}\OULIN Fiscal Client Settings"; Filename: "{app}\{#MyAppExe}"; Parameters: "--settings"; Tasks: desktopsettings
 
 [Run]
 Filename: "{tmp}\{#WebView2Bootstrapper}"; Parameters: "/silent /install"; StatusMsg: "Installing WebView2 Runtime..."; Tasks: webview2; Check: NeedsWebView2; Flags: waituntilterminated
-Filename: "{app}\{#MyAppExe}"; Description: "Launch Farvoo Fiscal Client now"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExe}"; Description: "Launch OULIN Fiscal Client now"; Flags: nowait postinstall skipifsilent
 
 [Code]
 function NeedsWebView2: Boolean;

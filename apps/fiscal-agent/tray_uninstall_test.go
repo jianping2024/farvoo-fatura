@@ -52,12 +52,13 @@ func TestFiscalAgentUninstallDisplayNameMatch(t *testing.T) {
 		in   string
 		want bool
 	}{
-		{"Farvoo Fiscal Agent", true},
-		{"Farvoo Fiscal Agent version 0.3.84", true},
+		{"OULIN Fiscal Agent", true},
+		{"OULIN Fiscal Agent version 0.3.84", true},
+		{"Farvoo Fiscal Agent", true}, // Farvoo → OULIN migration window
 		{"farvoo fiscal agent version 0.3.84", true},
-		{"Mesa Print Agent", true}, // migration window
+		{"Mesa Print Agent", true}, // Mesa → Farvoo migration window
 		{"Mesa Print Agent version 0.3.61", true},
-		{"Farvoo Fiscal AgentX", false},
+		{"OULIN Fiscal AgentX", false},
 		{"Mesa Print AgentX", false},
 		{"Other App", false},
 		{"", false},
@@ -70,22 +71,22 @@ func TestFiscalAgentUninstallDisplayNameMatch(t *testing.T) {
 }
 
 func TestParseWindowsCommandLine(t *testing.T) {
-	exe, args, err := parseWindowsCommandLine(`"C:\Program Files (x86)\Farvoo Fiscal Agent\unins000.exe" /SILENT`)
+	exe, args, err := parseWindowsCommandLine(`"C:\Program Files (x86)\OULIN Fiscal Agent\unins000.exe" /SILENT`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exe != `C:\Program Files (x86)\Farvoo Fiscal Agent\unins000.exe` {
+	if exe != `C:\Program Files (x86)\OULIN Fiscal Agent\unins000.exe` {
 		t.Fatalf("exe=%q", exe)
 	}
 	if args != "/SILENT" {
 		t.Fatalf("args=%q", args)
 	}
 
-	exe, args, err = parseWindowsCommandLine(`"C:\Program Files (x86)\Farvoo Fiscal Agent\unins000.exe"`)
+	exe, args, err = parseWindowsCommandLine(`"C:\Program Files (x86)\OULIN Fiscal Agent\unins000.exe"`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exe != `C:\Program Files (x86)\Farvoo Fiscal Agent\unins000.exe` || args != "" {
+	if exe != `C:\Program Files (x86)\OULIN Fiscal Agent\unins000.exe` || args != "" {
 		t.Fatalf("exe=%q args=%q", exe, args)
 	}
 }

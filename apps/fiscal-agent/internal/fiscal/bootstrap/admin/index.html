@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Farvoo 开票</title>
+  <title>OULIN 开票</title>
   <link rel="stylesheet" href="/fiscal-ui/toast.css"/>
   <link rel="stylesheet" href="/fiscal-ui/date-picker.css"/>
   <link rel="stylesheet" href="/fiscal-ui/time-picker.css"/>
@@ -738,7 +738,7 @@
 
   <section id="view-login">
     <div class="login-card">
-      <p class="brand" data-i18n="brand.name">Farvoo 开票</p>
+      <p class="brand" data-i18n="brand.name">OULIN 开票</p>
       <div id="loginExisting">
         <label class="hint" for="loginOperator" data-i18n="dash.operator">开票员</label>
         <select id="loginOperator" style="margin-bottom:0.75rem"></select>
@@ -775,7 +775,7 @@
       <div class="logo-area">
         <div class="logo-row">
           <div class="logo-mark" aria-hidden="true">F</div>
-          <div class="logo" data-i18n="brand.name">Farvoo 开票</div>
+          <div class="logo" data-i18n="brand.name">OULIN 开票</div>
         </div>
         <div class="mode-tag" id="sidebarMode" data-i18n="mode.restaurant">餐馆模式</div>
       </div>
@@ -1426,14 +1426,14 @@
                     <input type="checkbox" id="lanAccessAllow" />
                     <span data-i18n="settings.lan.toggle">允许店内其它电脑连接本机</span>
                   </label>
-                  <p class="hint" data-i18n="settings.lan.toggle_hint">打开后，其它电脑安装「Farvoo 开票」，填入上面的地址即可连接。</p>
+                  <p class="hint" data-i18n="settings.lan.toggle_hint">打开后，其它电脑安装「OULIN 开票」，填入上面的地址即可连接。</p>
                   <div class="panel-footer" style="border:0;justify-content:flex-start;gap:0.5rem;padding:0.5rem 0 0">
                     <button type="button" id="btnLanAccessSave" data-i18n="settings.lan.save">保存连接设置</button>
                   </div>
                   <details class="hint" style="margin-top:0.5rem">
                     <summary data-i18n="settings.lan.fw_summary">连不上时：放行防火墙 17880</summary>
                     <p data-i18n="settings.lan.fw_body">管理员 PowerShell：</p>
-                    <code id="lanAccessFwCmd" style="display:block;white-space:pre-wrap;user-select:all">New-NetFirewallRule -DisplayName "Farvoo Fiscal 17880" -Direction Inbound -Protocol TCP -LocalPort 17880 -Action Allow</code>
+                    <code id="lanAccessFwCmd" style="display:block;white-space:pre-wrap;user-select:all">New-NetFirewallRule -DisplayName "OULIN Fiscal 17880" -Direction Inbound -Protocol TCP -LocalPort 17880 -Action Allow</code>
                   </details>
                 </div>
 
@@ -1459,7 +1459,7 @@
                 <div id="terminalsAddWizard" class="hidden" style="margin:0.75rem 0;padding:1rem;border:1px solid #c5d6cc;border-radius:8px;background:#f7faf8">
                   <p class="hint" style="margin:0 0 0.5rem" data-i18n="settings.terminals.wizard_title">添加开票电脑</p>
                   <ol class="hint" style="margin:0 0 0.75rem;padding-left:1.25rem">
-                    <li data-i18n="settings.terminals.wizard_step1">在新电脑打开 Farvoo 开票，填入本机地址并测试连接</li>
+                    <li data-i18n="settings.terminals.wizard_step1">在新电脑打开 OULIN 开票，填入本机地址并测试连接</li>
                     <li data-i18n="settings.terminals.wizard_step2">在新电脑登录页输入下面的配对码</li>
                   </ol>
                   <p style="font-size:1.75rem;letter-spacing:0.2em;font-weight:700;margin:0.5rem 0;text-align:center" id="terminalsWizardCode"></p>
