@@ -2,6 +2,15 @@
 
 Each release section starts with `## X.Y.Z`. The release workflow reads the matching section and appends standard install instructions.
 
+## 0.5.64
+
+**可见品牌 OULIN + SAF-T / GR 作废 / Admin 一批**
+
+- 用户可见产品名：Farvoo → **OULIN**（Agent / Client / 安装文案；与 shared brand 对齐）。
+- SAF-T：行金额不含 VAT、官方 XSD 1.1；拒绝 Windows-1252/XSD 装不下的文本；审计批（header 身份、状态操作员、限额、归档、日期范围）。
+- 发票挂 GR：校验买方；运输单作废上报 AT；`fiscal_clear_jobs` 认领与测试销售清空。
+- Admin：壳滚动锁定；钱箱仅发票页；产品行打开与角关闭；「税票名称」→「葡语名称」。
+
 ## 0.5.63
 
 **打印代理设置页：勾选框与字号行排版**
