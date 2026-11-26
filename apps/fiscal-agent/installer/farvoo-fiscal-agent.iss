@@ -1,4 +1,4 @@
-﻿; Farvoo Fiscal Agent — Inno Setup (x64). From apps/fiscal-agent:
+﻿; OULIN Fiscal Agent — Inno Setup (x64). From apps/fiscal-agent:
 ;   ISCC /DMyAppVersion=0.1.0 installer\farvoo-fiscal-agent.iss
 ;
 ; Upgrade story (sole path): elevated Setup → PrepareToInstall taskkill of
@@ -10,9 +10,9 @@
   #define MyAppVersion "0.1.0"
 #endif
 
-#define MyAppName "Farvoo Fiscal Agent"
+#define MyAppName "OULIN Fiscal Agent"
 #define MyAppExe "FarvooFiscalAgent.exe"
-#define MyAppPublisher "Farvoo"
+#define MyAppPublisher "OULIN"
 #define MyAppURL "https://github.com/jianping2024/farvoo-fatura"
 ; Legacy exe name — kill during one-release Mesa → Farvoo migration only.
 #define MyLegacyExe "MesaPrintAgent.exe"
@@ -57,9 +57,9 @@ UninstallDisplayIcon={app}\{#MyAppExe}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a Farvoo Fiscal Agent shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: unchecked
-Name: "desktopfiscal"; Description: "Create a Farvoo Fiscal (WebView2) shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: unchecked
-Name: "autostart"; Description: "Start Farvoo Fiscal Agent when you sign in to Windows"; GroupDescription: "Sign-in startup:"; Flags: unchecked
+Name: "desktopicon"; Description: "Create an OULIN Fiscal Agent shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: unchecked
+Name: "desktopfiscal"; Description: "Create an OULIN Fiscal (WebView2) shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: unchecked
+Name: "autostart"; Description: "Start OULIN Fiscal Agent when you sign in to Windows"; GroupDescription: "Sign-in startup:"; Flags: unchecked
 Name: "webview2"; Description: "Install Microsoft Edge WebView2 Runtime if missing (recommended for fiscal UI)"; GroupDescription: "Prerequisites:"
 
 [Files]
@@ -74,16 +74,16 @@ Source: "deps\MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteaf
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
-Name: "{group}\Farvoo 开票"; Filename: "{app}\{#MyAppExe}"; Parameters: "fiscal"; IconFilename: "{app}\fiscal_app_icon.ico"
+Name: "{group}\OULIN 开票"; Filename: "{app}\{#MyAppExe}"; Parameters: "fiscal"; IconFilename: "{app}\fiscal_app_icon.ico"
 Name: "{group}\Printer settings"; Filename: "{app}\{#MyAppExe}"; Parameters: "configure"
 Name: "{group}\Read me"; Filename: "{app}\WINDOWS-README.txt"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon
-Name: "{autodesktop}\Farvoo 开票"; Filename: "{app}\{#MyAppExe}"; Parameters: "fiscal"; IconFilename: "{app}\fiscal_app_icon.ico"; Tasks: desktopfiscal
+Name: "{autodesktop}\OULIN 开票"; Filename: "{app}\{#MyAppExe}"; Parameters: "fiscal"; IconFilename: "{app}\fiscal_app_icon.ico"; Tasks: desktopfiscal
 Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: autostart
 
 [Run]
 Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "Installing WebView2 Runtime..."; Tasks: webview2; Check: NeedsWebView2; Flags: waituntilterminated
-Filename: "{app}\{#MyAppExe}"; Description: "Launch Farvoo Fiscal Agent now"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExe}"; Description: "Launch OULIN Fiscal Agent now"; Flags: nowait postinstall skipifsilent
 
 [Code]
 function NeedsWebView2: Boolean;

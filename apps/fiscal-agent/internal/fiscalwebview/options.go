@@ -3,7 +3,7 @@ package fiscalwebview
 import "errors"
 
 // WindowTitle is the sole user-facing fiscal shell window title (Agent + Client).
-const WindowTitle = "Farvoo 开票"
+const WindowTitle = "OULIN 开票"
 
 // Embedded RT_GROUP_ICON ids from akavel/rsrc (-ico order).
 const (

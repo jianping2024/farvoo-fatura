@@ -1,8 +1,8 @@
 Next steps
 ==========
 
-1. Keep "Launch Farvoo Fiscal Agent now" checked — the agent runs in the system tray (^ near the clock).
-2. Return to Farvoo Dashboard → Print assistant.
+1. Keep "Launch OULIN Fiscal Agent now" checked — the agent runs in the system tray (^ near the clock).
+2. Return to OULIN Dashboard → Print assistant.
 3. Click "Generate pairing code", then "Open settings on this PC".
 4. In the browser:
    - If not paired yet: open the pairing page (link on the settings page) and enter your code.

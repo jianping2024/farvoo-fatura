@@ -26,7 +26,7 @@ func TestInnoSetupUpgradeStory(t *testing.T) {
 		"AppId={{" + fiscalAgentInnoGUID + "}}",
 		"AppVerName={#MyAppName} {#MyAppVersion}",
 		"UninstallDisplayName={#MyAppName}",
-		`#define MyAppName "Farvoo Fiscal Agent"`,
+		`#define MyAppName "OULIN Fiscal Agent"`,
 		`#define MyAppExe "FarvooFiscalAgent.exe"`,
 		"OutputBaseFilename=FarvooFiscalAgent-Setup-amd64",
 		"function PrepareToInstall(",
@@ -80,7 +80,7 @@ func TestClientInnoSetup(t *testing.T) {
 		"Name: \"webview2\"",
 		`SetupIconFile=..\assets\fiscal_app_icon.ico`,
 		"function NeedsWebView2",
-		"Farvoo 开票",
+		"OULIN 开票",
 	}
 	for _, s := range mustContain {
 		if !strings.Contains(iss, s) {
@@ -102,7 +102,7 @@ func TestAgentInstallerFiscalShortcut(t *testing.T) {
 	for _, s := range []string{
 		`Parameters: "fiscal"`,
 		"desktopfiscal",
-		`Name: "desktopfiscal"; Description: "Create a Farvoo Fiscal (WebView2) shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: unchecked`,
+		`Name: "desktopfiscal"; Description: "Create an OULIN Fiscal (WebView2) shortcut on the desktop"; GroupDescription: "Desktop shortcut:"; Flags: unchecked`,
 		"UsePreviousTasks=no",
 		"Tasks: webview2",
 		"Name: \"webview2\"",
@@ -116,7 +116,7 @@ func TestAgentInstallerFiscalShortcut(t *testing.T) {
 		}
 	}
 	if strings.Count(iss, `IconFilename: "{app}\fiscal_app_icon.ico"`) != 2 {
-		t.Fatal("agent installer must set fiscal_app_icon.ico on both Farvoo 开票 shortcuts (start menu + desktop)")
+		t.Fatal("agent installer must set fiscal_app_icon.ico on both OULIN 开票 shortcuts (start menu + desktop)")
 	}
 	if strings.Contains(iss, "Flags: checked") {
 		t.Fatal(`agent installer must not use invalid Tasks flag "checked"`)
@@ -148,9 +148,9 @@ func TestInnoLicenseFileSolePath(t *testing.T) {
 	}
 	body := string(lic)
 	if !strings.Contains(body, "End User License Agreement") {
-		t.Fatal("LICENSE.txt must be the Farvoo EULA")
+		t.Fatal("LICENSE.txt must be the OULIN EULA")
 	}
-	if !strings.Contains(body, "Farvoo Fiscal Agent and Farvoo Fiscal Client") {
+	if !strings.Contains(body, "OULIN Fiscal Agent and OULIN Fiscal Client") {
 		t.Fatal("LICENSE.txt must cover Agent and Client in one text")
 	}
 	// No parallel EULA filenames beside the sole LICENSE.txt.
@@ -194,7 +194,7 @@ func TestAgentMutexNameStable(t *testing.T) {
 }
 
 func TestFiscalAgentDisplayNamePrefixSole(t *testing.T) {
-	if fiscalAgentDisplayNamePrefix != "Farvoo Fiscal Agent" {
+	if fiscalAgentDisplayNamePrefix != "OULIN Fiscal Agent" {
 		t.Fatalf("display prefix = %q", fiscalAgentDisplayNamePrefix)
 	}
 }

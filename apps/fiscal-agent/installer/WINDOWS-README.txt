@@ -1,13 +1,13 @@
-Farvoo Fiscal Agent (Windows)
+OULIN Fiscal Agent (Windows)
 =============================
 
-Local print + fiscal agent for Farvoo (LAN TCP :9100 and Windows USB / WinSpool).
+Local print + fiscal agent for OULIN (LAN TCP :9100 and Windows USB / WinSpool).
 
 Installer optional tasks (Setup .exe only)
 ------------------------------------------
 On the wizard step "Select Additional Tasks" you can check:
 
-  Desktop shortcut — Farvoo Fiscal Agent and/or Farvoo 开票 (WebView2); both off by default
+  Desktop shortcut — OULIN Fiscal Agent and/or OULIN 开票 (WebView2); both off by default
   (wizard does not restore prior task checks on upgrade).
   Sign-in startup — run the agent when you log on to Windows (off by default).
 
@@ -16,8 +16,8 @@ Checked shortcuts are removed when you uninstall. Portable zip has no wizard tas
 First-time setup (no command line)
 ----------------------------------
 1. Install UNYKA UK56009 driver if using USB (https://unykach.com/).
-2. Keep Farvoo Fiscal Agent running after install (finish page "Launch now", or sign in if autostart was enabled).
-3. Return to Farvoo Dashboard -> Print assistant.
+2. Keep OULIN Fiscal Agent running after install (finish page "Launch now", or sign in if autostart was enabled).
+3. Return to OULIN Dashboard -> Print assistant.
 4. Click "Generate pairing code", copy the code on the Dashboard.
 5. On the POS PC tray → Printer settings: open /pair if needed, paste the code; then Scan printers,
    map each print station, Save. Test print is optional. (Tray serves http://127.0.0.1:17892 from start.)
@@ -43,14 +43,14 @@ Printer only (legacy first-run): FarvooFiscalAgent.exe setup
 Version check
 -------------
 Installed folder contains VERSION.txt (same as FarvooFiscalAgent.exe -version).
-Default: C:\Program Files\Farvoo Fiscal Agent\
+Default: C:\Program Files\OULIN Fiscal Agent\
 
 Config file (pairing / printers — not fiscal SQLite)
 ----------------------------------------------------
 %USERPROFILE%\.config\farvoo-fiscal-agent\config.json
 
 Fiscal SQLite (invoices / series / keys) lives under the agent data directory
-(%LOCALAPPDATA%\Farvoo Fiscal Agent\fiscal.db) — not under Program Files.
+(%LOCALAPPDATA%\OULIN Fiscal Agent\fiscal.db) — not under Program Files.
 Upgrading the Setup does not wipe config or fiscal DB.
 
 Examples:

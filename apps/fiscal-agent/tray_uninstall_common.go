@@ -12,7 +12,11 @@ const fiscalAgentInnoGUID = "A3B8F2E1-9C4D-4A2B-8E1F-0D5C6B7A8E9F"
 
 // fiscalAgentDisplayNamePrefix is the sole product DisplayName stem (Inno may
 // append " version X.Y.Z" via AppVerName).
-const fiscalAgentDisplayNamePrefix = "Farvoo Fiscal Agent"
+const fiscalAgentDisplayNamePrefix = "OULIN Fiscal Agent"
+
+// legacyFarvooFiscalAgentDisplayNamePrefix is accepted only for uninstall lookup
+// during the Farvoo → OULIN rename migration window.
+const legacyFarvooFiscalAgentDisplayNamePrefix = "Farvoo Fiscal Agent"
 
 // legacyMesaPrintAgentDisplayNamePrefix is accepted only for uninstall lookup
 // during the Mesa → Farvoo rename migration window.
@@ -41,6 +45,7 @@ func displayNameMatchesPrefix(display, prefix string) bool {
 
 func fiscalAgentUninstallDisplayNameMatch(display string) bool {
 	return displayNameMatchesPrefix(display, fiscalAgentDisplayNamePrefix) ||
+		displayNameMatchesPrefix(display, legacyFarvooFiscalAgentDisplayNamePrefix) ||
 		displayNameMatchesPrefix(display, legacyMesaPrintAgentDisplayNamePrefix)
 }
 

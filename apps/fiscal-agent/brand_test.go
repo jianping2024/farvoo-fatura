@@ -3,13 +3,13 @@ package main
 import "testing"
 
 func TestBrandConstants(t *testing.T) {
-	if productName != "FARVOO" {
+	if productName != "OULIN" {
 		t.Fatalf("productName = %q", productName)
 	}
-	if printAgentName != "FARVOO Fiscal Agent" {
+	if printAgentName != "OULIN Fiscal Agent" {
 		t.Fatalf("printAgentName = %q", printAgentName)
 	}
-	if printTrayTitleEN != "FARVOO Fiscal" {
+	if printTrayTitleEN != "OULIN Fiscal" {
 		t.Fatalf("printTrayTitleEN = %q", printTrayTitleEN)
 	}
 }
